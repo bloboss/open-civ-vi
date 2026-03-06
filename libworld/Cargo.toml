@@ -1,0 +1,8 @@
+[package]
+name = "libworld"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+libhexgrid = { path = "../libhexgrid" }
+libcommon = { path = "../libcommon" }

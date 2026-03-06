@@ -1,0 +1,110 @@
+use libcommon::{
+    CivId, CityId, UnitId, EraId,
+};
+use libcivcore::{
+    Civilization, City, DiplomaticRelation, GreatPerson, Religion, TradeRoute,
+};
+use librules::{TechTree, CivicTree, Government, Policy};
+use rand::SeedableRng;
+use rand::rngs::SmallRng;
+use ulid::Ulid;
+
+use crate::board::WorldBoard;
+
+/// Deterministic ID generator backed by a seeded RNG.
+pub struct IdGenerator {
+    rng: SmallRng,
+    timestamp_ms: u64,
+}
+
+impl std::fmt::Debug for IdGenerator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("IdGenerator")
+            .field("timestamp_ms", &self.timestamp_ms)
+            .finish_non_exhaustive()
+    }
+}
+
+impl IdGenerator {
+    pub fn new(seed: u64) -> Self {
+        Self {
+            rng: SmallRng::seed_from_u64(seed),
+            timestamp_ms: 0,
+        }
+    }
+
+    pub fn next_ulid(&mut self) -> Ulid {
+        use rand::RngCore;
+        let hi = self.rng.next_u64() as u128;
+        let lo = self.rng.next_u64() as u128;
+        let random = (hi << 64) | lo;
+        self.timestamp_ms += 1;
+        Ulid::from_parts(self.timestamp_ms, random)
+    }
+
+    pub fn next_city_id(&mut self) -> CityId {
+        CityId::from_ulid(self.next_ulid())
+    }
+
+    pub fn next_unit_id(&mut self) -> UnitId {
+        UnitId::from_ulid(self.next_ulid())
+    }
+
+    pub fn next_civ_id(&mut self) -> CivId {
+        CivId::from_ulid(self.next_ulid())
+    }
+}
+
+/// The full game state.
+#[derive(Debug)]
+pub struct GameState {
+    pub turn: u32,
+    pub seed: u64,
+    pub board: WorldBoard,
+    pub id_gen: IdGenerator,
+    pub civilizations: Vec<Civilization>,
+    pub cities: Vec<City>,
+    pub diplomatic_relations: Vec<DiplomaticRelation>,
+    pub religions: Vec<Religion>,
+    pub trade_routes: Vec<TradeRoute>,
+    pub great_people: Vec<GreatPerson>,
+    pub tech_tree: TechTree,
+    pub civic_tree: CivicTree,
+    pub governments: Vec<Government>,
+    pub policies: Vec<Policy>,
+    pub current_era: EraId,
+}
+
+impl GameState {
+    pub fn new(seed: u64, width: u32, height: u32) -> Self {
+        let board = WorldBoard::new(width, height);
+        let mut id_gen = IdGenerator::new(seed);
+        let era_id = EraId::from_ulid(id_gen.next_ulid());
+
+        Self {
+            turn: 0,
+            seed,
+            board,
+            id_gen,
+            civilizations: Vec::new(),
+            cities: Vec::new(),
+            diplomatic_relations: Vec::new(),
+            religions: Vec::new(),
+            trade_routes: Vec::new(),
+            great_people: Vec::new(),
+            tech_tree: TechTree::new(),
+            civic_tree: CivicTree::new(),
+            governments: Vec::new(),
+            policies: Vec::new(),
+            current_era: era_id,
+        }
+    }
+
+    pub fn civ(&self, id: CivId) -> Option<&Civilization> {
+        self.civilizations.iter().find(|c| c.id == id)
+    }
+
+    pub fn city(&self, id: CityId) -> Option<&City> {
+        self.cities.iter().find(|c| c.id == id)
+    }
+}

@@ -1,6 +1,17 @@
-[package]
-name = "open-civ-vi"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+members = [
+    "libcommon",
+    "libhexgrid",
+    "libworld",
+    "librules",
+    "libcivcore",
+    "libgame",
+    "civsim",
+]
+resolver = "2"
 
-[dependencies]
+[workspace.dependencies]
+ulid = "1"
+rand = "0.9"
+rand_chacha = "0.3"
+clap = { version = "4", features = ["derive"] }
