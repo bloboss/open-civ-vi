@@ -2,7 +2,7 @@ use libcommon::{
     CivId, CityId, UnitId, EraId,
 };
 use crate::civ::{
-    Civilization, City, DiplomaticRelation, GreatPerson, Religion, TradeRoute,
+    Civilization, City, CityKind, DiplomaticRelation, GreatPerson, Religion, TradeRoute,
 };
 use crate::rules::{TechTree, CivicTree, Government, Policy};
 use rand::SeedableRng;
@@ -106,5 +106,13 @@ impl GameState {
 
     pub fn city(&self, id: CityId) -> Option<&City> {
         self.cities.iter().find(|c| c.id == id)
+    }
+
+    /// Returns the city that represents the given city-state CivId, if one exists.
+    /// City states are stored in the cities vec with owner == their diplomatic CivId.
+    pub fn city_state_by_civ(&self, civ_id: CivId) -> Option<&City> {
+        self.cities.iter().find(|c| {
+            matches!(c.kind, CityKind::CityState(_)) && c.owner == civ_id
+        })
     }
 }

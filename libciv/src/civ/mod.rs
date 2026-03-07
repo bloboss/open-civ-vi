@@ -10,8 +10,8 @@ pub mod religion;
 pub mod trade;
 pub mod unit;
 
-pub use city::{City, CityOwnership, ProductionItem, WallLevel};
-pub use city_state::{CityState, CityStateBonus, CityStateType};
+pub use city::{City, CityKind, CityOwnership, ProductionItem, WallLevel};
+pub use city_state::{CityStateBonus, CityStateData, CityStateType};
 pub use civilization::{Agenda, Civilization, CivicProgress, Leader, LeaderAbility, StartBias, TechProgress};
 pub use diplomacy::{
     Agreement, DiplomaticRelation, DiplomaticStatus, GrievanceTrigger,

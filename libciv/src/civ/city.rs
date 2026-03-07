@@ -1,5 +1,15 @@
 use libcommon::{BuildingId, CityId, CivId, DistrictTypeId, UnitTypeId, WonderId, YieldBundle};
 use libhexgrid::coord::HexCoord;
+use super::city_state::CityStateData;
+
+/// Whether this city is a regular player city or an independent city-state.
+#[derive(Debug)]
+pub enum CityKind {
+    /// A standard player or AI city.
+    Regular,
+    /// An independent city-state. Suzerain/influence mechanics live in `CityStateData`.
+    CityState(CityStateData),
+}
 
 /// Political/ownership state of a city.
 ///
@@ -35,13 +45,14 @@ pub enum ProductionItem {
     Wonder(WonderId),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct City {
     pub id: CityId,
     pub name: String,
     pub owner: CivId,
     pub founded_by: CivId,
     pub coord: HexCoord,
+    pub kind: CityKind,
     pub ownership: CityOwnership,
     pub is_capital: bool,
     pub population: u32,
@@ -64,6 +75,7 @@ impl City {
             owner,
             founded_by: owner,
             coord,
+            kind: CityKind::Regular,
             ownership: CityOwnership::Normal,
             is_capital: false,
             population: 1,

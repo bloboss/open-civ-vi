@@ -1,6 +1,6 @@
-use libcommon::{CivId, CityId, YieldBundle};
-use libhexgrid::coord::HexCoord;
+use libcommon::{CivId, YieldBundle};
 
+/// The functional category of a city-state, determining its suzerain bonus type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CityStateType {
     Cultural,
@@ -17,24 +17,20 @@ pub trait CityStateBonus: std::fmt::Debug {
     fn yields_for_suzerain(&self) -> YieldBundle;
 }
 
-#[derive(Debug, Clone)]
-pub struct CityState {
-    pub id: CityId,
-    pub name: &'static str,
+/// City-state–specific data stored inside a `City` with `CityKind::CityState`.
+#[derive(Debug)]
+pub struct CityStateData {
     pub state_type: CityStateType,
-    pub coord: HexCoord,
+    /// The civilization currently holding suzerain status (most influence envoys).
     pub suzerain: Option<CivId>,
-    /// Influence points per civilization.
+    /// Influence points per civilization; used to determine suzerain.
     pub influence: std::collections::HashMap<CivId, i32>,
 }
 
-impl CityState {
-    pub fn new(id: CityId, name: &'static str, state_type: CityStateType, coord: HexCoord) -> Self {
+impl CityStateData {
+    pub fn new(state_type: CityStateType) -> Self {
         Self {
-            id,
-            name,
             state_type,
-            coord,
             suzerain: None,
             influence: std::collections::HashMap::new(),
         }
@@ -48,7 +44,12 @@ impl CityState {
         self.influence.get(&civ).copied().unwrap_or(0)
     }
 
+    /// Recalculate and cache the suzerain from current influence totals.
     pub fn recalculate_suzerain(&mut self) {
-        self.suzerain = self.influence.iter().max_by_key(|&(_, v)| v).map(|(k, _)| *k);
+        self.suzerain = self
+            .influence
+            .iter()
+            .max_by_key(|&(_, v)| v)
+            .map(|(k, _)| *k);
     }
 }
