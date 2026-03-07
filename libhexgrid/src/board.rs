@@ -9,9 +9,19 @@ pub trait HexTile {
     fn vision_bonus(&self) -> Vision;
 }
 
-/// An edge between two adjacent tiles.
+/// An edge between two adjacent tiles, identified by a tile coordinate and the
+/// direction from that tile toward its neighbour. The canonical form always uses
+/// a direction from the forward half {E, NE, NW}; the backward half {W, SW, SE}
+/// is normalised by stepping to the adjacent tile and flipping the direction.
 pub trait HexEdge {
-    fn endpoints(&self) -> (HexCoord, HexCoord);
+    /// The tile coordinate of the canonical (forward-half) endpoint.
+    fn coord(&self) -> HexCoord;
+    /// The direction from `coord` toward the other tile (always forward-half).
+    fn dir(&self) -> crate::coord::HexDir;
+    /// Both tile coordinates separated by this edge, derived from coord + dir.
+    fn endpoints(&self) -> (HexCoord, HexCoord) {
+        (self.coord(), self.coord() + self.dir().unit_vec())
+    }
     /// Additional movement cost imposed by crossing this edge (e.g., river penalty).
     fn crossing_cost(&self) -> MovementCost;
 }
@@ -40,7 +50,7 @@ pub trait HexBoard {
     fn tile(&self, coord: HexCoord) -> Option<&Self::Tile>;
     fn tile_mut(&mut self, coord: HexCoord) -> Option<&mut Self::Tile>;
 
-    fn edge(&self, from: HexCoord, to: HexCoord) -> Option<&Self::Edge>;
+    fn edge(&self, coord: HexCoord, dir: crate::coord::HexDir) -> Option<&Self::Edge>;
 
     fn neighbors(&self, coord: HexCoord) -> Vec<HexCoord>;
 

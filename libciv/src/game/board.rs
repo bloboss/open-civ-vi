@@ -2,7 +2,7 @@ use std::collections::{BinaryHeap, HashMap};
 use std::cmp::Reverse;
 
 use libhexgrid::board::{BoardTopology, HexBoard};
-use libhexgrid::coord::HexCoord;
+use libhexgrid::coord::{HexCoord, HexDir};
 use libhexgrid::types::{Elevation, MovementCost};
 use libhexgrid::{HexEdge, HexTile};
 use crate::world::edge::WorldEdge;
@@ -17,8 +17,9 @@ pub struct WorldBoard {
     topology: BoardTopology,
     /// Tiles stored in row-major order: index = r * width + q (offset coords).
     tiles: Vec<WorldTile>,
-    /// Edges keyed by sorted pair of HexCoords.
-    edges: HashMap<(HexCoord, HexCoord), WorldEdge>,
+    /// Edges keyed by canonical (HexCoord, HexDir) pair.
+    /// Forward-half directions only: {E, NE, NW}.
+    edges: HashMap<(HexCoord, HexDir), WorldEdge>,
 }
 
 impl WorldBoard {
@@ -45,7 +46,6 @@ impl WorldBoard {
         if r < 0 || r >= self.height as i32 {
             return None;
         }
-        // Wrap q for cylindrical topology
         let q_wrapped = match self.topology {
             BoardTopology::CylindricalEW | BoardTopology::Toroidal => {
                 q.rem_euclid(self.width as i32)
@@ -79,14 +79,19 @@ impl WorldBoard {
         Some(HexCoord::from_qr(q, r))
     }
 
-    fn edge_key(a: HexCoord, b: HexCoord) -> (HexCoord, HexCoord) {
-        if (a.q, a.r) <= (b.q, b.r) { (a, b) } else { (b, a) }
+    /// Canonicalize an edge reference to its forward-half form.
+    /// Forward half: {E, NE, NW}. Backward half: {W, SW, SE} → step to neighbor, flip.
+    fn canonical(coord: HexCoord, dir: HexDir) -> (HexCoord, HexDir) {
+        match dir {
+            HexDir::E | HexDir::NE | HexDir::NW => (coord, dir),
+            backward => (coord + backward.unit_vec(), backward.opposite()),
+        }
     }
 
-    pub fn set_edge(&mut self, edge: WorldEdge) {
-        let (a, b) = edge.endpoints();
-        let key = Self::edge_key(a, b);
-        self.edges.insert(key, edge);
+    /// Insert an edge into the board, canonicalizing its direction automatically.
+    pub fn set_edge(&mut self, coord: HexCoord, dir: HexDir, edge: WorldEdge) {
+        let (canon_coord, canon_dir) = Self::canonical(coord, dir);
+        self.edges.insert((canon_coord, canon_dir), edge);
     }
 
     /// Dijkstra pathfinding. Returns `Some(path)` or `None` if unreachable.
@@ -99,10 +104,8 @@ impl WorldBoard {
         let start = self.normalize_coord(start)?;
         let goal = self.normalize_coord(goal)?;
 
-        // dist maps coord -> cheapest cost to reach
         let mut dist: HashMap<HexCoord, u32> = HashMap::new();
         let mut prev: HashMap<HexCoord, HexCoord> = HashMap::new();
-        // BinaryHeap is a max-heap; use Reverse for min-heap behaviour
         let mut heap: BinaryHeap<(Reverse<u32>, HexCoord)> = BinaryHeap::new();
 
         dist.insert(start, 0);
@@ -119,7 +122,8 @@ impl WorldBoard {
                 break;
             }
 
-            for neighbor_raw in coord.neighbors() {
+            for dir in HexDir::ALL {
+                let neighbor_raw = coord + dir.unit_vec();
                 let Some(neighbor) = self.normalize_coord(neighbor_raw) else { continue };
                 let Some(tile) = self.tile(neighbor) else { continue };
 
@@ -129,7 +133,7 @@ impl WorldBoard {
                 };
 
                 let edge_cost = self
-                    .edge(coord, neighbor)
+                    .edge(coord, dir)
                     .map(|e| match e.crossing_cost() {
                         MovementCost::Impassable => u32::MAX,
                         MovementCost::Cost(c) => c,
@@ -154,7 +158,6 @@ impl WorldBoard {
             return None;
         }
 
-        // Reconstruct path
         let mut path = vec![goal];
         let mut cur = goal;
         while cur != start {
@@ -166,8 +169,6 @@ impl WorldBoard {
     }
 
     /// Line-of-sight check. Returns true if `from` can see `to`.
-    /// Blocked if any intermediate tile has higher elevation than both endpoints
-    /// or by an edge that blocks LOS.
     pub fn has_los(&self, from: HexCoord, to: HexCoord) -> bool {
         let Some(from) = self.normalize_coord(from) else { return false };
         let Some(to) = self.normalize_coord(to) else { return false };
@@ -180,7 +181,6 @@ impl WorldBoard {
         let to_elev = self.tile(to).map(|t| t.elevation()).unwrap_or(Elevation::Level(0));
         let min_elev = from_elev.min(to_elev);
 
-        // Walk intermediate hexes on the line from->to
         let dist = from.distance(&to) as i32;
         for step in 1..dist {
             let frac_q = from.q as f32 + (to.q - from.q) as f32 * step as f32 / dist as f32;
@@ -197,7 +197,6 @@ impl WorldBoard {
     }
 }
 
-/// Round fractional hex coordinates to nearest integer hex.
 fn hex_round(frac_q: f32, frac_r: f32) -> HexCoord {
     let frac_s = -frac_q - frac_r;
     let mut q = frac_q.round() as i32;
@@ -214,7 +213,7 @@ fn hex_round(frac_q: f32, frac_r: f32) -> HexCoord {
         r = -q - s;
     } else {
         s = -q - r;
-        let _ = s; // s is derived, not stored
+        let _ = s;
     }
 
     HexCoord::from_qr(q, r)
@@ -224,17 +223,9 @@ impl HexBoard for WorldBoard {
     type Tile = WorldTile;
     type Edge = WorldEdge;
 
-    fn topology(&self) -> BoardTopology {
-        self.topology
-    }
-
-    fn width(&self) -> u32 {
-        self.width
-    }
-
-    fn height(&self) -> u32 {
-        self.height
-    }
+    fn topology(&self) -> BoardTopology { self.topology }
+    fn width(&self) -> u32 { self.width }
+    fn height(&self) -> u32 { self.height }
 
     fn tile(&self, coord: HexCoord) -> Option<&WorldTile> {
         let idx = self.coord_to_index(coord)?;
@@ -246,10 +237,10 @@ impl HexBoard for WorldBoard {
         self.tiles.get_mut(idx)
     }
 
-    fn edge(&self, from: HexCoord, to: HexCoord) -> Option<&WorldEdge> {
-        let from = self.normalize_coord(from)?;
-        let to = self.normalize_coord(to)?;
-        self.edges.get(&Self::edge_key(from, to))
+    fn edge(&self, coord: HexCoord, dir: HexDir) -> Option<&WorldEdge> {
+        let coord = self.normalize_coord(coord)?;
+        let (canon_coord, canon_dir) = Self::canonical(coord, dir);
+        self.edges.get(&(canon_coord, canon_dir))
     }
 
     fn neighbors(&self, coord: HexCoord) -> Vec<HexCoord> {
@@ -272,9 +263,8 @@ impl HexBoard for WorldBoard {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use libhexgrid::HexDir;
     use crate::world::feature::{BuiltinFeature, Ice};
-    use crate::world::terrain::{BuiltinTerrain, Grassland};
+    use crate::world::edge::{BuiltinEdgeFeature, River};
 
     fn small_board() -> WorldBoard {
         WorldBoard::new(10, 10)
@@ -283,7 +273,6 @@ mod tests {
     #[test]
     fn test_wraparound_east_west() {
         let board = small_board();
-        // q=9, going E should wrap to q=0
         let east_edge = HexCoord::from_qr(9, 2);
         let step_east = east_edge + HexDir::E.unit_vec();
         let normalized = board.normalize(step_east).expect("should wrap");
@@ -291,13 +280,31 @@ mod tests {
     }
 
     #[test]
+    fn test_edge_lookup_both_directions() {
+        let mut board = small_board();
+        let a = HexCoord::from_qr(3, 3);
+        let river = WorldEdge::new(a, HexDir::E).with_feature(BuiltinEdgeFeature::River(River));
+        board.set_edge(a, HexDir::E, river);
+        // Forward lookup
+        assert!(board.edge(a, HexDir::E).is_some());
+        // Reverse lookup (W from the neighbour) must find the same edge
+        let b = HexCoord::from_qr(4, 3);
+        assert!(board.edge(b, HexDir::W).is_some());
+        assert_eq!(
+            board.edge(a, HexDir::E).unwrap().crossing_cost(),
+            board.edge(b, HexDir::W).unwrap().crossing_cost(),
+        );
+    }
+
+    #[test]
     #[ignore = "Phase 2: implement LOS with elevation"]
     fn test_los_blocked_by_high() {
         let mut board = small_board();
-        // Place a high tile in the middle
         let mid = HexCoord::from_qr(5, 5);
         if let Some(t) = board.tile_mut(mid) {
-            t.terrain = BuiltinTerrain::Grassland(Grassland); // placeholder; need hills terrain
+            t.terrain = crate::world::terrain::BuiltinTerrain::Grassland(
+                crate::world::terrain::Grassland
+            );
         }
         let from = HexCoord::from_qr(3, 5);
         let to = HexCoord::from_qr(7, 5);
@@ -307,14 +314,12 @@ mod tests {
     #[test]
     fn test_dijkstra_avoids_impassable() {
         let mut board = WorldBoard::new(10, 10);
-        // Block a row with impassable edges (cliffs) — use Ice feature to make tiles impassable
         let blocker = HexCoord::from_qr(3, 3);
         if let Some(t) = board.tile_mut(blocker) {
             t.feature = Some(BuiltinFeature::Ice(Ice));
         }
         let start = HexCoord::from_qr(2, 3);
         let goal = HexCoord::from_qr(5, 3);
-        // Path should exist but go around the impassable tile
         let path = board.find_path(start, goal, 10_000);
         assert!(path.is_some());
         let path = path.unwrap();
@@ -324,7 +329,6 @@ mod tests {
     #[test]
     #[ignore = "Phase 2: implement road movement cost reduction"]
     fn test_dijkstra_prefers_roads() {
-        // Requires road tiles to have lower movement cost - Phase 2.
         todo!("set up road tiles, verify Dijkstra chooses road path")
     }
 }

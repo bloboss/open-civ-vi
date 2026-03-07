@@ -1,5 +1,5 @@
 use libhexgrid::board::HexEdge;
-use libhexgrid::coord::HexCoord;
+use libhexgrid::coord::{HexCoord, HexDir};
 use libhexgrid::types::MovementCost;
 
 pub trait EdgeFeatureDef: std::fmt::Debug {
@@ -60,16 +60,26 @@ impl BuiltinEdgeFeature {
 }
 
 /// Concrete edge type for the world board.
+///
+/// Stored in canonical form: `dir` is always in the forward half {E, NE, NW}.
+/// The backward directions {W, SW, SE} are normalised by `WorldBoard::canonical`.
 #[derive(Debug, Clone)]
 pub struct WorldEdge {
-    pub from: HexCoord,
-    pub to: HexCoord,
+    /// Canonical tile coordinate (forward-half endpoint).
+    pub coord: HexCoord,
+    /// Direction from `coord` toward the other tile (always forward-half: E, NE, or NW).
+    pub dir: HexDir,
     pub feature: Option<BuiltinEdgeFeature>,
 }
 
 impl WorldEdge {
-    pub fn new(from: HexCoord, to: HexCoord) -> Self {
-        Self { from, to, feature: None }
+    /// Construct an edge in canonical form. Panics in debug if `dir` is not forward-half.
+    pub fn new(coord: HexCoord, dir: HexDir) -> Self {
+        debug_assert!(
+            matches!(dir, HexDir::E | HexDir::NE | HexDir::NW),
+            "WorldEdge::new requires a forward-half direction (E, NE, NW); use WorldBoard::set_edge for automatic canonicalization"
+        );
+        Self { coord, dir, feature: None }
     }
 
     pub fn with_feature(mut self, feature: BuiltinEdgeFeature) -> Self {
@@ -79,9 +89,8 @@ impl WorldEdge {
 }
 
 impl HexEdge for WorldEdge {
-    fn endpoints(&self) -> (HexCoord, HexCoord) {
-        (self.from, self.to)
-    }
+    fn coord(&self) -> HexCoord { self.coord }
+    fn dir(&self) -> HexDir { self.dir }
 
     fn crossing_cost(&self) -> MovementCost {
         self.feature
@@ -97,9 +106,8 @@ mod tests {
 
     #[test]
     fn test_world_edge_river_cost() {
-        let from = HexCoord::from_qr(0, 0);
-        let to = HexCoord::from_qr(1, 0);
-        let edge = WorldEdge::new(from, to).with_feature(BuiltinEdgeFeature::River(River));
+        let coord = HexCoord::from_qr(0, 0);
+        let edge = WorldEdge::new(coord, HexDir::E).with_feature(BuiltinEdgeFeature::River(River));
         assert_eq!(edge.crossing_cost(), MovementCost::THREE);
     }
 }
