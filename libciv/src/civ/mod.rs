@@ -13,7 +13,10 @@ pub mod unit;
 pub use city::{City, CityOwnership, ProductionItem, WallLevel};
 pub use city_state::{CityState, CityStateBonus, CityStateType};
 pub use civilization::{Agenda, Civilization, CivicProgress, Leader, LeaderAbility, StartBias, TechProgress};
-pub use diplomacy::{Agreement, DiplomaticRelation, DiplomaticStatus, GrievanceTrigger};
+pub use diplomacy::{
+    Agreement, DiplomaticRelation, DiplomaticStatus, GrievanceTrigger,
+    GrievanceRecord, GrievanceVisibility,
+};
 pub use district::{AdjacencyContext, BuildingDef, DistrictDef, PlacedDistrict};
 pub use era::{Era, EraTrigger};
 pub use governor::{Governor, GovernorDef, GovernorPromotion};

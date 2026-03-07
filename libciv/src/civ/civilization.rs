@@ -5,9 +5,9 @@ use libcommon::{
 use crate::rules::modifier::Modifier;
 
 pub trait StartBias: std::fmt::Debug {
-    fn terrain_preference(&self) -> Option<&'static str>;
-    fn feature_preference(&self) -> Option<&'static str>;
-    fn resource_preference(&self) -> Option<&'static str>;
+    fn terrain_preference(&self) -> Option<libcommon::TerrainId>;
+    fn feature_preference(&self) -> Option<libcommon::FeatureId>;
+    fn resource_preference(&self) -> Option<libcommon::ResourceCategory>;
 }
 
 pub trait LeaderAbility: std::fmt::Debug {
