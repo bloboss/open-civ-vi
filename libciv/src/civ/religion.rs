@@ -1,4 +1,4 @@
-use libcommon::{BeliefId, CivId, ReligionId, YieldBundle};
+use crate::{BeliefId, CivId, ReligionId, YieldBundle};
 
 pub trait Belief: std::fmt::Debug {
     fn id(&self) -> BeliefId;
@@ -18,13 +18,13 @@ pub struct Religion {
     pub id: ReligionId,
     pub name: String,
     pub founded_by: CivId,
-    pub holy_city: libcommon::CityId,
+    pub holy_city: crate::CityId,
     pub beliefs: Vec<BeliefId>,
-    pub followers: std::collections::HashMap<libcommon::CityId, u32>,
+    pub followers: std::collections::HashMap<crate::CityId, u32>,
 }
 
 impl Religion {
-    pub fn new(id: ReligionId, name: String, founder: CivId, holy_city: libcommon::CityId) -> Self {
+    pub fn new(id: ReligionId, name: String, founder: CivId, holy_city: crate::CityId) -> Self {
         Self {
             id,
             name,

@@ -1,4 +1,4 @@
-use libcommon::YieldBundle;
+use crate::YieldBundle;
 
 pub trait TileImprovement: std::fmt::Debug {
     fn name(&self) -> &'static str;
@@ -13,7 +13,7 @@ pub struct Farm;
 impl TileImprovement for Farm {
     fn name(&self) -> &'static str { "Farm" }
     fn yield_bonus(&self) -> YieldBundle {
-        YieldBundle::new().with(libcommon::YieldType::Food, 1)
+        YieldBundle::new().with(crate::YieldType::Food, 1)
     }
     fn build_turns(&self) -> u32 { 5 }
 }
@@ -23,7 +23,7 @@ pub struct Mine;
 impl TileImprovement for Mine {
     fn name(&self) -> &'static str { "Mine" }
     fn yield_bonus(&self) -> YieldBundle {
-        YieldBundle::new().with(libcommon::YieldType::Production, 1)
+        YieldBundle::new().with(crate::YieldType::Production, 1)
     }
     fn build_turns(&self) -> u32 { 5 }
 }
@@ -33,7 +33,7 @@ pub struct LumberMill;
 impl TileImprovement for LumberMill {
     fn name(&self) -> &'static str { "Lumber Mill" }
     fn yield_bonus(&self) -> YieldBundle {
-        YieldBundle::new().with(libcommon::YieldType::Production, 2)
+        YieldBundle::new().with(crate::YieldType::Production, 2)
     }
     fn build_turns(&self) -> u32 { 5 }
 }
@@ -43,7 +43,7 @@ pub struct TradingPost;
 impl TileImprovement for TradingPost {
     fn name(&self) -> &'static str { "Trading Post" }
     fn yield_bonus(&self) -> YieldBundle {
-        YieldBundle::new().with(libcommon::YieldType::Gold, 1)
+        YieldBundle::new().with(crate::YieldType::Gold, 1)
     }
     fn build_turns(&self) -> u32 { 5 }
 }

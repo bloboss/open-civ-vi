@@ -1,4 +1,4 @@
-use libcommon::{BuildingId, CityId, CivId, DistrictTypeId, UnitTypeId, WonderId, YieldBundle};
+use crate::{BuildingId, CityId, CivId, DistrictTypeId, UnitTypeId, WonderId, YieldBundle};
 use libhexgrid::coord::HexCoord;
 use super::city_state::CityStateData;
 

@@ -1,4 +1,4 @@
-use libcommon::{CityId, CivId, GovernorId, PromotionId};
+use crate::{CityId, CivId, GovernorId, PromotionId};
 
 pub trait GovernorDef: std::fmt::Debug {
     fn id(&self) -> GovernorId;

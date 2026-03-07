@@ -1,4 +1,4 @@
-use libcommon::{AgreementId, CivId, GrievanceId};
+use crate::{AgreementId, CivId, GrievanceId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DiplomaticStatus {

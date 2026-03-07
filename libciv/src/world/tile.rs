@@ -1,4 +1,4 @@
-use libcommon::{ImprovementId, ResourceId};
+use crate::{ImprovementId, ResourceId};
 use libhexgrid::board::HexTile;
 use libhexgrid::coord::HexCoord;
 use libhexgrid::types::{Elevation, MovementCost, Vision};
@@ -26,7 +26,7 @@ pub struct WorldTile {
     pub road: Option<BuiltinRoad>,
     pub rivers: Vec<BuiltinEdgeFeature>,
     /// Owning civilization (None = unclaimed).
-    pub owner: Option<libcommon::CivId>,
+    pub owner: Option<crate::CivId>,
 }
 
 impl WorldTile {
@@ -43,7 +43,7 @@ impl WorldTile {
         }
     }
 
-    pub fn total_yields(&self) -> libcommon::YieldBundle {
+    pub fn total_yields(&self) -> crate::YieldBundle {
         let mut yields = self.terrain.as_def().base_yields();
         if let Some(ref feat) = self.feature {
             yields += feat.as_def().yield_modifier();

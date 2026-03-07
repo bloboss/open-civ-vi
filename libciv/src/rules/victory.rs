@@ -1,4 +1,4 @@
-use libcommon::{CivId, VictoryId};
+use crate::{CivId, VictoryId};
 
 #[derive(Debug, Clone)]
 pub struct VictoryProgress {

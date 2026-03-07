@@ -1,4 +1,4 @@
-use libcommon::{CivId, YieldBundle};
+use crate::{CivId, YieldBundle};
 
 /// The functional category of a city-state, determining its suzerain bonus type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

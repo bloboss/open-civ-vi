@@ -1,4 +1,4 @@
-use libcommon::{BuildingId, CivicId, TechId};
+use crate::{BuildingId, CivicId, TechId};
 use std::collections::HashMap;
 
 /// Something unlocked by completing a tech or civic.

@@ -1,4 +1,4 @@
-use libcommon::{
+use crate::{
     CivId, CityId, UnitId, EraId,
 };
 use crate::civ::{

@@ -1,4 +1,4 @@
-use libcommon::{CivId, GreatPersonId, GreatPersonType};
+use crate::{CivId, GreatPersonId, GreatPersonType};
 use libhexgrid::coord::HexCoord;
 
 pub trait GreatPersonAbility: std::fmt::Debug {

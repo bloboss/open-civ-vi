@@ -1,4 +1,4 @@
-use libcommon::{CivId, PromotionId, UnitCategory, UnitDomain, UnitId, UnitTypeId};
+use crate::{CivId, PromotionId, UnitCategory, UnitDomain, UnitId, UnitTypeId};
 use libhexgrid::coord::HexCoord;
 
 pub trait Unit: std::fmt::Debug {

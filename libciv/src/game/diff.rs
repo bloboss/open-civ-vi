@@ -1,4 +1,4 @@
-use libcommon::{CivId, CityId, UnitId};
+use crate::{CivId, CityId, UnitId};
 use libhexgrid::coord::HexCoord;
 
 /// A single atomic change to the game state.

@@ -1,4 +1,4 @@
-use libcommon::{GovernmentId, PolicyId, PolicyType};
+use crate::{GovernmentId, PolicyId, PolicyType};
 
 use super::modifier::Modifier;
 

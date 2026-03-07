@@ -1,5 +1,5 @@
-use libcommon::YieldBundle;
-pub use libcommon::ResourceCategory;
+use crate::YieldBundle;
+pub use crate::ResourceCategory;
 
 pub trait Resource: std::fmt::Debug {
     fn name(&self) -> &'static str;

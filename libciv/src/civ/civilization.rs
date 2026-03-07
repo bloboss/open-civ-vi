@@ -1,13 +1,13 @@
 use std::collections::HashMap;
-use libcommon::{
+use crate::{
     AgeType, CivId, CivicId, GovernmentId, PolicyId, ResourceId, TechId, YieldBundle,
 };
 use crate::rules::modifier::Modifier;
 
 pub trait StartBias: std::fmt::Debug {
-    fn terrain_preference(&self) -> Option<libcommon::TerrainId>;
-    fn feature_preference(&self) -> Option<libcommon::FeatureId>;
-    fn resource_preference(&self) -> Option<libcommon::ResourceCategory>;
+    fn terrain_preference(&self) -> Option<crate::TerrainId>;
+    fn feature_preference(&self) -> Option<crate::FeatureId>;
+    fn resource_preference(&self) -> Option<crate::ResourceCategory>;
 }
 
 pub trait LeaderAbility: std::fmt::Debug {
@@ -51,8 +51,8 @@ pub struct Civilization {
     pub name: &'static str,
     pub adjective: &'static str,
     pub leader: Leader,
-    pub cities: Vec<libcommon::CityId>,
-    pub capital: Option<libcommon::CityId>,
+    pub cities: Vec<crate::CityId>,
+    pub capital: Option<crate::CityId>,
     pub current_era: AgeType,
     pub researched_techs: Vec<TechId>,
     pub tech_in_progress: Option<TechProgress>,

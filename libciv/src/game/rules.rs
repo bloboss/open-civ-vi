@@ -1,4 +1,4 @@
-use libcommon::{CivId, UnitId};
+use crate::{CivId, UnitId};
 use libhexgrid::coord::HexCoord;
 
 use super::diff::GameStateDiff;
@@ -15,7 +15,7 @@ pub trait RulesEngine: std::fmt::Debug {
     ) -> Result<GameStateDiff, RulesError>;
 
     /// Compute all yields for a civilization this turn.
-    fn compute_yields(&self, state: &GameState, civ: CivId) -> libcommon::YieldBundle;
+    fn compute_yields(&self, state: &GameState, civ: CivId) -> crate::YieldBundle;
 
     /// Advance the game state by one turn. Returns diff.
     fn advance_turn(&self, state: &mut GameState) -> GameStateDiff;
@@ -58,7 +58,7 @@ impl RulesEngine for DefaultRulesEngine {
         todo!("Phase 2: implement unit movement rules")
     }
 
-    fn compute_yields(&self, _state: &GameState, _civ: CivId) -> libcommon::YieldBundle {
+    fn compute_yields(&self, _state: &GameState, _civ: CivId) -> crate::YieldBundle {
         todo!("Phase 2: implement yield computation")
     }
 

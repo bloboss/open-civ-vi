@@ -1,4 +1,4 @@
-use libcommon::{CivId, YieldType};
+use crate::{CivId, YieldType};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EffectType {
@@ -21,7 +21,7 @@ pub enum TargetSelector {
     /// Applies to all units.
     AllUnits,
     /// Applies to units of a specific domain.
-    UnitDomain(libcommon::UnitDomain),
+    UnitDomain(crate::UnitDomain),
     /// Applies to a specific civilization.
     Civilization(CivId),
     /// Applies globally.

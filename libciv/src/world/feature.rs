@@ -1,4 +1,4 @@
-use libcommon::YieldBundle;
+use crate::YieldBundle;
 use libhexgrid::types::MovementCost;
 
 pub trait FeatureDef: std::fmt::Debug {
@@ -14,7 +14,7 @@ pub struct Forest;
 impl FeatureDef for Forest {
     fn name(&self) -> &'static str { "Forest" }
     fn yield_modifier(&self) -> YieldBundle {
-        YieldBundle::new().with(libcommon::YieldType::Production, 1)
+        YieldBundle::new().with(crate::YieldType::Production, 1)
     }
     fn movement_cost_modifier(&self) -> MovementCost { MovementCost::ONE }
     fn conceals_resources(&self) -> bool { true }
@@ -25,7 +25,7 @@ pub struct Rainforest;
 impl FeatureDef for Rainforest {
     fn name(&self) -> &'static str { "Rainforest" }
     fn yield_modifier(&self) -> YieldBundle {
-        YieldBundle::new().with(libcommon::YieldType::Food, 1)
+        YieldBundle::new().with(crate::YieldType::Food, 1)
     }
     fn movement_cost_modifier(&self) -> MovementCost { MovementCost::ONE }
     fn conceals_resources(&self) -> bool { true }
@@ -36,7 +36,7 @@ pub struct Marsh;
 impl FeatureDef for Marsh {
     fn name(&self) -> &'static str { "Marsh" }
     fn yield_modifier(&self) -> YieldBundle {
-        YieldBundle::new().with(libcommon::YieldType::Food, 1)
+        YieldBundle::new().with(crate::YieldType::Food, 1)
     }
     fn movement_cost_modifier(&self) -> MovementCost { MovementCost::TWO }
 }
@@ -46,7 +46,7 @@ pub struct Floodplain;
 impl FeatureDef for Floodplain {
     fn name(&self) -> &'static str { "Floodplain" }
     fn yield_modifier(&self) -> YieldBundle {
-        YieldBundle::new().with(libcommon::YieldType::Food, 3)
+        YieldBundle::new().with(crate::YieldType::Food, 3)
     }
     fn movement_cost_modifier(&self) -> MovementCost { MovementCost::ZERO }
 }
@@ -57,8 +57,8 @@ impl FeatureDef for Reef {
     fn name(&self) -> &'static str { "Reef" }
     fn yield_modifier(&self) -> YieldBundle {
         YieldBundle::new()
-            .with(libcommon::YieldType::Food, 1)
-            .with(libcommon::YieldType::Production, 1)
+            .with(crate::YieldType::Food, 1)
+            .with(crate::YieldType::Production, 1)
     }
     fn movement_cost_modifier(&self) -> MovementCost { MovementCost::ONE }
 }
@@ -76,7 +76,7 @@ pub struct VolcanicSoil;
 impl FeatureDef for VolcanicSoil {
     fn name(&self) -> &'static str { "Volcanic Soil" }
     fn yield_modifier(&self) -> YieldBundle {
-        YieldBundle::new().with(libcommon::YieldType::Food, 3)
+        YieldBundle::new().with(crate::YieldType::Food, 3)
     }
     fn movement_cost_modifier(&self) -> MovementCost { MovementCost::ZERO }
 }
@@ -87,8 +87,8 @@ impl FeatureDef for Oasis {
     fn name(&self) -> &'static str { "Oasis" }
     fn yield_modifier(&self) -> YieldBundle {
         YieldBundle::new()
-            .with(libcommon::YieldType::Food, 3)
-            .with(libcommon::YieldType::Gold, 1)
+            .with(crate::YieldType::Food, 3)
+            .with(crate::YieldType::Gold, 1)
     }
     fn movement_cost_modifier(&self) -> MovementCost { MovementCost::ZERO }
 }

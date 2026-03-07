@@ -1,4 +1,4 @@
-use libcommon::{BuildingId, CityId, DistrictTypeId, NaturalWonderId, YieldBundle};
+use crate::{BuildingId, CityId, DistrictTypeId, NaturalWonderId, YieldBundle};
 use libhexgrid::coord::HexCoord;
 
 pub trait DistrictDef: std::fmt::Debug {

@@ -1,4 +1,4 @@
-use libcommon::{CityId, CivId, TradeRouteId, YieldBundle};
+use crate::{CityId, CivId, TradeRouteId, YieldBundle};
 
 #[derive(Debug, Clone)]
 pub struct TradeRoute {

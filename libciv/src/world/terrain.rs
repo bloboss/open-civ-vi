@@ -1,4 +1,4 @@
-use libcommon::YieldBundle;
+use crate::YieldBundle;
 use libhexgrid::types::{Elevation, MovementCost};
 
 pub trait TerrainDef: std::fmt::Debug {
@@ -20,7 +20,7 @@ pub struct Grassland;
 impl TerrainDef for Grassland {
     fn name(&self) -> &'static str { "Grassland" }
     fn base_yields(&self) -> YieldBundle {
-        YieldBundle::new().with(libcommon::YieldType::Food, 2)
+        YieldBundle::new().with(crate::YieldType::Food, 2)
     }
     fn movement_cost(&self) -> MovementCost { MovementCost::ONE }
     fn elevation(&self) -> Elevation { Elevation::FLAT }
@@ -34,8 +34,8 @@ impl TerrainDef for Plains {
     fn name(&self) -> &'static str { "Plains" }
     fn base_yields(&self) -> YieldBundle {
         YieldBundle::new()
-            .with(libcommon::YieldType::Food, 1)
-            .with(libcommon::YieldType::Production, 1)
+            .with(crate::YieldType::Food, 1)
+            .with(crate::YieldType::Production, 1)
     }
     fn movement_cost(&self) -> MovementCost { MovementCost::ONE }
     fn elevation(&self) -> Elevation { Elevation::FLAT }
@@ -59,7 +59,7 @@ pub struct Tundra;
 impl TerrainDef for Tundra {
     fn name(&self) -> &'static str { "Tundra" }
     fn base_yields(&self) -> YieldBundle {
-        YieldBundle::new().with(libcommon::YieldType::Food, 1)
+        YieldBundle::new().with(crate::YieldType::Food, 1)
     }
     fn movement_cost(&self) -> MovementCost { MovementCost::ONE }
     fn elevation(&self) -> Elevation { Elevation::FLAT }
@@ -84,8 +84,8 @@ impl TerrainDef for Coast {
     fn name(&self) -> &'static str { "Coast" }
     fn base_yields(&self) -> YieldBundle {
         YieldBundle::new()
-            .with(libcommon::YieldType::Food, 1)
-            .with(libcommon::YieldType::Gold, 1)
+            .with(crate::YieldType::Food, 1)
+            .with(crate::YieldType::Gold, 1)
     }
     fn movement_cost(&self) -> MovementCost { MovementCost::ONE }
     fn elevation(&self) -> Elevation { Elevation::FLAT }
@@ -98,7 +98,7 @@ pub struct Ocean;
 impl TerrainDef for Ocean {
     fn name(&self) -> &'static str { "Ocean" }
     fn base_yields(&self) -> YieldBundle {
-        YieldBundle::new().with(libcommon::YieldType::Food, 1)
+        YieldBundle::new().with(crate::YieldType::Food, 1)
     }
     fn movement_cost(&self) -> MovementCost { MovementCost::ONE }
     fn elevation(&self) -> Elevation { Elevation::FLAT }

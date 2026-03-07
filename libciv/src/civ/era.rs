@@ -1,4 +1,4 @@
-use libcommon::{AgeType, EraId};
+use crate::{AgeType, EraId};
 
 pub trait EraTrigger: std::fmt::Debug {
     fn description(&self) -> &'static str;
