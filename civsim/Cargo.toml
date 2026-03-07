@@ -8,5 +8,5 @@ name = "civsim"
 path = "src/main.rs"
 
 [dependencies]
-libgame = { path = "../libgame" }
+libciv = { path = "../libciv" }
 clap = { workspace = true }

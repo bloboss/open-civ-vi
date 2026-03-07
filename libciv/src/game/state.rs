@@ -1,15 +1,15 @@
 use libcommon::{
     CivId, CityId, UnitId, EraId,
 };
-use libcivcore::{
+use crate::civ::{
     Civilization, City, DiplomaticRelation, GreatPerson, Religion, TradeRoute,
 };
-use librules::{TechTree, CivicTree, Government, Policy};
+use crate::rules::{TechTree, CivicTree, Government, Policy};
 use rand::SeedableRng;
 use rand::rngs::SmallRng;
 use ulid::Ulid;
 
-use crate::board::WorldBoard;
+use super::board::WorldBoard;
 
 /// Deterministic ID generator backed by a seeded RNG.
 pub struct IdGenerator {

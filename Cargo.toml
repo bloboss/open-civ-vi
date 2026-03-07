@@ -2,10 +2,7 @@
 members = [
     "libcommon",
     "libhexgrid",
-    "libworld",
-    "librules",
-    "libcivcore",
-    "libgame",
+    "libciv",
     "civsim",
 ]
 resolver = "2"

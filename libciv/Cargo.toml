@@ -1,13 +1,10 @@
 [package]
-name = "libgame"
+name = "libciv"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 libcommon = { path = "../libcommon" }
 libhexgrid = { path = "../libhexgrid" }
-libworld = { path = "../libworld" }
-librules = { path = "../librules" }
-libcivcore = { path = "../libcivcore" }
 ulid = { workspace = true }
 rand = { workspace = true }

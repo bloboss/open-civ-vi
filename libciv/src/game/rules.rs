@@ -1,8 +1,8 @@
 use libcommon::{CivId, UnitId};
 use libhexgrid::coord::HexCoord;
 
-use crate::diff::GameStateDiff;
-use crate::state::GameState;
+use super::diff::GameStateDiff;
+use super::state::GameState;
 
 /// Core rules evaluation interface.
 pub trait RulesEngine: std::fmt::Debug {

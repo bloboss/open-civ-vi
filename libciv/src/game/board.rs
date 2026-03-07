@@ -5,9 +5,9 @@ use libhexgrid::board::{BoardTopology, HexBoard};
 use libhexgrid::coord::HexCoord;
 use libhexgrid::types::{Elevation, MovementCost};
 use libhexgrid::{HexEdge, HexTile};
-use libworld::edge::WorldEdge;
-use libworld::terrain::{BuiltinTerrain, Grassland};
-use libworld::tile::WorldTile;
+use crate::world::edge::WorldEdge;
+use crate::world::terrain::{BuiltinTerrain, Grassland};
+use crate::world::tile::WorldTile;
 
 /// Concrete hex board for the world map.
 #[derive(Debug)]
@@ -273,8 +273,8 @@ impl HexBoard for WorldBoard {
 mod tests {
     use super::*;
     use libhexgrid::HexDir;
-    use libworld::feature::{BuiltinFeature, Ice};
-    use libworld::terrain::{BuiltinTerrain, Grassland};
+    use crate::world::feature::{BuiltinFeature, Ice};
+    use crate::world::terrain::{BuiltinTerrain, Grassland};
 
     fn small_board() -> WorldBoard {
         WorldBoard::new(10, 10)

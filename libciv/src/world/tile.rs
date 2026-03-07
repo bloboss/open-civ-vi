@@ -3,10 +3,10 @@ use libhexgrid::board::HexTile;
 use libhexgrid::coord::HexCoord;
 use libhexgrid::types::{Elevation, MovementCost, Vision};
 
-use crate::edge::BuiltinEdgeFeature;
-use crate::feature::BuiltinFeature;
-use crate::road::BuiltinRoad;
-use crate::terrain::BuiltinTerrain;
+use super::edge::BuiltinEdgeFeature;
+use super::feature::BuiltinFeature;
+use super::road::BuiltinRoad;
+use super::terrain::BuiltinTerrain;
 
 /// Context about improvements on a tile (used when computing yields).
 #[derive(Debug, Clone, Default)]
@@ -88,7 +88,7 @@ impl HexTile for WorldTile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::terrain::Grassland;
+    use crate::world::terrain::Grassland;
 
     #[test]
     fn test_world_tile_implements_hextile() {

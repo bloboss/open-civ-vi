@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use libgame::{GameState, TurnEngine, DefaultRulesEngine};
+use libciv::{GameState, TurnEngine, DefaultRulesEngine};
 
 #[derive(Parser, Debug)]
 #[command(name = "civsim", about = "Open Civ VI simulation CLI", version)]

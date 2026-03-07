@@ -1,6 +1,6 @@
 use libcommon::{GovernmentId, PolicyId, PolicyType};
 
-use crate::modifier::Modifier;
+use super::modifier::Modifier;
 
 #[derive(Debug, Clone)]
 pub struct PolicySlots {

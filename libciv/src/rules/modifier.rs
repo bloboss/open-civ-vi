@@ -102,7 +102,6 @@ mod tests {
             make_yield_modifier(3, StackingRule::Additive),
         ];
         let effects = resolve_modifiers(&mods);
-        // Additive stacking: sum = 5
         let total: i32 = effects
             .iter()
             .filter_map(|e| {
@@ -147,7 +146,6 @@ mod tests {
             make_yield_modifier(7, StackingRule::Replace),
         ];
         let effects = resolve_modifiers(&mods);
-        // Replace: only last value
         let vals: Vec<i32> = effects
             .iter()
             .filter_map(|e| {

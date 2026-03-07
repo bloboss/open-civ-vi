@@ -1,7 +1,7 @@
 use libcommon::{
     AgeType, CivId, CivicId, GovernmentId, PolicyId, TechId, YieldBundle,
 };
-use librules::modifier::Modifier;
+use crate::rules::modifier::Modifier;
 
 pub trait StartBias: std::fmt::Debug {
     fn terrain_preference(&self) -> Option<&'static str>;

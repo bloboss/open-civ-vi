@@ -69,7 +69,7 @@ name = "civsim"
 version = "0.1.0"
 dependencies = [
  "clap",
- "libgame",
+ "libciv",
 ]
 
 [[package]]
@@ -159,13 +159,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6800badb6cb2082ffd7b6a67e6125bb39f18782f793520caee8cb8846be06112"
 
 [[package]]
-name = "libcivcore"
+name = "libciv"
 version = "0.1.0"
 dependencies = [
  "libcommon",
  "libhexgrid",
- "librules",
- "libworld",
+ "rand",
  "ulid",
 ]
 
@@ -177,37 +176,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "libgame"
-version = "0.1.0"
-dependencies = [
- "libcivcore",
- "libcommon",
- "libhexgrid",
- "librules",
- "libworld",
- "rand",
- "ulid",
-]
-
-[[package]]
 name = "libhexgrid"
 version = "0.1.0"
-
-[[package]]
-name = "librules"
-version = "0.1.0"
-dependencies = [
- "libcommon",
- "libhexgrid",
-]
-
-[[package]]
-name = "libworld"
-version = "0.1.0"
-dependencies = [
- "libcommon",
- "libhexgrid",
-]
 
 [[package]]
 name = "once_cell"
