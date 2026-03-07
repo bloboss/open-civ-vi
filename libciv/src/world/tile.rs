@@ -79,8 +79,9 @@ impl HexTile for WorldTile {
 
     fn vision_bonus(&self) -> Vision {
         match self.elevation() {
-            Elevation(e) if e >= Elevation::HILLS.0 => Vision(1),
-            _ => Vision(0),
+            Elevation::Level(e) if e >= 1 => Vision::Radius(1),
+            Elevation::High => Vision::Radius(1),
+            _ => Vision::Radius(0),
         }
     }
 }

@@ -176,8 +176,8 @@ impl WorldBoard {
             return true;
         }
 
-        let from_elev = self.tile(from).map(|t| t.elevation()).unwrap_or(Elevation::FLAT);
-        let to_elev = self.tile(to).map(|t| t.elevation()).unwrap_or(Elevation::FLAT);
+        let from_elev = self.tile(from).map(|t| t.elevation()).unwrap_or(Elevation::Level(0));
+        let to_elev = self.tile(to).map(|t| t.elevation()).unwrap_or(Elevation::Level(0));
         let min_elev = from_elev.min(to_elev);
 
         // Walk intermediate hexes on the line from->to

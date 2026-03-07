@@ -26,18 +26,41 @@ impl MovementCost {
 }
 
 /// Elevation level of a tile (affects LOS and movement).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
-pub struct Elevation(pub u8);
-
-impl Elevation {
-    pub const FLAT: Elevation = Elevation(0);
-    pub const HILLS: Elevation = Elevation(1);
-    pub const MOUNTAIN: Elevation = Elevation(2);
+///
+/// Ordering: `Low < Level(0) < Level(1) < … < Level(255) < High`
+/// - `Low`  — below sea level (ocean floor); never blocks LOS.
+/// - `Level(n)` — above-sea-level terrain; higher n = higher ground.
+/// - `High` — impassable mountain peak; always blocks LOS.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Elevation {
+    Low,
+    Level(u8),
+    High,
 }
 
-/// Vision range a unit has from this tile.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
-pub struct Vision(pub u8);
+impl Elevation {
+    pub const FLAT: Elevation = Elevation::Level(0);
+    pub const HILLS: Elevation = Elevation::Level(1);
+    pub const MOUNTAIN: Elevation = Elevation::High;
+}
+
+impl Default for Elevation {
+    fn default() -> Self {
+        Elevation::FLAT
+    }
+}
+
+/// Vision range a unit or tile can provide.
+///
+/// - `Blind`       — cannot see anything (e.g. embarked unit in fog).
+/// - `Radius(n)`   — can see tiles within n hexes (subject to LOS).
+/// - `Omniscient`  — sees the entire map regardless of distance.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Vision {
+    Blind,
+    Radius(u8),
+    Omniscient,
+}
 
 /// Movement profile of a unit — determines which tiles/edges it can cross.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
