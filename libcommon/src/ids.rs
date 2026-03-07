@@ -50,3 +50,4 @@ define_id!(EraId);
 define_id!(TerrainId);
 define_id!(FeatureId);
 define_id!(EdgeFeatureId);
+define_id!(NaturalWonderId);

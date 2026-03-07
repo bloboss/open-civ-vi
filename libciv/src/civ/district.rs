@@ -1,4 +1,4 @@
-use libcommon::{BuildingId, CityId, DistrictTypeId, YieldBundle};
+use libcommon::{BuildingId, CityId, DistrictTypeId, NaturalWonderId, YieldBundle};
 use libhexgrid::coord::HexCoord;
 
 pub trait DistrictDef: std::fmt::Debug {
@@ -18,10 +18,14 @@ pub trait BuildingDef: std::fmt::Debug {
 }
 
 /// Adjacency bonus context for a district placement.
+///
+/// `adjacent_natural_wonders` holds the IDs of specific natural wonders adjacent
+/// to the district tile, allowing district definitions to apply wonder-specific
+/// bonuses (e.g. Uluru grants +2 Faith to an adjacent Holy Site).
 #[derive(Debug, Clone, Default)]
 pub struct AdjacencyContext {
     pub adjacent_districts: Vec<DistrictTypeId>,
-    pub adjacent_natural_wonders: u32,
+    pub adjacent_natural_wonders: Vec<NaturalWonderId>,
     pub adjacent_mountains: u32,
     pub adjacent_rivers: u32,
     pub adjacent_rainforest: u32,
