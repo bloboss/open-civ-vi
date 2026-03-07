@@ -1,12 +1,21 @@
-use libcommon::{BuildingId, CityId, CivId, DistrictTypeId, YieldBundle};
+use libcommon::{BuildingId, CityId, CivId, DistrictTypeId, UnitTypeId, WonderId, YieldBundle};
 use libhexgrid::coord::HexCoord;
 
+/// Political/ownership state of a city.
+///
+/// Transient conditions (Starving, LowHousing, UnderSiege) are computed each
+/// turn by the rules engine — they are not stored here.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CityStatus {
-    Capital,
-    City,
+pub enum CityOwnership {
+    /// Owned and fully managed by the current civilization.
+    Normal,
+    /// Captured; owner manages production queue but suffers loyalty/amenity penalties.
     Occupied,
+    /// Captured but not annexed; AI manages production queue on the owner's behalf.
+    /// Still generates yields and counts toward empire size. Distinct from `Occupied`
+    /// in that the owner does not directly control production choices.
     Puppet,
+    /// Being razed; removed from the map when raze_turns reaches zero (Phase 2).
     Razed,
 }
 
@@ -20,10 +29,10 @@ pub enum WallLevel {
 
 #[derive(Debug, Clone)]
 pub enum ProductionItem {
-    Unit(&'static str),
+    Unit(UnitTypeId),
     Building(BuildingId),
     District(DistrictTypeId),
-    Wonder(&'static str),
+    Wonder(WonderId),
 }
 
 #[derive(Debug, Clone)]
@@ -33,13 +42,15 @@ pub struct City {
     pub owner: CivId,
     pub founded_by: CivId,
     pub coord: HexCoord,
-    pub status: CityStatus,
+    pub ownership: CityOwnership,
+    pub is_capital: bool,
     pub population: u32,
     pub food_stored: u32,
     pub food_to_grow: u32,
     pub production_stored: u32,
     pub current_production: Option<ProductionItem>,
     pub walls: WallLevel,
+    pub wall_hp: u32,
     pub buildings: Vec<BuildingId>,
     pub districts: Vec<DistrictTypeId>,
     pub yields: YieldBundle,
@@ -53,13 +64,15 @@ impl City {
             owner,
             founded_by: owner,
             coord,
-            status: CityStatus::City,
+            ownership: CityOwnership::Normal,
+            is_capital: false,
             population: 1,
             food_stored: 0,
             food_to_grow: 15,
             production_stored: 0,
             current_production: None,
             walls: WallLevel::None,
+            wall_hp: WallLevel::None.max_hp(),
             buildings: Vec::new(),
             districts: Vec::new(),
             yields: YieldBundle::default(),
@@ -67,7 +80,7 @@ impl City {
     }
 
     pub fn is_capital(&self) -> bool {
-        matches!(self.status, CityStatus::Capital)
+        self.is_capital
     }
 
     pub fn growth_progress(&self) -> f32 {
@@ -75,5 +88,27 @@ impl City {
             return 1.0;
         }
         self.food_stored as f32 / self.food_to_grow as f32
+    }
+}
+
+impl WallLevel {
+    /// Combat strength bonus granted to the city's ranged attack and defense.
+    pub fn defense_bonus(&self) -> i32 {
+        match self {
+            WallLevel::None        => 0,
+            WallLevel::Ancient     => 3,
+            WallLevel::Medieval    => 5,
+            WallLevel::Renaissance => 8,
+        }
+    }
+
+    /// Maximum HP of walls at this tier.
+    pub fn max_hp(&self) -> u32 {
+        match self {
+            WallLevel::None        => 0,
+            WallLevel::Ancient     => 50,
+            WallLevel::Medieval    => 100,
+            WallLevel::Renaissance => 200,
+        }
     }
 }
