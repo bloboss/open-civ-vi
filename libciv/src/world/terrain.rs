@@ -105,6 +105,18 @@ impl TerrainDef for Ocean {
     fn is_land(&self) -> bool { false }
 }
 
+/// Impassable high-elevation terrain. Blocks line-of-sight for units at lower elevations.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Mountain;
+
+impl TerrainDef for Mountain {
+    fn name(&self) -> &'static str { "Mountain" }
+    fn base_yields(&self) -> YieldBundle { YieldBundle::new() }
+    fn movement_cost(&self) -> MovementCost { MovementCost::Impassable }
+    fn elevation(&self) -> Elevation { Elevation::High }
+    fn is_land(&self) -> bool { true }
+}
+
 /// Enum wrapping all built-in terrain types for easy storage.
 #[derive(Debug, Clone, Copy)]
 pub enum BuiltinTerrain {
@@ -115,18 +127,20 @@ pub enum BuiltinTerrain {
     Snow(Snow),
     Coast(Coast),
     Ocean(Ocean),
+    Mountain(Mountain),
 }
 
 impl BuiltinTerrain {
     pub fn as_def(&self) -> &dyn TerrainDef {
         match self {
             BuiltinTerrain::Grassland(t) => t,
-            BuiltinTerrain::Plains(t) => t,
-            BuiltinTerrain::Desert(t) => t,
-            BuiltinTerrain::Tundra(t) => t,
-            BuiltinTerrain::Snow(t) => t,
-            BuiltinTerrain::Coast(t) => t,
-            BuiltinTerrain::Ocean(t) => t,
+            BuiltinTerrain::Plains(t)    => t,
+            BuiltinTerrain::Desert(t)    => t,
+            BuiltinTerrain::Tundra(t)    => t,
+            BuiltinTerrain::Snow(t)      => t,
+            BuiltinTerrain::Coast(t)     => t,
+            BuiltinTerrain::Ocean(t)     => t,
+            BuiltinTerrain::Mountain(t)  => t,
         }
     }
 }

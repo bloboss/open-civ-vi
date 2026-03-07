@@ -297,18 +297,25 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Phase 2: implement LOS with elevation"]
     fn test_los_blocked_by_high() {
         let mut board = small_board();
+        // Place a Mountain (Elevation::High) between from and to.
         let mid = HexCoord::from_qr(5, 5);
         if let Some(t) = board.tile_mut(mid) {
-            t.terrain = crate::world::terrain::BuiltinTerrain::Grassland(
-                crate::world::terrain::Grassland
+            t.terrain = crate::world::terrain::BuiltinTerrain::Mountain(
+                crate::world::terrain::Mountain
             );
         }
+        // from and to are both at Elevation::FLAT (Grassland).
+        // The Mountain in between must block line-of-sight.
         let from = HexCoord::from_qr(3, 5);
-        let to = HexCoord::from_qr(7, 5);
-        assert!(!board.has_los(from, to));
+        let to   = HexCoord::from_qr(7, 5);
+        assert!(!board.has_los(from, to), "mountain should block LOS");
+
+        // Sanity check: unobstructed sightline on the same row works.
+        let clear_from = HexCoord::from_qr(0, 0);
+        let clear_to   = HexCoord::from_qr(2, 0);
+        assert!(board.has_los(clear_from, clear_to), "clear path should have LOS");
     }
 
     #[test]
