@@ -43,6 +43,7 @@ impl Governor {
 
 // ---- Seven built-in governor definitions ----
 
+// TODO: Move this to a new .rs file and load with macros
 macro_rules! define_governor {
     ($name:ident, $title:literal, $ability:literal) => {
         #[derive(Debug, Clone, Copy, Default)]

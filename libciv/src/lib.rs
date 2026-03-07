@@ -5,6 +5,7 @@ pub mod yields;
 pub mod civ;
 pub mod game;
 pub mod rules;
+pub mod visualize;
 pub mod world;
 
 // Flat re-exports: callers can use `libciv::CivId`, `libciv::YieldBundle`, etc.

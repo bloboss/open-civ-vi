@@ -28,6 +28,10 @@ pub trait GrievanceTrigger: std::fmt::Debug {
 }
 
 /// Who can see a grievance in the diplomacy screen.
+// TODO: This should be arranged in levels:
+// - Public
+// - Hidden(u8) // we can have various levels of spy
+// - Secret
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GrievanceVisibility {
     /// All civilizations can see this grievance.
@@ -48,6 +52,8 @@ pub struct GrievanceRecord {
     pub recorded_turn: u32,
 }
 
+// TODO: Any way we can just track this as a bi-directional graph? Is there
+// a nicer way to do that?
 #[derive(Debug)]
 pub struct DiplomaticRelation {
     pub civ_a: CivId,
@@ -97,6 +103,8 @@ impl DiplomaticRelation {
 
 // ---- Built-in grievance triggers ----
 
+// TODO: Clunky, move into a new .rs file and then #include! it with macro
+// definitions as required
 #[derive(Debug, Clone, Copy, Default)]
 pub struct DeclaredWarGrievance;
 impl GrievanceTrigger for DeclaredWarGrievance {

@@ -20,6 +20,7 @@ pub struct GreatPerson {
     pub is_retired: bool,
 }
 
+// TODO: Why is the era required? We can also actually use our Era type.
 impl GreatPerson {
     pub fn new(id: GreatPersonId, name: &'static str, person_type: GreatPersonType, era: &'static str) -> Self {
         Self {

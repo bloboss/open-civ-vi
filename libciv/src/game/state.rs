@@ -1,10 +1,11 @@
+use std::collections::VecDeque;
 use crate::{
     CivId, CityId, UnitId, EraId,
 };
 use crate::civ::{
     BasicUnit, Civilization, City, CityKind, DiplomaticRelation, GreatPerson, Religion, TradeRoute,
 };
-use crate::rules::{TechTree, CivicTree, Government, Policy};
+use crate::rules::{TechTree, CivicTree, Government, Policy, OneShotEffect};
 use rand::SeedableRng;
 use rand::rngs::SmallRng;
 use ulid::Ulid;
@@ -74,6 +75,9 @@ pub struct GameState {
     pub governments: Vec<Government>,
     pub policies: Vec<Policy>,
     pub current_era: EraId,
+    /// Pending one-shot effects to be drained at the end of each turn's
+    /// completion sweep (Phase 4 of `advance_turn`).
+    pub effect_queue: VecDeque<(CivId, OneShotEffect)>,
 }
 
 impl GameState {
@@ -99,6 +103,7 @@ impl GameState {
             governments: Vec::new(),
             policies: Vec::new(),
             current_era: era_id,
+            effect_queue: VecDeque::new(),
         }
     }
 

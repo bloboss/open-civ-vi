@@ -1,5 +1,6 @@
 use crate::{CivId, TechId, UnitId, YieldBundle};
 use crate::civ::unit::Unit;
+use crate::rules::effect::OneShotEffect;
 use crate::rules::modifier::{EffectType, resolve_modifiers};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::{HexCoord, HexDir};
@@ -110,6 +111,7 @@ impl RulesEngine for DefaultRulesEngine {
                 })
                 .unwrap_or(0);
 
+            // FIXME: There must be a cleaner way
             if edge_cost == u32::MAX {
                 break;
             }
@@ -129,7 +131,11 @@ impl RulesEngine for DefaultRulesEngine {
             return Err(RulesError::InsufficientMovement(diff));
         }
 
-        diff.push(StateDelta::UnitMoved { unit: unit_id, from, to: reached });
+        diff.push(StateDelta::UnitMoved {
+            unit: unit_id,
+            from,
+            to: reached,
+            cost: spent });
 
         if reached == to_norm {
             Ok(diff)
@@ -157,23 +163,10 @@ impl RulesEngine for DefaultRulesEngine {
             }
         }
 
-        // Collect modifiers from active policies, current government, and leader abilities.
-        let mut modifiers = Vec::new();
-        if let Some(civ) = state.civ(civ_id) {
-            for pid in &civ.active_policies {
-                if let Some(policy) = state.policies.iter().find(|p| p.id == *pid) {
-                    modifiers.extend(policy.modifiers.iter().cloned());
-                }
-            }
-            if let Some(gov_id) = civ.current_government {
-                if let Some(gov) = state.governments.iter().find(|g| g.id == gov_id) {
-                    modifiers.extend(gov.inherent_modifiers.iter().cloned());
-                }
-            }
-            for ability in &civ.leader.abilities {
-                modifiers.extend(ability.modifiers());
-            }
-        }
+        // Collect modifiers via the civilization's computed view.
+        let modifiers = state.civ(civ_id)
+            .map(|civ| civ.get_modifiers(&state.policies, &state.governments))
+            .unwrap_or_default();
 
         let effects = resolve_modifiers(&modifiers);
         apply_effects(&effects, total)
@@ -256,13 +249,20 @@ impl RulesEngine for DefaultRulesEngine {
 
         for tc in tech_checks {
             let node_info = state.tech_tree.get(tc.tech_id)
-                .map(|n| (n.cost, n.name));
-            if let Some((cost, name)) = node_info {
-                if tc.progress >= cost {
-                    let civ = &mut state.civilizations[tc.civ_idx];
-                    civ.researched_techs.push(tc.tech_id);
-                    civ.tech_in_progress = None;
+                .map(|n| (n.cost, n.name, n.effects.clone()));
+            if let Some((cost, name, effects)) = node_info {
+                let boosted = state.civilizations[tc.civ_idx]
+                    .tech_in_progress.as_ref()
+                    .map(|tp| tp.boosted)
+                    .unwrap_or(false);
+                let effective_cost = if boosted { cost / 2 } else { cost };
+                if tc.progress >= effective_cost {
+                    state.civilizations[tc.civ_idx].researched_techs.push(tc.tech_id);
+                    state.civilizations[tc.civ_idx].tech_in_progress = None;
                     diff.push(StateDelta::TechResearched { civ: tc.civ_id, tech: name });
+                    for effect in effects {
+                        state.effect_queue.push_back((tc.civ_id, effect));
+                    }
                 }
             }
         }
@@ -290,16 +290,39 @@ impl RulesEngine for DefaultRulesEngine {
 
         for cc in civic_checks {
             let node_info = state.civic_tree.get(cc.civic_id)
-                .map(|n| (n.cost, n.name));
-            if let Some((cost, name)) = node_info {
-                if cc.progress >= cost {
-                    let civ = &mut state.civilizations[cc.civ_idx];
-                    civ.completed_civics.push(cc.civic_id);
-                    civ.civic_in_progress = None;
+                .map(|n| (n.cost, n.name, n.effects.clone()));
+            if let Some((cost, name, effects)) = node_info {
+                let inspired = state.civilizations[cc.civ_idx]
+                    .civic_in_progress.as_ref()
+                    .map(|cp| cp.inspired)
+                    .unwrap_or(false);
+                let effective_cost = if inspired { cost / 2 } else { cost };
+                if cc.progress >= effective_cost {
+                    state.civilizations[cc.civ_idx].completed_civics.push(cc.civic_id);
+                    state.civilizations[cc.civ_idx].civic_in_progress = None;
                     diff.push(StateDelta::CivicCompleted { civ: cc.civ_id, civic: name });
+                    for effect in effects {
+                        state.effect_queue.push_back((cc.civ_id, effect));
+                    }
                 }
             }
         }
+
+        // ── Phase 4: Drain effect queue ───────────────────────────────────────
+        // Take the queue out of state so apply_effect can borrow state mutably.
+        // apply_effect returns () and never re-enqueues, so the loop terminates.
+        let pending = std::mem::take(&mut state.effect_queue);
+        for (civ_id, effect) in &pending {
+            let should_apply = state.civilizations.iter()
+                .find(|c| c.id == *civ_id)
+                .map(|civ| effect.guard(civ))
+                .unwrap_or(false);
+            if should_apply {
+                apply_effect(state, *civ_id, effect, &mut diff);
+            }
+        }
+        // Any effects pushed during apply_effect (none expected) would stay in
+        // state.effect_queue for the next turn. pending is dropped here.
 
         // ── Advance turn counter ──────────────────────────────────────────────
         let prev = state.turn;
@@ -307,6 +330,117 @@ impl RulesEngine for DefaultRulesEngine {
         diff.push(StateDelta::TurnAdvanced { from: prev, to: state.turn });
 
         diff
+    }
+}
+
+// ── apply_effect ──────────────────────────────────────────────────────────────
+
+/// Apply a single `OneShotEffect` to state, recording the resulting `StateDelta`.
+///
+/// Returns `()` — structurally cannot enqueue more effects, preventing cascades.
+/// The caller is responsible for checking `effect.guard(civ)` before calling this.
+fn apply_effect(
+    state: &mut GameState,
+    civ_id: CivId,
+    effect: &OneShotEffect,
+    diff: &mut GameStateDiff,
+) {
+    let civ_idx = match state.civilizations.iter().position(|c| c.id == civ_id) {
+        Some(i) => i,
+        None => return,
+    };
+
+    match effect {
+        OneShotEffect::RevealResource(r) => {
+            state.civilizations[civ_idx].revealed_resources.insert(*r);
+            diff.push(StateDelta::ResourceRevealed { civ: civ_id, resource: *r });
+        }
+
+        OneShotEffect::UnlockUnit(u) => {
+            state.civilizations[civ_idx].unlocked_units.push(u);
+            diff.push(StateDelta::UnitUnlocked { civ: civ_id, unit_type: u });
+        }
+
+        OneShotEffect::UnlockBuilding(b) => {
+            state.civilizations[civ_idx].unlocked_buildings.push(b);
+            diff.push(StateDelta::BuildingUnlocked { civ: civ_id, building: b });
+        }
+
+        OneShotEffect::UnlockImprovement(i) => {
+            state.civilizations[civ_idx].unlocked_improvements.push(i);
+            diff.push(StateDelta::ImprovementUnlocked { civ: civ_id, improvement: i });
+        }
+
+        OneShotEffect::TriggerEureka { tech } => {
+            // Check if the in-progress tech matches this eureka by name.
+            let in_progress_id = state.civilizations[civ_idx]
+                .tech_in_progress.as_ref().map(|tp| tp.tech_id);
+            let matches_current = in_progress_id
+                .and_then(|id| state.tech_tree.get(id))
+                .map(|n| n.name == *tech)
+                .unwrap_or(false);
+
+            state.civilizations[civ_idx].eureka_triggered.insert(tech);
+            if matches_current {
+                if let Some(tp) = state.civilizations[civ_idx].tech_in_progress.as_mut() {
+                    tp.boosted = true;
+                }
+            }
+            diff.push(StateDelta::EurekaTriggered { civ: civ_id, tech });
+        }
+
+        OneShotEffect::TriggerInspiration { civic } => {
+            let in_progress_id = state.civilizations[civ_idx]
+                .civic_in_progress.as_ref().map(|cp| cp.civic_id);
+            let matches_current = in_progress_id
+                .and_then(|id| state.civic_tree.get(id))
+                .map(|n| n.name == *civic)
+                .unwrap_or(false);
+
+            state.civilizations[civ_idx].inspiration_triggered.insert(civic);
+            if matches_current {
+                if let Some(cp) = state.civilizations[civ_idx].civic_in_progress.as_mut() {
+                    cp.inspired = true;
+                }
+            }
+            diff.push(StateDelta::InspirationTriggered { civ: civ_id, civic });
+        }
+
+        OneShotEffect::FreeUnit { unit_type, city: _ } => {
+            // Full resolution requires a unit-type registry (Phase 4).
+            // For now emit the delta at the civ's first city coord, if any.
+            let coord = state.cities.iter()
+                .find(|c| c.owner == civ_id)
+                .map(|c| c.coord)
+                .unwrap_or(HexCoord::from_qr(0, 0));
+            diff.push(StateDelta::FreeUnitGranted { civ: civ_id, unit_type, coord });
+        }
+
+        OneShotEffect::FreeBuilding { building, city } => {
+            // Full resolution requires a building registry (Phase 4).
+            // Resolve target city: use hint, fall back to capital, then first city.
+            let target = city
+                .and_then(|cid| state.cities.iter().find(|c| c.id == cid))
+                .or_else(|| {
+                    let cap = state.civilizations[civ_idx].capital;
+                    cap.and_then(|cid| state.cities.iter().find(|c| c.id == cid))
+                })
+                .or_else(|| state.cities.iter().find(|c| c.owner == civ_id));
+            if let Some(city) = target {
+                let city_id = city.id;
+                diff.push(StateDelta::FreeBuildingGranted { civ: civ_id, building, city: city_id });
+            }
+        }
+
+        OneShotEffect::UnlockGovernment(g) => {
+            state.civilizations[civ_idx].unlocked_governments.push(g);
+            diff.push(StateDelta::GovernmentUnlocked { civ: civ_id, government: g });
+        }
+
+        OneShotEffect::AdoptGovernment(g) => {
+            state.civilizations[civ_idx].current_government_name = Some(g);
+            diff.push(StateDelta::GovernmentAdopted { civ: civ_id, government: g });
+        }
     }
 }
 
@@ -415,7 +549,7 @@ mod tests {
         let diff = result.unwrap();
         assert_eq!(diff.len(), 1);
         match &diff.deltas[0] {
-            StateDelta::UnitMoved { unit, from, to } => {
+            StateDelta::UnitMoved { unit, from, to, .. } => {
                 assert_eq!(*unit, uid);
                 assert_eq!(*from, start);
                 assert_eq!(*to, dest);
@@ -477,7 +611,7 @@ mod tests {
             Err(RulesError::InsufficientMovement(diff)) => {
                 assert!(!diff.is_empty(), "partial diff must record the move that occurred");
                 match &diff.deltas[0] {
-                    StateDelta::UnitMoved { unit, from, to } => {
+                    StateDelta::UnitMoved { unit, from, to, .. } => {
                         assert_eq!(*unit, uid);
                         assert_eq!(*from, start);
                         // Moved one step (100 ≤ 150) but not all four.

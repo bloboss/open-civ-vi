@@ -1,43 +1,31 @@
-use crate::{BuildingId, CivicId, TechId};
+use crate::{CivicId, TechId};
 use std::collections::HashMap;
-
-/// Something unlocked by completing a tech or civic.
-#[derive(Debug, Clone)]
-pub enum Unlock {
-    Unit(&'static str),
-    Building(&'static str),
-    Improvement(&'static str),
-    District(&'static str),
-    Policy(&'static str),
-    Government(&'static str),
-    Resource(&'static str),
-    Ability(&'static str),
-}
-
-/// Condition that grants Eureka/Inspiration boost.
-pub trait EurekaCondition: std::fmt::Debug {
-    fn description(&self) -> &'static str;
-    fn is_met(&self) -> bool;
-}
+use super::effect::OneShotEffect;
 
 #[derive(Debug, Clone)]
 pub struct TechNode {
-    pub id: TechId,
-    pub name: &'static str,
-    pub cost: u32,
-    pub prerequisites: Vec<TechId>,
-    pub unlocks: Vec<Unlock>,
+    pub id:                 TechId,
+    pub name:               &'static str,
+    pub cost:               u32,
+    pub prerequisites:      Vec<TechId>,
+    /// Effects applied when this tech is completed.
+    pub effects:            Vec<OneShotEffect>,
     pub eureka_description: &'static str,
+    /// Effects applied when the Eureka boost for this tech is triggered.
+    pub eureka_effects:     Vec<OneShotEffect>,
 }
 
 #[derive(Debug, Clone)]
 pub struct CivicNode {
-    pub id: CivicId,
-    pub name: &'static str,
-    pub cost: u32,
-    pub prerequisites: Vec<CivicId>,
-    pub unlocks: Vec<Unlock>,
-    pub inspiration_description: &'static str,
+    pub id:                        CivicId,
+    pub name:                      &'static str,
+    pub cost:                      u32,
+    pub prerequisites:             Vec<CivicId>,
+    /// Effects applied when this civic is completed.
+    pub effects:                   Vec<OneShotEffect>,
+    pub inspiration_description:   &'static str,
+    /// Effects applied when the Inspiration boost for this civic is triggered.
+    pub inspiration_effects:       Vec<OneShotEffect>,
 }
 
 #[derive(Debug, Default)]
@@ -82,6 +70,3 @@ impl CivicTree {
         self.nodes.get(&id)
     }
 }
-
-// Suppress unused import
-const _: Option<BuildingId> = None;

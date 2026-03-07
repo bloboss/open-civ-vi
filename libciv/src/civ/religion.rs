@@ -1,5 +1,6 @@
 use crate::{BeliefId, CivId, ReligionId, YieldBundle};
 
+// TODO: Also need a modifier
 pub trait Belief: std::fmt::Debug {
     fn id(&self) -> BeliefId;
     fn name(&self) -> &'static str;
@@ -10,7 +11,7 @@ pub trait Belief: std::fmt::Debug {
 #[derive(Debug, Clone, Default)]
 pub struct BeliefContext {
     pub followers: u32,
-    pub holy_cities: u32,
+    pub holy_cities: u32, // FIXME: Should be 'MajorityReligionCities'
 }
 
 #[derive(Debug, Clone)]
