@@ -2,7 +2,7 @@ use crate::{
     CivId, CityId, UnitId, EraId,
 };
 use crate::civ::{
-    Civilization, City, CityKind, DiplomaticRelation, GreatPerson, Religion, TradeRoute,
+    BasicUnit, Civilization, City, CityKind, DiplomaticRelation, GreatPerson, Religion, TradeRoute,
 };
 use crate::rules::{TechTree, CivicTree, Government, Policy};
 use rand::SeedableRng;
@@ -64,6 +64,7 @@ pub struct GameState {
     pub id_gen: IdGenerator,
     pub civilizations: Vec<Civilization>,
     pub cities: Vec<City>,
+    pub units: Vec<BasicUnit>,
     pub diplomatic_relations: Vec<DiplomaticRelation>,
     pub religions: Vec<Religion>,
     pub trade_routes: Vec<TradeRoute>,
@@ -88,6 +89,7 @@ impl GameState {
             id_gen,
             civilizations: Vec::new(),
             cities: Vec::new(),
+            units: Vec::new(),
             diplomatic_relations: Vec::new(),
             religions: Vec::new(),
             trade_routes: Vec::new(),
@@ -106,6 +108,14 @@ impl GameState {
 
     pub fn city(&self, id: CityId) -> Option<&City> {
         self.cities.iter().find(|c| c.id == id)
+    }
+
+    pub fn unit(&self, id: UnitId) -> Option<&BasicUnit> {
+        self.units.iter().find(|u| u.id == id)
+    }
+
+    pub fn unit_mut(&mut self, id: UnitId) -> Option<&mut BasicUnit> {
+        self.units.iter_mut().find(|u| u.id == id)
     }
 
     /// Returns the city that represents the given city-state CivId, if one exists.

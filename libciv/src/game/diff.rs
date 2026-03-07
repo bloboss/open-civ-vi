@@ -4,15 +4,16 @@ use libhexgrid::coord::HexCoord;
 /// A single atomic change to the game state.
 #[derive(Debug, Clone)]
 pub enum StateDelta {
-    TurnAdvanced { from: u32, to: u32 },
-    UnitMoved { unit: UnitId, from: HexCoord, to: HexCoord },
-    UnitCreated { unit: UnitId, coord: HexCoord, owner: CivId },
-    UnitDestroyed { unit: UnitId },
-    CityFounded { city: CityId, coord: HexCoord, owner: CivId },
-    CityCaptured { city: CityId, new_owner: CivId, old_owner: CivId },
-    GoldChanged { civ: CivId, delta: i32 },
-    TechResearched { civ: CivId, tech: &'static str },
-    CivicCompleted { civ: CivId, civic: &'static str },
+    TurnAdvanced    { from: u32, to: u32 },
+    UnitMoved       { unit: UnitId, from: HexCoord, to: HexCoord },
+    UnitCreated     { unit: UnitId, coord: HexCoord, owner: CivId },
+    UnitDestroyed   { unit: UnitId },
+    CityFounded     { city: CityId, coord: HexCoord, owner: CivId },
+    CityCaptured    { city: CityId, new_owner: CivId, old_owner: CivId },
+    PopulationGrew  { city: CityId, new_population: u32 },
+    GoldChanged     { civ: CivId, delta: i32 },
+    TechResearched  { civ: CivId, tech: &'static str },
+    CivicCompleted  { civ: CivId, civic: &'static str },
     DiplomacyChanged { civ_a: CivId, civ_b: CivId, new_status: String },
 }
 
