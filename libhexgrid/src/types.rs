@@ -73,4 +73,7 @@ pub enum MovementProfile {
     Air,
     /// Embarkation (land unit on water with reduced movement).
     Embarked,
+    /// Unit that moves on both land and water at full efficiency (e.g. Giant Death Robot).
+    /// Uses land movement costs on land tiles and naval costs on water tiles.
+    Amphibious,
 }
