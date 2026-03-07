@@ -1,5 +1,6 @@
+use std::collections::HashMap;
 use libcommon::{
-    AgeType, CivId, CivicId, GovernmentId, PolicyId, TechId, YieldBundle,
+    AgeType, CivId, CivicId, GovernmentId, PolicyId, ResourceId, TechId, YieldBundle,
 };
 use crate::rules::modifier::Modifier;
 
@@ -36,16 +37,15 @@ pub struct CivicProgress {
     pub inspired: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Leader {
     pub name: &'static str,
     pub civ_id: CivId,
-    /// Names of leader ability implementations (resolved at runtime).
-    pub ability_names: Vec<&'static str>,
-    pub agenda_name: &'static str,
+    pub abilities: Vec<Box<dyn LeaderAbility>>,
+    pub agenda: Box<dyn Agenda>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Civilization {
     pub id: CivId,
     pub name: &'static str,
@@ -63,6 +63,8 @@ pub struct Civilization {
     pub gold: i32,
     pub treasury_per_turn: i32,
     pub yields: YieldBundle,
+    /// Stockpile of consumable strategic resources (e.g. Iron, Horses).
+    pub strategic_resources: HashMap<ResourceId, u32>,
 }
 
 impl Civilization {
@@ -84,6 +86,7 @@ impl Civilization {
             gold: 0,
             treasury_per_turn: 0,
             yields: YieldBundle::default(),
+            strategic_resources: HashMap::new(),
         }
     }
 
