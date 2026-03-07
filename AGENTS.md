@@ -1,33 +1,32 @@
 # Open Civilization VI
 
-this folder contains an implementation of civilization vi in rust. Specifically,
-it contains information and datastructures to create a functional engine for
-civilization without graphical interaction. This is intended as an eventual
-target to which I will apply RL, as if it were an RL environment to see how
-agents can handle such a large state with so many variables.
+This folder contains a Rust implementation of a Civilization VI-style engine — data
+structures and game logic for a functional engine without a graphical frontend. The
+primary goal is an eventual RL environment where agents can interact with a complex
+multi-variable game state.
 
-This particular implementation is designed to be extensible with a focus on
-eventually allowing users to specify many aspects of their games (civilizations,
-natural wonders, great people, resources, units, etc) in lua, without needing to
-make direct modifications to the game engine in order to make a modified game.
+The system is designed to be extensible via a **pure Rust trait-based API**: game
+content (civilizations, units, terrain, buildings, wonders, etc.) is defined by
+implementing the relevant traits in a downstream crate and linking at compile time.
+There is no runtime scripting layer.
 
-Store memories in a local memories directory, ./memories
+Store memories in a local memories directory, ./memory
 
 ---
 
 ## Codebase Structure
 
-The workspace has 7 crates (6 libraries + 1 binary). Dependency order:
+The workspace has 4 crates (3 libraries + 1 binary). Dependency order:
 
 ```
-libcommon  ← base types: IDs (ULID newtypes), YieldBundle, enums
-libhexgrid ← pure geometry: HexCoord (cube coords), HexBoard trait, pathfinding traits
-libworld   ← map state: WorldTile/WorldEdge, terrain/feature/resource/improvement traits + builtins
-librules   ← game rules: modifiers, tech/civic trees, policy/government, victory conditions
-libcivcore ← civilization state: Civilization, City, Unit, District, Governor, Religion, etc.
-libgame    ← orchestration: GameState, WorldBoard (HexBoard impl), RulesEngine, TurnEngine, diffs
+libcommon  ← base types: IDs (ULID newtypes), YieldBundle, shared enums
+libhexgrid ← pure geometry: HexCoord (cube coords), HexBoard/HexTile/HexEdge traits, pathfinding
+libciv     ← all game state and rules: world map, civilizations, game orchestration
 civsim     ← CLI binary: `new` and `run` subcommands via clap
 ```
+
+> **History**: libworld, librules, libcivcore, and libgame were merged into libciv in
+> Phase 1. libhexgrid remains separate as a clean geometry crate with zero game knowledge.
 
 ### Key files
 
@@ -37,49 +36,92 @@ civsim     ← CLI binary: `new` and `run` subcommands via clap
 | `libcommon/src/yields.rs` | `YieldType` enum + `YieldBundle` (sparse HashMap) |
 | `libcommon/src/enums.rs` | `ResourceCategory`, `UnitDomain`, `UnitCategory`, `GreatPersonType`, `AgeType`, `PolicyType` |
 | `libhexgrid/src/coord.rs` | `HexCoord` with invariant enforcement, arithmetic, `HexDir`, distance, neighbors, ring |
-| `libhexgrid/src/types.rs` | `MovementCost`, `Elevation` (FLAT/HILLS/MOUNTAIN), `Vision`, `MovementProfile` (Ground/Naval/Air/Embarked) |
+| `libhexgrid/src/types.rs` | `MovementCost`, `Elevation` enum, `Vision` enum, `MovementProfile` enum |
 | `libhexgrid/src/board.rs` | `HexTile`/`HexEdge`/`HexBoard` traits, `BoardTopology` enum |
-| `libworld/src/tile.rs` | `WorldTile` struct (implements `HexTile`): terrain, feature, resource, improvement, road, rivers, owner |
-| `libworld/src/terrain.rs` | `TerrainDef` trait + `BuiltinTerrain` (Grassland/Plains/Desert/Tundra/Snow/Coast/Ocean) |
-| `libworld/src/feature.rs` | `FeatureDef` trait + `BuiltinFeature` (Forest/Rainforest/Marsh/Floodplain/Reef/Ice/VolcanicSoil/Oasis) |
-| `libworld/src/edge.rs` | `EdgeFeatureDef` trait + `WorldEdge` (River/Cliff/Canal/MountainPass) |
-| `libworld/src/improvement.rs` | `TileImprovement` trait + builtins (Farm/Mine/LumberMill/TradingPost/Fort/Airstrip/MissileSilo) |
-| `libworld/src/road.rs` | `RoadDef` trait + builtins (AncientRoad/MedievalRoad/IndustrialRoad/Railroad) |
-| `librules/src/modifier.rs` | `Modifier`, `EffectType`, `TargetSelector`, `StackingRule`, `ModifierSource`, `resolve_modifiers()` |
-| `librules/src/tech.rs` | `TechNode`/`CivicNode`, `TechTree`/`CivicTree`, `Unlock` enum, `EurekaCondition` trait |
-| `librules/src/policy.rs` | `Policy`, `Government`, `PolicySlots` |
-| `librules/src/victory.rs` | `VictoryCondition` trait, `VictoryProgress` |
-| `libcivcore/src/civilization.rs` | `Civilization`, `Leader`, `TechProgress`, `CivicProgress`; `LeaderAbility`/`Agenda`/`StartBias` traits |
-| `libcivcore/src/city.rs` | `City`, `CityStatus` (Capital/City/Occupied/Puppet/Razed), `WallLevel`, `ProductionItem` |
-| `libgame/src/state.rs` | `GameState` (single source of truth), `IdGenerator` (seeded ULID) |
-| `libgame/src/board.rs` | `WorldBoard`: `HexBoard` impl with Dijkstra pathfinding and hex LOS |
-| `libgame/src/rules.rs` | `RulesEngine` trait + `DefaultRulesEngine` (Phase 2 stubs) |
-| `libgame/src/diff.rs` | `StateDelta` enum, `GameStateDiff` |
+| `libciv/src/world/tile.rs` | `WorldTile` (implements `HexTile`): terrain, feature, resource, improvement, road, rivers, owner |
+| `libciv/src/world/terrain.rs` | `TerrainDef` trait + `BuiltinTerrain` (Grassland/Plains/Desert/Tundra/Snow/Coast/Ocean) |
+| `libciv/src/world/feature.rs` | `FeatureDef` trait + `BuiltinFeature` (Forest/Rainforest/Marsh/Floodplain/Reef/Ice/VolcanicSoil/Oasis) |
+| `libciv/src/world/edge.rs` | `EdgeFeatureDef` trait + `WorldEdge` (River/Cliff/Canal/MountainPass); stores `(HexCoord, HexDir)` |
+| `libciv/src/world/improvement.rs` | `TileImprovement` trait + builtins (Farm/Mine/LumberMill/TradingPost/Fort/Airstrip/MissileSilo) |
+| `libciv/src/world/road.rs` | `RoadDef` trait + builtins (AncientRoad/MedievalRoad/IndustrialRoad/Railroad) |
+| `libciv/src/rules/modifier.rs` | `Modifier`, `EffectType`, `TargetSelector`, `StackingRule`, `ModifierSource`, `resolve_modifiers()` |
+| `libciv/src/rules/tech.rs` | `TechNode`/`CivicNode`, `TechTree`/`CivicTree`, `Unlock` enum, `EurekaCondition` trait |
+| `libciv/src/rules/policy.rs` | `Policy`, `Government`, `PolicySlots` |
+| `libciv/src/rules/victory.rs` | `VictoryCondition` trait, `VictoryProgress` |
+| `libciv/src/civ/civilization.rs` | `Civilization` (with `strategic_resources`), `Leader` (trait objects), `TechProgress`, `CivicProgress`; `LeaderAbility`/`Agenda`/`StartBias` traits |
+| `libciv/src/civ/city.rs` | `City`, `CityKind`, `CityOwnership`, `WallLevel`, `ProductionItem` (typed IDs) |
+| `libciv/src/civ/city_state.rs` | `CityStateType`, `CityStateBonus` trait, `CityStateData` |
+| `libciv/src/civ/diplomacy.rs` | `DiplomaticRelation`, `DiplomaticStatus`, `GrievanceRecord`, `GrievanceVisibility` |
+| `libciv/src/civ/district.rs` | `DistrictDef`/`BuildingDef` traits, `AdjacencyContext` (with `Vec<NaturalWonderId>`), `PlacedDistrict` |
+| `libciv/src/game/state.rs` | `GameState` (single source of truth), `IdGenerator` (seeded ULID), `city_state_by_civ()` helper |
+| `libciv/src/game/board.rs` | `WorldBoard`: `HexBoard` impl with Dijkstra pathfinding and edge canonicalization |
+| `libciv/src/game/rules.rs` | `RulesEngine` trait + `DefaultRulesEngine` (Phase 2 stubs) |
+| `libciv/src/game/diff.rs` | `StateDelta` enum, `GameStateDiff` |
 | `civsim/src/main.rs` | CLI entry point |
 
 ### Implementation status
 
-- **Phase 1 complete**: all structs/traits declared, project compiles with zero warnings, 12/12 active tests pass (4 are `#[ignore]`d as Phase 2 targets)
-- **Phase 2 (in progress)**: rules evaluation, modifier stacking, LOS with elevation, road movement costs
-- **Phase 3+ (future)**: full gameplay loop, Lua scripting API, RL environment interface
+- **Phase 1 complete**: all structs/traits declared, project compiles with zero errors,
+  13 active tests pass (5 `#[ignore]`d as Phase 2 targets)
+- **Phase 2 (future)**: rules evaluation, modifier stacking, LOS with elevation, road
+  movement costs; macro helpers for trait boilerplate
+- **Phase 3+ (future)**: full gameplay loop, RL environment interface
 
 ### Conventions
 
-- All entity IDs are ULID-backed newtypes defined via macro in `libcommon/src/ids.rs`; never use raw strings or integers as IDs
+- All entity IDs are ULID-backed newtypes defined via macro in `libcommon/src/ids.rs`;
+  never use raw strings or integers as IDs
 - `MovementCost` uses integer math scaled by 100 (ONE = 100)
 - `BoardTopology` variants: `Flat`, `CylindricalEW` (wraps east-west), `Toroidal`
 - Rust edition 2024; workspace resolver 2
-- Commits are tagged: `infra`, `impl`, `tests`, `fix`, `docs`
+- Commit format: **conventional commits** (`feat`, `fix`, `refactor`, `docs`, `infra`, `tests`)
 - `YieldBundle` is sparse (HashMap-backed); missing keys default to zero
-- The `BuiltinTerrain` / `BuiltinFeature` / `BuiltinRoad` enums are convenience wrappers around the concrete structs that implement the trait — they are not the canonical extension point (traits are)
+- `&'static str` is appropriate for all built-in content names, descriptions, and
+  identifiers — this is compile-time content, not user-entered data
+- Structs containing `Box<dyn Trait>` fields (Leader, Civilization, City) do **not**
+  derive `Clone` — trait objects are not Clone
+- The `BuiltinTerrain` / `BuiltinFeature` / `BuiltinRoad` enums are convenience wrappers
+  around concrete structs that implement the trait — they are not the canonical extension
+  point (traits are)
 
-### Design constraints to keep in mind
+### Architectural decisions (Phase 1 settled)
 
-- All trait objects that cross the Lua boundary will need `Send + Sync`; avoid `&'static str` for user-visible names — use `String`
+- **Extensibility**: pure Rust trait-based API, static linking. No dynamic linking, no
+  scripting runtime. Downstream crates implement content traits and recompile.
+- **No `String` for built-in names**: `&'static str` is intentional and correct for
+  compile-time game content. Only external/user data at system boundaries should use `String`.
+- **Elevation**: `enum { Low, Level(u8), High }` with constants `FLAT = Level(0)`,
+  `HILLS = Level(1)`, `MOUNTAIN = High`
+- **Vision**: `enum { Blind, Radius(u8), Omniscient }`
+- **MovementProfile**: Ground / Naval / Air / Embarked / **Amphibious**
+- **Edge addressing**: `(HexCoord, HexDir)` with canonical normalization — forward half
+  `{E, NE, NW}` is canonical; `{W, SW, SE}` map to `(neighbor, opposite_dir)`
+- **CityState**: folded into `City` via `CityKind { Regular, CityState(CityStateData) }`.
+  `GameState::city_state_by_civ(CivId)` finds a city-state by its diplomatic CivId.
+- **CityOwnership**: `Normal | Occupied | Puppet | Razed`. Capital status is `is_capital:
+  bool` on City, not an ownership variant.
+- **ProductionItem**: typed IDs — `Unit(UnitTypeId)`, `Building(BuildingId)`,
+  `District(DistrictTypeId)`, `Wonder(WonderId)`
+- **WallLevel**: enum with methods `defense_bonus() -> i32` and `max_hp() -> u32`;
+  City stores `wall_hp: u32` for current HP
+- **Civilization**: has `strategic_resources: HashMap<ResourceId, u32>`
+- **Leader**: no stub strings; uses `abilities: Vec<Box<dyn LeaderAbility>>` and
+  `agenda: Box<dyn Agenda>`
+- **StartBias**: `terrain_preference() -> Option<TerrainId>`, `feature_preference() ->
+  Option<FeatureId>`, `resource_preference() -> Option<ResourceCategory>` (all typed)
+- **DiplomaticStatus**: `War | Denounced | Neutral | Friendly | Alliance`
+  (no ColdWar, no OpenBorders)
+- **Grievances**: `Vec<GrievanceRecord>` with `description: &'static str`, `amount: i32`,
+  `visibility: GrievanceVisibility { Public | RequiresSpy | RequiresAlliance }`
+- **AdjacencyContext**: `adjacent_natural_wonders: Vec<NaturalWonderId>` (typed, not count)
+
+### Design constraints
+
 - `GameState` is passed by reference to all systems; no global state
-- Yields/housing/amenities/loyalty are **never stored** on `City` — computed via `RulesEngine` queries so modifiers always apply correctly (exception: `loyalty` is stored as accumulated state between turns)
-
-### Open architectural questions (under discussion)
-
-- The separation of `libworld`, `librules`, `libcivcore`, and `libgame` may not be the right boundary — Civilization is a naturally coupled game and these libraries may contain leaky abstractions. Merging some or all of them into a single `libcivbase` (keeping only `libhexgrid` as a pure geometry crate) is being actively considered.
-- The heavy use of traits throughout may conflict with the goal of Lua-driven extensibility; this needs to be resolved before Phase 3.
+- Yields/housing/amenities/loyalty are **never stored** on `City` — computed via
+  `RulesEngine` queries so modifiers always apply correctly (exception: accumulated loyalty
+  between turns)
+- `libhexgrid` must remain zero-knowledge of game concepts — it is a pure geometry/graph
+  library; game content belongs in libciv
+- Phase 2 macro helpers: write Rust procedural macros to reduce trait implementation
+  boilerplate for content definitions (deferred)
