@@ -1,948 +1,872 @@
-# Open Civ VI — Architecture Specification
+# Open Civ VI — Architecture
 
 ## Design Philosophy
 
 1. **Invalid states unrepresentable** — encode constraints in types, not runtime checks
-2. **Extensibility via traits** — game objects implement traits; mods add new impls
-3. **Separated concerns** — geometry ≠ world state ≠ rules ≠ civilization state
-4. **Single GameState** — eliminates threading HexBoard through every function
-5. **Typed modifier pipeline** — no opaque callbacks; every yield change is a `Modifier`
+2. **Extensibility via traits** — game content implements traits; built-in variants are enums wrapping concrete structs, not special-cased
+3. **Separated concerns** — geometry knows nothing of game concepts; world state knows nothing of rules
+4. **Single GameState** — one struct passed by reference to all systems; no global state
+5. **Typed modifier pipeline** — every yield change is a `Modifier`; no opaque callbacks
 
-Rust-style notation throughout. `trait` = interface, `struct` = concrete data, `enum` = sum type.
+`&'static str` is used for all built-in names (compile-time content). Structs with `Box<dyn Trait>` fields (`Leader`, `City`) do not derive `Clone`. `libhexgrid` has zero knowledge of terrain, civilizations, or rules.
 
 ---
 
 ## Library Structure
 
 ```
-libhexgrid  — coordinate geometry, pathfinding, board abstraction
-libworld    — terrain, features, resources, tile improvements  (implements libhexgrid traits)
-librules    — yields, modifiers, tech/civics, victory conditions
-libcivcore  — civilizations, cities, units, diplomacy
-libgame     — GameState, turn engine, semantic diff, CLI
-civsim      — CLI binary
+libhexgrid  (no deps)       — pure hex geometry: coords, traits, topology
+libciv      (→ libhexgrid)  — all game state: ids, yields, enums, world/, rules/, civ/, game/
+civsim      (→ libciv)      — CLI binary
 ```
-
-Workspace layout mirrors serde: each library is an independent crate with its own `Cargo.toml`.
-`libworld` depends on `libhexgrid`; `librules` and `libcivcore` depend on both; `libgame` depends
-on all four.
 
 ---
 
-## 1. libhexgrid — Spatial Engine
+## 1. libhexgrid
 
 ### Coordinates
 
-Cube coordinates: `HexCoord { q: i32, r: i32, s: i32 }` with the invariant `q + r + s = 0`
-enforced at construction (via `HexCoord::new` returning `Result` or panicking in debug).
-`HexCoord` implements `Add`, `Sub`, `Neg`, and scalar `Mul` so arithmetic composes naturally.
+```rust
+struct HexCoord { pub q: i32, pub r: i32, pub s: i32 }
+```
 
-Distance: `max(|q₁−q₂|, |r₁−r₂|, |s₁−s₂|)`.
+Invariant `q + r + s = 0` enforced at construction. `HexCoord::new(q, r, s)` returns `Result<Self, HexCoordError>`. `HexCoord::from_qr(q, r)` computes `s` automatically.
 
-### Board Topology
+Arithmetic: `Add`, `Sub`, `Neg`, `Mul<i32>` — all preserve the invariant.
+
+Distance: `(|dq| + |dr| + |ds|) / 2`.
 
 ```rust
-enum BoardTopology {
-    Hexagon   { radius: u32 },
-    Rectangle { width: u32, height: u32, wrap_x: bool, wrap_y: bool },
+impl HexCoord {
+    fn new(q: i32, r: i32, s: i32) -> Result<Self, HexCoordError>;
+    fn from_qr(q: i32, r: i32) -> Self;
+    fn zero() -> Self;
+    fn distance(&self, other: &HexCoord) -> u32;
+    fn neighbors(&self) -> [HexCoord; 6];
+    fn ring(&self, radius: u32) -> Vec<HexCoord>;
 }
 ```
 
-Wrapping is implemented entirely inside `WorldBoard` via coordinate normalization — invisible to
-all other layers. New topologies are a future concern; this is the only non-extensible enum in
-the geometry layer and is intentionally isolated.
+### Supporting Types
+
+```rust
+enum HexDir { E, NE, NW, W, SW, SE }
+// ALL: [E, NE, NW, W, SW, SE]; unit_vec(); opposite()
+
+enum MovementCost {
+    Impassable,
+    Cost(u32),  // scaled by 100; ONE=100, TWO=200, THREE=300
+}
+
+enum Elevation {
+    Low,        // below sea level; never blocks LOS
+    Level(u8),  // FLAT=Level(0), HILLS=Level(1)
+    High,       // impassable mountain peak; always blocks LOS
+}
+// Implements Ord: Low < Level(0) < Level(1) < ... < High
+
+enum Vision { Blind, Radius(u8), Omniscient }
+
+enum MovementProfile { Ground, Naval, Air, Embarked, Amphibious }
+
+enum BoardTopology { Flat, CylindricalEW, Toroidal }
+```
 
 ### Traits
 
 ```rust
 trait HexTile {
-    fn base_movement_cost(&self) -> MovementCost;
+    fn coord(&self) -> HexCoord;
     fn elevation(&self) -> Elevation;
+    fn movement_cost(&self) -> MovementCost;
+    fn vision_bonus(&self) -> Vision;
 }
 
 trait HexEdge {
-    fn movement_cost(&self) -> MovementCost;
-}
-
-trait HexBoard<Tile: HexTile, Edge: HexEdge> {
-    fn topology(&self) -> &BoardTopology;
-    fn get_tile(&self, coord: HexCoord) -> Option<&Tile>;
-    fn get_tile_mut(&mut self, coord: HexCoord) -> Option<&mut Tile>;
-    fn get_edge(&self, coord: HexCoord, dir: HexDir) -> Option<&Edge>;
-    fn neighbors(&self, coord: HexCoord) -> Vec<HexCoord>;
-    fn distance(&self, a: HexCoord, b: HexCoord) -> u32;
-    fn tiles_within_radius(&self, center: HexCoord, r: u32) -> Vec<HexCoord>;
-    fn shortest_path(&self, a: HexCoord, b: HexCoord, profile: &MovementProfile)
-        -> Option<Vec<HexCoord>>;
-    fn line_of_sight(&self, a: HexCoord, b: HexCoord) -> bool;
-    fn visible_tiles(&self, origin: HexCoord, vision: Vision) -> Vec<HexCoord>;
-}
-```
-
-`libhexgrid` has zero knowledge of terrain, rivers, or civilizations. Coupling is prevented
-because `libworld` provides the concrete `Tile`/`Edge` types — `libhexgrid` only knows the
-traits. Pathfinding is implemented with simple Dijkstra; performance improvements are deferred.
-
-### Supporting Types
-
-```rust
-enum HexDir       { NE, E, SE, SW, W, NW }
-enum MovementCost { Impassable, Cost(u8) }
-
-/// Low and High are discrete sentinels for LOS and flood logic.
-/// Level(u8) encodes intermediate elevation for sea-level-rise simulation;
-/// higher u8 = higher ground.
-enum Elevation    { Low, Level(u8), High }
-
-enum Vision       { Blind, Radius(u8), Omniscient }
-
-struct MovementProfile {
-    ignore_terrain: bool,  // air units bypass terrain cost
-    ignore_rivers:  bool,  // embarked/naval units unaffected by river crossings
-    can_embark:     bool,  // land unit may cross coast/ocean tiles
-}
-```
-
-`Elevation::High` (and `Level` values above a flood threshold) blocks line-of-sight unless
-the observer is also at an equal or greater level, or is `Omniscient`.
-
----
-
-## 2. libworld — Map State
-
-libworld defines `WorldTile` and `WorldEdge`, which implement the libhexgrid traits.
-It has no knowledge of civilizations or rules.
-
-### Terrain, Features, and Edge Features — Extensible Traits
-
-All three are **traits**, not enums, so mods can define new terrain types, features, and edge
-features. Built-in variants are structs implementing the trait.
-
-```rust
-trait TerrainDef: Send + Sync {
-    fn id(&self) -> TerrainId;
-    fn base_movement_cost(&self) -> MovementCost;
-    fn base_yields(&self) -> YieldBundle;
-    fn is_water(&self) -> bool;
-    fn can_have_feature(&self, feature: &dyn FeatureDef) -> bool;
-}
-
-// Built-in: Grassland, Plains, Desert, Tundra, Snow, Coast, Ocean (all impl TerrainDef)
-
-trait FeatureDef: Send + Sync {
-    fn id(&self) -> FeatureId;
-    fn movement_cost_override(&self) -> Option<MovementCost>;
-    fn yield_delta(&self) -> YieldBundle;
-    fn appeal_delta(&self) -> i32;
-}
-
-// Built-in: Forest, Rainforest, Marsh, Floodplain, Reef, Ice, VolcanicSoil, Oasis
-
-trait EdgeFeatureDef: Send + Sync {
-    fn id(&self) -> EdgeFeatureId;
-    /// Extra MP cost to cross this edge (land units unless overridden by MovementProfile)
+    fn coord(&self) -> HexCoord;          // canonical forward-half endpoint
+    fn dir(&self) -> HexDir;              // always forward-half: E, NE, or NW
+    fn endpoints(&self) -> (HexCoord, HexCoord);  // default impl
     fn crossing_cost(&self) -> MovementCost;
 }
 
-// Built-in: River, Cliff, Canal, MountainPass
-```
-
-### WorldTile
-
-```rust
-struct WorldTile {
-    terrain:        Box<dyn TerrainDef>,
-    features:       Vec<Box<dyn FeatureDef>>,
-    natural_wonder: Option<Box<dyn NaturalWonder>>,
-    resource:       Option<Box<dyn Resource>>,
-    improvement:    Option<Box<dyn TileImprovement>>,
-    road:           Option<Box<dyn RoadDef>>,
-    appeal:         i32,  // recomputed by rules engine each query
-}
-
-impl HexTile for WorldTile { ... }
-```
-
-### WorldEdge
-
-`WorldEdge` implements `HexEdge` from libhexgrid, keeping libhexgrid ignorant of rivers.
-River movement penalty is applied by the rules engine during pathfinding via `MovementProfile`.
-
-```rust
-struct WorldEdge { feature: Option<Box<dyn EdgeFeatureDef>> }
-
-impl HexEdge for WorldEdge {
-    fn movement_cost(&self) -> MovementCost {
-        self.feature.as_ref()
-            .map(|f| f.crossing_cost())
-            .unwrap_or(MovementCost::Cost(0))
-    }
+trait HexBoard {
+    type Tile: HexTile;
+    type Edge: HexEdge;
+    fn topology(&self) -> BoardTopology;
+    fn width(&self) -> u32;
+    fn height(&self) -> u32;
+    fn tile(&self, coord: HexCoord) -> Option<&Self::Tile>;
+    fn tile_mut(&mut self, coord: HexCoord) -> Option<&mut Self::Tile>;
+    fn edge(&self, coord: HexCoord, dir: HexDir) -> Option<&Self::Edge>;
+    fn neighbors(&self, coord: HexCoord) -> Vec<HexCoord>;
+    fn normalize(&self, coord: HexCoord) -> Option<HexCoord>;
+    fn all_coords(&self) -> Vec<HexCoord>;
 }
 ```
 
-### Natural Wonders
+Edges are stored canonically: forward-half directions only (`{E, NE, NW}`). Looking up a backward-half edge (`{W, SW, SE}`) normalizes to the adjacent tile with the opposite direction.
+
+---
+
+## 2. libciv — ids/yields/enums
+
+### IDs
 
 ```rust
-trait NaturalWonder: Send + Sync {
-    fn id(&self) -> &'static str;
-    fn yields(&self) -> YieldBundle;
-    fn modifiers(&self) -> Vec<Modifier>;
-}
+// define_id! macro generates ULID-backed newtypes:
+// CityId, UnitId, CivId, TechId, CivicId, GovernmentId, PolicyId, ReligionId,
+// WonderId, GreatPersonId, PromotionId, ImprovementId, ResourceId, RoadId,
+// AgreementId, GrievanceId, GovernorId, BeliefId, VictoryId, UnitTypeId,
+// DistrictTypeId, BuildingId, TradeRouteId, EraId, TerrainId, FeatureId,
+// EdgeFeatureId, NaturalWonderId
 ```
 
-### Resources
+Each ID implements `Debug`, `Clone`, `Copy`, `PartialEq`, `Eq`, `Hash`, `PartialOrd`, `Ord`, `Display`.
+
+### Yields
+
+`YieldBundle` is a flat struct (not a HashMap) with named fields. The `YieldType` enum is used only for the `with()`, `get()`, and `add_yield()` dispatch methods.
 
 ```rust
-trait Resource: Send + Sync {
-    fn id(&self) -> ResourceId;
-    fn category(&self) -> ResourceCategory;
-    fn base_yields(&self) -> YieldBundle;
+enum YieldType {
+    Food, Production, Gold, Science, Culture, Faith,
+    Housing, Amenities, Tourism, GreatPersonPoints,
 }
 
-enum ResourceCategory { Strategic, Luxury, Bonus, Artifact, Power }
+struct YieldBundle {
+    pub food: i32, pub production: i32, pub gold: i32,
+    pub science: i32, pub culture: i32, pub faith: i32,
+    pub housing: i32, pub amenities: i32, pub tourism: i32,
+    pub great_person_points: i32,
+}
+// impl Add, AddAssign; merge(), with(), get(), add_yield()
 ```
 
-### Tile Improvements
-
-Improvements are a trait so mods can define new ones without touching core code.
+### Shared Enums
 
 ```rust
-struct ImprovementContext<'a> {
-    tile:           &'a WorldTile,
-    adjacent_tiles: &'a [&'a WorldTile],
-    civ:            &'a Civilization,
+enum ResourceCategory { Bonus, Luxury, Strategic }
+enum UnitDomain { Land, Sea, Air }
+enum UnitCategory { Civilian, Combat, Support, Religious, GreatPerson, Trader }
+enum GreatPersonType {
+    General, Admiral, Engineer, Merchant, Musician, Artist, Writer, Prophet, Scientist,
 }
-
-trait TileImprovement: Send + Sync {
-    fn id(&self) -> ImprovementId;
-    fn required_tech(&self) -> Option<TechId>;
-    fn builder_charges(&self) -> u8;
-    fn tile_yields(&self, ctx: &ImprovementContext) -> YieldBundle;
-    /// Modifiers applied to the city that owns this tile
-    fn city_modifiers(&self, ctx: &ImprovementContext) -> Vec<Modifier>;
+enum AgeType {
+    Ancient, Classical, Medieval, Renaissance, Industrial, Modern, Atomic, Information, Future,
 }
-```
-
-Built-in implementations: `Farm`, `Mine`, `LumberMill`, `TradingPost`, `Fort`, `Airstrip`,
-`MissileSilo`. All implement `TileImprovement`; none are special-cased.
-
-### Roads
-
-Roads are a trait, not an enum, so mods can define new road types (e.g. canal network, maglev).
-
-```rust
-trait RoadDef: Send + Sync {
-    fn id(&self) -> RoadId;
-    fn movement_cost_override(&self) -> MovementCost;
-    fn required_tech(&self) -> Option<TechId>;
-    /// True if this road type is automatically created by trade routes
-    fn created_by_trade(&self) -> bool;
-}
-
-// Built-in: AncientRoad, MedievalRoad, IndustrialRoad, Railroad (all impl RoadDef)
+enum PolicyType { Military, Economic, Diplomatic, Wildcard }
 ```
 
 ---
 
-## 3. librules — Rule Engine
+## 3. libciv — world/
 
-### Yields
-
-The core yield types are a fixed `enum` for now; extending yields to a trait is architecturally
-possible but deferred — new yield types would require the mod author to also define rules for
-how they are accumulated, spent, and displayed, which is a significant authoring burden.
+### Terrain
 
 ```rust
-enum YieldType { Food, Production, Gold, Science, Culture, Faith, Tourism, Power }
+trait TerrainDef: Debug {
+    fn name(&self) -> &'static str;
+    fn base_yields(&self) -> YieldBundle;
+    fn movement_cost(&self) -> MovementCost;
+    fn elevation(&self) -> Elevation;
+    fn is_land(&self) -> bool;
+    fn is_water(&self) -> bool { !self.is_land() }  // default
+}
 
-/// Sparse bundle — unset keys default to zero
-struct YieldBundle(HashMap<YieldType, i32>);
+enum BuiltinTerrain {
+    Grassland(Grassland), Plains(Plains), Desert(Desert),
+    Tundra(Tundra), Snow(Snow), Coast(Coast), Ocean(Ocean),
+}
+// BuiltinTerrain::as_def() -> &dyn TerrainDef
+```
 
-impl YieldBundle {
-    fn add(&mut self, y: YieldType, amount: i32);
-    fn get(&self, y: YieldType) -> i32;
-    fn merge_additive(&self, other: &Self) -> Self;
+Concrete types (`Grassland`, `Plains`, etc.) are zero-sized structs implementing `TerrainDef`.
+
+### Features
+
+```rust
+trait FeatureDef: Debug {
+    fn name(&self) -> &'static str;
+    fn yield_modifier(&self) -> YieldBundle;
+    fn movement_cost_modifier(&self) -> MovementCost;
+    fn conceals_resources(&self) -> bool { false }  // default
+}
+
+enum BuiltinFeature {
+    Forest(Forest), Rainforest(Rainforest), Marsh(Marsh), Floodplain(Floodplain),
+    Reef(Reef), Ice(Ice), VolcanicSoil(VolcanicSoil), Oasis(Oasis),
 }
 ```
 
-When trait-based yields become necessary, `YieldType` can be replaced with `Box<dyn YieldKind>`
-and `YieldBundle` becomes `HashMap<TypeId, i32>` keyed on the concrete type's `TypeId`.
+`Ice` has `movement_cost_modifier() = Impassable`. Feature movement cost is additive with terrain cost; Impassable wins.
+
+### Edge Features
+
+```rust
+trait EdgeFeatureDef: Debug {
+    fn name(&self) -> &'static str;
+    fn crossing_cost(&self) -> MovementCost;
+    fn blocks_los(&self) -> bool { false }  // default
+}
+
+enum BuiltinEdgeFeature {
+    River(River),             // crossing_cost = THREE (300)
+    Cliff(Cliff),             // crossing_cost = Impassable, blocks_los = true
+    Canal(Canal),             // crossing_cost = ONE
+    MountainPass(MountainPass), // crossing_cost = TWO
+}
+```
+
+### WorldTile and WorldEdge
+
+```rust
+struct WorldTile {
+    pub coord: HexCoord,
+    pub terrain: BuiltinTerrain,
+    pub feature: Option<BuiltinFeature>,
+    pub resource: Option<ResourceId>,
+    pub improvement: ImprovementContext,  // { improvement_id, is_pillaged }
+    pub road: Option<BuiltinRoad>,
+    pub rivers: Vec<BuiltinEdgeFeature>,
+    pub owner: Option<CivId>,
+}
+// impl HexTile; total_yields() = terrain base + feature modifier
+```
+
+```rust
+struct WorldEdge {
+    pub coord: HexCoord,   // canonical forward-half endpoint
+    pub dir: HexDir,       // always E, NE, or NW
+    pub feature: Option<BuiltinEdgeFeature>,
+}
+// impl HexEdge; crossing_cost() from feature or zero
+```
+
+`WorldEdge::new(coord, dir)` panics in debug if `dir` is not forward-half. Use `WorldBoard::set_edge()` for automatic canonicalization.
+
+### Tile Improvements
+
+```rust
+trait TileImprovement: Debug {
+    fn name(&self) -> &'static str;
+    fn yield_bonus(&self) -> YieldBundle;
+    fn build_turns(&self) -> u32;
+    fn pillaged(&self) -> bool { false }
+}
+// Built-in: Farm (+1 Food), Mine (+1 Prod), LumberMill (+2 Prod),
+//           TradingPost (+1 Gold), Fort, Airstrip, MissileSilo
+```
+
+### Roads
+
+```rust
+trait RoadDef: Debug {
+    fn name(&self) -> &'static str;
+    fn movement_cost(&self) -> MovementCost;  // cost when travelling along road
+    fn maintenance(&self) -> u32;             // gold per turn
+}
+
+enum BuiltinRoad {
+    Ancient(AncientRoad),         // Cost(50), maintenance 0
+    Medieval(MedievalRoad),       // Cost(50), maintenance 1
+    Industrial(IndustrialRoad),   // Cost(25), maintenance 2
+    Railroad(Railroad),           // Cost(10), maintenance 3
+}
+```
+
+---
+
+## 4. libciv — rules/
 
 ### Modifier System
 
-Every mechanic that changes a numeric value (policy, building, leader ability, wonder, belief,
-governor, technology, civic) is a `Modifier`. Modifiers are collected by target and applied at
-query time — never mutating stored state directly.
+Every numeric effect (policy, building, leader ability, wonder, belief, tech, civic) is a `Modifier`. Modifiers are collected and applied at query time — stored state is never mutated directly.
 
 ```rust
 struct Modifier {
-    target:   TargetSelector,
-    effect:   EffectType,
-    stacking: StackingRule,
-    source:   ModifierSource,  // for UI attribution and debugging
-}
-
-enum TargetSelector {
-    City(CityId),
-    AllCities(CivId),
-    District { city: CityId, dtype: DistrictTypeId },
-    AllDistricts { civ: CivId, dtype: DistrictTypeId },
-    Unit(UnitId),
-    AllUnits { civ: CivId, domain: Option<UnitDomain> },
-    Tile(HexCoord),
-    TradeRoute(TradeRouteId),
-    Civilization(CivId),
-    Global,
+    pub source: ModifierSource,
+    pub target: TargetSelector,
+    pub effect: EffectType,
+    pub stacking: StackingRule,
 }
 
 enum EffectType {
     YieldFlat(YieldType, i32),
-    YieldPercent(YieldType, i32),  // applied after flat bonuses
-    MovementBonus(i32),
-    CombatBonus(i32),
-    RangedCombatBonus(i32),
-    LoyaltyPerTurn(i32),
-    HousingBonus(f32),
-    AmenitiesBonus(i32),
-    GreatPersonPoints(GreatPersonType, i32),
-    SightBonus(i32),
-    TradeRouteCapacity(i32),
-    AppealBonus(i32),
+    YieldPercent(YieldType, i32),  // 50 = +50%, scaled by 100
+    CombatStrengthFlat(i32),
+    CombatStrengthPercent(i32),
+    MovementBonus(u32),
 }
 
-enum StackingRule { Additive, Multiplicative, Max, Replace }
+enum TargetSelector {
+    AllTiles,
+    AllUnits,
+    UnitDomain(UnitDomain),
+    Civilization(CivId),
+    Global,
+}
+
+enum StackingRule { Additive, Max, Replace }
 
 enum ModifierSource {
-    Policy(PolicyId),
-    Building(BuildingId),
-    Wonder(WonderId),
-    LeaderAbility,
-    Pantheon,
-    Belief,
-    Governor(GovernorId),
-    GreatPerson(GreatPersonId),
-    CityState(CivId),
-    Technology(TechId),   // e.g. tech that boosts farm yields
-    Civic(CivicId),       // e.g. civic that boosts trade yields
+    Tech(&'static str), Civic(&'static str), Policy(&'static str),
+    Building(&'static str), Wonder(&'static str), Leader(&'static str),
+    Religion(&'static str), Era(&'static str), Custom(&'static str),
 }
 ```
 
-### Query System
-
-The rules engine exposes typed queries. Callers never manually collect modifiers.
-
-```rust
-trait RulesEngine: Send + Sync {
-    fn query_city_yield        (&self, city: CityId,            state: &GameState) -> YieldBundle;
-    fn query_district_adjacency(&self, district: &PlacedDistrict, state: &GameState) -> YieldBundle;
-    fn query_trade_yields      (&self, route: TradeRouteId,     state: &GameState) -> YieldBundle;
-    fn query_unit_combat       (&self, unit: UnitId,            state: &GameState) -> i32;
-    fn query_unit_movement     (&self, unit: UnitId,            state: &GameState) -> u8;
-    fn query_tile_appeal       (&self, coord: HexCoord,         state: &GameState) -> i32;
-    fn query_loyalty           (&self, city: CityId,            state: &GameState) -> f32;
-    fn query_housing           (&self, city: CityId,            state: &GameState) -> f32;
-    fn query_amenities         (&self, city: CityId,            state: &GameState) -> i32;
-
-    /// Low-level — prefer typed queries above
-    fn collect_modifiers<'a>(&'a self, target: &TargetSelector, state: &'a GameState)
-        -> Vec<&'a Modifier>;
-}
-```
+`resolve_modifiers(modifiers: &[Modifier]) -> Vec<EffectType>` currently returns effects unprocessed (Phase 1 stub). Phase 2 implements proper stacking.
 
 ### Technology and Civics
 
-Two independent research trees with the same internal structure.
-
 ```rust
-struct TechTree  { nodes: HashMap<TechId,  TechNode>  }
-struct CivicTree { nodes: HashMap<CivicId, CivicNode> }
-
 struct TechNode {
-    prerequisites: Vec<TechId>,
-    cost:          u32,
-    eureka:        Option<Box<dyn EurekaCondition>>,
-    unlocks:       Vec<Unlock>,
-    modifiers:     Vec<Modifier>,   // active once researched (e.g. +1 prod to farms)
+    pub id: TechId,
+    pub name: &'static str,
+    pub cost: u32,
+    pub prerequisites: Vec<TechId>,
+    pub unlocks: Vec<Unlock>,
+    pub eureka_description: &'static str,
 }
 
-// CivicNode is identical, with CivicId and an inspiration condition instead of eureka.
+struct CivicNode {
+    pub id: CivicId,
+    pub name: &'static str,
+    pub cost: u32,
+    pub prerequisites: Vec<CivicId>,
+    pub unlocks: Vec<Unlock>,
+    pub inspiration_description: &'static str,
+}
 
 enum Unlock {
-    Unit(UnitTypeId),
-    District(DistrictTypeId),
-    Building(BuildingId),
-    Improvement(ImprovementId),
-    Policy(PolicyId),
-    Wonder(WonderId),
-    Government(GovernmentId),
+    Unit(&'static str), Building(&'static str), Improvement(&'static str),
+    District(&'static str), Policy(&'static str), Government(&'static str),
+    Resource(&'static str), Ability(&'static str),
 }
 
-/// Predicate evaluated against GameState each turn until satisfied.
-trait EurekaCondition: Send + Sync {
-    fn is_met(&self, civ: CivId, state: &GameState) -> bool;
+trait EurekaCondition: Debug {
+    fn description(&self) -> &'static str;
+    fn is_met(&self) -> bool;
 }
+
+struct TechTree  { pub nodes: HashMap<TechId,  TechNode>  }
+struct CivicTree { pub nodes: HashMap<CivicId, CivicNode> }
+// add_node(), get(), prerequisites_met()
 ```
 
-### Governments and Policies
+`TechTree::prerequisites_met()` is implemented. `EurekaCondition::is_met()` is a trait stub with no concrete implementations yet.
+
+### Policies and Governments
 
 ```rust
-struct Government {
-    id:                 GovernmentId,
-    required_civic:     CivicId,
-    policy_slots:       PolicySlots,
-    inherent_modifiers: Vec<Modifier>,
-}
-
-struct PolicySlots { military: u8, economic: u8, diplomatic: u8, wildcard: u8 }
-
-enum PolicyType { Military, Economic, Diplomatic, Wildcard, DarkAge, HeroicAge }
+struct PolicySlots { pub military: u8, pub economic: u8, pub diplomatic: u8, pub wildcard: u8 }
 
 struct Policy {
-    id:             PolicyId,
-    required_civic: CivicId,
-    policy_type:    PolicyType,
-    modifiers:      Vec<Modifier>,
+    pub id: PolicyId,
+    pub name: &'static str,
+    pub policy_type: PolicyType,
+    pub modifiers: Vec<Modifier>,
+    pub maintenance: u32,
 }
+
+struct Government {
+    pub id: GovernmentId,
+    pub name: &'static str,
+    pub slots: PolicySlots,
+    pub inherent_modifiers: Vec<Modifier>,
+    pub legacy_bonus: Option<&'static str>,
+}
+// can_slot_policy()
 ```
 
 ### Victory Conditions
 
 ```rust
-trait VictoryCondition: Send + Sync {
-    fn id(&self) -> VictoryId;
-    fn check   (&self, civ: CivId, state: &GameState) -> bool;
-    fn progress(&self, civ: CivId, state: &GameState) -> VictoryProgress;
+struct VictoryProgress {
+    pub victory_id: VictoryId,
+    pub civ_id: CivId,
+    pub current: u32,
+    pub target: u32,
 }
+// is_won(), percentage()
 
-struct VictoryProgress { current: u32, required: u32, label: String }
+trait VictoryCondition: Debug {
+    fn id(&self) -> VictoryId;
+    fn name(&self) -> &'static str;
+    fn description(&self) -> &'static str;
+    fn check_progress(&self, civ_id: CivId) -> VictoryProgress;
+}
 ```
 
-Built-in implementations: `ScienceVictory`, `CultureVictory`, `DominationVictory`,
-`ReligiousVictory`, `DiplomaticVictory`, `ScoreVictory`.
+No concrete `VictoryCondition` implementations exist yet.
 
 ---
 
-## 4. libcivcore — Civilization State
-
-### Eras
-
-Eras are user-defined structs, not a static enum, so mods can define new eras or alter
-transition triggers. The global ordered list of `Era`s is stored in `GameState`.
-
-```rust
-struct Era {
-    id:      EraId,
-    name:    String,
-    trigger: Box<dyn EraTrigger>,
-}
-
-/// Returns true when this era should become the active era for a given civ.
-/// Default implementation: triggered when the civ researches the last tech
-/// of the previous era (standard Civ VI behavior).
-trait EraTrigger: Send + Sync {
-    fn is_triggered(&self, civ: CivId, state: &GameState) -> bool;
-}
-```
+## 5. libciv — civ/
 
 ### Units
 
-Air units are **not** a separate struct. All units implement `Unit`. `UnitDomain::Air` units
-use `base_tile` + `range` instead of standard pathfinding; movement validation is
-`distance(base_tile, target) <= range`. This keeps the unit system extensible.
-
 ```rust
-trait Unit: Send + Sync {
-    fn id(&self)               -> UnitId;
-    fn unit_type(&self)        -> UnitTypeId;
-    fn owner(&self)            -> CivId;
-    fn position(&self)         -> HexCoord;
-    fn domain(&self)           -> UnitDomain;
-    fn movement_profile(&self) -> MovementProfile;
-    fn movement_points(&self)  -> u8;
-    fn remaining_movement(&self) -> u8;
-    fn combat_strength(&self)  -> Option<i32>;       // None = civilian / non-combat
-    fn ranged_strength(&self)  -> Option<i32>;
-    fn range(&self)            -> Option<u8>;         // ranged attack or air operational radius
-    fn base_tile(&self)        -> Option<HexCoord>;   // Some for air units (home city/airstrip)
-    fn health(&self)           -> u8;                 // 0–100
-    fn promotions(&self)       -> &[PromotionId];
-    fn category(&self)         -> UnitCategory;
+trait Unit: Debug {
+    fn id(&self) -> UnitId;
+    fn unit_type(&self) -> UnitTypeId;
+    fn owner(&self) -> CivId;
+    fn coord(&self) -> HexCoord;
+    fn domain(&self) -> UnitDomain;
+    fn category(&self) -> UnitCategory;
+    fn movement_left(&self) -> u32;
+    fn max_movement(&self) -> u32;
+    fn combat_strength(&self) -> Option<u32>;  // None = civilian/non-combat
+    fn promotions(&self) -> &[PromotionId];
+    fn health(&self) -> u32;
+    fn max_health(&self) -> u32 { 100 }
+    fn is_alive(&self) -> bool { self.health() > 0 }
 }
 
-enum UnitDomain   { Land, Naval, Air }
-enum UnitCategory { Combat, Civilian, Support, GreatPerson, Religious }
+struct BasicUnit { /* all Unit fields as pub */ }
+// impl Unit for BasicUnit
 ```
 
 ### Cities
 
-Yields, housing, amenities, and loyalty are **not stored** on `City` — they are computed by
-`RulesEngine` queries so modifiers are always applied correctly. The `loyalty` field is stored
-only for persistence between turns (it accumulates/decays, it is not purely derived).
-
 ```rust
+enum CityKind { Regular, CityState(CityStateData) }
+
+enum CityOwnership { Normal, Occupied, Puppet, Razed }
+
+enum WallLevel { None, Ancient, Medieval, Renaissance }
+// defense_bonus() -> i32; max_hp() -> u32
+
+enum ProductionItem {
+    Unit(UnitTypeId), Building(BuildingId),
+    District(DistrictTypeId), Wonder(WonderId),
+}
+
 struct City {
-    id:                     CityId,
-    owner:                  CivId,       // changes on loyalty flip or capture
-    location:               HexCoord,
-    name:                   String,
-    population:             u32,
-    status:                 CityStatus,
-    worked_tiles:           Vec<HexCoord>,
-    districts:              Vec<PlacedDistrict>,
-    production_queue:       Vec<ProductionItem>,
-    accumulated_food:       i32,
-    accumulated_production: i32,
-    governor:               Option<GovernorId>,
-    walls:                  WallLevel,
-    religion:               Option<ReligionId>,  // majority religion
-    loyalty:                f32,  // 0–100; stored, recomputed via pressure each turn
-}
-
-enum CityStatus { Normal, Occupied, Puppet, Razed }
-enum WallLevel  { None, Ancient, Medieval, Renaissance }
-```
-
-`owner` changes when loyalty reaches 0 (flip, status stays `Normal`) or on capture in war
-(status becomes `Occupied`).
-
-### Districts
-
-Districts are extensible via `DistrictDef`. `PlacedDistrict` holds a reference to its
-definition via trait object.
-
-```rust
-struct PlacedDistrict {
-    location:  HexCoord,
-    def:       Box<dyn DistrictDef>,
-    buildings: Vec<Box<dyn BuildingDef>>,
-    damage:    u8,  // 0–100; damaged districts produce no yields
-}
-
-struct AdjacencyContext<'a> {
-    location:           HexCoord,
-    adjacent_tiles:     &'a [&'a WorldTile],
-    adjacent_districts: &'a [&'a PlacedDistrict],
-    river_adjacent:     bool,
-}
-
-trait DistrictDef: Send + Sync {
-    fn id(&self)                          -> DistrictTypeId;
-    fn required_tech(&self)               -> Option<TechId>;
-    fn required_civic(&self)              -> Option<CivicId>;
-    fn production_cost(&self, pop: u32)   -> u32;  // scales with city size
-    fn adjacency_bonus(&self, ctx: &AdjacencyContext) -> YieldBundle;
-    fn modifiers(&self)                   -> Vec<Modifier>;
-    fn great_person_type(&self)           -> Option<GreatPersonType>;
-    fn max_buildings(&self)               -> u8;
-}
-
-trait BuildingDef: Send + Sync {
-    fn id(&self)                  -> BuildingId;
-    fn required_tech(&self)       -> Option<TechId>;
-    fn required_district(&self)   -> DistrictTypeId;
-    fn production_cost(&self)     -> u32;
-    fn maintenance_gold(&self)    -> i32;
-    fn yields(&self)              -> YieldBundle;
-    fn modifiers(&self)           -> Vec<Modifier>;
-    fn housing(&self)             -> f32;
-    fn amenities(&self)           -> i32;
-    fn great_person_points(&self) -> Vec<(GreatPersonType, i32)>;
+    pub id: CityId,
+    pub name: String,
+    pub owner: CivId,
+    pub founded_by: CivId,
+    pub coord: HexCoord,
+    pub kind: CityKind,
+    pub ownership: CityOwnership,
+    pub is_capital: bool,
+    pub population: u32,
+    pub food_stored: u32,
+    pub food_to_grow: u32,
+    pub production_stored: u32,
+    pub current_production: Option<ProductionItem>,
+    pub walls: WallLevel,
+    pub wall_hp: u32,
+    pub buildings: Vec<BuildingId>,
+    pub districts: Vec<DistrictTypeId>,
+    pub yields: YieldBundle,
 }
 ```
 
-Built-in districts: `Campus`, `CommercialHub`, `Harbor`, `Encampment`, `TheaterSquare`,
-`IndustrialZone`, `HolySite`, `Aqueduct`, `Entertainment`, `Spaceport`.
-
-### Governors
-
-Governors are extensible: mods define new governor types by implementing `GovernorDef`.
-The `GovernorTitle` enum is removed; governors are identified by `GovernorId` (a newtype
-over a string or integer key).
-
-```rust
-trait GovernorDef: Send + Sync {
-    fn id(&self)   -> GovernorId;
-    fn name(&self) -> &str;
-    fn available_promotions(&self) -> &[Box<dyn GovernorPromotion>];
-}
-
-trait GovernorPromotion: Send + Sync {
-    fn id(&self) -> PromotionId;
-    fn modifiers(&self, city: &City, state: &GameState) -> Vec<Modifier>;
-}
-
-struct Governor {
-    def:                Arc<dyn GovernorDef>,
-    active_promotions:  Vec<Box<dyn GovernorPromotion>>,
-    assigned_city:      Option<CityId>,
-    turns_to_establish: u8,  // > 0 = en route; promotions inactive until 0
-}
-```
-
-Built-in governors (`Magnus`, `Amani`, `Victor`, `Reyna`, `Liang`, `Pingala`, `Moksha`)
-each implement `GovernorDef`.
-
-### Leaders and Civilizations
-
-```rust
-struct Civilization {
-    id:              CivId,
-    name:            String,
-    leader:          Leader,
-    cities:          Vec<CityId>,
-    units:           Vec<UnitId>,
-    trade_routes:    Vec<TradeRouteId>,  // index into GameState; avoids duplication
-    tech_progress:   TechProgress,
-    civic_progress:  CivicProgress,
-    government:      GovernmentId,
-    active_policies: Vec<PolicyId>,
-    treasury:        i32,
-    envoys:          u32,
-    governors:       Vec<Governor>,
-    diplomacy:       HashMap<CivId, DiplomaticRelation>,
-    religion:        Option<ReligionId>,
-    great_person_points: HashMap<GreatPersonType, i32>,
-}
-
-struct Leader {
-    name:       String,
-    abilities:  Vec<Box<dyn LeaderAbility>>,
-    agenda:     Box<dyn Agenda>,
-    start_bias: StartBias,
-}
-
-trait LeaderAbility: Send + Sync {
-    fn modifiers(&self, state: &GameState) -> Vec<Modifier>;
-}
-
-/// Encodes what this leader's AI values — drives opinion scores and grievances.
-trait Agenda: Send + Sync {
-    fn evaluate(&self, other: CivId, state: &GameState) -> i32;
-    fn grievance_triggers(&self) -> &[Box<dyn GrievanceTrigger>];
-}
-
-struct StartBias {
-    terrain:             Vec<TerrainId>,
-    features:            Vec<FeatureId>,
-    resource_categories: Vec<ResourceCategory>,
-    coastal:             bool,
-    priority:            u8,  // 1–5; higher = stronger preference in start picker
-}
-```
-
-### Diplomacy
-
-Both `Agreement` and `GrievanceTrigger` are traits so mods can add new deal types and AI
-triggers without modifying core enums.
-
-```rust
-struct DiplomaticRelation {
-    status:            DiplomaticStatus,
-    opinion_score:     i32,
-    turns_at_war:      Option<u32>,
-    active_agreements: Vec<Box<dyn Agreement>>,
-}
-
-enum DiplomaticStatus { War, Neutral, Friendly, Denounced, Alliance }
-
-trait Agreement: Send + Sync {
-    fn id(&self) -> AgreementId;
-    fn duration_turns(&self) -> Option<u32>;  // None = permanent until cancelled
-    fn on_active_modifiers(&self, self_civ: CivId, other_civ: CivId) -> Vec<Modifier>;
-    fn on_break_opinion_penalty(&self) -> i32;
-}
-
-// Built-in: OpenBorders, ResearchAgreement, EmergencyAlliance, TradeAgreement
-
-trait GrievanceTrigger: Send + Sync {
-    fn id(&self) -> GrievanceId;
-    fn opinion_penalty(&self) -> i32;
-    fn check(&self, actor: CivId, victim: CivId, state: &GameState) -> bool;
-}
-
-// Built-in: SettledTooClose, ConvertedCities, AttackedCityState,
-//           BrokenAgreement, DeclaredWarOnAlly
-```
+`City` does not derive `Clone` (contains `CityKind` which holds `CityStateData`). Yields, housing, amenities are computed at query time by the rules engine — the `yields` field is a cache only.
 
 ### City States
 
 ```rust
-struct CityState {
-    id:            CivId,
-    state_type:    CityStateType,
-    location:      HexCoord,
-    suzerain:      Option<CivId>,
-    envoy_counts:  HashMap<CivId, u32>,
-    bonus:         Box<dyn CityStateBonus>,
+enum CityStateType { Cultural, Industrial, Militaristic, Religious, Scientific, Trade }
+
+trait CityStateBonus: Debug {
+    fn name(&self) -> &'static str;
+    fn description(&self) -> &'static str;
+    fn yields_for_suzerain(&self) -> YieldBundle;
 }
 
-enum CityStateType { Military, Cultural, Industrial, Economic, Religious, Scientific, Trade }
+struct CityStateData {
+    pub state_type: CityStateType,
+    pub suzerain: Option<CivId>,
+    pub influence: HashMap<CivId, i32>,
+}
+// is_suzerain(), get_influence(), recalculate_suzerain()
+```
 
-trait CityStateBonus: Send + Sync {
-    fn suzerain_modifiers(&self, civ: &Civilization) -> Vec<Modifier>;
-    fn envoy_thresholds(&self) -> &[(u32, Vec<Modifier>)];
+City states are stored as `City` with `kind = CityKind::CityState(_)`.
+
+### Districts and Buildings
+
+```rust
+trait DistrictDef: Debug {
+    fn id(&self) -> DistrictTypeId;
+    fn name(&self) -> &'static str;
+    fn base_cost(&self) -> u32;
+    fn max_per_city(&self) -> u32 { 1 }
+}
+
+trait BuildingDef: Debug {
+    fn id(&self) -> BuildingId;
+    fn name(&self) -> &'static str;
+    fn cost(&self) -> u32;
+    fn maintenance(&self) -> u32;
+    fn yields(&self) -> YieldBundle;
+    fn requires_district(&self) -> Option<DistrictTypeId>;
+}
+
+struct AdjacencyContext {
+    pub adjacent_districts: Vec<DistrictTypeId>,
+    pub adjacent_natural_wonders: Vec<NaturalWonderId>,
+    pub adjacent_mountains: u32,
+    pub adjacent_rivers: u32,
+    pub adjacent_rainforest: u32,
+}
+
+struct PlacedDistrict {
+    pub district_type: DistrictTypeId,
+    pub city_id: CityId,
+    pub coord: HexCoord,
+    pub buildings: Vec<BuildingId>,
+    pub is_pillaged: bool,
 }
 ```
+
+### Civilizations and Leaders
+
+```rust
+struct Civilization {
+    pub id: CivId,
+    pub name: &'static str,
+    pub adjective: &'static str,
+    pub leader: Leader,
+    pub cities: Vec<CityId>,
+    pub capital: Option<CityId>,
+    pub current_era: AgeType,
+    pub researched_techs: Vec<TechId>,
+    pub tech_in_progress: Option<TechProgress>,
+    pub completed_civics: Vec<CivicId>,
+    pub civic_in_progress: Option<CivicProgress>,
+    pub current_government: Option<GovernmentId>,
+    pub active_policies: Vec<PolicyId>,
+    pub gold: i32,
+    pub treasury_per_turn: i32,
+    pub yields: YieldBundle,
+    pub strategic_resources: HashMap<ResourceId, u32>,
+}
+
+struct Leader {
+    pub name: &'static str,
+    pub civ_id: CivId,
+    pub abilities: Vec<Box<dyn LeaderAbility>>,
+    pub agenda: Box<dyn Agenda>,
+}
+
+trait LeaderAbility: Debug {
+    fn name(&self) -> &'static str;
+    fn description(&self) -> &'static str;
+    fn modifiers(&self) -> Vec<Modifier>;
+}
+
+trait Agenda: Debug {
+    fn name(&self) -> &'static str;
+    fn description(&self) -> &'static str;
+    fn attitude(&self, toward: CivId) -> i32;
+}
+
+trait StartBias: Debug {
+    fn terrain_preference(&self) -> Option<TerrainId>;
+    fn feature_preference(&self) -> Option<FeatureId>;
+    fn resource_preference(&self) -> Option<ResourceCategory>;
+}
+
+struct TechProgress  { pub tech_id: TechId,  pub progress: u32, pub boosted: bool }
+struct CivicProgress { pub civic_id: CivicId, pub progress: u32, pub inspired: bool }
+```
+
+`Civilization` does not derive `Clone` (contains `Leader` with `Box<dyn>` fields).
+
+### Diplomacy
+
+```rust
+enum DiplomaticStatus { War, Denounced, Neutral, Friendly, Alliance }
+
+struct DiplomaticRelation {
+    pub civ_a: CivId,
+    pub civ_b: CivId,
+    pub status: DiplomaticStatus,
+    pub grievances_a_against_b: Vec<GrievanceRecord>,
+    pub grievances_b_against_a: Vec<GrievanceRecord>,
+    pub active_agreements: Vec<AgreementId>,
+    pub turns_at_war: u32,
+}
+// is_at_war(), add_grievance(), opinion_score_a_toward_b(), opinion_score_b_toward_a()
+
+trait Agreement: Debug {
+    fn id(&self) -> AgreementId;
+    fn name(&self) -> &'static str;
+    fn duration_turns(&self) -> Option<u32>;
+    fn is_expired(&self, current_turn: u32, signed_turn: u32) -> bool;
+}
+
+enum GrievanceVisibility { Public, RequiresSpy, RequiresAlliance }
+
+struct GrievanceRecord {
+    pub grievance_id: GrievanceId,
+    pub description: &'static str,
+    pub amount: i32,
+    pub visibility: GrievanceVisibility,
+    pub recorded_turn: u32,
+}
+
+trait GrievanceTrigger: Debug {
+    fn description(&self) -> &'static str;
+    fn grievance_amount(&self) -> i32;
+    fn visibility(&self) -> GrievanceVisibility { GrievanceVisibility::Public }
+}
+// Built-in: DeclaredWarGrievance (+30), PillageGrievance (+5), CapturedCityGrievance (+20)
+```
+
+### Governors
+
+```rust
+trait GovernorDef: Debug {
+    fn id(&self) -> GovernorId;
+    fn name(&self) -> &'static str;
+    fn title(&self) -> &'static str;
+    fn base_ability_description(&self) -> &'static str;
+}
+
+trait GovernorPromotion: Debug {
+    fn id(&self) -> PromotionId;
+    fn name(&self) -> &'static str;
+    fn description(&self) -> &'static str;
+    fn requires(&self) -> Vec<PromotionId>;
+}
+
+struct Governor {
+    pub id: GovernorId,
+    pub def_name: &'static str,
+    pub owner: CivId,
+    pub assigned_city: Option<CityId>,
+    pub promotions: Vec<PromotionId>,
+    pub turns_to_establish: u32,
+}
+// is_established() -> turns_to_establish == 0
+```
+
+Built-in governors defined via macro: `Liang`, `Magnus`, `Amani`, `Victor`, `Pingala`, `Reyna`, `Ibrahim`.
 
 ### Religion
 
 ```rust
-struct Religion {
-    id:               ReligionId,
-    founder:          CivId,
-    pantheon:         Box<dyn Belief>,
-    beliefs:          Vec<Box<dyn Belief>>,
-    holy_city:        CityId,
-    cities_following: u32,
-}
-
-struct BeliefContext<'a> {
-    civ:  &'a Civilization,
-    city: Option<&'a City>,
-    unit: Option<&'a dyn Unit>,
-}
-
-trait Belief: Send + Sync {
+trait Belief: Debug {
     fn id(&self) -> BeliefId;
-    fn modifiers(&self, ctx: &BeliefContext) -> Vec<Modifier>;
+    fn name(&self) -> &'static str;
+    fn description(&self) -> &'static str;
 }
-```
 
-### Trade Routes
+struct BeliefContext { pub followers: u32, pub holy_cities: u32 }
 
-> **Design note:** `TradeRoute`s and `Unit`s are indexed globally in `GameState`
-> (not exclusively per-civilization) to simplify queries that cross civ boundaries —
-> e.g. pathfinding around foreign units, combat resolution, trade yield calculation from
-> a destination city belonging to another civ. Each `Civilization` holds `Vec<UnitId>`
-> and `Vec<TradeRouteId>` as lightweight index references into the global maps, so both
-> per-civ and global lookups remain O(1).
-
-```rust
-struct TradeRoute {
-    id:              TradeRouteId,
-    owner:           CivId,
-    origin:          CityId,
-    destination:     CityId,
-    path:            Vec<HexCoord>,  // used for road creation and trading-post checks
-    remaining_turns: u32,
-    trader_unit:     UnitId,
+struct Religion {
+    pub id: ReligionId,
+    pub name: String,
+    pub founded_by: CivId,
+    pub holy_city: CityId,
+    pub beliefs: Vec<BeliefId>,
+    pub followers: HashMap<CityId, u32>,
 }
+// total_followers()
 ```
-
-Yields computed each turn via `RulesEngine::query_trade_yields()`.
 
 ### Great People
 
 ```rust
+trait GreatPersonAbility: Debug {
+    fn name(&self) -> &'static str;
+    fn description(&self) -> &'static str;
+    fn uses(&self) -> Option<u32>;  // None = unlimited / passive
+}
+
 struct GreatPerson {
-    id:          GreatPersonId,
-    person_type: GreatPersonType,
-    era:         EraId,
-    modifiers:   Vec<Modifier>,                     // passive if retired to a tile
-    abilities:   Vec<Box<dyn GreatPersonAbility>>,
+    pub id: GreatPersonId,
+    pub name: &'static str,
+    pub person_type: GreatPersonType,
+    pub era: &'static str,
+    pub owner: Option<CivId>,
+    pub coord: Option<HexCoord>,
+    pub ability_names: Vec<&'static str>,
+    pub is_retired: bool,
+}
+```
+
+### Eras and Trade Routes
+
+```rust
+trait EraTrigger: Debug {
+    fn description(&self) -> &'static str;
+    fn is_triggered(&self) -> bool;
 }
 
-enum GreatPersonType {
-    General, Admiral, Scientist, Engineer, Merchant,
-    Prophet, Artist, Musician, Writer,
+struct Era {
+    pub id: EraId,
+    pub name: &'static str,
+    pub age: AgeType,
+    pub tech_count: u32,
+    pub civic_count: u32,
 }
 
-trait GreatPersonAbility: Send + Sync {
-    fn label(&self) -> &str;
-    fn activate(&self, person: &GreatPerson, state: &mut GameState);
+struct TradeRoute {
+    pub id: TradeRouteId,
+    pub origin: CityId,
+    pub destination: CityId,
+    pub owner: CivId,
+    pub origin_yields: YieldBundle,
+    pub destination_yields: YieldBundle,
+    pub turns_remaining: Option<u32>,
 }
 ```
 
 ---
 
-## 5. libgame — Game Orchestration
+## 6. libciv — game/
+
+### WorldBoard
+
+`WorldBoard` implements `HexBoard<Tile=WorldTile, Edge=WorldEdge>`. Tiles are stored in row-major order (`index = r * width + q`) in a flat `Vec<WorldTile>`. Edges are stored in a `HashMap<(HexCoord, HexDir), WorldEdge>` using canonical forward-half keys only.
+
+Default topology is `CylindricalEW` (east-west wrapping). The `coord_to_index` and `normalize_coord` methods apply `q.rem_euclid(width)` for cylindrical/toroidal topologies.
+
+```rust
+impl WorldBoard {
+    fn new(width: u32, height: u32) -> Self;
+    fn set_edge(&mut self, coord: HexCoord, dir: HexDir, edge: WorldEdge);
+    fn find_path(&self, start: HexCoord, goal: HexCoord, movement_budget: u32) -> Option<Vec<HexCoord>>;
+    fn has_los(&self, from: HexCoord, to: HexCoord) -> bool;
+}
+```
+
+Pathfinding uses Dijkstra with a min-heap. Movement cost = tile cost + edge crossing cost; impassable tiles/edges are skipped. Road cost override is not yet applied (Phase 2).
+
+LOS uses hex ray interpolation (floating-point lerp, then `hex_round`). A tile blocks LOS if its elevation is strictly above `min(from_elev, to_elev)`. The `Elevation::High` check is currently incomplete (see Phase 2).
 
 ### GameState
 
-Single top-level struct passed (by reference) to all systems.
-
 ```rust
 struct GameState {
-    board:              WorldBoard,    // impl HexBoard<WorldTile, WorldEdge>
-    civilizations:      HashMap<CivId,        Civilization>,
-    city_states:        HashMap<CivId,        CityState>,
-    cities:             HashMap<CityId,       City>,
-    units:              HashMap<UnitId,       Box<dyn Unit>>,
-    trade_routes:       HashMap<TradeRouteId, TradeRoute>,
-    great_people:       Vec<GreatPerson>,
-    religions:          HashMap<ReligionId,   Religion>,
-    tech_tree:          TechTree,
-    civic_tree:         CivicTree,
-    governments:        HashMap<GovernmentId, Government>,
-    policies:           HashMap<PolicyId,     Policy>,
-    eras:               Vec<Era>,              // ordered; user-defined
-    victory_conditions: Vec<Box<dyn VictoryCondition>>,
-    rules:              Box<dyn RulesEngine>,
-    turn:               u32,
-    rng_seed:           u64,
+    pub turn: u32,
+    pub seed: u64,
+    pub board: WorldBoard,
+    pub id_gen: IdGenerator,
+    pub civilizations: Vec<Civilization>,
+    pub cities: Vec<City>,
+    pub diplomatic_relations: Vec<DiplomaticRelation>,
+    pub religions: Vec<Religion>,
+    pub trade_routes: Vec<TradeRoute>,
+    pub great_people: Vec<GreatPerson>,
+    pub tech_tree: TechTree,
+    pub civic_tree: CivicTree,
+    pub governments: Vec<Government>,
+    pub policies: Vec<Policy>,
+    pub current_era: EraId,
 }
+// civ(CivId), city(CityId), city_state_by_civ(CivId) helpers
+```
+
+Collections are `Vec` rather than `HashMap` at this stage; lookups are linear scans. Phase 2 may introduce indexed maps if profiling warrants it.
+
+### IdGenerator
+
+Deterministic ULID generation from a seeded `SmallRng`. Each call to `next_ulid()` advances a monotonically increasing fake timestamp and draws random bits from the RNG. Same seed always produces the same ID sequence.
+
+### Rules Engine
+
+```rust
+trait RulesEngine: Debug {
+    fn move_unit(&self, state: &GameState, unit: UnitId, to: HexCoord)
+        -> Result<GameStateDiff, RulesError>;
+    fn compute_yields(&self, state: &GameState, civ: CivId) -> YieldBundle;
+    fn advance_turn(&self, state: &mut GameState) -> GameStateDiff;
+}
+
+enum RulesError {
+    UnitNotFound, DestinationImpassable, InsufficientMovement, InvalidCoord, NotYourTurn,
+}
+
+struct DefaultRulesEngine;  // all methods are todo!() stubs
 ```
 
 ### Semantic Diffs
 
-To support replay, undo, AI planning, and Lua event hooks, the game engine produces a
-`GameStateDiff` after each logical operation. This is a structured record of what changed,
-not a raw binary delta.
-
 ```rust
-/// A single atomic change to GameState
 enum StateDelta {
-    CityOwnerChanged  { city: CityId, from: CivId, to: CivId },
+    TurnAdvanced      { from: u32, to: u32 },
     UnitMoved         { unit: UnitId, from: HexCoord, to: HexCoord },
+    UnitCreated       { unit: UnitId, coord: HexCoord, owner: CivId },
     UnitDestroyed     { unit: UnitId },
-    PopulationChanged { city: CityId, delta: i32 },
-    TileImproved      { coord: HexCoord, improvement: ImprovementId },
-    ResearchCompleted { civ: CivId, tech: TechId },
-    CivicCompleted    { civ: CivId, civic: CivicId },
-    DiplomacyChanged  { a: CivId, b: CivId, status: DiplomaticStatus },
-    ReligionFounded   { religion: ReligionId, founder: CivId },
-    VictoryAchieved   { civ: CivId, victory: VictoryId },
-    // ... extensible
+    CityFounded       { city: CityId, coord: HexCoord, owner: CivId },
+    CityCaptured      { city: CityId, new_owner: CivId, old_owner: CivId },
+    GoldChanged       { civ: CivId, delta: i32 },
+    TechResearched    { civ: CivId, tech: &'static str },
+    CivicCompleted    { civ: CivId, civic: &'static str },
+    DiplomacyChanged  { civ_a: CivId, civ_b: CivId, new_status: String },
 }
 
-/// Ordered list of deltas produced by one turn or one action.
-struct GameStateDiff { deltas: Vec<StateDelta> }
+struct GameStateDiff { pub deltas: Vec<StateDelta> }
+// push(), is_empty(), len()
 ```
 
-All turn-processing functions return `GameStateDiff`. The Lua scripting layer receives diffs
-as events, enabling reactive mod logic.
-
-### Era and Age
-
-```rust
-enum AgeType { Normal, DarkAge, HeroicAge, GoldenAge }
-```
-
-The active `Era` per civilization is determined by evaluating `Era::trigger` each turn.
-
-### Turn Structure
-
-```
-1. Start of turn
-   - Apply loyalty pressure from adjacent cities/governors
-   - Resolve city flips (loyalty ≤ 0)
-   - Advance disasters (floods, volcanic eruptions)
-
-2. Per-civilization player actions
-   - Move units / conduct combat
-   - City production choices
-   - Research advance
-   - Policy / government changes
-   - Diplomacy and envoy placement
-   - Trade route assignment
-
-3. End of turn
-   - Collect yields (food, gold, science, culture, faith)
-   - City food consumption and population growth/decline
-   - Production queue advance
-   - Great person point accumulation
-   - Eureka/inspiration checks
-   - Victory condition evaluation
-```
-
-### Production Items
-
-```rust
-enum ProductionItem {
-    Unit(UnitTypeId),
-    District(DistrictTypeId),
-    Building(BuildingId),
-    Wonder(WonderId),
-    Project(ProjectId),
-}
-
-trait Project: Send + Sync {
-    fn id(&self) -> ProjectId;
-    fn production_cost(&self) -> u32;
-    fn on_complete(&self, city: CityId, state: &mut GameState) -> GameStateDiff;
-}
-```
-
-### Lua Scripting Interface
-
-A typed Lua API is developed alongside gameplay. The engine exposes:
-
-- **Events** — Lua callbacks fired when `StateDelta`s occur (e.g. `on_city_captured`)
-- **Queries** — Lua can call `query_city_yield`, `query_unit_combat`, etc.
-- **Commands** — Lua can issue validated actions (move unit, build improvement, etc.)
-- **Definitions** — Lua can register new `TerrainDef`, `FeatureDef`, `TileImprovement`,
-  `DistrictDef`, `GovernorDef`, `Agreement`, etc. via the trait system
-
-The Lua API surface is documented in a separate `LUA_API.md` and kept in sync with the
-trait interfaces. Type safety at the Rust/Lua boundary is enforced via a thin binding layer.
-
-### CLI Interface
-
-```
-civsim generate-map --topology rectangle --width 80 --height 52 --wrap-x
-civsim spawn-civ --leader "Victoria" --start q,r,s
-civsim spawn-unit --civ 0 --type Warrior --at q,r,s
-civsim run-turn
-civsim query-yields --city "London"
-civsim query-combat --unit 7
-civsim query-loyalty --city "Paris"
-civsim print-diplomacy
-```
+All rules operations return `GameStateDiff` to support replay and RL observation.
 
 ---
 
-## 6. Implementation Phases
+## Phase 2 — Failing Tests to Fix
 
-Development uses **test-driven development**: tests are written first and initially fail,
-tracking progress toward a concrete implementation. Commits are atomic and tagged:
-`infra`, `impl`, `tests`, `fix`, `docs`.
+The following tests are `#[ignore]`d and define the Phase 2 acceptance criteria:
 
-The Lua scripting API is developed alongside gameplay (Phase 3) — not bolted on at the end.
+### 1. Modifier stacking — `rules/modifier.rs`
 
-Algorithms (Dijkstra, LOS) are implemented simply first; performance is not a priority
-until correctness is confirmed.
+**Test:** `test_modifier_stacking_additive`
+Fix `resolve_modifiers()` to group modifiers by `(effect discriminant, StackingRule)`. For `Additive`, sum all `YieldFlat` amounts for the same `YieldType` and return a single `EffectType` with the total. Input: two `YieldFlat(Production, 2)` and `YieldFlat(Production, 3)`, both `Additive`. Expected: one effect with value 5.
 
-### Phase 1 — Scaffolding
+**Test:** `test_modifier_stacking_max`
+For `Max`, return only the largest value per `(YieldType, effect kind)` group. Input: `YieldFlat(Production, 2)`, `YieldFlat(Production, 5)`, `YieldFlat(Production, 3)`, all `Max`. Expected: one effect with value 5.
 
-- `libhexgrid`: `HexCoord` (with invariant + arithmetic), `HexBoard` trait, `HexDir`,
-  `MovementCost`, `Elevation`, `Vision`, `MovementProfile`
-- `libworld`: `WorldTile`, `WorldEdge`, `TerrainDef`/`FeatureDef`/`EdgeFeatureDef` traits,
-  `Resource`/`TileImprovement`/`RoadDef` traits (stubs)
-- `librules`: `YieldBundle`, `Modifier`, `EffectType`, `TargetSelector`,
-  `RulesEngine` trait (stub)
-- `libcivcore`: all structs and traits declared with stub impls; `Era`, `Unit`, `City`,
-  `Civilization`, `Governor`, `DiplomaticRelation`, etc.
-- `libgame`: `GameState`, `GameStateDiff`, `StateDelta`, all ID newtypes
+**Test:** `test_modifier_stacking_replace`
+For `Replace`, return only the last modifier in the slice. Input: `YieldFlat(Production, 2)` then `YieldFlat(Production, 7)`, both `Replace`. Expected: exactly one effect, value 7.
 
-**Goal:** project compiles with zero warnings. Failing test suite written covering all
-Phase 2 correctness criteria.
+### 4. LOS blocked by high elevation — `game/board.rs`
 
-### Phase 2 — Geometry and Core Rules
+**Test:** `test_los_blocked_by_high`
+`has_los(from, to)` must return `false` when an intermediate tile has `Elevation::High` and both endpoints are at lower elevation. Currently the stub sets the blocker tile to `Grassland` (flat) rather than a mountain, and the LOS ray check using `elevation() > min_elev` must correctly block when a tile is `Elevation::High`. Fix the test setup to assign a mountain tile at the midpoint, and verify the ray check blocks it.
 
-Failing tests from Phase 1 pass:
+### 5. Dijkstra prefers roads — `game/board.rs`
 
-- Hex distance and neighbor correctness (all 6 directions, wraparound)
-- Toroidal coordinate normalization (rectangle with `wrap_x`)
-- Pathfinding (Dijkstra) with terrain costs and edge crossing costs
-- Line-of-sight through `Elevation::High` tiles
-- Yield stacking: flat then percent, multiple sources, `StackingRule` variants
-- District adjacency bonus calculation
-- Modifier collection and `StackingRule` application
-- Determinism: same `rng_seed` → identical map generation
+**Test:** `test_dijkstra_prefers_roads`
+`find_path()` must apply `road.movement_cost()` as an override when a `WorldTile` has a `road: Some(...)`. A path through road tiles should be preferred over an equivalent path through unroaded tiles. Implement road cost substitution in the Dijkstra loop: when `tile.road.is_some()`, use `road.as_def().movement_cost()` instead of `tile.terrain.as_def().movement_cost()`.
 
-### Phase 3 — Gameplay (in order, with Lua API)
+### Stubbed rules engine methods
 
-1. Tile yield calculation and worked tile assignment
-2. City food accumulation and population growth
+- `DefaultRulesEngine::move_unit()` — validate that the unit exists, find a path to `to` within `unit.movement_left` budget, check destination is not impassable, update `unit.coord` and deduct movement, return `StateDelta::UnitMoved`.
+- `DefaultRulesEngine::compute_yields()` — sum `tile.total_yields()` for all tiles owned by the civ; add building yields from city buildings; apply resolved `Modifier`s.
+- `DefaultRulesEngine::advance_turn()` — accumulate food/production/science/gold per city, trigger growth when `food_stored >= food_to_grow`, complete production when `production_stored >= item_cost`, advance research progress.
+
+---
+
+## Phase 3 — Gameplay Systems (ordered)
+
+1. Tile yield calculation and worked tile assignment per city
+2. City food accumulation and population growth/decline
 3. City production queue and build completion
 4. Unit movement validation and combat resolution
-5. District placement, adjacency bonuses, building construction
-6. Tech and civic research with eureka triggers; tech `Modifier`s applied
-7. Trade route creation, path resolution, yield generation
-8. Policy cards and government switching
-9. Diplomacy state machine, opinion modifiers, war declarations
-10. Religion founding, missionary spread, belief modifiers
+5. District placement with adjacency bonus calculation
+6. Tech and civic research with eureka/inspiration trigger evaluation
+7. Trade route creation, path resolution, yield delivery
+8. Policy card slot enforcement and government switching
+9. Diplomacy state machine: opinion modifiers, grievance decay, war/peace transitions
+10. Religion founding, missionary spread, majority religion per city
 11. Great person point accumulation and recruitment
-12. Governor assignment and promotion effects
-13. Era transitions via `EraTrigger`
+12. Governor assignment, establishment timer, promotion effects
+13. Era transition evaluation via `EraTrigger`
 14. Victory condition evaluation
+
+---
+
+## Conventions
+
+- VCS: jj (Jujutsu)
+- Commit style: conventional commits (`infra:`, `impl:`, `tests:`, `fix:`, `docs:`)
+- Movement costs scaled by 100 (integer math throughout): `ONE=100`, `TWO=200`, `THREE=300`
+- All built-in content names are `&'static str`; no heap allocation for known-at-compile-time strings
+- `Box<dyn Trait>` fields prevent `Clone`; document this on affected structs
