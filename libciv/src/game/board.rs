@@ -127,9 +127,14 @@ impl WorldBoard {
                 let Some(neighbor) = self.normalize_coord(neighbor_raw) else { continue };
                 let Some(tile) = self.tile(neighbor) else { continue };
 
-                let tile_cost = match tile.movement_cost() {
+                // Roads override terrain movement cost when present.
+                let base_cost = match tile.road.as_ref() {
+                    Some(road) => road.as_def().movement_cost(),
+                    None       => tile.movement_cost(),
+                };
+                let tile_cost = match base_cost {
                     MovementCost::Impassable => continue,
-                    MovementCost::Cost(c) => c,
+                    MovementCost::Cost(c)    => c,
                 };
 
                 let edge_cost = self
@@ -154,7 +159,8 @@ impl WorldBoard {
             }
         }
 
-        if !dist.contains_key(&goal) {
+        let goal_cost = dist.get(&goal).copied().unwrap_or(u32::MAX);
+        if goal_cost > movement_budget {
             return None;
         }
 
@@ -334,8 +340,38 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Phase 2: implement road movement cost reduction"]
     fn test_dijkstra_prefers_roads() {
-        todo!("set up road tiles, verify Dijkstra chooses road path")
+        use crate::world::road::{AncientRoad, BuiltinRoad};
+
+        // A 5×3 board. All tiles start as Grassland (movement cost ONE = 100).
+        // start=(0,1), goal=(2,1). Direct path: (0,1)→(1,1)→(2,1).
+        //
+        // Without road: cost = 100 (enter 1,1) + 100 (enter 2,1) = 200.
+        // With AncientRoad on (1,1): cost = 50 + 100 = 150.
+        //
+        // Budget set to 160: enough with the road (150 ≤ 160),
+        // not enough without it (200 > 160). If road cost is not applied,
+        // find_path returns None; if it is applied, the path is found.
+        let mut board = WorldBoard::new(5, 3);
+        let roaded = HexCoord::from_qr(1, 1);
+        if let Some(t) = board.tile_mut(roaded) {
+            t.road = Some(BuiltinRoad::Ancient(AncientRoad));
+        }
+
+        let start = HexCoord::from_qr(0, 1);
+        let goal  = HexCoord::from_qr(2, 1);
+
+        let path = board.find_path(start, goal, 160);
+        assert!(path.is_some(), "road should make the path reachable within budget 160");
+
+        let path = path.unwrap();
+        assert!(path.contains(&roaded), "path should pass through the roaded tile");
+        assert_eq!(*path.last().unwrap(), goal);
+
+        // Confirm that without the road the same budget is insufficient.
+        let board_no_road = WorldBoard::new(5, 3);
+        // (no road set)
+        let path_no_road = board_no_road.find_path(start, goal, 160);
+        assert!(path_no_road.is_none(), "without road the budget of 160 should be insufficient");
     }
 }
