@@ -70,15 +70,72 @@ impl Modifier {
     }
 }
 
-/// Resolve a list of modifiers with the same effect type and stacking rule.
+/// Resolve a list of modifiers into a deduplicated set of effects by applying stacking rules.
+///
+/// Modifiers are grouped by `(EffectType discriminant, YieldType if applicable, StackingRule)`.
+/// Within each group:
+/// - `Additive`  → sum all values; emit one effect with the total.
+/// - `Max`       → keep the largest value; emit one effect.
+/// - `Replace`   → keep the last value in slice order; emit one effect.
 pub fn resolve_modifiers(modifiers: &[Modifier]) -> Vec<EffectType> {
     if modifiers.is_empty() {
         return vec![];
     }
 
-    // Group by (effect discriminant, stacking rule) — simplified: apply stacking per modifier
-    // For Phase 1, just return all effects; Phase 2 will implement proper resolution.
-    modifiers.iter().map(|m| m.effect).collect()
+    use std::collections::HashMap;
+
+    // Accumulators keyed by (YieldType, StackingRule); order preserved via insertion order vec.
+    let mut yield_flat:  HashMap<(YieldType, StackingRule), Vec<i32>> = HashMap::new();
+    let mut yield_pct:   HashMap<(YieldType, StackingRule), Vec<i32>> = HashMap::new();
+    let mut combat_flat: HashMap<StackingRule, Vec<i32>>              = HashMap::new();
+    let mut combat_pct:  HashMap<StackingRule, Vec<i32>>              = HashMap::new();
+    let mut movement:    HashMap<StackingRule, Vec<u32>>              = HashMap::new();
+
+    for m in modifiers {
+        match m.effect {
+            EffectType::YieldFlat(yt, v)          => yield_flat.entry((yt, m.stacking)).or_default().push(v),
+            EffectType::YieldPercent(yt, v)       => yield_pct.entry((yt, m.stacking)).or_default().push(v),
+            EffectType::CombatStrengthFlat(v)     => combat_flat.entry(m.stacking).or_default().push(v),
+            EffectType::CombatStrengthPercent(v)  => combat_pct.entry(m.stacking).or_default().push(v),
+            EffectType::MovementBonus(v)          => movement.entry(m.stacking).or_default().push(v),
+        }
+    }
+
+    let mut out = Vec::new();
+
+    for ((yt, rule), vals) in &yield_flat {
+        out.push(EffectType::YieldFlat(*yt, reduce_i32(vals, *rule)));
+    }
+    for ((yt, rule), vals) in &yield_pct {
+        out.push(EffectType::YieldPercent(*yt, reduce_i32(vals, *rule)));
+    }
+    for (rule, vals) in &combat_flat {
+        out.push(EffectType::CombatStrengthFlat(reduce_i32(vals, *rule)));
+    }
+    for (rule, vals) in &combat_pct {
+        out.push(EffectType::CombatStrengthPercent(reduce_i32(vals, *rule)));
+    }
+    for (rule, vals) in &movement {
+        out.push(EffectType::MovementBonus(reduce_u32(vals, *rule)));
+    }
+
+    out
+}
+
+fn reduce_i32(vals: &[i32], rule: StackingRule) -> i32 {
+    match rule {
+        StackingRule::Additive => vals.iter().sum(),
+        StackingRule::Max      => *vals.iter().max().unwrap_or(&0),
+        StackingRule::Replace  => *vals.last().unwrap_or(&0),
+    }
+}
+
+fn reduce_u32(vals: &[u32], rule: StackingRule) -> u32 {
+    match rule {
+        StackingRule::Additive => vals.iter().sum(),
+        StackingRule::Max      => *vals.iter().max().unwrap_or(&0),
+        StackingRule::Replace  => *vals.last().unwrap_or(&0),
+    }
 }
 
 #[cfg(test)]
@@ -95,7 +152,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Phase 2: implement modifier resolution"]
     fn test_modifier_stacking_additive() {
         let mods = vec![
             make_yield_modifier(2, StackingRule::Additive),
@@ -116,7 +172,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Phase 2: implement modifier resolution"]
     fn test_modifier_stacking_max() {
         let mods = vec![
             make_yield_modifier(2, StackingRule::Max),
@@ -139,7 +194,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Phase 2: implement modifier resolution"]
     fn test_modifier_stacking_replace() {
         let mods = vec![
             make_yield_modifier(2, StackingRule::Replace),

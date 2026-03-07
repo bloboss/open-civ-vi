@@ -4,7 +4,7 @@
 
 1. **Invalid states unrepresentable** — encode constraints in types, not runtime checks
 2. **Extensibility via traits** — game content implements traits; built-in variants are enums wrapping concrete structs, not special-cased
-3. **Separated concerns** — geometry knows nothing of game concepts; world state knows nothing of rules
+3. **Separated concerns** — geometry knows nothing of game concepts; world state knows nothing of geometry
 4. **Single GameState** — one struct passed by reference to all systems; no global state
 5. **Typed modifier pipeline** — every yield change is a `Modifier`; no opaque callbacks
 
@@ -60,7 +60,10 @@ enum MovementCost {
 
 enum Elevation {
     Low,        // below sea level; never blocks LOS
-    Level(u8),  // FLAT=Level(0), HILLS=Level(1)
+    Level(u8),  // Initial Sea Level: Level(0),
+                // Coastal, non-cliff tiles: Level(1)
+                // ... a gradient of floodable tiles
+                // ... a gradient of non-floodable tiles
     High,       // impassable mountain peak; always blocks LOS
 }
 // Implements Ord: Low < Level(0) < Level(1) < ... < High

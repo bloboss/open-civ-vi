@@ -45,7 +45,7 @@ elevation. The fix:
    are permitted).
 3. The test (`test_los_blocked_by_high`) needs the midpoint tile set to a terrain
    with `elevation() = Elevation::High` (mountain). Update the test setup: assign a
-   `Snow` tile (or any terrain returning `Elevation::High`) at the blocking coord.
+   `Mountain` tile (or any terrain returning `Elevation::High`) at the blocking coord.
 
 Remove `#[ignore]` from `test_los_blocked_by_high`. Must pass.
 
@@ -59,6 +59,8 @@ In `find_path()`, the tile movement cost is currently read as
 `tile.terrain.movement_cost()`. Change the lookup to:
 
 ```rust
+// Can this use unwrap_or_else?
+// Prefer match statements
 let tile_cost = if tile.road.is_some() {
     tile.road.as_ref().unwrap().movement_cost()
 } else {
@@ -93,8 +95,15 @@ Replace the `todo!()` in `move_unit()`:
 5. Update `unit.coord` to `to`.
 6. Return `Ok(GameStateDiff)` containing `StateDelta::UnitMoved { unit, from, to }`.
 
-Write at least one integration test: spawn a `BasicUnit`, call `move_unit`, assert
-the diff contains the expected `StateDelta` and that the unit's position has changed.
+Write at least three integration tests:
+1. spawn a `BasicUnit`, call `move_unit`, assert the diff contains the expected 
+   `StateDelta` and that the unit's position has changed.
+2. spawn a `BasicUnit`, call `move_unit` to an unreachable position, assert a
+   failure and that the unit has not moved and that the game state is unaffected
+3. spawn a `BasicUnit`, call `move_unit` to a tile outside its movement range,
+   assert that the unit has moved the maximum distance along the path, that the
+   call to `move_unit` provided an `Err(RulesError::InsufficientMovement` and
+   that the game state reflects the unit's movement correctly
 
 ---
 
@@ -143,6 +152,27 @@ Return the accumulated `GameStateDiff`.
 
 Write at least one test: one city on Grassland with a known food yield; after N
 calls to `advance_turn`, assert population has grown.
+
+### 7. `impl: simple visualization tool`
+
+**File:** `libciv/src/visualize.rs`
+
+Implement a minimal, terminal based visualization tool so that a human might be
+able to see and debug erroneous states.
+
+1. **Basic Visualization** - build a Visualize trait tool that creates a square
+   (nxn) segment of ascii characters that reflect the given hex state and a
+   trait method that gives the value of n
+2. **Storing Multiple Hexes** - build a `struct Visualizer<T: visualize>` with
+   a doubly nested array of T. There should be one method in its impl that
+   creates a buffer of the representation.
+2. **Alignment** - printing multiple rows of VisualizeHex should offset every
+   second row by n ascii characters. That is to say, if the Visualizer storage
+   array has a high dimension, then it will print the hexes offset by n
+3. **Adapting to HexTile** - impl Visualize for HexTile, this should also gather
+   any game elements on the hex
+
+Provide simple visualization tests. This is a utility for my convenience.
 
 ---
 
