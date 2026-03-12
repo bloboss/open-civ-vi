@@ -8,10 +8,10 @@ pub mod tile;
 pub mod wonder;
 
 pub use edge::{BuiltinEdgeFeature, EdgeFeatureDef, WorldEdge};
-pub use feature::{BuiltinFeature, FeatureDef};
+pub use feature::BuiltinFeature;
 pub use improvement::{BuiltinImprovement, TileImprovement};
 pub use resource::{BuiltinResource, Resource};
 pub use road::{BuiltinRoad, RoadDef};
-pub use terrain::{BuiltinTerrain, TerrainDef};
+pub use terrain::BuiltinTerrain;
 pub use tile::WorldTile;
-pub use wonder::NaturalWonder;
+pub use wonder::{BuiltinNaturalWonder, NaturalWonder};

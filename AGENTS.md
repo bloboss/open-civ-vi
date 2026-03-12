@@ -19,22 +19,22 @@ Store memories in a local memories directory, ./memory
 The workspace has 4 crates (3 libraries + 1 binary). Dependency order:
 
 ```
-libcommon  ← base types: IDs (ULID newtypes), YieldBundle, shared enums
-libhexgrid ← pure geometry: HexCoord (cube coords), HexBoard/HexTile/HexEdge traits, pathfinding
-libciv     ← all game state and rules: world map, civilizations, game orchestration
-civsim     ← CLI binary: `new` and `run` subcommands via clap
+libhexgrid  ← pure geometry: HexCoord (cube coords), HexBoard/HexTile/HexEdge traits, pathfinding
+libciv      ← all game state and rules: IDs, yields, enums, world, civ, rules, game, ai
+civsim      ← CLI binary: `new` and `run` subcommands via clap
+open4x-web  ← Leptos/WASM frontend (imports libciv compiled to wasm32)
 ```
 
-> **History**: libworld, librules, libcivcore, and libgame were merged into libciv in
-> Phase 1. libhexgrid remains separate as a clean geometry crate with zero game knowledge.
+> **History**: libcommon, libworld, librules, libcivcore, and libgame were all merged into
+> libciv. libhexgrid remains separate as a clean geometry crate with zero game knowledge.
 
 ### Key files
 
 | File | Purpose |
 |------|---------|
-| `libcommon/src/ids.rs` | Macro-generated ULID-backed newtype IDs for all entities |
-| `libcommon/src/yields.rs` | `YieldType` enum + `YieldBundle` (sparse HashMap) |
-| `libcommon/src/enums.rs` | `ResourceCategory`, `UnitDomain`, `UnitCategory`, `GreatPersonType`, `AgeType`, `PolicyType` |
+| `libciv/src/ids.rs` | Macro-generated ULID-backed newtype IDs for all entities |
+| `libciv/src/yields.rs` | `YieldType` enum + `YieldBundle` (sparse HashMap) |
+| `libciv/src/enums.rs` | `ResourceCategory`, `UnitDomain`, `UnitCategory`, `GreatPersonType`, `AgeType`, `PolicyType` |
 | `libhexgrid/src/coord.rs` | `HexCoord` with invariant enforcement, arithmetic, `HexDir`, distance, neighbors, ring |
 | `libhexgrid/src/types.rs` | `MovementCost`, `Elevation` enum, `Vision` enum, `MovementProfile` enum |
 | `libhexgrid/src/board.rs` | `HexTile`/`HexEdge`/`HexBoard` traits, `BoardTopology` enum |
@@ -55,17 +55,19 @@ civsim     ← CLI binary: `new` and `run` subcommands via clap
 | `libciv/src/civ/district.rs` | `DistrictDef`/`BuildingDef` traits, `AdjacencyContext` (with `Vec<NaturalWonderId>`), `PlacedDistrict` |
 | `libciv/src/game/state.rs` | `GameState` (single source of truth), `IdGenerator` (seeded ULID), `city_state_by_civ()` helper |
 | `libciv/src/game/board.rs` | `WorldBoard`: `HexBoard` impl with Dijkstra pathfinding and edge canonicalization |
-| `libciv/src/game/rules.rs` | `RulesEngine` trait + `DefaultRulesEngine` (Phase 2 stubs) |
+| `libciv/src/game/rules.rs` | `RulesEngine` trait + `DefaultRulesEngine` |
 | `libciv/src/game/diff.rs` | `StateDelta` enum, `GameStateDiff` |
+| `libciv/src/ai/deterministic.rs` | `Agent` trait + `HeuristicAgent` (exploration/production heuristic) |
+| `libciv/tests/common/` | Shared `Scenario` setup used by all integration tests |
+| `libciv/tests/gameplay.rs` | End-to-end integration tests |
 | `civsim/src/main.rs` | CLI entry point |
 
 ### Implementation status
 
-- **Phase 1 complete**: all structs/traits declared, project compiles with zero errors,
-  13 active tests pass (5 `#[ignore]`d as Phase 2 targets)
-- **Phase 2 (future)**: rules evaluation, modifier stacking, LOS with elevation, road
-  movement costs; macro helpers for trait boilerplate
-- **Phase 3+ (future)**: full gameplay loop, RL environment interface
+- **Phase 2 active**: rules evaluation, modifier stacking, LOS, road movement, AI agent,
+  Leptos/WASM frontend all working; all tests pass with zero ignored
+- **Phase 3 (next)**: full gameplay systems — combat, district placement, trade routes,
+  religion, diplomacy state machine, victory evaluation, RL environment interface
 
 ### Conventions
 
@@ -74,7 +76,7 @@ civsim     ← CLI binary: `new` and `run` subcommands via clap
 - `MovementCost` uses integer math scaled by 100 (ONE = 100)
 - `BoardTopology` variants: `Flat`, `CylindricalEW` (wraps east-west), `Toroidal`
 - Rust edition 2024; workspace resolver 2
-- Commit format: **conventional commits** (`feat`, `fix`, `refactor`, `docs`, `infra`, `tests`)
+- Commit format: **conventional commits** (`impl:`, `fix:`, `infra:`, `tests:`, `docs:`, `plan:`)
 - `YieldBundle` is sparse (HashMap-backed); missing keys default to zero
 - `&'static str` is appropriate for all built-in content names, descriptions, and
   identifiers — this is compile-time content, not user-entered data

@@ -6,8 +6,6 @@ pub trait EdgeFeatureDef: std::fmt::Debug {
     fn name(&self) -> &'static str;
     /// Additional movement cost when crossing this edge.
     fn crossing_cost(&self) -> MovementCost;
-    /// Whether this edge blocks line-of-sight.
-    fn blocks_los(&self) -> bool { false }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -15,14 +13,6 @@ pub struct River;
 impl EdgeFeatureDef for River {
     fn name(&self) -> &'static str { "River" }
     fn crossing_cost(&self) -> MovementCost { MovementCost::THREE }
-}
-
-#[derive(Debug, Clone, Copy, Default)]
-pub struct Cliff;
-impl EdgeFeatureDef for Cliff {
-    fn name(&self) -> &'static str { "Cliff" }
-    fn crossing_cost(&self) -> MovementCost { MovementCost::Impassable }
-    fn blocks_los(&self) -> bool { true }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -43,7 +33,6 @@ impl EdgeFeatureDef for MountainPass {
 #[derive(Debug, Clone, Copy)]
 pub enum BuiltinEdgeFeature {
     River(River),
-    Cliff(Cliff),
     Canal(Canal),
     MountainPass(MountainPass),
 }
@@ -52,7 +41,6 @@ impl BuiltinEdgeFeature {
     pub fn as_def(&self) -> &dyn EdgeFeatureDef {
         match self {
             BuiltinEdgeFeature::River(e) => e,
-            BuiltinEdgeFeature::Cliff(e) => e,
             BuiltinEdgeFeature::Canal(e) => e,
             BuiltinEdgeFeature::MountainPass(e) => e,
         }

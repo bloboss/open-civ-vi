@@ -39,8 +39,15 @@ pub enum Elevation {
 }
 
 impl Elevation {
-    pub const FLAT: Elevation = Elevation::Level(0);
-    pub const HILLS: Elevation = Elevation::Level(1);
+    /// Deep open-water (Ocean terrain) — below sea level.
+    pub const SEA_LEVEL: Elevation = Elevation::Low;
+    /// Near-shore coastal terrain (Coast terrain). Normal diff from ocean = 1.
+    pub const COASTAL: Elevation = Elevation::Level(0);
+    /// Default flat inland terrain (Grassland, Plains, Desert, Tundra, Snow).
+    pub const FLAT: Elevation = Elevation::Level(1);
+    /// Hills: flat inland + 1 level of elevation.
+    pub const HILLS: Elevation = Elevation::Level(2);
+    /// Impassable mountain peak — always blocks LOS.
     pub const MOUNTAIN: Elevation = Elevation::High;
 }
 

@@ -10,7 +10,7 @@ use libciv::civ::{Agenda, BasicUnit, City, Civilization, Leader, ProductionItem,
 use libciv::game::{AttackType, RulesError, StateDelta, recalculate_visibility};
 use libciv::game::state::UnitTypeDef;
 use libciv::visualize::Visualizer;
-use libciv::world::terrain::{BuiltinTerrain, Desert, Grassland, Mountain, Ocean, Plains, Tundra};
+use libciv::world::terrain::BuiltinTerrain;
 use libciv::world::tile::WorldTile;
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
@@ -134,18 +134,17 @@ fn randomize_terrain(state: &mut GameState, seed: u64, safe_coord: HexCoord) {
         let terrain = if safe.contains(&coord) {
             // Near the capital: only habitable terrain.
             match rng.random_range(0u8..4) {
-                0 | 1 => BuiltinTerrain::Grassland(Grassland),
-                2     => BuiltinTerrain::Plains(Plains),
-                _     => BuiltinTerrain::Plains(Plains),
+                0 | 1 => BuiltinTerrain::Grassland,
+                _     => BuiltinTerrain::Plains,
             }
         } else {
             match rng.random_range(0u8..100) {
-                0..35  => BuiltinTerrain::Grassland(Grassland),
-                35..60 => BuiltinTerrain::Plains(Plains),
-                60..75 => BuiltinTerrain::Desert(Desert),
-                75..85 => BuiltinTerrain::Tundra(Tundra),
-                85..93 => BuiltinTerrain::Mountain(Mountain),
-                _      => BuiltinTerrain::Ocean(Ocean),
+                0..35  => BuiltinTerrain::Grassland,
+                35..60 => BuiltinTerrain::Plains,
+                60..75 => BuiltinTerrain::Desert,
+                75..85 => BuiltinTerrain::Tundra,
+                85..93 => BuiltinTerrain::Mountain,
+                _      => BuiltinTerrain::Ocean,
             }
         };
         if let Some(tile) = state.board.tile_mut(coord) {
@@ -462,7 +461,7 @@ fn print_ai_board(demo: &AiDemo) {
     }
 
     for line in &buf {
-        println!("  {}", line);
+        println!("  {line}");
     }
     println!("  Legend: #=Rome city  @=Rome unit  %=Babylon city  &=Babylon unit");
     println!("  Terrain: G)rassland  P)lains  D)esert  M)ountain  O)cean  T)undra");
@@ -505,7 +504,7 @@ fn run_ai_demo(turns: u32, seed: u64, board_every: u32) {
     let babylon_agent = HeuristicAgent::new(demo.babylon_id);
 
     println!();
-    banner(&format!("AI Demo — {} turns  seed={}  20×12 map", turns, seed));
+    banner(&format!("AI Demo — {turns} turns  seed={seed}  20×12 map"));
     println!("  Rome starts at (3,4)   Babylon starts at (16,7)");
     println!("  Both civs are controlled by HeuristicAgent (deterministic).");
     println!();
@@ -576,22 +575,22 @@ fn run_ai_demo(turns: u32, seed: u64, board_every: u32) {
         for cid in &rome_new_cities {
             let name = demo.state.cities.iter().find(|c| c.id == *cid)
                 .map(|c| c.name.as_str()).unwrap_or("?");
-            notes.push(format!("Rome founded city: {}", name));
+            notes.push(format!("Rome founded city: {name}"));
         }
         for cid in &babylon_new_cities {
             let name = demo.state.cities.iter().find(|c| c.id == *cid)
                 .map(|c| c.name.as_str()).unwrap_or("?");
-            notes.push(format!("Babylon founded city: {}", name));
+            notes.push(format!("Babylon founded city: {name}"));
         }
 
         // Always print: turn header + civ summaries.
-        print!("\n  Turn {:3}  ", t);
+        print!("\n  Turn {t:3}  ");
         if notes.is_empty() {
             println!("(scouting / producing)");
         } else {
             println!();
             for note in &notes {
-                println!("    [event] {}", note);
+                println!("    [event] {note}");
             }
         }
         println!("{}", civ_summary_line(&demo, demo.rome_id));
@@ -602,14 +601,14 @@ fn run_ai_demo(turns: u32, seed: u64, board_every: u32) {
         let is_last = t == turns;
         if should_print_board || is_last {
             println!();
-            println!("  --- Board at turn {} ---", t);
+            println!("  --- Board at turn {t} ---");
             print_ai_board(&demo);
         }
     }
 
     // ── Final summary ─────────────────────────────────────────────────────
     println!();
-    banner(&format!("Final state after {} turns", turns));
+    banner(&format!("Final state after {turns} turns"));
     println!("{}", civ_summary_line(&demo, demo.rome_id));
     println!("{}", civ_summary_line(&demo, demo.babylon_id));
     println!();
@@ -694,7 +693,7 @@ fn run_play() {
                                     println!("  [error] {} is impassable or unreachable.", fmtc(target));
                                 }
                                 Err(RulesError::InvalidCoord) => {
-                                    println!("  [error] ({},{}) is outside the map.", q, r);
+                                    println!("  [error] ({q},{r}) is outside the map.");
                                 }
                                 Err(e) => println!("  [error] {e}"),
                             }
@@ -794,8 +793,7 @@ fn run_play() {
                                                             AttackType::Melee  => "Melee",
                                                             AttackType::Ranged => "Ranged",
                                                         };
-                                                        println!("  [{}] dealt {} dmg, took {} dmg",
-                                                            type_str, defender_damage, attacker_damage);
+                                                        println!("  [{type_str}] dealt {defender_damage} dmg, took {attacker_damage} dmg");
                                                     }
                                                     StateDelta::UnitDestroyed { .. } => {
                                                         println!("  Unit destroyed!");
@@ -855,7 +853,7 @@ fn run_play() {
                             .find(|c| c.id == city_id)
                             .map(|c| c.name.as_str())
                             .unwrap_or("?");
-                        println!("  Switched to city: {}", name);
+                        println!("  Switched to city: {name}");
                     }
                 }
 
@@ -869,7 +867,7 @@ fn run_play() {
                 Cmd::Help => print_help(),
 
                 Cmd::Unknown(s) => {
-                    println!("  [error] Unknown command {:?} -- type 'help' for a list.", s);
+                    println!("  [error] Unknown command {s:?} -- type 'help' for a list.");
                 }
             }
         }
@@ -880,7 +878,7 @@ fn run_play() {
         reset_movement(&mut session.state);
         print_turn_events(&diff);
         for msg in &prod_log {
-            println!("  [+] {}", msg);
+            println!("  [+] {msg}");
         }
     }
 }
@@ -1003,17 +1001,17 @@ fn print_help() {
 fn cmd_tile(state: &GameState, q: i32, r: i32) {
     let coord = HexCoord::from_qr(q, r);
     let Some(tile) = state.board.tile(coord) else {
-        println!("  [error] ({},{}) is outside the map.", q, r);
+        println!("  [error] ({q},{r}) is outside the map.");
         return;
     };
 
     let yields = tile.total_yields();
-    let terrain_name = tile.terrain.as_def().name();
-    let feature_name = tile.feature.as_ref()
-        .map(|f| f.as_def().name().to_string())
+    let terrain_name = tile.terrain.name();
+    let feature_name = tile.feature
+        .map(|f| f.name().to_string())
         .unwrap_or_else(|| "none".to_string());
     let resource_name = tile.resource.as_ref()
-        .map(|r| format!("{:?}", r))
+        .map(|r| format!("{r:?}"))
         .unwrap_or_else(|| "none".to_string());
     let improvement_name = tile.improvement.as_ref()
         .map(|i| i.as_def().name().to_string())
@@ -1047,35 +1045,34 @@ fn cmd_tile(state: &GameState, q: i32, r: i32) {
                 .find(|c| c.id == u.owner())
                 .map(|c| c.name)
                 .unwrap_or("?");
-            format!("{} ({})  hp={}/{}  mv={}/{}",
-                format!("{:?}", u.domain()),
-                owner,
+            format!("{:?} ({owner})  hp={}/{},  mv={}/{}",
+                u.domain(),
                 u.health(), u.max_health(),
                 u.movement_left(), u.max_movement(),
             )
         })
         .collect();
 
-    let hdr = format!("Tile ({},{})", q, r);
+    let hdr = format!("Tile ({q},{r})");
     hline(&hdr);
-    println!("  Terrain    : {}", terrain_name);
-    println!("  Feature    : {}", feature_name);
-    println!("  Resource   : {}", resource_name);
-    println!("  Improvement: {}", improvement_name);
-    println!("  Road       : {}", road_name);
+    println!("  Terrain    : {terrain_name}");
+    println!("  Feature    : {feature_name}");
+    println!("  Resource   : {resource_name}");
+    println!("  Improvement: {improvement_name}");
+    println!("  Road       : {road_name}");
     println!("  Yields     : food={}  prod={}  gold={}  sci={}  cul={}  faith={}",
         yields.food, yields.production, yields.gold,
         yields.science, yields.culture, yields.faith);
-    println!("  Owner      : {}", owner_name);
-    println!("  Worked by  : {}", worked_str);
+    println!("  Owner      : {owner_name}");
+    println!("  Worked by  : {worked_str}");
     if units_here.is_empty() {
         println!("  Units      : none");
     } else {
         for (i, u) in units_here.iter().enumerate() {
             if i == 0 {
-                println!("  Units      : {}", u);
+                println!("  Units      : {u}");
             } else {
-                println!("               {}", u);
+                println!("               {u}");
             }
         }
     }
@@ -1110,9 +1107,9 @@ fn cmd_city(session: &Session, rules: &DefaultRulesEngine) {
     // Food and production bars
     let food_bar = format!("{}  {} / {}",
         progress_bar(city.food_stored, city.food_to_grow), city.food_stored, city.food_to_grow);
-    println!("  Food      : {}",       food_bar);
+    println!("  Food      : {food_bar}");
     let prod_label = prod_name.map(|n| format!("  [{}]", capitalize(n))).unwrap_or_default();
-    println!("  Production: {}{}", prod_bar, prod_label);
+    println!("  Production: {prod_bar}{prod_label}");
     println!("  Gold/turn : {:+}    Science/turn: {:+}    Culture/turn: {:+}",
         yields.gold, yields.science, yields.culture);
 
@@ -1120,12 +1117,12 @@ fn cmd_city(session: &Session, rules: &DefaultRulesEngine) {
     let pop = city.population as usize;
     let worked_count = city.worked_tiles.len();
     println!();
-    println!("  Worked tiles ({} / {} citizens):", worked_count, pop);
+    println!("  Worked tiles ({worked_count} / {pop} citizens):");
     for coord in &city.worked_tiles {
         let tile_str = tile_yield_row(state, *coord);
         let center_tag  = if *coord == city.coord { " [center]" } else { "" };
         let lock_tag    = if city.locked_tiles.contains(coord) { " [locked]" } else { "" };
-        println!("    {}{}{}", tile_str, center_tag, lock_tag);
+        println!("    {tile_str}{center_tag}{lock_tag}");
     }
 
     // Available tiles (not yet worked, sorted by total yield desc)
@@ -1215,7 +1212,7 @@ fn cmd_assign(session: &mut Session, rules: &DefaultRulesEngine, q: i32, r: i32,
         Ok(_) => {
             let label = tile_yield_row(&session.state, coord);
             let lock_note = if lock { " (locked)" } else { "" };
-            println!("  Assigned citizen to {}{}", label, lock_note);
+            println!("  Assigned citizen to {label}{lock_note}");
             let city = session.state.cities.iter().find(|c| c.id == city_id).unwrap();
             println!("  {} worked tiles: {}", city.name, city.worked_tiles.len());
         }
@@ -1318,7 +1315,7 @@ fn cmd_units(session: &Session) {
     }
     for (i, unit) in owned.iter().enumerate() {
         let sel = if session.selected_unit == Some(unit.id) { "  [selected]" } else { "" };
-        let cs_str = unit.combat_strength.map(|v| format!("  cs={}", v)).unwrap_or_default();
+        let cs_str = unit.combat_strength.map(|v| format!("  cs={v}")).unwrap_or_default();
         println!("    {:2}  {:10}  {}  hp={}/{}  mv={}/{}{}{}",
             i + 1,
             capitalize(unit_type_name(session, unit.unit_type)),
@@ -1335,7 +1332,7 @@ fn cmd_select(session: &mut Session, q: i32, r: i32) {
     let coord  = HexCoord::from_qr(q, r);
     let civ_id = session.civ_id;
     match session.state.units.iter().find(|u| u.owner == civ_id && u.coord() == coord) {
-        None => println!("  [error] No friendly unit at ({},{}).", q, r),
+        None => println!("  [error] No friendly unit at ({q},{r})."),
         Some(unit) => {
             let name = unit_type_name(session, unit.unit_type).to_string();
             session.selected_unit = Some(unit.id);
@@ -1452,10 +1449,10 @@ fn print_turn_header(session: &Session, rules: &DefaultRulesEngine) {
     let width = 68usize;
     let sep   = "-".repeat(width);
     println!("+-- {} --+", &sep[..width.saturating_sub(line1.len() + 6).min(width)]);
-    println!("{}", line1);
-    println!("{}", line2);
-    println!("{}", line3);
-    println!("+{}+", sep);
+    println!("{line1}");
+    println!("{line2}");
+    println!("{line3}");
+    println!("+{sep}+");
 }
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
@@ -1463,7 +1460,7 @@ fn print_turn_header(session: &Session, rules: &DefaultRulesEngine) {
 fn banner(title: &str) {
     let w = title.len() + 4;
     println!("+{}+", "-".repeat(w));
-    println!("|  {}  |", title);
+    println!("|  {title}  |");
     println!("+{}+", "-".repeat(w));
 }
 
@@ -1495,7 +1492,7 @@ fn capitalize(s: &str) -> String {
 }
 
 /// Look up the human-readable unit type name from the unit type registry.
-fn unit_type_name<'a>(session: &'a Session, type_id: UnitTypeId) -> &'a str {
+fn unit_type_name(session: &Session, type_id: UnitTypeId) -> &str {
     session.state.unit_type_defs.iter()
         .find(|d| d.id == type_id)
         .map(|d| d.name)
@@ -1507,9 +1504,9 @@ fn tile_yield_row(state: &GameState, coord: HexCoord) -> String {
     match state.board.tile(coord) {
         None => format!("({},{}) [off-map]", coord.q, coord.r),
         Some(tile) => {
-            let terrain = tile.terrain.as_def().name();
-            let feature = tile.feature.as_ref()
-                .map(|f| format!("+{}", f.as_def().name()))
+            let terrain = tile.terrain.name();
+            let feature = tile.feature
+                .map(|f| format!("+{}", f.name()))
                 .unwrap_or_default();
             let y = tile.total_yields();
             format!("({},{}) {:20}  food={:2}  prod={:2}  gold={:2}",
@@ -1592,12 +1589,12 @@ fn print_board(session: &Session) {
 
     // Overlay cities and units (only on visible tiles).
     for city in &state.cities {
-        if visible.map_or(true, |v| v.contains(&city.coord)) {
+        if visible.is_none_or(|v| v.contains(&city.coord)) {
             overlay(&mut buf, city.coord, '#', N);
         }
     }
     for unit in &state.units {
-        if visible.map_or(true, |v| v.contains(&unit.coord())) {
+        if visible.is_none_or(|v| v.contains(&unit.coord())) {
             overlay(&mut buf, unit.coord(), '@', N);
         }
     }
@@ -1632,12 +1629,12 @@ fn print_board(session: &Session) {
     }
 
     for line in &buf {
-        println!("  {}", line);
+        println!("  {line}");
     }
 }
 
 /// Replace the character of tile (q, r) in a rendered buffer.
-fn overlay(buf: &mut Vec<String>, coord: HexCoord, ch: char, n: usize) {
+fn overlay(buf: &mut [String], coord: HexCoord, ch: char, n: usize) {
     let q        = coord.q as usize;
     let r        = coord.r as usize;
     let half     = n / 2;
@@ -1679,24 +1676,24 @@ fn print_turn_events(diff: &GameStateDiff) {
     for delta in &diff.deltas {
         match delta {
             StateDelta::TurnAdvanced { from, to } => {
-                println!("  -- Turn {} -> {} ------------------------------------", from, to);
+                println!("  -- Turn {from} -> {to} ------------------------------------");
                 any = true;
             }
             StateDelta::PopulationGrew { new_population, city, .. } => {
                 let _ = city;
-                println!("  Roma grew!  population -> {}", new_population);
+                println!("  Roma grew!  population -> {new_population}");
                 any = true;
             }
             StateDelta::GoldChanged { delta, .. } => {
-                println!("  Gold {:+}", delta);
+                println!("  Gold {delta:+}");
                 any = true;
             }
             StateDelta::TechResearched { tech, .. } => {
-                println!("  Tech researched: {}", tech);
+                println!("  Tech researched: {tech}");
                 any = true;
             }
             StateDelta::CivicCompleted { civic, .. } => {
-                println!("  Civic completed: {}", civic);
+                println!("  Civic completed: {civic}");
                 any = true;
             }
             StateDelta::UnitCreated { coord, .. } => {
@@ -1712,7 +1709,7 @@ fn print_turn_events(diff: &GameStateDiff) {
                     AttackType::Melee  => "Melee",
                     AttackType::Ranged => "Ranged",
                 };
-                println!("  [{}] attacker -{}, defender -{}", type_str, attacker_damage, defender_damage);
+                println!("  [{type_str}] attacker -{attacker_damage}, defender -{defender_damage}");
                 any = true;
             }
             StateDelta::UnitDestroyed { .. } => {

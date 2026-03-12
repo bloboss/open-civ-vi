@@ -5,6 +5,7 @@
 ///   - Unexplored tiles: nearly-opaque black overlay, no markers.
 ///   - Explored-but-foggy: semi-transparent overlay, city outline still shown.
 ///   - Fully visible: no overlay, all markers shown.
+///
 /// Clicking a hex fires `on_hex_click(coord)`.
 ///
 /// Coordinate system: axial (q, r) → pixel using pointy-top layout:
@@ -45,7 +46,7 @@ fn hex_corners(cx: f64, cy: f64) -> [(f64, f64); 6] {
 /// Format corner points as an SVG `points` attribute string.
 fn corners_to_points(corners: &[(f64, f64); 6]) -> String {
     corners.iter()
-        .map(|(x, y)| format!("{:.1},{:.1}", x, y))
+        .map(|(x, y)| format!("{x:.1},{y:.1}"))
         .collect::<Vec<_>>()
         .join(" ")
 }

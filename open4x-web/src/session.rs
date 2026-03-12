@@ -13,9 +13,7 @@ use libciv::{
 use libciv::civ::{Agenda, BasicUnit, City, Civilization, Leader};
 use libciv::game::state::UnitTypeDef;
 use libciv::game::recalculate_visibility;
-use libciv::world::terrain::{
-    BuiltinTerrain, Desert, Grassland, Mountain, Ocean, Plains, Tundra,
-};
+use libciv::world::terrain::BuiltinTerrain;
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 use rand::SeedableRng;
@@ -35,6 +33,7 @@ pub struct Session {
     pub state:         GameState,
     pub civ_id:        CivId,
     pub city_ids:      Vec<CityId>,
+    #[allow(dead_code)]
     pub current_city:  usize,
     pub selected_unit: Option<UnitId>,
 }
@@ -75,17 +74,17 @@ fn randomize_terrain(state: &mut GameState, seed: u64, safe_coord: HexCoord) {
     for coord in coords {
         let terrain = if safe.contains(&coord) {
             match rng.random_range(0u8..4) {
-                0 | 1 => BuiltinTerrain::Grassland(Grassland),
-                _     => BuiltinTerrain::Plains(Plains),
+                0 | 1 => BuiltinTerrain::Grassland,
+                _     => BuiltinTerrain::Plains,
             }
         } else {
             match rng.random_range(0u8..100) {
-                0..35  => BuiltinTerrain::Grassland(Grassland),
-                35..60 => BuiltinTerrain::Plains(Plains),
-                60..75 => BuiltinTerrain::Desert(Desert),
-                75..85 => BuiltinTerrain::Tundra(Tundra),
-                85..93 => BuiltinTerrain::Mountain(Mountain),
-                _      => BuiltinTerrain::Ocean(Ocean),
+                0..35  => BuiltinTerrain::Grassland,
+                35..60 => BuiltinTerrain::Plains,
+                60..75 => BuiltinTerrain::Desert,
+                75..85 => BuiltinTerrain::Tundra,
+                85..93 => BuiltinTerrain::Mountain,
+                _      => BuiltinTerrain::Ocean,
             }
         };
         if let Some(tile) = state.board.tile_mut(coord) {

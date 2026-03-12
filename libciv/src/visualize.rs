@@ -65,37 +65,37 @@ impl Visualize for WorldTile {
 
     /// Renders a single character representing this tile's terrain or feature.
     fn render(&self) -> Vec<Vec<char>> {
-        let ch = match &self.feature {
+        let ch = match self.feature {
             Some(f) => feature_char(f),
-            None    => terrain_char(&self.terrain),
+            None    => terrain_char(self.terrain),
         };
         vec![vec![ch]]
     }
 }
 
-fn terrain_char(t: &BuiltinTerrain) -> char {
+fn terrain_char(t: BuiltinTerrain) -> char {
     match t {
-        BuiltinTerrain::Grassland(_) => 'G',
-        BuiltinTerrain::Plains(_)    => 'P',
-        BuiltinTerrain::Desert(_)    => 'D',
-        BuiltinTerrain::Tundra(_)    => 'T',
-        BuiltinTerrain::Snow(_)      => 'S',
-        BuiltinTerrain::Coast(_)     => 'C',
-        BuiltinTerrain::Ocean(_)     => 'O',
-        BuiltinTerrain::Mountain(_)  => 'M',
+        BuiltinTerrain::Grassland => 'G',
+        BuiltinTerrain::Plains    => 'P',
+        BuiltinTerrain::Desert    => 'D',
+        BuiltinTerrain::Tundra    => 'T',
+        BuiltinTerrain::Snow      => 'S',
+        BuiltinTerrain::Coast     => 'C',
+        BuiltinTerrain::Ocean     => 'O',
+        BuiltinTerrain::Mountain  => 'M',
     }
 }
 
-fn feature_char(f: &BuiltinFeature) -> char {
+fn feature_char(f: BuiltinFeature) -> char {
     match f {
-        BuiltinFeature::Forest(_)       => 'f',
-        BuiltinFeature::Rainforest(_)   => 'r',
-        BuiltinFeature::Marsh(_)        => 'm',
-        BuiltinFeature::Floodplain(_)   => 'F',
-        BuiltinFeature::Reef(_)         => 'R',
-        BuiltinFeature::Ice(_)          => 'i',
-        BuiltinFeature::VolcanicSoil(_) => 'v',
-        BuiltinFeature::Oasis(_)        => 'o',
+        BuiltinFeature::Forest       => 'f',
+        BuiltinFeature::Rainforest   => 'r',
+        BuiltinFeature::Marsh        => 'm',
+        BuiltinFeature::Floodplain   => 'F',
+        BuiltinFeature::Reef         => 'R',
+        BuiltinFeature::Ice          => 'i',
+        BuiltinFeature::VolcanicSoil => 'v',
+        BuiltinFeature::Oasis        => 'o',
     }
 }
 
@@ -103,10 +103,8 @@ fn feature_char(f: &BuiltinFeature) -> char {
 mod tests {
     use super::*;
     use libhexgrid::coord::HexCoord;
-    use crate::world::terrain::{Grassland, Mountain};
-
     fn grassland_tile(q: i32, r: i32) -> WorldTile {
-        WorldTile::new(HexCoord::from_qr(q, r), BuiltinTerrain::Grassland(Grassland))
+        WorldTile::new(HexCoord::from_qr(q, r), BuiltinTerrain::Grassland)
     }
 
     #[test]
@@ -123,19 +121,16 @@ mod tests {
 
     #[test]
     fn test_render_mountain() {
-        let tile = WorldTile::new(
-            HexCoord::from_qr(0, 0),
-            BuiltinTerrain::Mountain(Mountain),
-        );
+        let tile = WorldTile::new(HexCoord::from_qr(0, 0), BuiltinTerrain::Mountain);
         let block = tile.render();
         assert_eq!(block[0][0], 'M', "mountain char should be 'M'");
     }
 
     #[test]
     fn test_render_feature_overrides_terrain() {
-        use crate::world::feature::{BuiltinFeature, Forest};
+        use crate::world::feature::BuiltinFeature;
         let mut tile = grassland_tile(0, 0);
-        tile.feature = Some(BuiltinFeature::Forest(Forest));
+        tile.feature = Some(BuiltinFeature::Forest);
         let block = tile.render();
         assert_eq!(block[0][0], 'f', "forest feature should override terrain char");
     }

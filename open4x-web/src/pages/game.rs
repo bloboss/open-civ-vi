@@ -275,13 +275,13 @@ fn TileInfo(
             let civ_id = s.civ_id;
             let is_explored = s.state.civilizations.iter()
                 .find(|c| c.id == civ_id)
-                .map_or(false, |c| c.explored_tiles.contains(&coord));
+                .is_some_and(|c| c.explored_tiles.contains(&coord));
 
             if !is_explored {
                 return view! { <p class="no-selection">"Unexplored."</p> }.into_any();
             }
 
-            let terrain    = tile.terrain.as_def().name().to_string();
+            let terrain    = tile.terrain.name().to_string();
             let (q, r)     = (coord.q, coord.r);
             let food       = tile.total_yields().food;
             let prod       = tile.total_yields().production;
@@ -491,7 +491,7 @@ fn TechPanel(
                 <div style="margin-top:12px">
                     <h3 style="margin-bottom:4px">"Technologies"</h3>
                     <p style="font-size:11px;color:#888;margin:0 0 6px">
-                        {format!("{} researched", done)}
+                        {format!("{done} researched")}
                     </p>
                     {in_progress.map(|label| view! {
                         <div class="info-row" style="color:#ffe066">

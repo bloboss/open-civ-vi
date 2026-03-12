@@ -107,6 +107,16 @@ pub trait RulesEngine: std::fmt::Debug {
         name:    String,
     ) -> Result<GameStateDiff, RulesError>;
 
+    /// Place an improvement on `coord`. Validates `valid_on()` for the tile's
+    /// terrain/feature combination. Returns `InvalidImprovement` when the
+    /// placement is illegal (water tile, wrong terrain, etc.).
+    fn place_improvement(
+        &self,
+        state: &mut GameState,
+        coord: HexCoord,
+        improvement: crate::world::improvement::BuiltinImprovement,
+    ) -> Result<GameStateDiff, RulesError>;
+
     // TODO(PHASE3-8.2): fn place_district(&self, state: &mut GameState, city: CityId,
     //   district_type: DistrictTypeId, coord: HexCoord) -> Result<GameStateDiff, RulesError>;
     // TODO(PHASE3-8.3): fn create_trade_route(&self, state: &mut GameState, origin: CityId,
@@ -161,6 +171,8 @@ pub enum RulesError {
     /// Destination tile is already occupied by another unit.
     /// Use `attack()` to engage an enemy; friendly unit stacking is not allowed.
     TileOccupiedByUnit,
+    /// The improvement cannot be placed on the target tile (wrong terrain / feature).
+    InvalidImprovement,
 }
 
 impl std::fmt::Display for RulesError {
@@ -190,6 +202,7 @@ impl std::fmt::Display for RulesError {
             RulesError::TooCloseToCity            => write!(f, "too close to an existing city"),
             RulesError::InvalidFoundingTerrain    => write!(f, "cannot found a city on this terrain"),
             RulesError::TileOccupiedByUnit        => write!(f, "destination tile is occupied by another unit"),
+            RulesError::InvalidImprovement        => write!(f, "improvement cannot be placed on this terrain"),
         }
     }
 }
@@ -778,10 +791,17 @@ impl RulesEngine for DefaultRulesEngine {
         }
 
         // --- damage calculation -----------------------------------------------
-        // Formula: 30 * exp((cs_atk - cs_def) / 25) * rng[0.75, 1.25]
+        // Terrain defense bonus applies to the defender's tile.
+        let terrain_def_bonus = state.board
+            .tile(def_coord)
+            .map(|t| t.terrain_defense_bonus())
+            .unwrap_or(0);
+        let effective_def_cs = (def_cs as i32 + terrain_def_bonus).max(1) as u32;
+
+        // Formula: 30 * exp((cs_atk - cs_def_effective) / 25) * rng[0.75, 1.25]
         let rng_a = 0.75 + state.id_gen.next_f32() * 0.5;
         let def_damage = (30.0_f32
-            * f32::exp((atk_cs as f32 - def_cs as f32) / 25.0)
+            * f32::exp((atk_cs as f32 - effective_def_cs as f32) / 25.0)
             * rng_a) as u32;
 
         let (attack_type, atk_damage) = if atk_range == 0 {
@@ -842,10 +862,10 @@ impl RulesEngine for DefaultRulesEngine {
         if !is_settler { return Err(RulesError::NotASettler); }
 
         let tile = state.board.tile(coord).ok_or(RulesError::InvalidCoord)?;
-        if !tile.terrain.as_def().is_land() {
+        if !tile.terrain.is_land() {
             return Err(RulesError::InvalidFoundingTerrain);
         }
-        if tile.terrain.as_def().movement_cost() == MovementCost::Impassable {
+        if tile.terrain.movement_cost() == MovementCost::Impassable {
             return Err(RulesError::InvalidFoundingTerrain);
         }
 
@@ -860,7 +880,7 @@ impl RulesEngine for DefaultRulesEngine {
         let city_id = state.id_gen.next_city_id();
         let is_capital = state.civilizations.iter()
             .find(|c| c.id == civ_id)
-            .map_or(true, |c| c.cities.is_empty());
+            .is_none_or(|c| c.cities.is_empty());
         let mut city = crate::civ::City::new(city_id, name, civ_id, coord);
         city.is_capital = is_capital;
 
@@ -880,6 +900,40 @@ impl RulesEngine for DefaultRulesEngine {
         let mut diff = GameStateDiff::new();
         diff.push(StateDelta::UnitDestroyed { unit: settler });
         diff.push(StateDelta::CityFounded { city: city_id, coord, owner: civ_id });
+        Ok(diff)
+    }
+
+    fn place_improvement(
+        &self,
+        state: &mut GameState,
+        coord: HexCoord,
+        improvement: crate::world::improvement::BuiltinImprovement,
+    ) -> Result<GameStateDiff, RulesError> {
+        use libhexgrid::HexTile;
+
+        let coord = state.board.normalize(coord).ok_or(RulesError::InvalidCoord)?;
+
+        let (terrain_ok, elevation) = state.board
+            .tile(coord)
+            .map(|t| {
+                let valid = improvement.as_def().valid_on(t.terrain, t.feature, t.elevation());
+                (valid, t.elevation())
+            })
+            .ok_or(RulesError::InvalidCoord)?;
+
+        let _ = elevation;  // elevation captured for potential logging; not needed after validation
+
+        if !terrain_ok {
+            return Err(RulesError::InvalidImprovement);
+        }
+
+        if let Some(tile) = state.board.tile_mut(coord) {
+            tile.improvement = Some(improvement);
+            tile.improvement_pillaged = false;
+        }
+
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::ImprovementPlaced { coord, improvement });
         Ok(diff)
     }
 }
@@ -1109,10 +1163,10 @@ fn apply_effects(effects: &[EffectType], mut base: YieldBundle) -> YieldBundle {
 /// the required reveal tech (PHASE3-4.2). Improvement yields are also skipped
 /// when pillaged, consistent with `WorldTile::total_yields`.
 fn tile_yields_gated(tile: &WorldTile, known_techs: &HashSet<&str>) -> YieldBundle {
-    let mut yields = tile.terrain.as_def().base_yields();
+    let mut yields = tile.terrain.base_yields();
 
-    if let Some(ref feat) = tile.feature {
-        yields += feat.as_def().yield_modifier();
+    if let Some(feat) = tile.feature {
+        yields += feat.yield_modifier();
     }
 
     if let Some(ref impr) = tile.improvement {
@@ -1123,9 +1177,14 @@ fn tile_yields_gated(tile: &WorldTile, known_techs: &HashSet<&str>) -> YieldBund
 
     if let Some(ref res) = tile.resource {
         let reveal_tech = res.as_def().reveal_tech();
-        // Include resource yields only when no reveal tech is required, or the
-        // civ has already researched the required tech.
-        if reveal_tech.map_or(true, |t| known_techs.contains(t)) {
+        // Include resource yields only when:
+        //   1. No reveal tech is required, or the civ has already researched it.
+        //   2. The resource is not concealed by an overlying feature
+        //      (Forest/Rainforest hide resources until the feature is cleared).
+        let tech_ok = reveal_tech.is_none_or(|t| known_techs.contains(t));
+        let concealed = tile.feature
+            .is_some_and(|f| f.conceals_resources());
+        if tech_ok && !concealed {
             yields += res.as_def().base_yields();
         }
     }
@@ -1305,7 +1364,7 @@ mod tests {
 
     #[test]
     fn test_move_unit_impassable_destination() {
-        use crate::world::terrain::{BuiltinTerrain, Mountain};
+        use crate::world::terrain::BuiltinTerrain;
 
         let (mut state, civ_id) = make_state();
         let start = HexCoord::from_qr(2, 2);
@@ -1313,7 +1372,7 @@ mod tests {
 
         // Block the only direct neighbor in the E direction.
         if let Some(t) = state.board.tile_mut(mountain) {
-            t.terrain = BuiltinTerrain::Mountain(Mountain);
+            t.terrain = BuiltinTerrain::Mountain;
         }
         // Also block all other neighbours so there's truly no path.
         for dir in libhexgrid::coord::HexDir::ALL {
@@ -1321,7 +1380,7 @@ mod tests {
             if let Some(coord) = nb {
                 if coord != mountain {
                     if let Some(t) = state.board.tile_mut(coord) {
-                        t.terrain = BuiltinTerrain::Mountain(Mountain);
+                        t.terrain = BuiltinTerrain::Mountain;
                     }
                 }
             }

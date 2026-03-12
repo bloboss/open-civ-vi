@@ -6,7 +6,7 @@ use libhexgrid::coord::{HexCoord, HexDir};
 use libhexgrid::types::{Elevation, MovementCost};
 use libhexgrid::{HexEdge, HexTile};
 use crate::world::edge::WorldEdge;
-use crate::world::terrain::{BuiltinTerrain, Grassland};
+use crate::world::terrain::BuiltinTerrain;
 use crate::world::tile::WorldTile;
 
 /// Concrete hex board for the world map.
@@ -28,7 +28,7 @@ impl WorldBoard {
         for r in 0..height as i32 {
             for q in 0..width as i32 {
                 let coord = HexCoord::from_qr(q, r);
-                tiles.push(WorldTile::new(coord, BuiltinTerrain::Grassland(Grassland)));
+                tiles.push(WorldTile::new(coord, BuiltinTerrain::Grassland));
             }
         }
         Self {
@@ -175,30 +175,71 @@ impl WorldBoard {
     }
 
     /// Line-of-sight check. Returns true if `from` can see `to`.
+    ///
+    /// Blocking rules:
+    /// 1. `Elevation::High` (Mountain) at any intermediate tile always blocks.
+    /// 2. An intermediate tile blocks if its elevation is strictly above
+    ///    `max(from_elev, to_elev)` — i.e., above both endpoints.
+    /// 3. Cliff detection: if any consecutive tile pair along the ray (including
+    ///    the from→first and last→to steps) has an elevation level difference > 1,
+    ///    LOS is blocked (emergent cliff from topology).
     pub fn has_los(&self, from: HexCoord, to: HexCoord) -> bool {
         let Some(from) = self.normalize_coord(from) else { return false };
-        let Some(to) = self.normalize_coord(to) else { return false };
+        let Some(to)   = self.normalize_coord(to)   else { return false };
 
         if from == to {
             return true;
         }
 
-        let from_elev = self.tile(from).map(|t| t.elevation()).unwrap_or(Elevation::Level(0));
-        let to_elev = self.tile(to).map(|t| t.elevation()).unwrap_or(Elevation::Level(0));
-        let min_elev = from_elev.min(to_elev);
+        let from_elev = self.tile(from).map(|t| t.elevation()).unwrap_or(Elevation::FLAT);
+        let to_elev   = self.tile(to).map(|t| t.elevation()).unwrap_or(Elevation::FLAT);
+        let max_elev  = from_elev.max(to_elev);
 
         let dist = from.distance(&to) as i32;
+
+        // Helper: numeric level for cliff diff checks (High = 255).
+        let level = |e: Elevation| -> i32 {
+            match e {
+                Elevation::Low      => -1,
+                Elevation::Level(n) => n as i32,
+                Elevation::High     => 255,
+            }
+        };
+
+        let mut prev_level = level(from_elev);
+
         for step in 1..dist {
             let frac_q = from.q as f32 + (to.q - from.q) as f32 * step as f32 / dist as f32;
             let frac_r = from.r as f32 + (to.r - from.r) as f32 * step as f32 / dist as f32;
             let mid = hex_round(frac_q, frac_r);
             let Some(mid) = self.normalize_coord(mid) else { continue };
-            if let Some(tile) = self.tile(mid) {
-                if tile.elevation() > min_elev {
-                    return false;
-                }
+
+            let mid_elev = self.tile(mid).map(|t| t.elevation()).unwrap_or(Elevation::FLAT);
+
+            // Rule 1: Mountain always blocks.
+            if mid_elev == Elevation::High {
+                return false;
             }
+
+            // Rule 2: Intermediate tile rises above both endpoints.
+            if mid_elev > max_elev {
+                return false;
+            }
+
+            // Rule 3: Cliff — elevation jump > 1 from previous tile.
+            let mid_level = level(mid_elev);
+            if (mid_level - prev_level).abs() > 1 {
+                return false;
+            }
+
+            prev_level = mid_level;
         }
+
+        // Rule 3 applied to the final step (last intermediate → destination).
+        if (level(to_elev) - prev_level).abs() > 1 {
+            return false;
+        }
+
         true
     }
 }
@@ -269,7 +310,7 @@ impl HexBoard for WorldBoard {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::feature::{BuiltinFeature, Ice};
+    use crate::world::feature::BuiltinFeature;
     use crate::world::edge::{BuiltinEdgeFeature, River};
 
     fn small_board() -> WorldBoard {
@@ -308,9 +349,7 @@ mod tests {
         // Place a Mountain (Elevation::High) between from and to.
         let mid = HexCoord::from_qr(5, 5);
         if let Some(t) = board.tile_mut(mid) {
-            t.terrain = crate::world::terrain::BuiltinTerrain::Mountain(
-                crate::world::terrain::Mountain
-            );
+            t.terrain = crate::world::terrain::BuiltinTerrain::Mountain;
         }
         // from and to are both at Elevation::FLAT (Grassland).
         // The Mountain in between must block line-of-sight.
@@ -329,7 +368,7 @@ mod tests {
         let mut board = WorldBoard::new(10, 10);
         let blocker = HexCoord::from_qr(3, 3);
         if let Some(t) = board.tile_mut(blocker) {
-            t.feature = Some(BuiltinFeature::Ice(Ice));
+            t.feature = Some(BuiltinFeature::Ice);
         }
         let start = HexCoord::from_qr(2, 3);
         let goal = HexCoord::from_qr(5, 3);

@@ -1,5 +1,6 @@
 use crate::{CivId, CityId, PolicyId, UnitId};
 use crate::civ::DiplomaticStatus;
+use crate::world::improvement::BuiltinImprovement;
 use crate::world::resource::BuiltinResource;
 use libhexgrid::coord::HexCoord;
 
@@ -70,6 +71,9 @@ pub enum StateDelta {
     // ── Fog of war (PHASE3-10.2) ─────────────────────────────────────────────
     /// Tiles newly added to `explored_tiles` this move (not previously explored).
     TilesRevealed { civ: CivId, coords: Vec<HexCoord> },
+
+    /// An improvement was placed on a tile.
+    ImprovementPlaced { coord: HexCoord, improvement: BuiltinImprovement },
 
     // ── TODO(PHASE3-8.8): Era advancement ────────────────────────────────────
     // EraAdvanced { civ: CivId, new_era: crate::AgeType },
