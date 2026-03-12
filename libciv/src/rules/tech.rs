@@ -11,6 +11,9 @@ pub struct TechNode {
     /// Effects applied when this tech is completed.
     pub effects:            Vec<OneShotEffect>,
     pub eureka_description: &'static str,
+    // TODO(PHASE3-8.4): Add eureka_conditions: Vec<Box<dyn EurekaCondition>>; advance_turn
+    //   evaluates is_met(&GameState, CivId) each turn and fires TriggerEureka if true.
+    //   Concrete types: KilledUnitsEureka, FoundedCityOnCoast, BuiltImprovementEureka, etc.
     /// Effects applied when the Eureka boost for this tech is triggered.
     pub eureka_effects:     Vec<OneShotEffect>,
 }

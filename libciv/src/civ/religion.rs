@@ -11,7 +11,8 @@ pub trait Belief: std::fmt::Debug {
 #[derive(Debug, Clone, Default)]
 pub struct BeliefContext {
     pub followers: u32,
-    pub holy_cities: u32, // FIXME: Should be 'MajorityReligionCities'
+    // TODO(PHASE3-8.5): Rename to majority_religion_city_count (counts cities where this religion is majority).
+    pub holy_cities: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -41,7 +42,9 @@ impl Religion {
     }
 }
 
-/// Yields a religion provides to its founder per turn (placeholder).
+// TODO(PHASE3-8.5): Compute yields from Religion.beliefs (BeliefId → Belief → modifiers);
+//   integrate delivery into advance_turn Phase 5 religion spread loop.
+//   Consider moving into RulesEngine::compute_yields rather than a free function.
 pub fn religion_founder_yields(_religion: &Religion) -> YieldBundle {
     YieldBundle::default()
 }

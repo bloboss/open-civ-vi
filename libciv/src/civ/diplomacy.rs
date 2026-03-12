@@ -103,8 +103,8 @@ impl DiplomaticRelation {
 
 // ---- Built-in grievance triggers ----
 
-// TODO: Clunky, move into a new .rs file and then #include! it with macro
-// definitions as required
+// TODO(PHASE3-7.4): Move DeclaredWarGrievance, PillageGrievance, CapturedCityGrievance
+//   to civ/grievance.rs and re-export from civ/mod.rs.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct DeclaredWarGrievance;
 impl GrievanceTrigger for DeclaredWarGrievance {

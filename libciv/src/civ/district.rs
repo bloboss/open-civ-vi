@@ -37,6 +37,9 @@ impl AdjacencyContext {
     }
 }
 
+// TODO(PHASE3-8.2): PlacedDistrict is ready; wire it into City.districts (replace
+//   Vec<DistrictTypeId>) and into place_district() on RulesEngine. See also 4.3
+//   which triggers DistrictBuilt StateDelta.
 /// A district that has been placed on the map.
 #[derive(Debug, Clone)]
 pub struct PlacedDistrict {

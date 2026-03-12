@@ -21,6 +21,8 @@ pub struct Governor {
     pub owner: CivId,
     pub assigned_city: Option<CityId>,
     pub promotions: Vec<PromotionId>,
+    // TODO(PHASE3-8.7): advance_turn must decrement turns_to_establish each turn
+    //   for governors with assigned_city.is_some() and turns_to_establish > 0.
     pub turns_to_establish: u32,
 }
 
@@ -50,8 +52,9 @@ macro_rules! define_governor {
         pub struct $name;
 
         impl GovernorDef for $name {
+            // TODO(PHASE3-8.7): Replace Ulid::nil() with proper GovernorId via IdGenerator
+            //   or stable const ULID literals; nil() makes all governors share the same ID.
             fn id(&self) -> GovernorId {
-                // Placeholder: in Phase 2, load from a registry
                 GovernorId::from_ulid(::ulid::Ulid::nil())
             }
             fn name(&self) -> &'static str { stringify!($name) }

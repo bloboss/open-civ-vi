@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use crate::{
-    CivId, CityId, UnitId, EraId,
+    BuildingId, CivId, CityId, UnitCategory, UnitDomain, UnitId, EraId, YieldBundle,
 };
 use crate::civ::{
     BasicUnit, Civilization, City, CityKind, DiplomaticRelation, GreatPerson, Religion, TradeRoute,
@@ -11,6 +11,31 @@ use rand::rngs::SmallRng;
 use ulid::Ulid;
 
 use super::board::WorldBoard;
+
+/// Static descriptor for a unit type; stored in `GameState.unit_type_defs`.
+/// `apply_effect(FreeUnit)` looks up by name to construct a `BasicUnit`.
+/// `production_cost` is used by the production queue completion logic.
+#[derive(Debug, Clone)]
+pub struct UnitTypeDef {
+    pub name:            &'static str,
+    pub production_cost: u32,
+    pub domain:          UnitDomain,
+    pub category:        UnitCategory,
+    pub max_movement:    u32,
+    pub combat_strength: Option<u32>,
+}
+
+/// Static descriptor for a building type; stored in `GameState.building_defs`.
+/// `id` is the canonical `BuildingId` used when adding the building to a city.
+#[derive(Debug, Clone)]
+pub struct BuildingDef {
+    pub id:                  BuildingId,
+    pub name:                &'static str,
+    pub cost:                u32,
+    pub maintenance:         u32,
+    pub yields:              YieldBundle,
+    pub requires_district:   Option<&'static str>,
+}
 
 /// Deterministic ID generator backed by a seeded RNG.
 pub struct IdGenerator {
@@ -54,6 +79,10 @@ impl IdGenerator {
     pub fn next_civ_id(&mut self) -> CivId {
         CivId::from_ulid(self.next_ulid())
     }
+
+    pub fn next_building_id(&mut self) -> BuildingId {
+        BuildingId::from_ulid(self.next_ulid())
+    }
 }
 
 /// The full game state.
@@ -75,6 +104,14 @@ pub struct GameState {
     pub governments: Vec<Government>,
     pub policies: Vec<Policy>,
     pub current_era: EraId,
+    /// Registry of unit types. Populated by callers before the game loop.
+    /// `apply_effect(FreeUnit)` looks up entries by name to spawn real units.
+    pub unit_type_defs: Vec<UnitTypeDef>,
+    /// Registry of building types. Populated by callers before the game loop.
+    /// `apply_effect(FreeBuilding)` looks up entries by name to place real buildings.
+    pub building_defs: Vec<BuildingDef>,
+    // TODO(PHASE3-8.8): Add era_triggers: Vec<Box<dyn EraTrigger>> (or on Era struct).
+    // TODO(PHASE3-8.9): Add victory_conditions: Vec<Box<dyn VictoryCondition>> and game_over: bool.
     /// Pending one-shot effects to be drained at the end of each turn's
     /// completion sweep (Phase 4 of `advance_turn`).
     pub effect_queue: VecDeque<(CivId, OneShotEffect)>,
@@ -103,6 +140,8 @@ impl GameState {
             governments: Vec::new(),
             policies: Vec::new(),
             current_era: era_id,
+            unit_type_defs: Vec::new(),
+            building_defs: Vec::new(),
             effect_queue: VecDeque::new(),
         }
     }

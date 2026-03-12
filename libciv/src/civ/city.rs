@@ -1,4 +1,5 @@
-use crate::{BuildingId, CityId, CivId, DistrictTypeId, UnitTypeId, WonderId, YieldBundle};
+use std::collections::{HashSet, VecDeque};
+use crate::{BuildingId, CityId, CivId, DistrictTypeId, UnitTypeId, WonderId};
 use libhexgrid::coord::HexCoord;
 use super::city_state::CityStateData;
 
@@ -59,12 +60,21 @@ pub struct City {
     pub food_stored: u32,
     pub food_to_grow: u32,
     pub production_stored: u32,
-    pub current_production: Option<ProductionItem>,
+    /// Ordered production queue. `advance_turn` works on `front()` and calls
+    /// `pop_front()` when an item completes (requires registry — Part 6.2).
+    pub production_queue: VecDeque<ProductionItem>,
     pub walls: WallLevel,
     pub wall_hp: u32,
     pub buildings: Vec<BuildingId>,
+    // TODO(PHASE3-8.2): Change to Vec<PlacedDistrict> (from civ/district.rs) to store
+    //   coord alongside district type; needed for adjacency bonus computation.
     pub districts: Vec<DistrictTypeId>,
-    pub yields: YieldBundle,
+    /// Tiles currently being worked by citizens. Always includes the city center
+    /// (set at founding). Citizens are auto-assigned on population growth and can
+    /// be overridden via `RulesEngine::assign_citizen`.
+    pub worked_tiles: Vec<HexCoord>,
+    /// Tiles pinned by player/AI override; survive auto-reassignment.
+    pub locked_tiles: HashSet<HexCoord>,
 }
 
 impl City {
@@ -82,12 +92,13 @@ impl City {
             food_stored: 0,
             food_to_grow: 15,
             production_stored: 0,
-            current_production: None,
+            production_queue: VecDeque::new(),
             walls: WallLevel::None,
             wall_hp: WallLevel::None.max_hp(),
             buildings: Vec::new(),
             districts: Vec::new(),
-            yields: YieldBundle::default(),
+            worked_tiles: vec![coord],
+            locked_tiles: HashSet::new(),
         }
     }
 

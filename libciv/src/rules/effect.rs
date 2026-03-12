@@ -1,5 +1,6 @@
 use crate::CityId;
 use crate::civ::civilization::Civilization;
+use crate::rules::modifier::Modifier;
 use crate::world::resource::BuiltinResource;
 
 /// Whether an effect can produce further effects when applied.
@@ -67,6 +68,16 @@ pub enum OneShotEffect {
     /// Adopt a government. Removes the previous government's policy slots and
     /// inherent modifier; applies those of the new one. Player-triggered.
     AdoptGovernment(&'static str),
+
+    // ── Policy unlock ─────────────────────────────────────────────────────────
+    /// Unlock a policy card for equipping in government slots.
+    UnlockPolicy(&'static str),
+
+    // ── Modifier grant from tech/civic ───────────────────────────────────────
+    /// Grant a permanent modifier to this civilization, sourced from a completed
+    /// tech or civic. The modifier is collected at query time via
+    /// `Civilization::get_tree_modifiers(tech_tree, civic_tree)`.
+    GrantModifier(Modifier),
 }
 
 impl OneShotEffect {
@@ -78,6 +89,8 @@ impl OneShotEffect {
             OneShotEffect::TriggerInspiration { .. }=> CascadeClass::Idempotent,
             OneShotEffect::UnlockGovernment(_)      => CascadeClass::Idempotent,
             OneShotEffect::AdoptGovernment(_)       => CascadeClass::Idempotent,
+            OneShotEffect::UnlockPolicy(_)          => CascadeClass::Idempotent,
+            OneShotEffect::GrantModifier(_)         => CascadeClass::NonCascading,
             _                                       => CascadeClass::NonCascading,
         }
     }
@@ -97,6 +110,9 @@ impl OneShotEffect {
                 !civ.unlocked_governments.contains(g),
             OneShotEffect::AdoptGovernment(g) =>
                 civ.current_government_name != Some(*g),
+            OneShotEffect::UnlockPolicy(p) =>
+                !civ.unlocked_policies.contains(p),
+            OneShotEffect::GrantModifier(_) => true,
             _ => true,
         }
     }
@@ -165,5 +181,32 @@ mod tests {
         assert!(effect.guard(&civ));
         civ.current_government_name = Some("Autocracy");
         assert!(!effect.guard(&civ), "already active government should be skipped");
+    }
+
+    #[test]
+    fn unlock_policy_guard_fires_once() {
+        let mut civ = empty_civ();
+        let effect = OneShotEffect::UnlockPolicy("Strategos");
+        assert!(effect.guard(&civ), "first application should pass");
+        civ.unlocked_policies.push("Strategos");
+        assert!(!effect.guard(&civ), "second application should be blocked");
+        assert_eq!(effect.cascade_class(), CascadeClass::Idempotent);
+    }
+
+    #[test]
+    fn grant_modifier_guard_always_true() {
+        use crate::rules::modifier::{EffectType, Modifier, ModifierSource, StackingRule, TargetSelector};
+        use crate::YieldType;
+
+        let civ = empty_civ();
+        let modifier = Modifier::new(
+            ModifierSource::Tech("Pottery"),
+            TargetSelector::Global,
+            EffectType::YieldFlat(YieldType::Culture, 1),
+            StackingRule::Additive,
+        );
+        let effect = OneShotEffect::GrantModifier(modifier);
+        assert!(effect.guard(&civ), "GrantModifier guard is always true");
+        assert_eq!(effect.cascade_class(), CascadeClass::NonCascading);
     }
 }

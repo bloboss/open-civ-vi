@@ -26,6 +26,8 @@ impl TradeRoute {
         }
     }
 
+    // TODO(PHASE3-8.3): Receives &[City] (or &GameState); compare state.city(origin).owner
+    //   vs state.city(destination).owner to determine international status.
     pub fn is_international(&self) -> bool {
         // Will be determined by comparing owning civs of cities in Phase 2.
         false
