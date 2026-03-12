@@ -1,13 +1,16 @@
 /// SVG hex-grid renderer.
 ///
 /// Renders the WorldBoard as pointy-top hexagons.  Each hex is a `<polygon>`
-/// coloured by terrain type.  Units are shown as small filled circles.
-/// City locations are shown as a white diamond outline.
-/// Clicking a hex fires `on_select(coord)`.
+/// coloured by terrain type.  Fog of war is applied as a dark overlay:
+///   - Unexplored tiles: nearly-opaque black overlay, no markers.
+///   - Explored-but-foggy: semi-transparent overlay, city outline still shown.
+///   - Fully visible: no overlay, all markers shown.
+/// Clicking a hex fires `on_hex_click(coord)`.
 ///
 /// Coordinate system: axial (q, r) → pixel using pointy-top layout:
 ///   px = size * sqrt(3) * (q + r / 2)
 ///   py = size * 3/2     * r
+use std::sync::Arc;
 use leptos::prelude::*;
 use libciv::world::terrain::BuiltinTerrain;
 use libciv::UnitId;
@@ -57,9 +60,6 @@ pub fn svg_dimensions(board_w: u32, board_h: u32) -> (f64, f64) {
 // Terrain colours
 // ---------------------------------------------------------------------------
 
-// FIXME: Terrain-to-colour mapping belongs in frontend display logic only.
-//        Once the server sends a `GameView`, the client picks colours by
-//        matching the terrain name string returned by the view model.
 fn terrain_fill(t: BuiltinTerrain) -> &'static str {
     match t {
         BuiltinTerrain::Grassland(_) => "#3a6b45",
@@ -100,6 +100,8 @@ pub fn HexMap(
     selected_tile: RwSignal<Option<HexCoord>>,
     /// Currently selected unit.
     selected_unit: RwSignal<Option<UnitId>>,
+    /// Called when the user clicks a hex (before selection is updated).
+    on_hex_click: impl Fn(HexCoord) + Send + Sync + 'static,
 ) -> impl IntoView {
     // Board dimensions are fixed for the lifetime of the session.
     let (board_w, board_h, svg_w, svg_h) = session.with_value(|s| {
@@ -109,11 +111,23 @@ pub fn HexMap(
         (w, h, sw, sh)
     });
 
-    // Build one <polygon> per tile.  We re-derive on every tick.
+    // Arc allows cloning the callback into each per-hex click handler.
+    let on_hex_click: Arc<dyn Fn(HexCoord) + Send + Sync> = Arc::new(on_hex_click);
+
+    // Build one <g> per tile.  Re-derived on every tick.
     let hexes = move || {
         tick.get(); // reactive dependency
 
+        let on_hex_click = on_hex_click.clone();
         session.with_value(|s| {
+            let civ_id = s.civ_id;
+
+            // Snapshot visibility sets for the rendering pass.
+            let (visible, explored) = s.state.civilizations.iter()
+                .find(|c| c.id == civ_id)
+                .map(|c| (c.visible_tiles.clone(), c.explored_tiles.clone()))
+                .unwrap_or_default();
+
             let mut elems: Vec<_> = Vec::new();
 
             for r in 0..board_h as i32 {
@@ -127,20 +141,36 @@ pub fn HexMap(
                     let fill     = terrain_fill(tile.terrain);
                     let label    = terrain_label(tile.terrain);
 
+                    let is_visible  = visible.contains(&coord);
+                    let is_explored = explored.contains(&coord);
+
                     let is_selected = selected_tile.get_untracked() == Some(coord);
                     let stroke      = if is_selected { "#ffffff" } else { "#000000" };
                     let stroke_w    = if is_selected { "2.5" } else { "0.8" };
 
-                    // Unit on this tile (first owned unit wins for display).
-                    let unit_here: Option<UnitId> = s.state.units.iter()
-                        .find(|u| u.coord == coord)
-                        .map(|u| u.id);
+                    // Unit on this tile (only shown when visible).
+                    let unit_here: Option<UnitId> = if is_visible {
+                        s.state.units.iter()
+                            .find(|u| u.coord == coord)
+                            .map(|u| u.id)
+                    } else {
+                        None
+                    };
 
-                    // City on this tile.
-                    let city_here = s.state.cities.iter().any(|c| c.coord == coord);
+                    // City on this tile (shown when explored or visible).
+                    let city_here = is_explored && s.state.cities.iter().any(|c| c.coord == coord);
 
-                    let sel_tile = selected_tile;
                     let sel_unit = selected_unit;
+                    let click_fn = on_hex_click.clone();
+
+                    // Fog overlay opacity: none when visible, semi when explored, solid when unknown.
+                    let fog_opacity: Option<&'static str> = if is_visible {
+                        None
+                    } else if is_explored {
+                        Some("0.50")
+                    } else {
+                        Some("0.88")
+                    };
 
                     elems.push(view! {
                         <g>
@@ -151,22 +181,24 @@ pub fn HexMap(
                                 stroke=stroke
                                 stroke-width=stroke_w
                                 on:click=move |_| {
-                                    sel_tile.set(Some(coord));
-                                    sel_unit.set(unit_here);
+                                    click_fn(coord);
                                 }
                             />
-                            // Terrain letter (tiny, bottom of hex).
-                            <text
-                                x=cx y={cy + HEX_SIZE * 0.58}
-                                text-anchor="middle"
-                                font-size="9"
-                                fill="rgba(0,0,0,0.45)"
-                                pointer-events="none"
-                            >
-                                {label}
-                            </text>
 
-                            // City marker: white diamond outline.
+                            // Terrain letter (only on visible tiles).
+                            {is_visible.then(|| view! {
+                                <text
+                                    x=cx y={cy + HEX_SIZE * 0.58}
+                                    text-anchor="middle"
+                                    font-size="9"
+                                    fill="rgba(0,0,0,0.45)"
+                                    pointer-events="none"
+                                >
+                                    {label}
+                                </text>
+                            })}
+
+                            // City marker: white diamond outline (visible when explored).
                             {city_here.then(|| view! {
                                 <polygon
                                     class="city-marker"
@@ -179,12 +211,13 @@ pub fn HexMap(
                                     fill="none"
                                     stroke="#ffffff"
                                     stroke-width="1.5"
+                                    pointer-events="none"
                                 />
                             })}
 
-                            // Unit dot.
+                            // Unit dot (only when tile is fully visible).
                             {unit_here.map(|uid| {
-                                let is_sel = selected_unit.get_untracked() == Some(uid);
+                                let is_sel = sel_unit.get_untracked() == Some(uid);
                                 let dot_fill = if is_sel { "#ffe066" } else { "#4e7df4" };
                                 view! {
                                     <circle
@@ -193,8 +226,20 @@ pub fn HexMap(
                                         fill=dot_fill
                                         stroke="#fff"
                                         stroke-width="1.2"
+                                        pointer-events="none"
                                     />
                                 }
+                            })}
+
+                            // Fog of war overlay.
+                            {fog_opacity.map(|opacity| view! {
+                                <polygon
+                                    points=points.clone()
+                                    fill="#060810"
+                                    fill-opacity=opacity
+                                    stroke="none"
+                                    pointer-events="none"
+                                />
                             })}
                         </g>
                     });

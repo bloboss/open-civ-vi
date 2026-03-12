@@ -12,6 +12,7 @@ use libciv::{
 };
 use libciv::civ::{Agenda, BasicUnit, City, Civilization, Leader};
 use libciv::game::state::UnitTypeDef;
+use libciv::game::recalculate_visibility;
 use libciv::world::terrain::{
     BuiltinTerrain, Desert, Grassland, Mountain, Ocean, Plains, Tundra,
 };
@@ -33,11 +34,9 @@ use rand::Rng;
 pub struct Session {
     pub state:         GameState,
     pub civ_id:        CivId,
-    #[allow(dead_code)]  // used by future city-action commands
-    pub city_id:       CityId,
+    pub city_ids:      Vec<CityId>,
+    pub current_city:  usize,
     pub selected_unit: Option<UnitId>,
-    /// Parallel to `state.unit_type_defs` — same insertion order.
-    pub unit_type_ids: Vec<UnitTypeId>,
 }
 
 // ---------------------------------------------------------------------------
@@ -127,27 +126,34 @@ pub fn build_session() -> Session {
     randomize_terrain(&mut state, seed, city_coord);
 
     // Unit-type registry.
+    let warrior_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
+    let settler_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
+    let builder_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
+    let slinger_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
     state.unit_type_defs.extend([
-        UnitTypeDef { name: "warrior", production_cost: 40,  max_movement: 200,
-                      combat_strength: Some(20), domain: UnitDomain::Land, category: UnitCategory::Combat   },
-        UnitTypeDef { name: "settler", production_cost: 80,  max_movement: 200,
-                      combat_strength: None,     domain: UnitDomain::Land, category: UnitCategory::Civilian },
-        UnitTypeDef { name: "builder", production_cost: 50,  max_movement: 200,
-                      combat_strength: None,     domain: UnitDomain::Land, category: UnitCategory::Civilian },
-        UnitTypeDef { name: "slinger", production_cost: 35,  max_movement: 200,
-                      combat_strength: Some(10), domain: UnitDomain::Land, category: UnitCategory::Combat   },
+        UnitTypeDef { id: warrior_type_id, name: "warrior", production_cost: 40,
+                      max_movement: 200, combat_strength: Some(20),
+                      domain: UnitDomain::Land, category: UnitCategory::Combat,
+                      range: 0, vision_range: 2, can_found_city: false },
+        UnitTypeDef { id: settler_type_id, name: "settler", production_cost: 80,
+                      max_movement: 200, combat_strength: None,
+                      domain: UnitDomain::Land, category: UnitCategory::Civilian,
+                      range: 0, vision_range: 2, can_found_city: true },
+        UnitTypeDef { id: builder_type_id, name: "builder", production_cost: 50,
+                      max_movement: 200, combat_strength: None,
+                      domain: UnitDomain::Land, category: UnitCategory::Civilian,
+                      range: 0, vision_range: 2, can_found_city: false },
+        UnitTypeDef { id: slinger_type_id, name: "slinger", production_cost: 35,
+                      max_movement: 200, combat_strength: Some(10),
+                      domain: UnitDomain::Land, category: UnitCategory::Combat,
+                      range: 2, vision_range: 2, can_found_city: false },
     ]);
 
-    let unit_type_ids: Vec<UnitTypeId> = state.unit_type_defs.iter()
-        .map(|_| UnitTypeId::from_ulid(state.id_gen.next_ulid()))
-        .collect();
-
     // Starting Warrior.
-    let unit_id      = state.id_gen.next_unit_id();
-    let warrior_type = unit_type_ids[0];
+    let unit_id = state.id_gen.next_unit_id();
     state.units.push(BasicUnit {
         id:              unit_id,
-        unit_type:       warrior_type,
+        unit_type:       warrior_type_id,
         owner:           civ_id,
         coord:           HexCoord::from_qr(7, 3),
         domain:          UnitDomain::Land,
@@ -157,13 +163,17 @@ pub fn build_session() -> Session {
         combat_strength: Some(20),
         promotions:      Vec::new(),
         health:          100,
+        range:           0,
+        vision_range:    2,
     });
+
+    recalculate_visibility(&mut state, civ_id);
 
     Session {
         state,
         civ_id,
-        city_id,
+        city_ids: vec![city_id],
+        current_city: 0,
         selected_unit: Some(unit_id),
-        unit_type_ids,
     }
 }
