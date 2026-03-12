@@ -5,8 +5,9 @@ use libciv::{
     CityId, CivId, GameState, GameStateDiff, DefaultRulesEngine, RulesEngine, TurnEngine,
     UnitCategory, UnitDomain, UnitId, UnitTypeId,
 };
+use libciv::ai::{Agent, HeuristicAgent};
 use libciv::civ::{Agenda, BasicUnit, City, Civilization, Leader, ProductionItem, Unit};
-use libciv::game::{RulesError, StateDelta};
+use libciv::game::{AttackType, RulesError, StateDelta, recalculate_visibility};
 use libciv::game::state::UnitTypeDef;
 use libciv::visualize::Visualizer;
 use libciv::world::terrain::{BuiltinTerrain, Desert, Grassland, Mountain, Ocean, Plains, Tundra};
@@ -46,6 +47,18 @@ enum Command {
     },
     /// Non-interactive demo: create game, move once, advance one turn
     Demo,
+    /// AI agent demo: two HeuristicAgents play against each other for N turns
+    AiDemo {
+        /// Number of turns to simulate (default: 50)
+        #[arg(short, long, default_value_t = 50)]
+        turns: u32,
+        /// RNG seed for terrain generation (default: 42)
+        #[arg(short, long, default_value_t = 42)]
+        seed: u64,
+        /// Print the board every N turns; 0 = only at start and end (default: 10)
+        #[arg(long, default_value_t = 10)]
+        board_every: u32,
+    },
     /// Interactive: move your Warrior turn-by-turn
     Play,
 }
@@ -89,6 +102,7 @@ fn main() {
             }
         }
         Command::Demo => run_demo(),
+        Command::AiDemo { turns, seed, board_every } => run_ai_demo(turns, seed, board_every),
         Command::Play => run_play(),
     }
 }
@@ -98,10 +112,9 @@ fn main() {
 struct Session {
     state:         GameState,
     civ_id:        CivId,
-    city_id:       CityId,
+    city_ids:      Vec<CityId>,
+    current_city:  usize,
     selected_unit: Option<UnitId>,
-    /// Parallel to `state.unit_type_defs`: one UnitTypeId per def, same insertion order.
-    unit_type_ids: Vec<UnitTypeId>,
 }
 
 /// Randomly assign terrain to every board tile using a seeded RNG.
@@ -166,29 +179,35 @@ fn build_session() -> Session {
     // Randomize terrain, keeping the city's immediate neighborhood habitable.
     randomize_terrain(&mut state, seed, city_coord);
 
-    // Populate unit type registry (one UnitTypeDef per buildable unit).
+    // Populate unit type registry. Each def has a stable ID used for production lookups.
+    let warrior_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
+    let settler_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
+    let builder_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
+    let slinger_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
     state.unit_type_defs.extend([
-        UnitTypeDef { name: "warrior", production_cost: 40,  max_movement: 200,
-                      combat_strength: Some(20), domain: UnitDomain::Land, category: UnitCategory::Combat   },
-        UnitTypeDef { name: "settler", production_cost: 80,  max_movement: 200,
-                      combat_strength: None,     domain: UnitDomain::Land, category: UnitCategory::Civilian },
-        UnitTypeDef { name: "builder", production_cost: 50,  max_movement: 200,
-                      combat_strength: None,     domain: UnitDomain::Land, category: UnitCategory::Civilian },
-        UnitTypeDef { name: "slinger", production_cost: 35,  max_movement: 200,
-                      combat_strength: Some(10), domain: UnitDomain::Land, category: UnitCategory::Combat   },
+        UnitTypeDef { id: warrior_type_id, name: "warrior", production_cost: 40,
+                      max_movement: 200, combat_strength: Some(20),
+                      domain: UnitDomain::Land, category: UnitCategory::Combat,
+                      range: 0, vision_range: 2, can_found_city: false },
+        UnitTypeDef { id: settler_type_id, name: "settler", production_cost: 80,
+                      max_movement: 200, combat_strength: None,
+                      domain: UnitDomain::Land, category: UnitCategory::Civilian,
+                      range: 0, vision_range: 2, can_found_city: true },
+        UnitTypeDef { id: builder_type_id, name: "builder", production_cost: 50,
+                      max_movement: 200, combat_strength: None,
+                      domain: UnitDomain::Land, category: UnitCategory::Civilian,
+                      range: 0, vision_range: 2, can_found_city: false },
+        UnitTypeDef { id: slinger_type_id, name: "slinger", production_cost: 35,
+                      max_movement: 200, combat_strength: Some(10),
+                      domain: UnitDomain::Land, category: UnitCategory::Combat,
+                      range: 2, vision_range: 2, can_found_city: false },
     ]);
 
-    // Generate one UnitTypeId per def entry (same insertion order as unit_type_defs).
-    let unit_type_ids: Vec<UnitTypeId> = state.unit_type_defs.iter()
-        .map(|_| UnitTypeId::from_ulid(state.id_gen.next_ulid()))
-        .collect();
-
-    // Starting Warrior at (7, 3) — use the warrior's UnitTypeId.
-    let unit_id      = state.id_gen.next_unit_id();
-    let warrior_type = unit_type_ids[0];
+    // Starting Warrior at (7, 3).
+    let unit_id = state.id_gen.next_unit_id();
     state.units.push(BasicUnit {
         id:              unit_id,
-        unit_type:       warrior_type,
+        unit_type:       warrior_type_id,
         owner:           civ_id,
         coord:           HexCoord::from_qr(7, 3),
         domain:          UnitDomain::Land,
@@ -198,9 +217,13 @@ fn build_session() -> Session {
         combat_strength: Some(20),
         promotions:      Vec::new(),
         health:          100,
+        range:           0,
+        vision_range:    2,
     });
 
-    Session { state, civ_id, city_id, selected_unit: Some(unit_id), unit_type_ids }
+    recalculate_visibility(&mut state, civ_id);
+
+    Session { state, civ_id, city_ids: vec![city_id], current_city: 0, selected_unit: Some(unit_id) }
 }
 
 // ── Non-interactive demo ──────────────────────────────────────────────────────
@@ -221,7 +244,7 @@ fn run_demo() {
         session.state.unit(unit_id).unwrap().max_movement(),
     );
     println!();
-    print_board(&session.state);
+    print_board(&session);
 
     let target = HexCoord::from_qr(8, 3);
     println!("\n  >>> Moving Warrior {} -> {}...", fmtc(unit_start), fmtc(target));
@@ -243,7 +266,7 @@ fn run_demo() {
 
     println!();
     banner(&format!("Turn {}  |  Rome", session.state.turn));
-    print_board(&session.state);
+    print_board(&session);
     print_turn_events(&diff);
 
     let city = &session.state.cities[0];
@@ -252,6 +275,357 @@ fn run_demo() {
         city.population, city.food_stored, city.food_to_grow,
         fmtc(unit.coord()), unit.movement_left(), unit.max_movement(),
     );
+}
+
+// ── AI agent demo ─────────────────────────────────────────────────────────────
+
+/// State bundle for the two-civ AI demo.
+struct AiDemo {
+    state:          GameState,
+    rome_id:        CivId,
+    babylon_id:     CivId,
+    /// All city IDs that belong to Rome (grows as the AI founds cities).
+    rome_cities:    Vec<CityId>,
+    /// All city IDs that belong to Babylon.
+    babylon_cities: Vec<CityId>,
+}
+
+fn build_ai_demo(seed: u64) -> AiDemo {
+    // Larger map so exploration is interesting over 50 turns.
+    let mut state = GameState::new(seed, 20, 12);
+
+    // ── Unit-type registry ────────────────────────────────────────────────
+    let warrior_type = UnitTypeId::from_ulid(state.id_gen.next_ulid());
+    let settler_type = UnitTypeId::from_ulid(state.id_gen.next_ulid());
+    let slinger_type = UnitTypeId::from_ulid(state.id_gen.next_ulid());
+    state.unit_type_defs.extend([
+        UnitTypeDef { id: warrior_type, name: "warrior", production_cost: 40,
+                      max_movement: 200, combat_strength: Some(20),
+                      domain: UnitDomain::Land, category: UnitCategory::Combat,
+                      range: 0, vision_range: 2, can_found_city: false },
+        UnitTypeDef { id: settler_type, name: "settler", production_cost: 80,
+                      max_movement: 200, combat_strength: None,
+                      domain: UnitDomain::Land, category: UnitCategory::Civilian,
+                      range: 0, vision_range: 2, can_found_city: true },
+        UnitTypeDef { id: slinger_type, name: "slinger", production_cost: 35,
+                      max_movement: 200, combat_strength: Some(10),
+                      domain: UnitDomain::Land, category: UnitCategory::Combat,
+                      range: 2, vision_range: 2, can_found_city: false },
+    ]);
+
+    // ── Rome (west side) ──────────────────────────────────────────────────
+    let rome_id = state.id_gen.next_civ_id();
+    state.civilizations.push(Civilization::new(rome_id, "Rome", "Roman",
+        Leader { name: "Caesar", civ_id: rome_id, abilities: Vec::new(),
+                 agenda: Box::new(NoOpAgenda) }));
+
+    let rome_city_coord = HexCoord::from_qr(3, 4);
+    randomize_terrain(&mut state, seed, rome_city_coord);
+
+    let rome_city = state.id_gen.next_city_id();
+    let mut rc = City::new(rome_city, "Roma".to_string(), rome_id, rome_city_coord);
+    rc.is_capital = true;
+    state.cities.push(rc);
+    state.civilizations.iter_mut().find(|c| c.id == rome_id).unwrap()
+        .cities.push(rome_city);
+
+    // Rome's starting warrior.
+    let rome_warrior = state.id_gen.next_unit_id();
+    state.units.push(BasicUnit {
+        id: rome_warrior, unit_type: warrior_type, owner: rome_id,
+        coord: HexCoord::from_qr(5, 4),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    // ── Babylon (east side) ───────────────────────────────────────────────
+    let babylon_id = state.id_gen.next_civ_id();
+    state.civilizations.push(Civilization::new(babylon_id, "Babylon", "Babylonian",
+        Leader { name: "Hammurabi", civ_id: babylon_id, abilities: Vec::new(),
+                 agenda: Box::new(NoOpAgenda) }));
+
+    let babylon_city_coord = HexCoord::from_qr(16, 7);
+    randomize_terrain(&mut state, seed.wrapping_add(1), babylon_city_coord);
+
+    let babylon_city = state.id_gen.next_city_id();
+    let mut bc = City::new(babylon_city, "Babylon".to_string(), babylon_id, babylon_city_coord);
+    bc.is_capital = true;
+    state.cities.push(bc);
+    state.civilizations.iter_mut().find(|c| c.id == babylon_id).unwrap()
+        .cities.push(babylon_city);
+
+    // Babylon's starting warrior.
+    let babylon_warrior = state.id_gen.next_unit_id();
+    state.units.push(BasicUnit {
+        id: babylon_warrior, unit_type: warrior_type, owner: babylon_id,
+        coord: HexCoord::from_qr(14, 7),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    // ── Initial visibility ────────────────────────────────────────────────
+    recalculate_visibility(&mut state, rome_id);
+    recalculate_visibility(&mut state, babylon_id);
+
+    AiDemo {
+        state,
+        rome_id, babylon_id,
+        rome_cities: vec![rome_city],
+        babylon_cities: vec![babylon_city],
+    }
+}
+
+/// Complete production for one civilization: pop units off the queue when cost
+/// is met, spawn them at the city coord, and push their IDs into `new_unit_ids`.
+fn complete_production_civ(
+    demo: &mut AiDemo,
+    civ_id: CivId,
+    new_unit_ids: &mut Vec<(UnitId, &'static str)>,
+    new_city_ids: &mut Vec<CityId>,
+) {
+    let city_indices: Vec<usize> = (0..demo.state.cities.len())
+        .filter(|&i| demo.state.cities[i].owner == civ_id)
+        .collect();
+
+    for city_idx in city_indices {
+        loop {
+            let front = demo.state.cities[city_idx].production_queue.front().cloned();
+            let Some(ProductionItem::Unit(tid)) = front else { break };
+
+            let def_idx = match demo.state.unit_type_defs.iter().position(|d| d.id == tid) {
+                Some(i) => i,
+                None    => break,
+            };
+            let cost = demo.state.unit_type_defs[def_idx].production_cost;
+            if demo.state.cities[city_idx].production_stored < cost { break; }
+
+            demo.state.cities[city_idx].production_stored -= cost;
+            demo.state.cities[city_idx].production_queue.pop_front();
+
+            let def         = &demo.state.unit_type_defs[def_idx];
+            let unit_id     = demo.state.id_gen.next_unit_id();
+            let coord       = demo.state.cities[city_idx].coord;
+            let def_name    = def.name;
+            let def_domain  = def.domain;
+            let def_cat     = def.category;
+            let def_mv      = def.max_movement;
+            let def_cs      = def.combat_strength;
+            let def_range   = def.range;
+            let def_vision  = def.vision_range;
+            demo.state.units.push(BasicUnit {
+                id: unit_id, unit_type: tid, owner: civ_id, coord,
+                domain: def_domain, category: def_cat,
+                movement_left: def_mv, max_movement: def_mv,
+                combat_strength: def_cs, promotions: Vec::new(),
+                health: 100, range: def_range, vision_range: def_vision,
+            });
+            new_unit_ids.push((unit_id, def_name));
+        }
+    }
+
+    // Track any city IDs produced by the AI that we don't know about yet.
+    for city in demo.state.cities.iter() {
+        if city.owner == civ_id {
+            let tracker = if civ_id == demo.rome_id {
+                &mut demo.rome_cities
+            } else {
+                &mut demo.babylon_cities
+            };
+            if !tracker.contains(&city.id) {
+                tracker.push(city.id);
+                new_city_ids.push(city.id);
+            }
+        }
+    }
+}
+
+/// Omniscient board view for the AI demo (no fog — both civs shown, labelled).
+fn print_ai_board(demo: &AiDemo) {
+    let state   = &demo.state;
+    const N: usize = 1;
+    let mut buf = Visualizer::new(board_grid(state)).render_buffer();
+
+    // Overlay cities: # = Rome  % = Babylon
+    for city in &state.cities {
+        let ch = if city.owner == demo.rome_id { '#' } else { '%' };
+        overlay(&mut buf, city.coord, ch, N);
+    }
+
+    // Overlay units: @ = Rome  & = Babylon
+    for unit in &state.units {
+        let ch = if unit.owner == demo.rome_id { '@' } else { '&' };
+        overlay(&mut buf, unit.coord(), ch, N);
+    }
+
+    for line in &buf {
+        println!("  {}", line);
+    }
+    println!("  Legend: #=Rome city  @=Rome unit  %=Babylon city  &=Babylon unit");
+    println!("  Terrain: G)rassland  P)lains  D)esert  M)ountain  O)cean  T)undra");
+}
+
+/// One-line summary for a civilization.
+fn civ_summary_line(demo: &AiDemo, civ_id: CivId) -> String {
+    let state = &demo.state;
+    let civ   = state.civilizations.iter().find(|c| c.id == civ_id).unwrap();
+    let cities = state.cities.iter().filter(|c| c.owner == civ_id).collect::<Vec<_>>();
+    let units  = state.units.iter().filter(|u| u.owner == civ_id).count();
+    let explored = civ.explored_tiles.len();
+
+    // First city production status.
+    let prod_str = cities.first()
+        .and_then(|c| c.production_queue.front())
+        .and_then(|item| match item {
+            ProductionItem::Unit(tid) =>
+                state.unit_type_defs.iter().find(|d| d.id == *tid)
+                    .map(|d| format!("{}[{}/{}]",
+                        capitalize(d.name),
+                        cities[0].production_stored,
+                        d.production_cost)),
+            _ => None,
+        })
+        .unwrap_or_else(|| "idle".to_string());
+
+    let total_pop: u32 = cities.iter().map(|c| c.population).sum();
+    format!("  {:8}  cities={:2}  pop={:2}  units={:2}  explored={:3}  prod={}",
+        civ.name, cities.len(), total_pop, units, explored, prod_str)
+}
+
+fn run_ai_demo(turns: u32, seed: u64, board_every: u32) {
+    let rules  = DefaultRulesEngine;
+    let engine = TurnEngine::new();
+
+    let mut demo = build_ai_demo(seed);
+
+    let rome_agent    = HeuristicAgent::new(demo.rome_id);
+    let babylon_agent = HeuristicAgent::new(demo.babylon_id);
+
+    println!();
+    banner(&format!("AI Demo — {} turns  seed={}  20×12 map", turns, seed));
+    println!("  Rome starts at (3,4)   Babylon starts at (16,7)");
+    println!("  Both civs are controlled by HeuristicAgent (deterministic).");
+    println!();
+    println!("  Turn 0 — initial state");
+    println!("{}", civ_summary_line(&demo, demo.rome_id));
+    println!("{}", civ_summary_line(&demo, demo.babylon_id));
+    println!();
+    print_ai_board(&demo);
+
+    for t in 1..=turns {
+        // ── End-of-turn rules processing ─────────────────────────────────
+        engine.process_turn(&mut demo.state, &rules);
+
+        // ── Reset movement for all units ──────────────────────────────────
+        for unit in &mut demo.state.units {
+            unit.movement_left = unit.max_movement;
+        }
+
+        // ── Refresh visibility ────────────────────────────────────────────
+        let civ_ids = [demo.rome_id, demo.babylon_id];
+        for cid in civ_ids {
+            recalculate_visibility(&mut demo.state, cid);
+        }
+
+        // ── Agent decisions ───────────────────────────────────────────────
+        let rome_diff    = rome_agent.take_turn(&mut demo.state, &rules);
+        let babylon_diff = babylon_agent.take_turn(&mut demo.state, &rules);
+
+        // ── Production completion for both civs ───────────────────────────
+        let mut rome_new_units:    Vec<(UnitId, &str)> = Vec::new();
+        let mut babylon_new_units: Vec<(UnitId, &str)> = Vec::new();
+        let mut rome_new_cities:   Vec<CityId>         = Vec::new();
+        let mut babylon_new_cities: Vec<CityId>        = Vec::new();
+
+        let (rid, bid) = (demo.rome_id, demo.babylon_id);
+        complete_production_civ(&mut demo, rid, &mut rome_new_units,    &mut rome_new_cities);
+        complete_production_civ(&mut demo, bid, &mut babylon_new_units, &mut babylon_new_cities);
+
+        // Refresh visibility again for newly spawned units.
+        for cid in civ_ids {
+            recalculate_visibility(&mut demo.state, cid);
+        }
+
+        // ── Turn log ──────────────────────────────────────────────────────
+        // Collect notable events for this turn.
+        let mut notes: Vec<String> = Vec::new();
+
+        for delta in rome_diff.deltas.iter().chain(babylon_diff.deltas.iter()) {
+            match delta {
+                StateDelta::UnitMoved { unit, from, to, .. } => {
+                    // Only report if it was a first move (from == start of turn).
+                    let _ = (unit, from, to);
+                }
+                StateDelta::ProductionStarted { city, item } => {
+                    let city_name = demo.state.cities.iter().find(|c| c.id == *city)
+                        .map(|c| c.name.as_str()).unwrap_or("?");
+                    notes.push(format!("{} started producing {}", city_name, capitalize(item)));
+                }
+                _ => {}
+            }
+        }
+        for (_, name) in &rome_new_units {
+            notes.push(format!("Rome completed a {}!", capitalize(name)));
+        }
+        for (_, name) in &babylon_new_units {
+            notes.push(format!("Babylon completed a {}!", capitalize(name)));
+        }
+        for cid in &rome_new_cities {
+            let name = demo.state.cities.iter().find(|c| c.id == *cid)
+                .map(|c| c.name.as_str()).unwrap_or("?");
+            notes.push(format!("Rome founded city: {}", name));
+        }
+        for cid in &babylon_new_cities {
+            let name = demo.state.cities.iter().find(|c| c.id == *cid)
+                .map(|c| c.name.as_str()).unwrap_or("?");
+            notes.push(format!("Babylon founded city: {}", name));
+        }
+
+        // Always print: turn header + civ summaries.
+        print!("\n  Turn {:3}  ", t);
+        if notes.is_empty() {
+            println!("(scouting / producing)");
+        } else {
+            println!();
+            for note in &notes {
+                println!("    [event] {}", note);
+            }
+        }
+        println!("{}", civ_summary_line(&demo, demo.rome_id));
+        println!("{}", civ_summary_line(&demo, demo.babylon_id));
+
+        // Print board periodically.
+        let should_print_board = board_every > 0 && t % board_every == 0;
+        let is_last = t == turns;
+        if should_print_board || is_last {
+            println!();
+            println!("  --- Board at turn {} ---", t);
+            print_ai_board(&demo);
+        }
+    }
+
+    // ── Final summary ─────────────────────────────────────────────────────
+    println!();
+    banner(&format!("Final state after {} turns", turns));
+    println!("{}", civ_summary_line(&demo, demo.rome_id));
+    println!("{}", civ_summary_line(&demo, demo.babylon_id));
+    println!();
+
+    // Explored percentage.
+    let total_tiles = (demo.state.board.width * demo.state.board.height) as usize;
+    let rome_exp    = demo.state.civilizations.iter().find(|c| c.id == demo.rome_id)
+        .map(|c| c.explored_tiles.len()).unwrap_or(0);
+    let babylon_exp = demo.state.civilizations.iter().find(|c| c.id == demo.babylon_id)
+        .map(|c| c.explored_tiles.len()).unwrap_or(0);
+    println!("  Map coverage:  Rome {}/{} ({:.0}%)   Babylon {}/{} ({:.0}%)",
+        rome_exp, total_tiles, 100.0 * rome_exp as f64 / total_tiles as f64,
+        babylon_exp, total_tiles, 100.0 * babylon_exp as f64 / total_tiles as f64,
+    );
+    println!();
+    print_ai_board(&demo);
 }
 
 // ── Interactive play loop ─────────────────────────────────────────────────────
@@ -267,7 +641,7 @@ fn run_play() {
         println!();
         print_turn_header(&session, &rules);
         println!();
-        print_board(&session.state);
+        print_board(&session);
         println!();
 
         // ── Command loop for this turn ────────────────────────────────────────
@@ -290,6 +664,7 @@ fn run_play() {
                             match rules.move_unit(&session.state, uid, target) {
                                 Ok(diff) => {
                                     apply_diff(&mut session.state, &diff);
+                                    recalculate_visibility(&mut session.state, session.civ_id);
                                     let after = session.state.unit(uid).unwrap().coord();
                                     println!("  Unit moved {} -> {}   mv={}/{}",
                                         fmtc(before), fmtc(after),
@@ -297,10 +672,11 @@ fn run_play() {
                                         session.state.unit(uid).unwrap().max_movement(),
                                     );
                                     println!();
-                                    print_board(&session.state);
+                                    print_board(&session);
                                 }
                                 Err(RulesError::InsufficientMovement(diff)) if !diff.is_empty() => {
                                     apply_diff(&mut session.state, &diff);
+                                    recalculate_visibility(&mut session.state, session.civ_id);
                                     let after = session.state.unit(uid).unwrap().coord();
                                     println!("  [partial] Unit moved {} -> {}  (ran out of movement)",
                                         fmtc(before), fmtc(after));
@@ -309,7 +685,7 @@ fn run_play() {
                                         session.state.unit(uid).unwrap().max_movement(),
                                     );
                                     println!();
-                                    print_board(&session.state);
+                                    print_board(&session);
                                 }
                                 Err(RulesError::InsufficientMovement(_)) => {
                                     println!("  [error] Not enough movement points.");
@@ -328,11 +704,11 @@ fn run_play() {
 
                 Cmd::Board => {
                     println!();
-                    print_board(&session.state);
+                    print_board(&session);
                 }
 
                 Cmd::Status => {
-                    let city = session.state.cities.iter().find(|c| c.id == session.city_id).unwrap();
+                    let city = session.state.cities.iter().find(|c| c.id == session.city_ids[session.current_city]).unwrap();
                     println!("  Turn {}  |  Roma pop={}  food {}/{}",
                         session.state.turn, city.population, city.food_stored, city.food_to_grow);
                     if let Some(uid) = session.selected_unit {
@@ -372,6 +748,116 @@ fn run_play() {
                 Cmd::Units => cmd_units(&session),
 
                 Cmd::Select(q, r) => cmd_select(&mut session, q, r),
+
+                Cmd::Settle(name) => {
+                    let name = if name.trim().is_empty() { "New City".to_string() } else { name };
+                    match session.selected_unit {
+                        None => println!("  [error] No unit selected."),
+                        Some(uid) => {
+                            match rules.found_city(&mut session.state, uid, name) {
+                                Ok(diff) => {
+                                    for delta in &diff.deltas {
+                                        if let StateDelta::CityFounded { city, coord, .. } = delta {
+                                            session.city_ids.push(*city);
+                                            println!("  City founded at {}!", fmtc(*coord));
+                                        }
+                                    }
+                                    session.selected_unit = None;
+                                    recalculate_visibility(&mut session.state, session.civ_id);
+                                    print_board(&session);
+                                }
+                                Err(e) => println!("  [error] {e}"),
+                            }
+                        }
+                    }
+                }
+
+                Cmd::Attack(q, r) => {
+                    let target_coord = HexCoord::from_qr(q, r);
+                    match session.selected_unit {
+                        None => println!("  [error] No unit selected."),
+                        Some(uid) => {
+                            let defender = session.state.units.iter()
+                                .find(|u| u.coord() == target_coord && u.owner != session.civ_id)
+                                .map(|u| u.id);
+                            match defender {
+                                None => println!("  [error] No enemy unit at {}.", fmtc(target_coord)),
+                                Some(def_id) => {
+                                    match rules.attack(&mut session.state, uid, def_id) {
+                                        Ok(diff) => {
+                                            for delta in &diff.deltas {
+                                                match delta {
+                                                    StateDelta::UnitAttacked {
+                                                        attacker_damage, defender_damage, attack_type, ..
+                                                    } => {
+                                                        let type_str = match attack_type {
+                                                            AttackType::Melee  => "Melee",
+                                                            AttackType::Ranged => "Ranged",
+                                                        };
+                                                        println!("  [{}] dealt {} dmg, took {} dmg",
+                                                            type_str, defender_damage, attacker_damage);
+                                                    }
+                                                    StateDelta::UnitDestroyed { .. } => {
+                                                        println!("  Unit destroyed!");
+                                                    }
+                                                    _ => {}
+                                                }
+                                            }
+                                            // Deselect if attacker was destroyed.
+                                            if session.state.unit(uid).is_none() {
+                                                session.selected_unit = None;
+                                            }
+                                            print_board(&session);
+                                        }
+                                        Err(e) => println!("  [error] {e}"),
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Cmd::Techs => {
+                    let civ = session.state.civilizations.iter()
+                        .find(|c| c.id == session.civ_id).unwrap();
+                    println!("  Researched technologies ({}):", civ.researched_techs.len());
+                    for tid in &civ.researched_techs {
+                        if let Some(node) = session.state.tech_tree.get(*tid) {
+                            println!("    - {}", node.name);
+                        }
+                    }
+                    if let Some(prog) = civ.research_queue.front() {
+                        if let Some(node) = session.state.tech_tree.get(prog.tech_id) {
+                            println!("  In progress: {} ({}/{})",
+                                node.name, prog.progress, node.cost);
+                        }
+                    }
+                }
+
+                Cmd::Civics => {
+                    let civ = session.state.civilizations.iter()
+                        .find(|c| c.id == session.civ_id).unwrap();
+                    println!("  Completed civics ({}):", civ.completed_civics.len());
+                    for cid in &civ.completed_civics {
+                        if let Some(node) = session.state.civic_tree.get(*cid) {
+                            println!("    - {}", node.name);
+                        }
+                    }
+                }
+
+                Cmd::Switch(n) => {
+                    if n == 0 || n > session.city_ids.len() {
+                        println!("  [error] City index out of range (1-{}).", session.city_ids.len());
+                    } else {
+                        session.current_city = n - 1;
+                        let city_id = session.city_ids[session.current_city];
+                        let name = session.state.cities.iter()
+                            .find(|c| c.id == city_id)
+                            .map(|c| c.name.as_str())
+                            .unwrap_or("?");
+                        println!("  Switched to city: {}", name);
+                    }
+                }
 
                 Cmd::EndTurn => break,
 
@@ -420,6 +906,11 @@ enum Cmd {
     Yields,
     Units,
     Select(i32, i32),
+    Settle(String),
+    Attack(i32, i32),
+    Techs,
+    Civics,
+    Switch(usize),
     Unknown(String),
 }
 
@@ -461,6 +952,15 @@ fn parse_cmd(raw: &str) -> Cmd {
         ["select" | "sel", q, r] => {
             parse_coord(q, r).map(|(q, r)| Cmd::Select(q, r)).unwrap_or(Cmd::Unknown(s.to_string()))
         }
+        ["settle" | "found", rest @ ..] => Cmd::Settle(rest.join(" ")),
+        ["attack" | "atk", q, r] => {
+            parse_coord(q, r).map(|(q, r)| Cmd::Attack(q, r)).unwrap_or(Cmd::Unknown(s.to_string()))
+        }
+        ["techs"] => Cmd::Techs,
+        ["civics"] => Cmd::Civics,
+        ["switch", n] => n.parse::<usize>().ok()
+            .map(Cmd::Switch)
+            .unwrap_or(Cmd::Unknown(s.to_string())),
         _ => Cmd::Unknown(s.to_string()),
     }
 }
@@ -483,11 +983,16 @@ fn print_help() {
     println!("    queue              -- show production queue            alias:  q");
     println!("    yields             -- show yield breakdown             alias:  y");
     println!("    status             -- show city and unit summary       alias:  s");
+    println!("    settle [name]      -- found city with selected settler  alias: found");
+    println!("    attack <q> <r>     -- attack unit at (q,r)             alias:  atk");
+    println!("    techs              -- list researched technologies");
+    println!("    civics             -- list completed civics");
+    println!("    switch <n>         -- switch active city to index n (1-based)");
     println!("    end                -- end turn                         aliases: e, next, n");
     println!("    quit               -- exit                             alias:  exit");
     println!("    help               -- this message                     aliases: h, ?");
     println!();
-    println!("  Legend:  # = city   @ = unit");
+    println!("  Legend:  # = city   @ = unit   . = unexplored   (lower) = fog");
     println!("  Terrain: G)rassland  P)lains  D)esert  M)ountain");
     println!("           C)oast  O)cean  T)undra  S)now");
 }
@@ -580,7 +1085,7 @@ fn cmd_tile(state: &GameState, q: i32, r: i32) {
 /// Show the detail panel for the current city.
 fn cmd_city(session: &Session, rules: &DefaultRulesEngine) {
     let state   = &session.state;
-    let city_id = session.city_id;
+    let city_id = session.city_ids[session.current_city];
     let civ_id  = session.civ_id;
 
     let Some(city) = state.cities.iter().find(|c| c.id == city_id) else {
@@ -705,7 +1210,7 @@ fn cmd_cities(session: &Session, rules: &DefaultRulesEngine) {
 /// Assign (or lock) a citizen to work a tile. Routes through the rules engine.
 fn cmd_assign(session: &mut Session, rules: &DefaultRulesEngine, q: i32, r: i32, lock: bool) {
     let coord   = HexCoord::from_qr(q, r);
-    let city_id = session.city_id;
+    let city_id = session.city_ids[session.current_city];
     match rules.assign_citizen(&mut session.state, city_id, coord, lock) {
         Ok(_) => {
             let label = tile_yield_row(&session.state, coord);
@@ -721,7 +1226,7 @@ fn cmd_assign(session: &mut Session, rules: &DefaultRulesEngine, q: i32, r: i32,
 /// Remove a citizen from a tile (direct state mutation, no rules check).
 fn cmd_unassign(session: &mut Session, q: i32, r: i32) {
     let coord   = HexCoord::from_qr(q, r);
-    let city_id = session.city_id;
+    let city_id = session.city_ids[session.current_city];
     let Some(city) = session.state.cities.iter_mut().find(|c| c.id == city_id) else {
         println!("  [error] City not found.");
         return;
@@ -742,10 +1247,10 @@ fn cmd_build(session: &mut Session, name: &str) {
             println!("  [error] Unknown unit {:?}. Available: {}", key, available.join(", "));
         }
         Some(idx) => {
-            let type_id  = session.unit_type_ids[idx];
+            let type_id  = session.state.unit_type_defs[idx].id;
             let def_name = session.state.unit_type_defs[idx].name;
             let def_cost = session.state.unit_type_defs[idx].production_cost;
-            let city_id  = session.city_id;
+            let city_id  = session.city_ids[session.current_city];
             let city = session.state.cities.iter_mut().find(|c| c.id == city_id).unwrap();
             city.production_queue.push_back(ProductionItem::Unit(type_id));
             println!("  Queued: {} ({} prod) in {}", capitalize(def_name), def_cost, city.name);
@@ -755,7 +1260,7 @@ fn cmd_build(session: &mut Session, name: &str) {
 
 /// Cancel (pop) the front production item and reset stored production.
 fn cmd_cancel(session: &mut Session) {
-    let city_id = session.city_id;
+    let city_id = session.city_ids[session.current_city];
     let city = session.state.cities.iter_mut().find(|c| c.id == city_id).unwrap();
     match city.production_queue.pop_front() {
         None => println!("  Production queue is empty."),
@@ -768,7 +1273,7 @@ fn cmd_cancel(session: &mut Session) {
 
 /// Show the full production queue for the current city.
 fn cmd_queue(session: &Session) {
-    let city = session.state.cities.iter().find(|c| c.id == session.city_id).unwrap();
+    let city = session.state.cities.iter().find(|c| c.id == session.city_ids[session.current_city]).unwrap();
     println!("  Production queue -- {}:", city.name);
     if city.production_queue.is_empty() {
         println!("    (empty)");
@@ -844,50 +1349,63 @@ fn cmd_select(session: &mut Session, q: i32, r: i32) {
 /// Check the production queue after `advance_turn`. Complete any items whose
 /// cost has been met, spawn units via the `unit_type_defs` registry.
 fn complete_production(session: &mut Session) -> Vec<String> {
-    let mut log      = Vec::new();
-    let civ_id       = session.civ_id;
-    let city_id      = session.city_id;
-    let city_idx = session.state.cities.iter().position(|c| c.id == city_id).unwrap();
+    let mut log  = Vec::new();
+    let civ_id   = session.civ_id;
+    // Iterate over all cities.
+    let city_indices: Vec<usize> = (0..session.state.cities.len())
+        .filter(|&i| session.state.cities[i].owner == civ_id)
+        .collect();
 
-    loop {
-        let front = session.state.cities[city_idx].production_queue.front().cloned();
-        let Some(item) = front else { break };
+    for city_idx in city_indices {
+        loop {
+            let front = session.state.cities[city_idx].production_queue.front().cloned();
+            let Some(item) = front else { break };
 
-        let (cost, def_idx) = match &item {
-            ProductionItem::Unit(tid) => {
-                let idx = session.unit_type_ids.iter().position(|id| id == tid);
-                match idx {
-                    Some(i) => (session.state.unit_type_defs[i].production_cost, i),
-                    None    => break,
+            let (cost, def_idx) = match &item {
+                ProductionItem::Unit(tid) => {
+                    let idx = session.state.unit_type_defs.iter().position(|d| d.id == *tid);
+                    match idx {
+                        Some(i) => (session.state.unit_type_defs[i].production_cost, i),
+                        None    => break,
+                    }
                 }
+                _ => break, // buildings/districts: not yet wired
+            };
+
+            if session.state.cities[city_idx].production_stored < cost { break; }
+
+            session.state.cities[city_idx].production_stored -= cost;
+            session.state.cities[city_idx].production_queue.pop_front();
+
+            if let ProductionItem::Unit(type_id) = item {
+                let def       = &session.state.unit_type_defs[def_idx];
+                let unit_id   = session.state.id_gen.next_unit_id();
+                let coord     = session.state.cities[city_idx].coord;
+                let city_name = session.state.cities[city_idx].name.clone();
+                let def_range        = def.range;
+                let def_vision_range = def.vision_range;
+                let def_domain       = def.domain;
+                let def_category     = def.category;
+                let def_max_movement = def.max_movement;
+                let def_combat_strength = def.combat_strength;
+                let def_name         = def.name;
+                session.state.units.push(BasicUnit {
+                    id:              unit_id,
+                    unit_type:       type_id,
+                    owner:           civ_id,
+                    coord,
+                    domain:          def_domain,
+                    category:        def_category,
+                    movement_left:   def_max_movement,
+                    max_movement:    def_max_movement,
+                    combat_strength: def_combat_strength,
+                    promotions:      Vec::new(),
+                    health:          100,
+                    range:           def_range,
+                    vision_range:    def_vision_range,
+                });
+                log.push(format!("{} completed in {}!", capitalize(def_name), city_name));
             }
-            _ => break, // buildings/districts: not yet wired
-        };
-
-        if session.state.cities[city_idx].production_stored < cost { break; }
-
-        session.state.cities[city_idx].production_stored -= cost;
-        session.state.cities[city_idx].production_queue.pop_front();
-
-        if let ProductionItem::Unit(type_id) = item {
-            let def      = &session.state.unit_type_defs[def_idx];
-            let unit_id  = session.state.id_gen.next_unit_id();
-            let coord    = session.state.cities[city_idx].coord;
-            let city_name = session.state.cities[city_idx].name.clone();
-            session.state.units.push(BasicUnit {
-                id:              unit_id,
-                unit_type:       type_id,
-                owner:           civ_id,
-                coord,
-                domain:          def.domain,
-                category:        def.category,
-                movement_left:   def.max_movement,
-                max_movement:    def.max_movement,
-                combat_strength: def.combat_strength,
-                promotions:      Vec::new(),
-                health:          100,
-            });
-            log.push(format!("{} completed in {}!", capitalize(def.name), city_name));
         }
     }
 
@@ -899,7 +1417,7 @@ fn complete_production(session: &mut Session) -> Vec<String> {
 fn print_turn_header(session: &Session, rules: &DefaultRulesEngine) {
     let state  = &session.state;
     let civ_id = session.civ_id;
-    let city_id = session.city_id;
+    let city_id = session.city_ids[session.current_city];
     let civ  = state.civilizations.iter().find(|c| c.id == civ_id).unwrap();
     let city = state.cities.iter().find(|c| c.id == city_id).unwrap();
     let y    = rules.compute_yields(state, civ_id);
@@ -976,11 +1494,11 @@ fn capitalize(s: &str) -> String {
     }
 }
 
-/// Look up the human-readable unit type name from session registries.
+/// Look up the human-readable unit type name from the unit type registry.
 fn unit_type_name<'a>(session: &'a Session, type_id: UnitTypeId) -> &'a str {
-    session.unit_type_ids.iter()
-        .position(|id| *id == type_id)
-        .map(|i| session.state.unit_type_defs[i].name)
+    session.state.unit_type_defs.iter()
+        .find(|d| d.id == type_id)
+        .map(|d| d.name)
         .unwrap_or("unit")
 }
 
@@ -1004,17 +1522,14 @@ fn tile_yield_row(state: &GameState, coord: HexCoord) -> String {
 
 /// Return the name and cost of the front production item, if any.
 fn queue_front_info(session: &Session) -> (Option<&'static str>, Option<u32>) {
-    let city = session.state.cities.iter().find(|c| c.id == session.city_id).unwrap();
+    let city_id = session.city_ids[session.current_city];
+    let city = session.state.cities.iter().find(|c| c.id == city_id).unwrap();
     match city.production_queue.front() {
         None => (None, None),
         Some(ProductionItem::Unit(tid)) => {
-            let idx = session.unit_type_ids.iter().position(|id| id == tid);
-            match idx {
-                Some(i) => {
-                    let def = &session.state.unit_type_defs[i];
-                    (Some(def.name), Some(def.production_cost))
-                }
-                None => (Some("?"), None),
+            match session.state.unit_type_defs.iter().find(|d| d.id == *tid) {
+                Some(def) => (Some(def.name), Some(def.production_cost)),
+                None      => (Some("?"), None),
             }
         }
         Some(ProductionItem::Building(_))  => (Some("building"), None),
@@ -1027,13 +1542,9 @@ fn queue_front_info(session: &Session) -> (Option<&'static str>, Option<u32>) {
 fn queue_item_display(session: &Session, item: &ProductionItem) -> (String, String) {
     match item {
         ProductionItem::Unit(tid) => {
-            let idx = session.unit_type_ids.iter().position(|id| id == tid);
-            match idx {
-                Some(i) => {
-                    let def = &session.state.unit_type_defs[i];
-                    (def.name.to_string(), format!("({} prod)", def.production_cost))
-                }
-                None => ("? unit".to_string(), "(? prod)".to_string()),
+            match session.state.unit_type_defs.iter().find(|d| d.id == *tid) {
+                Some(def) => (def.name.to_string(), format!("({} prod)", def.production_cost)),
+                None      => ("? unit".to_string(), "(? prod)".to_string()),
             }
         }
         ProductionItem::Building(_) => ("building".to_string(), "(? prod)".to_string()),
@@ -1064,16 +1575,62 @@ fn board_grid(state: &GameState) -> Vec<Vec<WorldTile>> {
         .collect()
 }
 
-/// Render the board, then overlay city (#) and unit (@) symbols.
-fn print_board(state: &GameState) {
+/// Render the board with fog of war. Visible tiles show normally (city=#, unit=@),
+/// explored-but-foggy tiles use lowercase letters, unexplored tiles show as '.'.
+fn print_board(session: &Session) {
+    let state  = &session.state;
+    let civ_id = session.civ_id;
+    let visible = state.civilizations.iter()
+        .find(|c| c.id == civ_id)
+        .map(|c| &c.visible_tiles);
+    let explored = state.civilizations.iter()
+        .find(|c| c.id == civ_id)
+        .map(|c| &c.explored_tiles);
+
     const N: usize = 1;
     let mut buf = Visualizer::new(board_grid(state)).render_buffer();
+
+    // Overlay cities and units (only on visible tiles).
     for city in &state.cities {
-        overlay(&mut buf, city.coord, '#', N);
+        if visible.map_or(true, |v| v.contains(&city.coord)) {
+            overlay(&mut buf, city.coord, '#', N);
+        }
     }
     for unit in &state.units {
-        overlay(&mut buf, unit.coord(), '@', N);
+        if visible.map_or(true, |v| v.contains(&unit.coord())) {
+            overlay(&mut buf, unit.coord(), '@', N);
+        }
     }
+
+    // Apply fog of war post-processing.
+    if let (Some(vis), Some(exp)) = (visible, explored) {
+        let board = &state.board;
+        for r in 0..board.height as i32 {
+            let half = N / 2;
+            let line_idx = r as usize * N + half;
+            for q in 0..board.width as i32 {
+                let coord = HexCoord::from_qr(q, r);
+                if vis.contains(&coord) {
+                    // Fully visible: keep as-is.
+                } else if exp.contains(&coord) {
+                    // Explored but currently in fog: lowercase the tile character.
+                    let indent = if r % 2 == 1 { N } else { 0 };
+                    let char_idx = indent + q as usize * N + half;
+                    if let Some(line) = buf.get_mut(line_idx) {
+                        let mut chars: Vec<char> = line.chars().collect();
+                        if let Some(ch) = chars.get_mut(char_idx) {
+                            *ch = ch.to_lowercase().next().unwrap_or(*ch);
+                        }
+                        *line = chars.into_iter().collect();
+                    }
+                } else {
+                    // Never explored: show as '.'.
+                    overlay(&mut buf, coord, '.', N);
+                }
+            }
+        }
+    }
+
     for line in &buf {
         println!("  {}", line);
     }
@@ -1148,6 +1705,26 @@ fn print_turn_events(diff: &GameStateDiff) {
             }
             StateDelta::CitizenAssigned { tile, .. } => {
                 println!("  Citizen auto-assigned to ({},{})", tile.q, tile.r);
+                any = true;
+            }
+            StateDelta::UnitAttacked { attacker_damage, defender_damage, attack_type, .. } => {
+                let type_str = match attack_type {
+                    AttackType::Melee  => "Melee",
+                    AttackType::Ranged => "Ranged",
+                };
+                println!("  [{}] attacker -{}, defender -{}", type_str, attacker_damage, defender_damage);
+                any = true;
+            }
+            StateDelta::UnitDestroyed { .. } => {
+                println!("  A unit was destroyed!");
+                any = true;
+            }
+            StateDelta::CityFounded { coord, .. } => {
+                println!("  City founded at ({},{})!", coord.q, coord.r);
+                any = true;
+            }
+            StateDelta::TilesRevealed { coords, .. } => {
+                println!("  {} new tile(s) explored.", coords.len());
                 any = true;
             }
             _ => {}
