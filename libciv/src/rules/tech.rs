@@ -1,6 +1,7 @@
 use crate::{CivicId, TechId};
 use std::collections::HashMap;
 use super::effect::OneShotEffect;
+use crate::game::state::IdGenerator;
 
 #[derive(Debug, Clone)]
 pub struct TechNode {
@@ -72,4 +73,26 @@ impl CivicTree {
     pub fn get(&self, id: CivicId) -> Option<&CivicNode> {
         self.nodes.get(&id)
     }
+}
+
+/// Build the game's full tech tree.
+///
+/// IDs are generated from `ids` in a fixed order so the same game seed always
+/// produces the same tree. The definition is included verbatim from
+/// `tech_tree_def.rs` so the node list can be edited without touching this file.
+pub fn build_tech_tree(ids: &mut IdGenerator) -> TechTree {
+    #[allow(unused_imports)]
+    use OneShotEffect::*;
+    let mut tree = TechTree::new();
+    include!("tech_tree_def.rs");
+    tree
+}
+
+/// Build the game's full civic tree. See `build_tech_tree` for the design notes.
+pub fn build_civic_tree(ids: &mut IdGenerator) -> CivicTree {
+    #[allow(unused_imports)]
+    use OneShotEffect::*;
+    let mut tree = CivicTree::new();
+    include!("civic_tree_def.rs");
+    tree
 }
