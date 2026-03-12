@@ -1,0 +1,23 @@
+[package]
+name = "open4x-web"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+leptos      = { version = "0.7", features = ["csr"] }
+wasm-bindgen = "0.2"
+console_error_panic_hook = "0.1"
+
+# Game logic — compiled to WASM for now.
+# FIXME: In a client-server split these should live server-side only; the
+#        frontend would call a REST/WebSocket API instead of importing libciv.
+libciv      = { path = "../libciv" }
+libhexgrid  = { path = "../libhexgrid" }
+rand        = { workspace = true }
+# getrandom must be pinned with wasm_js feature so all transitive paths through
+# rand agree on the WASM backend.  The rustflag in .cargo/config.toml sets the
+# matching cfg flag for every crate in the dependency graph.
+getrandom   = { version = "0.3", features = ["wasm_js"] }

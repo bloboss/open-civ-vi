@@ -1,0 +1,7 @@
+# ---- WASM target configuration ----
+# getrandom 0.3 on wasm32-unknown-unknown requires the backend to be selected
+# explicitly at compile time via a cfg flag.  Enabling the `wasm_js` feature
+# alone is insufficient; the rustflag below is also required.
+# See: https://docs.rs/getrandom/latest/#webassembly-support
+[target.wasm32-unknown-unknown]
+rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]
