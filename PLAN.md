@@ -17,7 +17,7 @@ combinations (preventing Farm on Ocean, Mine on Grassland without Hills, etc.).
 
 ### 5.1 — Validity trait method
 Add to `TileImprovement` trait in `improvement.rs`:
-// TODO: Does the TerrainDef need to be
+
 ```rust
 fn valid_on(&self, terrain: &dyn TerrainDef, feature: Option<&dyn FeatureDef>) -> bool;
 ```
