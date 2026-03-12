@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use crate::{
-    BuildingId, CivId, CityId, UnitCategory, UnitDomain, UnitId, EraId, YieldBundle,
+    BuildingId, CivId, CityId, GrievanceId, UnitCategory, UnitDomain, UnitId, EraId, YieldBundle,
 };
 use crate::civ::{
     BasicUnit, Civilization, City, CityKind, DiplomaticRelation, GreatPerson, Religion, TradeRoute,
@@ -82,6 +82,10 @@ impl IdGenerator {
 
     pub fn next_building_id(&mut self) -> BuildingId {
         BuildingId::from_ulid(self.next_ulid())
+    }
+
+    pub fn next_grievance_id(&mut self) -> GrievanceId {
+        GrievanceId::from_ulid(self.next_ulid())
     }
 }
 

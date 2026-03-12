@@ -1,4 +1,5 @@
 use crate::{CivId, CityId, PolicyId, UnitId};
+use crate::civ::DiplomaticStatus;
 use crate::world::resource::BuiltinResource;
 use libhexgrid::coord::HexCoord;
 
@@ -15,7 +16,7 @@ pub enum StateDelta {
     GoldChanged     { civ: CivId, delta: i32 },
     TechResearched  { civ: CivId, tech: &'static str },
     CivicCompleted  { civ: CivId, civic: &'static str },
-    DiplomacyChanged { civ_a: CivId, civ_b: CivId, new_status: String },
+    DiplomacyChanged { civ_a: CivId, civ_b: CivId, new_status: DiplomaticStatus },
     // ── OneShotEffect outcomes ──────────────────────────────────────────────
     ResourceRevealed     { civ: CivId, resource: BuiltinResource },
     EurekaTriggered      { civ: CivId, tech:  &'static str },

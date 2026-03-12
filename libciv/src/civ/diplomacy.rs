@@ -101,27 +101,3 @@ impl DiplomaticRelation {
     }
 }
 
-// ---- Built-in grievance triggers ----
-
-// TODO(PHASE3-7.4): Move DeclaredWarGrievance, PillageGrievance, CapturedCityGrievance
-//   to civ/grievance.rs and re-export from civ/mod.rs.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct DeclaredWarGrievance;
-impl GrievanceTrigger for DeclaredWarGrievance {
-    fn description(&self) -> &'static str { "Declared war" }
-    fn grievance_amount(&self) -> i32 { 30 }
-}
-
-#[derive(Debug, Clone, Copy, Default)]
-pub struct PillageGrievance;
-impl GrievanceTrigger for PillageGrievance {
-    fn description(&self) -> &'static str { "Pillaged improvement" }
-    fn grievance_amount(&self) -> i32 { 5 }
-}
-
-#[derive(Debug, Clone, Copy, Default)]
-pub struct CapturedCityGrievance;
-impl GrievanceTrigger for CapturedCityGrievance {
-    fn description(&self) -> &'static str { "Captured city" }
-    fn grievance_amount(&self) -> i32 { 20 }
-}

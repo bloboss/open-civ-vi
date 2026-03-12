@@ -6,6 +6,7 @@ pub mod district;
 pub mod era;
 pub mod governor;
 pub mod great_people;
+pub mod grievance;
 pub mod religion;
 pub mod trade;
 pub mod unit;
@@ -17,6 +18,7 @@ pub use diplomacy::{
     Agreement, DiplomaticRelation, DiplomaticStatus, GrievanceTrigger,
     GrievanceRecord, GrievanceVisibility,
 };
+pub use grievance::{CapturedCityGrievance, DeclaredWarGrievance, PillageGrievance};
 pub use district::{AdjacencyContext, BuildingDef, DistrictDef, PlacedDistrict};
 pub use era::{Era, EraTrigger};
 pub use governor::{Governor, GovernorDef, GovernorPromotion};

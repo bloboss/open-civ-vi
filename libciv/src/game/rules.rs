@@ -1,7 +1,9 @@
 use std::collections::HashSet;
-use crate::{CityId, CivId, PolicyId, PolicyType, TechId, UnitId, UnitTypeId, YieldBundle};
+use crate::{AgreementId, CityId, CivId, PolicyId, PolicyType, TechId, UnitId, UnitTypeId, YieldBundle};
 use crate::civ::unit::Unit;
-use crate::civ::{BasicUnit};
+use crate::civ::{BasicUnit, DiplomaticRelation, DiplomaticStatus, GrievanceRecord};
+use crate::civ::grievance::DeclaredWarGrievance;
+use crate::civ::diplomacy::GrievanceTrigger;
 use crate::rules::effect::OneShotEffect;
 use crate::rules::modifier::{EffectType, resolve_modifiers};
 use crate::world::tile::WorldTile;
@@ -56,9 +58,30 @@ pub trait RulesEngine: std::fmt::Debug {
         policy: PolicyId,
     ) -> Result<GameStateDiff, RulesError>;
 
+    /// Declare war between `aggressor` and `target`. Sets status to War, records a
+    /// `DeclaredWarGrievance` for the target, and emits `DiplomacyChanged`.
+    /// Returns `AlreadyAtWar` if they are already at war, `SameCivilization` if both
+    /// IDs are equal, or `CivNotFound` if either civ does not exist.
+    fn declare_war(
+        &self,
+        state: &mut GameState,
+        aggressor: CivId,
+        target: CivId,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// End the war between `civ_a` and `civ_b`. Resets `turns_at_war`, recomputes
+    /// status from the current opinion score, and emits `DiplomacyChanged`.
+    /// Returns `NotAtWar` if they are not at war, `SameCivilization` if both IDs
+    /// are equal, or `RelationNotFound` if no relation exists.
+    fn make_peace(
+        &self,
+        state: &mut GameState,
+        civ_a: CivId,
+        civ_b: CivId,
+    ) -> Result<GameStateDiff, RulesError>;
+
     // TODO(PHASE3-8.1): fn attack(&self, state: &mut GameState, attacker: UnitId, defender: UnitId)
     //   -> Result<GameStateDiff, RulesError>;  Melee: mutual damage; ranged: one-sided.
-    // TODO(PHASE3-7.3): fn declare_war / fn make_peace;
     // TODO(PHASE3-8.2): fn place_district(&self, state: &mut GameState, city: CityId,
     //   district_type: DistrictTypeId, coord: HexCoord) -> Result<GameStateDiff, RulesError>;
     // TODO(PHASE3-8.3): fn create_trade_route(&self, state: &mut GameState, origin: CityId,
@@ -88,6 +111,14 @@ pub enum RulesError {
     InsufficientMovement(GameStateDiff),
     InvalidCoord,
     NotYourTurn,
+    /// Both civilization IDs refer to the same civilization.
+    SameCivilization,
+    /// The two civilizations are already at war.
+    AlreadyAtWar,
+    /// The two civilizations are not at war.
+    NotAtWar,
+    /// No diplomatic relation exists between the two civilizations.
+    RelationNotFound,
 }
 
 impl std::fmt::Display for RulesError {
@@ -105,6 +136,10 @@ impl std::fmt::Display for RulesError {
             RulesError::InsufficientMovement(_)   => write!(f, "insufficient movement points"),
             RulesError::InvalidCoord              => write!(f, "invalid coordinate"),
             RulesError::NotYourTurn               => write!(f, "not your turn"),
+            RulesError::SameCivilization          => write!(f, "both IDs refer to the same civilization"),
+            RulesError::AlreadyAtWar              => write!(f, "civilizations are already at war"),
+            RulesError::NotAtWar                  => write!(f, "civilizations are not at war"),
+            RulesError::RelationNotFound          => write!(f, "no diplomatic relation between the civilizations"),
         }
     }
 }
@@ -421,10 +456,41 @@ impl RulesEngine for DefaultRulesEngine {
         // Any effects pushed during apply_effect (none expected) would stay in
         // state.effect_queue for the next turn. pending is dropped here.
 
-        // ── Phase 5 (TODO): Cross-civ and advanced per-turn processing ────────
-        // TODO(PHASE3-7.1): Decay grievances (GrievanceRecord.amount -= decay_rate);
-        //   increment turns_at_war for pairs at war; remove records where amount <= 0.
-        // TODO(PHASE3-7.2): Recompute DiplomaticStatus from opinion_score; emit DiplomacyChanged.
+        // ── Phase 5: Diplomacy — grievance decay and status recomputation ─────
+        // Decay each grievance by 1 per turn; drop records that reach zero.
+        // Increment turns_at_war for warring pairs.
+        // Recompute status from the combined opinion score and emit a delta when
+        // it changes.
+        const GRIEVANCE_DECAY: i32 = 1;
+        let mut status_changes: Vec<(CivId, CivId, DiplomaticStatus)> = Vec::new();
+        for rel in state.diplomatic_relations.iter_mut() {
+            for rec in rel.grievances_a_against_b.iter_mut() {
+                rec.amount -= GRIEVANCE_DECAY;
+            }
+            rel.grievances_a_against_b.retain(|r| r.amount > 0);
+            for rec in rel.grievances_b_against_a.iter_mut() {
+                rec.amount -= GRIEVANCE_DECAY;
+            }
+            rel.grievances_b_against_a.retain(|r| r.amount > 0);
+
+            if rel.status == DiplomaticStatus::War {
+                rel.turns_at_war += 1;
+            }
+
+            let new_status = compute_diplomatic_status(rel);
+            if new_status != rel.status {
+                status_changes.push((rel.civ_a, rel.civ_b, new_status));
+            }
+        }
+        for (civ_a, civ_b, new_status) in status_changes {
+            if let Some(rel) = state.diplomatic_relations.iter_mut()
+                .find(|r| r.civ_a == civ_a && r.civ_b == civ_b)
+            {
+                rel.status = new_status;
+            }
+            diff.push(StateDelta::DiplomacyChanged { civ_a, civ_b, new_status });
+        }
+
         // TODO(PHASE3-8.3): Deliver trade route yields; decrement turns_remaining; expire routes.
         // TODO(PHASE3-8.5): Compute religion spread per city pair; update Religion.followers.
         // TODO(PHASE3-8.6): Accumulate great_person_points yield into per-type counters.
@@ -541,6 +607,74 @@ impl RulesEngine for DefaultRulesEngine {
 
         let mut diff = GameStateDiff::new();
         diff.push(StateDelta::PolicyAssigned { civ: civ_id, policy: policy_id });
+        Ok(diff)
+    }
+
+    fn declare_war(
+        &self,
+        state: &mut GameState,
+        aggressor: CivId,
+        target: CivId,
+    ) -> Result<GameStateDiff, RulesError> {
+        if aggressor == target { return Err(RulesError::SameCivilization); }
+        if state.civ(aggressor).is_none() { return Err(RulesError::CivNotFound); }
+        if state.civ(target).is_none()    { return Err(RulesError::CivNotFound); }
+
+        let rel_idx = find_or_create_relation(state, aggressor, target);
+
+        if state.diplomatic_relations[rel_idx].status == DiplomaticStatus::War {
+            return Err(RulesError::AlreadyAtWar);
+        }
+
+        let grievance_id = state.id_gen.next_grievance_id();
+        let trigger = DeclaredWarGrievance;
+        let record = GrievanceRecord {
+            grievance_id,
+            description: trigger.description(),
+            amount: trigger.grievance_amount(),
+            visibility: trigger.visibility(),
+            recorded_turn: state.turn,
+        };
+        // The target records a grievance against the aggressor.
+        state.diplomatic_relations[rel_idx].add_grievance(target, record);
+        state.diplomatic_relations[rel_idx].status = DiplomaticStatus::War;
+
+        let (civ_a, civ_b) = (
+            state.diplomatic_relations[rel_idx].civ_a,
+            state.diplomatic_relations[rel_idx].civ_b,
+        );
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::DiplomacyChanged { civ_a, civ_b, new_status: DiplomaticStatus::War });
+        Ok(diff)
+    }
+
+    fn make_peace(
+        &self,
+        state: &mut GameState,
+        civ_a: CivId,
+        civ_b: CivId,
+    ) -> Result<GameStateDiff, RulesError> {
+        if civ_a == civ_b { return Err(RulesError::SameCivilization); }
+
+        let rel_idx = state.diplomatic_relations.iter().position(|r| {
+            (r.civ_a == civ_a && r.civ_b == civ_b) ||
+            (r.civ_a == civ_b && r.civ_b == civ_a)
+        }).ok_or(RulesError::RelationNotFound)?;
+
+        if state.diplomatic_relations[rel_idx].status != DiplomaticStatus::War {
+            return Err(RulesError::NotAtWar);
+        }
+
+        let rel = &mut state.diplomatic_relations[rel_idx];
+        rel.turns_at_war = 0;
+        // Compute post-peace status from opinion score (War threshold skipped).
+        let score = (rel.opinion_score_a_toward_b() + rel.opinion_score_b_toward_a()) / 2;
+        let new_status = status_from_score(score, &rel.active_agreements);
+        rel.status = new_status;
+
+        let (a, b) = (rel.civ_a, rel.civ_b);
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::DiplomacyChanged { civ_a: a, civ_b: b, new_status });
         Ok(diff)
     }
 }
@@ -812,6 +946,55 @@ fn auto_assign_citizen(board: &WorldBoard, city: &mut crate::civ::City) {
 
     if let Some(coord) = best {
         city.worked_tiles.push(coord);
+    }
+}
+
+// ── Diplomacy helpers ─────────────────────────────────────────────────────────
+
+/// Find the index of the `DiplomaticRelation` between two civs in `state`,
+/// creating a new `Neutral` relation and appending it if none exists.
+fn find_or_create_relation(state: &mut GameState, a: CivId, b: CivId) -> usize {
+    if let Some(idx) = state.diplomatic_relations.iter().position(|r| {
+        (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a)
+    }) {
+        return idx;
+    }
+    state.diplomatic_relations.push(DiplomaticRelation::new(a, b));
+    state.diplomatic_relations.len() - 1
+}
+
+/// Compute the opinion score used for status thresholds: the arithmetic mean
+/// of each side's net opinion (both directions averaged).
+fn combined_score(rel: &DiplomaticRelation) -> i32 {
+    (rel.opinion_score_a_toward_b() + rel.opinion_score_b_toward_a()) / 2
+}
+
+/// Map a combined opinion score to a `DiplomaticStatus`.
+/// Does **not** apply the War-persistence rule; use `compute_diplomatic_status`
+/// for the full transition logic including War persistence.
+fn status_from_score(score: i32, active_agreements: &[AgreementId]) -> DiplomaticStatus {
+    if score > 50 {
+        if active_agreements.is_empty() {
+            DiplomaticStatus::Friendly
+        } else {
+            DiplomaticStatus::Alliance
+        }
+    } else if score < -20 {
+        DiplomaticStatus::Denounced
+    } else {
+        DiplomaticStatus::Neutral
+    }
+}
+
+/// Determine the new status for a relation, honouring the War-persistence
+/// rule: once at war, the relation stays at War while the combined score
+/// remains below -50. All other transitions are driven purely by score.
+fn compute_diplomatic_status(rel: &DiplomaticRelation) -> DiplomaticStatus {
+    let score = combined_score(rel);
+    if rel.status == DiplomaticStatus::War && score < -50 {
+        DiplomaticStatus::War
+    } else {
+        status_from_score(score, &rel.active_agreements)
     }
 }
 
@@ -1525,5 +1708,263 @@ mod tests {
             yields_war.amenities < yields_peace.amenities,
             "war weariness should reduce amenities"
         );
+    }
+
+    // ── Part 7: Diplomacy state machine tests ─────────────────────────────────
+
+    fn make_two_civ_state() -> (GameState, CivId, CivId) {
+        let mut state = GameState::new(77, 10, 10);
+        let a = state.id_gen.next_civ_id();
+        let b = state.id_gen.next_civ_id();
+        state.civilizations.push(Civilization::new(a, "CivA", "A", test_leader(a)));
+        state.civilizations.push(Civilization::new(b, "CivB", "B", test_leader(b)));
+        (state, a, b)
+    }
+
+    // ── 7.3: declare_war ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_declare_war_creates_relation_and_emits_delta() {
+        let (mut state, a, b) = make_two_civ_state();
+        let engine = DefaultRulesEngine;
+
+        let diff = engine.declare_war(&mut state, a, b).unwrap();
+
+        // Status is War.
+        let rel = state.diplomatic_relations.iter()
+            .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
+            .unwrap();
+        assert_eq!(rel.status, DiplomaticStatus::War);
+
+        // Grievance recorded for the target (b against a = a declared war).
+        let total_grievance: i32 = rel.grievances_b_against_a.iter().map(|g| g.amount).sum::<i32>()
+            + rel.grievances_a_against_b.iter().map(|g| g.amount).sum::<i32>();
+        assert_eq!(total_grievance, 30, "DeclaredWarGrievance amount should be 30");
+
+        // DiplomacyChanged delta emitted.
+        assert!(diff.deltas.iter().any(|d| matches!(
+            d,
+            StateDelta::DiplomacyChanged { new_status: DiplomaticStatus::War, .. }
+        )));
+    }
+
+    #[test]
+    fn test_declare_war_already_at_war_returns_error() {
+        let (mut state, a, b) = make_two_civ_state();
+        let engine = DefaultRulesEngine;
+
+        engine.declare_war(&mut state, a, b).unwrap();
+        let err = engine.declare_war(&mut state, a, b).unwrap_err();
+        assert!(matches!(err, RulesError::AlreadyAtWar));
+    }
+
+    #[test]
+    fn test_declare_war_same_civ_returns_error() {
+        let (mut state, a, _) = make_two_civ_state();
+        let engine = DefaultRulesEngine;
+
+        let err = engine.declare_war(&mut state, a, a).unwrap_err();
+        assert!(matches!(err, RulesError::SameCivilization));
+    }
+
+    // ── 7.3: make_peace ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_make_peace_resolves_war_and_emits_delta() {
+        let (mut state, a, b) = make_two_civ_state();
+        let engine = DefaultRulesEngine;
+
+        engine.declare_war(&mut state, a, b).unwrap();
+        let diff = engine.make_peace(&mut state, a, b).unwrap();
+
+        let rel = state.diplomatic_relations.iter()
+            .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
+            .unwrap();
+        assert_ne!(rel.status, DiplomaticStatus::War, "status should no longer be War");
+        assert_eq!(rel.turns_at_war, 0, "turns_at_war should reset to 0");
+
+        assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::DiplomacyChanged { .. })));
+    }
+
+    #[test]
+    fn test_make_peace_not_at_war_returns_error() {
+        let (mut state, a, b) = make_two_civ_state();
+        let engine = DefaultRulesEngine;
+        // Create a neutral relation.
+        state.diplomatic_relations.push(DiplomaticRelation::new(a, b));
+
+        let err = engine.make_peace(&mut state, a, b).unwrap_err();
+        assert!(matches!(err, RulesError::NotAtWar));
+    }
+
+    #[test]
+    fn test_make_peace_no_relation_returns_error() {
+        let (mut state, a, b) = make_two_civ_state();
+        let engine = DefaultRulesEngine;
+
+        let err = engine.make_peace(&mut state, a, b).unwrap_err();
+        assert!(matches!(err, RulesError::RelationNotFound));
+    }
+
+    // ── 7.1: Grievance decay ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_grievance_decay_removes_expired_records() {
+        let (mut state, a, b) = make_two_civ_state();
+        let engine = DefaultRulesEngine;
+
+        // Manually add a small grievance that should decay to zero quickly.
+        let mut rel = DiplomaticRelation::new(a, b);
+        rel.grievances_a_against_b.push(GrievanceRecord {
+            grievance_id: state.id_gen.next_grievance_id(),
+            description: "test",
+            amount: 2,
+            visibility: crate::civ::GrievanceVisibility::Public,
+            recorded_turn: 0,
+        });
+        state.diplomatic_relations.push(rel);
+
+        // After 2 advance_turns, amount should reach 0 and be pruned.
+        engine.advance_turn(&mut state);
+        engine.advance_turn(&mut state);
+
+        let rel = state.diplomatic_relations.iter()
+            .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
+            .unwrap();
+        assert!(rel.grievances_a_against_b.is_empty(), "decayed grievance should be removed");
+    }
+
+    #[test]
+    fn test_turns_at_war_increments_each_turn() {
+        let (mut state, a, b) = make_two_civ_state();
+        let engine = DefaultRulesEngine;
+
+        engine.declare_war(&mut state, a, b).unwrap();
+
+        // Add a large grievance so War status persists.
+        let gid = state.id_gen.next_grievance_id();
+        if let Some(rel) = state.diplomatic_relations.iter_mut()
+            .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
+        {
+            rel.grievances_b_against_a.push(GrievanceRecord {
+                grievance_id: gid,
+                description: "hold war",
+                amount: 999,
+                visibility: crate::civ::GrievanceVisibility::Public,
+                recorded_turn: 0,
+            });
+        }
+
+        engine.advance_turn(&mut state);
+        engine.advance_turn(&mut state);
+
+        let rel = state.diplomatic_relations.iter()
+            .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
+            .unwrap();
+        assert_eq!(rel.turns_at_war, 2, "turns_at_war should increment each turn while at war");
+        assert_eq!(rel.status, DiplomaticStatus::War, "war should persist with large grievances");
+    }
+
+    // ── 7.2: Opinion-based auto-transition ──────────────────────────────────
+
+    #[test]
+    fn test_status_transitions_to_denounced_on_grievance() {
+        let (mut state, a, b) = make_two_civ_state();
+        let engine = DefaultRulesEngine;
+
+        // Two-sided grievances: combined score = (-25 + -25) / 2 = -25 < -20 => Denounced.
+        let mut rel = DiplomaticRelation::new(a, b);
+        let (gid1, gid2) = (state.id_gen.next_grievance_id(), state.id_gen.next_grievance_id());
+        rel.grievances_a_against_b.push(GrievanceRecord {
+            grievance_id: gid1,
+            description: "large grievance A",
+            amount: 25,
+            visibility: crate::civ::GrievanceVisibility::Public,
+            recorded_turn: 0,
+        });
+        rel.grievances_b_against_a.push(GrievanceRecord {
+            grievance_id: gid2,
+            description: "large grievance B",
+            amount: 25,
+            visibility: crate::civ::GrievanceVisibility::Public,
+            recorded_turn: 0,
+        });
+        state.diplomatic_relations.push(rel);
+
+        // One advance_turn triggers Phase 5 recomputation.
+        let diff = engine.advance_turn(&mut state);
+
+        let rel = state.diplomatic_relations.iter()
+            .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
+            .unwrap();
+        assert_eq!(rel.status, DiplomaticStatus::Denounced);
+
+        // DiplomacyChanged delta emitted.
+        assert!(diff.deltas.iter().any(|d| matches!(
+            d,
+            StateDelta::DiplomacyChanged { new_status: DiplomaticStatus::Denounced, .. }
+        )));
+    }
+
+    #[test]
+    fn test_war_persists_while_opinion_below_minus_50() {
+        let (mut state, a, b) = make_two_civ_state();
+        let engine = DefaultRulesEngine;
+
+        engine.declare_war(&mut state, a, b).unwrap();
+
+        // Pump opinion far below -50 so War sticks.
+        let gid = state.id_gen.next_grievance_id();
+        if let Some(rel) = state.diplomatic_relations.iter_mut()
+            .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
+        {
+            rel.grievances_b_against_a.push(GrievanceRecord {
+                grievance_id: gid,
+                description: "heavy grievance",
+                amount: 999,
+                visibility: crate::civ::GrievanceVisibility::Public,
+                recorded_turn: 0,
+            });
+        }
+        engine.advance_turn(&mut state);
+
+        let rel = state.diplomatic_relations.iter()
+            .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
+            .unwrap();
+        assert_eq!(rel.status, DiplomaticStatus::War, "war must persist when score < -50");
+    }
+
+    #[test]
+    fn test_war_auto_resolves_when_grievances_decay() {
+        let (mut state, a, b) = make_two_civ_state();
+        let engine = DefaultRulesEngine;
+
+        engine.declare_war(&mut state, a, b).unwrap();
+
+        // Leave the initial 30-point DeclaredWar grievance in place.
+        // Score = -30/2 = -15, above -50 so War doesn't persist.
+        // But score is -15 which is > -20, so status becomes Neutral.
+        engine.advance_turn(&mut state);
+
+        let rel = state.diplomatic_relations.iter()
+            .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
+            .unwrap();
+        // Score is average of opinion_score_a_toward_b() and opinion_score_b_toward_a().
+        // Only one side has the 30-pt grievance (target's grievance against aggressor = -30).
+        // Average = (-30 + 0) / 2 = -15, which is > -20 -> Neutral.
+        assert_eq!(rel.status, DiplomaticStatus::Neutral,
+            "war should auto-resolve to Neutral when grievance score > -50 (got {:?})", rel.status);
+    }
+
+    // ── 7.4: Grievance triggers re-exported from civ::grievance ─────────────
+
+    #[test]
+    fn test_grievance_triggers_re_exported() {
+        use crate::civ::{DeclaredWarGrievance, PillageGrievance, CapturedCityGrievance};
+        use crate::civ::diplomacy::GrievanceTrigger;
+
+        assert_eq!(DeclaredWarGrievance.grievance_amount(), 30);
+        assert_eq!(PillageGrievance.grievance_amount(), 5);
+        assert_eq!(CapturedCityGrievance.grievance_amount(), 20);
     }
 }
