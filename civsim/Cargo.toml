@@ -11,3 +11,4 @@ path = "src/main.rs"
 libciv = { path = "../libciv" }
 libhexgrid = { path = "../libhexgrid" }
 clap = { workspace = true }
+rand = { workspace = true }
