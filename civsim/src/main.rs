@@ -20,7 +20,7 @@ use rand::Rng;
 // ── CLI ───────────────────────────────────────────────────────────────────────
 
 #[derive(Parser, Debug)]
-#[command(name = "civsim", about = "Open Civ VI simulation CLI", version)]
+#[command(name = "open4x", about = "open4x simulation CLI", version)]
 struct Cli {
     #[command(subcommand)]
     command: Command,

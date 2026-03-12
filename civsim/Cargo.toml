@@ -1,10 +1,10 @@
 [package]
-name = "civsim"
+name = "open4x"
 version = "0.1.0"
 edition = "2024"
 
 [[bin]]
-name = "civsim"
+name = "open4x"
 path = "src/main.rs"
 
 [dependencies]

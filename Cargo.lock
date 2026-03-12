@@ -167,16 +167,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
-name = "civsim"
-version = "0.1.0"
-dependencies = [
- "clap",
- "libciv",
- "libhexgrid",
- "rand",
-]
-
-[[package]]
 name = "clap"
 version = "4.5.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1030,6 +1020,16 @@ name = "once_cell_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
+
+[[package]]
+name = "open4x"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "libciv",
+ "libhexgrid",
+ "rand",
+]
 
 [[package]]
 name = "open4x-web"
