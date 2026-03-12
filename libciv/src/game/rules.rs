@@ -13,7 +13,7 @@ use libhexgrid::types::MovementCost;
 use libhexgrid::{HexEdge, HexTile};
 
 use super::board::WorldBoard;
-use super::diff::{GameStateDiff, StateDelta};
+use super::diff::{AttackType, GameStateDiff, StateDelta};
 use super::state::GameState;
 
 /// Core rules evaluation interface.
@@ -80,8 +80,33 @@ pub trait RulesEngine: std::fmt::Debug {
         civ_b: CivId,
     ) -> Result<GameStateDiff, RulesError>;
 
-    // TODO(PHASE3-8.1): fn attack(&self, state: &mut GameState, attacker: UnitId, defender: UnitId)
-    //   -> Result<GameStateDiff, RulesError>;  Melee: mutual damage; ranged: one-sided.
+    /// Resolve combat between `attacker` and `defender`.
+    ///
+    /// Melee (`attacker.range == 0`): both units take damage using the formula
+    /// `30 * exp((cs_atk - cs_def) / 25) * rng[0.75, 1.25]`. Attacker takes
+    /// the symmetric version. Ranged (`range > 0`): only defender takes damage.
+    /// When a unit's health reaches 0 it is destroyed and removed from state.
+    /// Attacker loses all remaining movement.
+    fn attack(
+        &self,
+        state:    &mut GameState,
+        attacker: UnitId,
+        defender: UnitId,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// Consume a settler unit and found a new city at its current position.
+    ///
+    /// Validation: settler must have `UnitTypeDef.can_found_city == true`; tile
+    /// must be land (not ocean / mountain); no existing city within 3 tiles.
+    /// On success: removes the settler, creates the city, claims ring-1 tiles
+    /// for the civ (if unowned), and auto-assigns the first citizen.
+    fn found_city(
+        &self,
+        state:   &mut GameState,
+        settler: UnitId,
+        name:    String,
+    ) -> Result<GameStateDiff, RulesError>;
+
     // TODO(PHASE3-8.2): fn place_district(&self, state: &mut GameState, city: CityId,
     //   district_type: DistrictTypeId, coord: HexCoord) -> Result<GameStateDiff, RulesError>;
     // TODO(PHASE3-8.3): fn create_trade_route(&self, state: &mut GameState, origin: CityId,
@@ -119,6 +144,23 @@ pub enum RulesError {
     NotAtWar,
     /// No diplomatic relation exists between the two civilizations.
     RelationNotFound,
+    /// Target tile contains no enemy unit.
+    NoValidTarget,
+    /// The attacking unit has no combat strength (civilian unit).
+    UnitCannotAttack,
+    /// Units are not adjacent (melee) or not within attack range (ranged).
+    NotInRange,
+    /// The unit is not a settler-class unit (UnitTypeDef.can_found_city == false).
+    NotASettler,
+    /// The target tile already contains a city.
+    TileOccupied,
+    /// The founding site is within 3 tiles of an existing city.
+    TooCloseToCity,
+    /// The terrain type cannot host a city (ocean, mountain).
+    InvalidFoundingTerrain,
+    /// Destination tile is already occupied by another unit.
+    /// Use `attack()` to engage an enemy; friendly unit stacking is not allowed.
+    TileOccupiedByUnit,
 }
 
 impl std::fmt::Display for RulesError {
@@ -140,6 +182,14 @@ impl std::fmt::Display for RulesError {
             RulesError::AlreadyAtWar              => write!(f, "civilizations are already at war"),
             RulesError::NotAtWar                  => write!(f, "civilizations are not at war"),
             RulesError::RelationNotFound          => write!(f, "no diplomatic relation between the civilizations"),
+            RulesError::NoValidTarget             => write!(f, "no enemy unit at target tile"),
+            RulesError::UnitCannotAttack          => write!(f, "unit has no combat strength"),
+            RulesError::NotInRange                => write!(f, "target is not within attack range"),
+            RulesError::NotASettler               => write!(f, "unit cannot found cities"),
+            RulesError::TileOccupied              => write!(f, "a city already exists at that location"),
+            RulesError::TooCloseToCity            => write!(f, "too close to an existing city"),
+            RulesError::InvalidFoundingTerrain    => write!(f, "cannot found a city on this terrain"),
+            RulesError::TileOccupiedByUnit        => write!(f, "destination tile is occupied by another unit"),
         }
     }
 }
@@ -216,6 +266,22 @@ impl RulesEngine for DefaultRulesEngine {
         if reached == from {
             // Zero movement occurred (budget was 0 or first step too costly).
             return Err(RulesError::InsufficientMovement(diff));
+        }
+
+        // Occupancy check: reject if the destination is held by any other unit.
+        if let Some(occupant) = state.units.iter().find(|u| u.id != unit_id && u.coord == reached) {
+            let mover_owner      = state.unit(unit_id).map(|u| u.owner);
+            let mover_can_attack = state.unit(unit_id).and_then(|u| u.combat_strength).is_some();
+            if occupant.owner == mover_owner.unwrap_or(occupant.owner) {
+                // Friendly unit on destination — stacking not allowed.
+                return Err(RulesError::TileOccupiedByUnit);
+            } else if !mover_can_attack {
+                // Civilian trying to move onto an enemy — it cannot fight back.
+                return Err(RulesError::UnitCannotAttack);
+            } else {
+                // Combat unit vs enemy: player must call attack() explicitly.
+                return Err(RulesError::TileOccupiedByUnit);
+            }
         }
 
         diff.push(StateDelta::UnitMoved {
@@ -677,6 +743,145 @@ impl RulesEngine for DefaultRulesEngine {
         diff.push(StateDelta::DiplomacyChanged { civ_a: a, civ_b: b, new_status });
         Ok(diff)
     }
+
+    fn attack(
+        &self,
+        state:       &mut GameState,
+        attacker_id: UnitId,
+        defender_id: UnitId,
+    ) -> Result<GameStateDiff, RulesError> {
+        // --- validation -------------------------------------------------------
+        let (atk_coord, atk_range, atk_cs, atk_owner) = {
+            let u = state.unit(attacker_id).ok_or(RulesError::UnitNotFound)?;
+            (u.coord, u.range, u.combat_strength, u.owner)
+        };
+        let atk_cs = atk_cs.ok_or(RulesError::UnitCannotAttack)?;
+
+        let (def_coord, def_cs, _def_owner) = {
+            let u = state.unit(defender_id).ok_or(RulesError::UnitNotFound)?;
+            (u.coord, u.combat_strength.unwrap_or(0), u.owner)
+        };
+
+        if atk_owner == state.unit(defender_id).unwrap().owner {
+            return Err(RulesError::SameCivilization);
+        }
+
+        if state.unit(attacker_id).unwrap().movement_left == 0 {
+            return Err(RulesError::InsufficientMovement(GameStateDiff::new()));
+        }
+
+        let dist = atk_coord.distance(&def_coord);
+        if atk_range == 0 {
+            if dist != 1 { return Err(RulesError::NotInRange); }
+        } else if dist > atk_range as u32 {
+            return Err(RulesError::NotInRange);
+        }
+
+        // --- damage calculation -----------------------------------------------
+        // Formula: 30 * exp((cs_atk - cs_def) / 25) * rng[0.75, 1.25]
+        let rng_a = 0.75 + state.id_gen.next_f32() * 0.5;
+        let def_damage = (30.0_f32
+            * f32::exp((atk_cs as f32 - def_cs as f32) / 25.0)
+            * rng_a) as u32;
+
+        let (attack_type, atk_damage) = if atk_range == 0 {
+            let rng_b = 0.75 + state.id_gen.next_f32() * 0.5;
+            let d = (30.0_f32
+                * f32::exp((def_cs as f32 - atk_cs as f32) / 25.0)
+                * rng_b) as u32;
+            (AttackType::Melee, d)
+        } else {
+            (AttackType::Ranged, 0u32)
+        };
+
+        // --- mutate state and build diff --------------------------------------
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::UnitAttacked {
+            attacker:        attacker_id,
+            defender:        defender_id,
+            attack_type,
+            attacker_damage: atk_damage,
+            defender_damage: def_damage,
+        });
+
+        if let Some(u) = state.unit_mut(defender_id) {
+            u.health = u.health.saturating_sub(def_damage);
+            if u.health == 0 {
+                diff.push(StateDelta::UnitDestroyed { unit: defender_id });
+            }
+        }
+        if atk_damage > 0 {
+            if let Some(u) = state.unit_mut(attacker_id) {
+                u.health = u.health.saturating_sub(atk_damage);
+                if u.health == 0 {
+                    diff.push(StateDelta::UnitDestroyed { unit: attacker_id });
+                }
+            }
+        }
+        state.units.retain(|u| u.health > 0);
+        if let Some(u) = state.unit_mut(attacker_id) {
+            u.movement_left = 0;
+        }
+
+        Ok(diff)
+    }
+
+    fn found_city(
+        &self,
+        state:   &mut GameState,
+        settler: UnitId,
+        name:    String,
+    ) -> Result<GameStateDiff, RulesError> {
+        let (coord, civ_id, unit_type_id) = {
+            let u = state.unit(settler).ok_or(RulesError::UnitNotFound)?;
+            (u.coord, u.owner, u.unit_type)
+        };
+
+        let is_settler = state.unit_type_defs.iter()
+            .any(|d| d.id == unit_type_id && d.can_found_city);
+        if !is_settler { return Err(RulesError::NotASettler); }
+
+        let tile = state.board.tile(coord).ok_or(RulesError::InvalidCoord)?;
+        if !tile.terrain.as_def().is_land() {
+            return Err(RulesError::InvalidFoundingTerrain);
+        }
+        if tile.terrain.as_def().movement_cost() == MovementCost::Impassable {
+            return Err(RulesError::InvalidFoundingTerrain);
+        }
+
+        if state.cities.iter().any(|c| c.coord == coord) {
+            return Err(RulesError::TileOccupied);
+        }
+        // Note: raw cube-coord distance; may undercount on cylindrical maps.
+        if state.cities.iter().any(|c| c.coord.distance(&coord) <= 3) {
+            return Err(RulesError::TooCloseToCity);
+        }
+
+        let city_id = state.id_gen.next_city_id();
+        let is_capital = state.civilizations.iter()
+            .find(|c| c.id == civ_id)
+            .map_or(true, |c| c.cities.is_empty());
+        let mut city = crate::civ::City::new(city_id, name, civ_id, coord);
+        city.is_capital = is_capital;
+
+        if let Some(t) = state.board.tile_mut(coord) { t.owner = Some(civ_id); }
+        for nb in state.board.neighbors(coord) {
+            if let Some(t) = state.board.tile_mut(nb) {
+                if t.owner.is_none() { t.owner = Some(civ_id); }
+            }
+        }
+
+        if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == civ_id) {
+            civ.cities.push(city_id);
+        }
+        state.cities.push(city);
+        state.units.retain(|u| u.id != settler);
+
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::UnitDestroyed { unit: settler });
+        diff.push(StateDelta::CityFounded { city: city_id, coord, owner: civ_id });
+        Ok(diff)
+    }
 }
 
 // ── apply_effect ──────────────────────────────────────────────────────────────
@@ -777,6 +982,8 @@ fn apply_effect(
                     combat_strength: def.combat_strength,
                     promotions:      Vec::new(),
                     health:          100,
+                    range:           0,
+                    vision_range:    2,
                 });
                 diff.push(StateDelta::UnitCreated { unit: unit_id, coord, owner: civ_id });
             } else {
@@ -1055,6 +1262,8 @@ mod tests {
             combat_strength: Some(20),
             promotions:     Vec::new(),
             health:         100,
+            range:          0,
+            vision_range:   2,
         });
         unit_id
     }
@@ -1641,13 +1850,18 @@ mod tests {
         let city = City::new(city_id, "Rome".to_string(), civ_id, HexCoord::from_qr(0, 0));
         state.cities.push(city);
 
+        let type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
         state.unit_type_defs.push(UnitTypeDef {
+            id: type_id,
             name: "Warrior",
             production_cost: 40,
             domain: UnitDomain::Land,
             category: UnitCategory::Combat,
             max_movement: 200,
             combat_strength: Some(20),
+            range: 0,
+            vision_range: 2,
+            can_found_city: false,
         });
 
         let effect = OneShotEffect::FreeUnit { unit_type: "Warrior", city: None };

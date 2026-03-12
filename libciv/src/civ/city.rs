@@ -38,7 +38,7 @@ pub enum WallLevel {
     Renaissance,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProductionItem {
     Unit(UnitTypeId),
     Building(BuildingId),

@@ -31,6 +31,10 @@ pub struct BasicUnit {
     pub combat_strength: Option<u32>,
     pub promotions: Vec<PromotionId>,
     pub health: u32,
+    /// Melee = 0; ranged units have range > 0 (tiles). Distinct from vision_range.
+    pub range: u8,
+    /// How many hexes this unit can see. Typically 2 for land units.
+    pub vision_range: u8,
 }
 
 impl Unit for BasicUnit {

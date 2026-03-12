@@ -3,6 +3,15 @@ use crate::civ::DiplomaticStatus;
 use crate::world::resource::BuiltinResource;
 use libhexgrid::coord::HexCoord;
 
+/// Distinguishes how a combat event was initiated.
+/// `CityAssault` is a stub for future work (attacking city walls / HP directly).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AttackType {
+    Melee,
+    Ranged,
+    // TODO(PHASE3-8.1): CityAssault -- siege / wall damage; stub
+}
+
 /// A single atomic change to the game state.
 #[derive(Debug, Clone)]
 pub enum StateDelta {
@@ -49,11 +58,18 @@ pub enum StateDelta {
     /// A citizen has been assigned (or auto-assigned) to work a tile.
     CitizenAssigned      { city: CityId, tile: HexCoord },
 
-    // ── TODO(PHASE3-8.1): Government change now done; combat next ────────────
+    // ── Combat outcome (PHASE3-8.1) ───────────────────────────────────────────
+    UnitAttacked {
+        attacker:        UnitId,
+        defender:        UnitId,
+        attack_type:     AttackType,
+        attacker_damage: u32,
+        defender_damage: u32,
+    },
 
-    // ── TODO(PHASE3-8.1): Combat outcome ─────────────────────────────────────
-    // UnitAttacked { attacker: UnitId, defender: UnitId,
-    //                attacker_damage: u32, defender_damage: u32 },
+    // ── Fog of war (PHASE3-10.2) ─────────────────────────────────────────────
+    /// Tiles newly added to `explored_tiles` this move (not previously explored).
+    TilesRevealed { civ: CivId, coords: Vec<HexCoord> },
 
     // ── TODO(PHASE3-8.8): Era advancement ────────────────────────────────────
     // EraAdvanced { civ: CivId, new_era: crate::AgeType },

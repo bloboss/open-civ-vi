@@ -1,11 +1,12 @@
 use std::collections::VecDeque;
 use crate::{
-    BuildingId, CivId, CityId, GrievanceId, UnitCategory, UnitDomain, UnitId, EraId, YieldBundle,
+    BuildingId, CivId, CityId, GrievanceId, UnitCategory, UnitDomain, UnitId, UnitTypeId, EraId, YieldBundle,
 };
 use crate::civ::{
     BasicUnit, Civilization, City, CityKind, DiplomaticRelation, GreatPerson, Religion, TradeRoute,
 };
 use crate::rules::{TechTree, CivicTree, Government, Policy, OneShotEffect};
+use crate::rules::tech::{build_tech_tree, build_civic_tree};
 use rand::SeedableRng;
 use rand::rngs::SmallRng;
 use ulid::Ulid;
@@ -17,12 +18,20 @@ use super::board::WorldBoard;
 /// `production_cost` is used by the production queue completion logic.
 #[derive(Debug, Clone)]
 pub struct UnitTypeDef {
+    /// Canonical ID used to match `BasicUnit.unit_type` back to this def.
+    pub id:              UnitTypeId,
     pub name:            &'static str,
     pub production_cost: u32,
     pub domain:          UnitDomain,
     pub category:        UnitCategory,
     pub max_movement:    u32,
     pub combat_strength: Option<u32>,
+    /// Melee = 0; ranged attack range in tiles.
+    pub range:           u8,
+    /// Vision radius for spawned units of this type.
+    pub vision_range:    u8,
+    /// True for settler-class units: `found_city` may be called on them.
+    pub can_found_city:  bool,
 }
 
 /// Static descriptor for a building type; stored in `GameState.building_defs`.
@@ -87,6 +96,13 @@ impl IdGenerator {
     pub fn next_grievance_id(&mut self) -> GrievanceId {
         GrievanceId::from_ulid(self.next_ulid())
     }
+
+    /// Returns a pseudo-random f32 in [0.0, 1.0) drawn from the seeded RNG.
+    /// Used for combat randomisation; does not affect the ULID sequence.
+    pub fn next_f32(&mut self) -> f32 {
+        use rand::RngCore;
+        (self.rng.next_u32() as f32) / (u32::MAX as f32 + 1.0)
+    }
 }
 
 /// The full game state.
@@ -126,6 +142,8 @@ impl GameState {
         let board = WorldBoard::new(width, height);
         let mut id_gen = IdGenerator::new(seed);
         let era_id = EraId::from_ulid(id_gen.next_ulid());
+        let tech_tree  = build_tech_tree(&mut id_gen);
+        let civic_tree = build_civic_tree(&mut id_gen);
 
         Self {
             turn: 0,
@@ -139,8 +157,8 @@ impl GameState {
             religions: Vec::new(),
             trade_routes: Vec::new(),
             great_people: Vec::new(),
-            tech_tree: TechTree::new(),
-            civic_tree: CivicTree::new(),
+            tech_tree,
+            civic_tree,
             governments: Vec::new(),
             policies: Vec::new(),
             current_era: era_id,

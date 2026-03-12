@@ -2,6 +2,7 @@ pub mod enums;
 pub mod ids;
 pub mod yields;
 
+pub mod ai;
 pub mod civ;
 pub mod game;
 pub mod rules;

@@ -96,6 +96,15 @@ pub struct Civilization {
     pub unlocked_buildings: Vec<&'static str>,
     /// Improvement types unlocked for builders of this civ.
     pub unlocked_improvements: Vec<&'static str>,
+
+    // ── Fog of war ────────────────────────────────────────────────────────────
+    /// Tiles currently within this civ's vision this turn.
+    /// Cleared and rebuilt by `recalculate_visibility` after every unit move
+    /// and at the start of each new game session.
+    pub visible_tiles: HashSet<libhexgrid::coord::HexCoord>,
+    /// Tiles that have ever been seen; never removed. Used to render
+    /// fog-of-war memory (explored but currently out of vision).
+    pub explored_tiles: HashSet<libhexgrid::coord::HexCoord>,
 }
 
 impl Civilization {
@@ -124,6 +133,8 @@ impl Civilization {
             unlocked_units: Vec::new(),
             unlocked_buildings: Vec::new(),
             unlocked_improvements: Vec::new(),
+            visible_tiles:  HashSet::new(),
+            explored_tiles: HashSet::new(),
         }
     }
 
