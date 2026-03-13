@@ -10,7 +10,7 @@ use libciv::{DefaultRulesEngine, RulesEngine, TechId, UnitCategory, UnitDomain};
 use libciv::civ::{BasicUnit, TechProgress};
 use libciv::game::{recalculate_visibility, StateDelta};
 use libciv::rules::TechNode;
-use libciv::world::resource::{BuiltinResource, Aluminum};
+use libciv::world::resource::BuiltinResource;
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 
@@ -393,7 +393,7 @@ fn tech_completes_when_science_fills_progress() {
     // Place Aluminum on Roma's center tile, which is always in worked_tiles.
     let city_tile = HexCoord::from_qr(3, 3);
     s.state.board.tile_mut(city_tile).unwrap().resource =
-        Some(BuiltinResource::Aluminum(Aluminum));
+        Some(BuiltinResource::Aluminum);
 
     // Queue Pottery with 24/25 progress — needs exactly 1 more science to complete.
     s.state.civilizations.iter_mut()
@@ -447,7 +447,7 @@ fn second_queued_tech_advances_after_first_completes() {
         .find(|c| c.id == s.rome_id).unwrap()
         .researched_techs.push(refining_id);
     s.state.board.tile_mut(HexCoord::from_qr(3, 3)).unwrap().resource =
-        Some(BuiltinResource::Aluminum(Aluminum));
+        Some(BuiltinResource::Aluminum);
 
     let civ = s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap();
     civ.research_queue.push_back(TechProgress { tech_id: pottery_id, progress: 24, boosted: false });

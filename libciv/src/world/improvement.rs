@@ -1,136 +1,195 @@
 use crate::YieldBundle;
-use libhexgrid::types::Elevation;
 
 use super::feature::BuiltinFeature;
+use super::resource::BuiltinResource;
 use super::terrain::BuiltinTerrain;
 
-pub trait TileImprovement: std::fmt::Debug {
-    fn name(&self) -> &'static str;
-    fn yield_bonus(&self) -> YieldBundle;
-    /// Number of turns to build (base, without modifiers).
-    fn build_turns(&self) -> u32;
-    /// Whether this improvement can be placed on a tile with the given terrain and feature.
-    fn valid_on(&self, terrain: BuiltinTerrain, feature: Option<BuiltinFeature>, elevation: Elevation) -> bool;
+/// Elevation constraint for improvement placement.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ElevationReq {
+    /// No restriction.
+    Any,
+    /// Elevation is flat (not hills, not mountain).
+    Flat,
+    /// Elevation is hills or higher (but not mountain).
+    HillsOrMore,
+    /// Any passable elevation (not mountain).
+    NotMountain,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub struct Farm;
-impl TileImprovement for Farm {
-    fn name(&self) -> &'static str { "Farm" }
-    fn yield_bonus(&self) -> YieldBundle {
-        YieldBundle::new().with(crate::YieldType::Food, 1)
-    }
-    fn build_turns(&self) -> u32 { 5 }
-    fn valid_on(&self, terrain: BuiltinTerrain, feature: Option<BuiltinFeature>, elevation: Elevation) -> bool {
-        if !terrain.is_land() { return false; }
-        if elevation == Elevation::High { return false; }  // Mountains
-        // Flat inland only (not hills -- hills get Mine)
-        if elevation >= Elevation::HILLS { return false; }
-        // Not Snow
-        if terrain == BuiltinTerrain::Snow { return false; }
-        // Desert only if has Floodplain or Oasis feature
-        if terrain == BuiltinTerrain::Desert {
-            return feature.is_some_and(|f| matches!(f, BuiltinFeature::Floodplain | BuiltinFeature::Oasis));
-        }
-        true
-    }
+/// Adjacency constraint: at least one of the 6 neighboring tiles must satisfy this.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProximityReq {
+    AdjacentTerrain(BuiltinTerrain),
+    AdjacentFeature(BuiltinFeature),
+    AdjacentResource(BuiltinResource),
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub struct Mine;
-impl TileImprovement for Mine {
-    fn name(&self) -> &'static str { "Mine" }
-    fn yield_bonus(&self) -> YieldBundle {
-        YieldBundle::new().with(crate::YieldType::Production, 1)
-    }
-    fn build_turns(&self) -> u32 { 5 }
-    fn valid_on(&self, terrain: BuiltinTerrain, _feature: Option<BuiltinFeature>, elevation: Elevation) -> bool {
-        terrain.is_land() && elevation >= Elevation::HILLS
-    }
+/// Pure data describing all placement constraints for a `BuiltinImprovement`.
+#[derive(Debug, Clone, Copy)]
+pub struct ImprovementRequirements {
+    /// Tile must be a land tile (not Coast or Ocean).
+    pub requires_land: bool,
+    /// Tile must be a water tile.
+    pub requires_water: bool,
+    /// Elevation constraint on the target tile.
+    pub elevation: ElevationReq,
+    /// Terrains that are never valid, regardless of other fields.
+    pub blocked_terrains: &'static [BuiltinTerrain],
+    /// If Some(f), the tile must have exactly this feature.
+    pub required_feature: Option<BuiltinFeature>,
+    /// Per-terrain conditional: on matching terrain, one of the listed features must be present.
+    /// Example: Farm on Desert requires Floodplain or Oasis.
+    pub conditional_features: &'static [(BuiltinTerrain, &'static [BuiltinFeature])],
+    /// Resource that must be present on the tile itself.
+    pub required_resource: Option<BuiltinResource>,
+    /// Tech node name (matches TechNode::name) that must be researched.
+    /// Use "Unreachable" for improvements not yet tied to a real tech.
+    pub required_tech: Option<&'static str>,
+    /// Civic node name (matches CivicNode::name) that must be completed.
+    pub required_civic: Option<&'static str>,
+    /// Adjacency constraint: at least one of the 6 neighbors must satisfy this.
+    pub proximity: Option<ProximityReq>,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub struct LumberMill;
-impl TileImprovement for LumberMill {
-    fn name(&self) -> &'static str { "Lumber Mill" }
-    fn yield_bonus(&self) -> YieldBundle {
-        YieldBundle::new().with(crate::YieldType::Production, 2)
-    }
-    fn build_turns(&self) -> u32 { 5 }
-    fn valid_on(&self, _terrain: BuiltinTerrain, feature: Option<BuiltinFeature>, _elevation: Elevation) -> bool {
-        feature == Some(BuiltinFeature::Forest)
-    }
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub struct TradingPost;
-impl TileImprovement for TradingPost {
-    fn name(&self) -> &'static str { "Trading Post" }
-    fn yield_bonus(&self) -> YieldBundle {
-        YieldBundle::new().with(crate::YieldType::Gold, 1)
-    }
-    fn build_turns(&self) -> u32 { 5 }
-    fn valid_on(&self, terrain: BuiltinTerrain, _feature: Option<BuiltinFeature>, elevation: Elevation) -> bool {
-        terrain.is_land() && elevation != Elevation::High
-    }
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub struct Fort;
-impl TileImprovement for Fort {
-    fn name(&self) -> &'static str { "Fort" }
-    fn yield_bonus(&self) -> YieldBundle { YieldBundle::new() }
-    fn build_turns(&self) -> u32 { 10 }
-    fn valid_on(&self, terrain: BuiltinTerrain, _feature: Option<BuiltinFeature>, elevation: Elevation) -> bool {
-        terrain.is_land() && elevation != Elevation::High
-    }
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub struct Airstrip;
-impl TileImprovement for Airstrip {
-    fn name(&self) -> &'static str { "Airstrip" }
-    fn yield_bonus(&self) -> YieldBundle { YieldBundle::new() }
-    fn build_turns(&self) -> u32 { 10 }
-    fn valid_on(&self, terrain: BuiltinTerrain, _feature: Option<BuiltinFeature>, elevation: Elevation) -> bool {
-        // Flat land only -- not hills, not mountain, not water
-        terrain.is_land() && elevation == Elevation::FLAT
-    }
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub struct MissileSilo;
-impl TileImprovement for MissileSilo {
-    fn name(&self) -> &'static str { "Missile Silo" }
-    fn yield_bonus(&self) -> YieldBundle { YieldBundle::new() }
-    fn build_turns(&self) -> u32 { 15 }
-    fn valid_on(&self, terrain: BuiltinTerrain, _feature: Option<BuiltinFeature>, elevation: Elevation) -> bool {
-        terrain.is_land() && elevation == Elevation::FLAT
-    }
-}
-
-/// Enum wrapping all built-in tile improvements for direct inline storage.
+/// All built-in tile improvements.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BuiltinImprovement {
-    Farm(Farm),
-    Mine(Mine),
-    LumberMill(LumberMill),
-    TradingPost(TradingPost),
-    Fort(Fort),
-    Airstrip(Airstrip),
-    MissileSilo(MissileSilo),
+    Farm,
+    Mine,
+    LumberMill,
+    TradingPost,
+    Fort,
+    Airstrip,
+    MissileSilo,
 }
 
 impl BuiltinImprovement {
-    pub fn as_def(&self) -> &dyn TileImprovement {
+    pub fn name(self) -> &'static str {
         match self {
-            BuiltinImprovement::Farm(i)        => i,
-            BuiltinImprovement::Mine(i)        => i,
-            BuiltinImprovement::LumberMill(i)  => i,
-            BuiltinImprovement::TradingPost(i) => i,
-            BuiltinImprovement::Fort(i)        => i,
-            BuiltinImprovement::Airstrip(i)    => i,
-            BuiltinImprovement::MissileSilo(i) => i,
+            BuiltinImprovement::Farm        => "Farm",
+            BuiltinImprovement::Mine        => "Mine",
+            BuiltinImprovement::LumberMill  => "Lumber Mill",
+            BuiltinImprovement::TradingPost => "Trading Post",
+            BuiltinImprovement::Fort        => "Fort",
+            BuiltinImprovement::Airstrip    => "Airstrip",
+            BuiltinImprovement::MissileSilo => "Missile Silo",
+        }
+    }
+
+    pub fn yield_bonus(self) -> YieldBundle {
+        match self {
+            BuiltinImprovement::Farm        => YieldBundle::new().with(crate::YieldType::Food, 1),
+            BuiltinImprovement::Mine        => YieldBundle::new().with(crate::YieldType::Production, 1),
+            BuiltinImprovement::LumberMill  => YieldBundle::new().with(crate::YieldType::Production, 2),
+            BuiltinImprovement::TradingPost => YieldBundle::new().with(crate::YieldType::Gold, 1),
+            BuiltinImprovement::Fort        => YieldBundle::new(),
+            BuiltinImprovement::Airstrip    => YieldBundle::new(),
+            BuiltinImprovement::MissileSilo => YieldBundle::new(),
+        }
+    }
+
+    pub fn build_turns(self) -> u32 {
+        match self {
+            BuiltinImprovement::Farm        => 5,
+            BuiltinImprovement::Mine        => 5,
+            BuiltinImprovement::LumberMill  => 5,
+            BuiltinImprovement::TradingPost => 5,
+            BuiltinImprovement::Fort        => 10,
+            BuiltinImprovement::Airstrip    => 10,
+            BuiltinImprovement::MissileSilo => 15,
+        }
+    }
+
+    pub fn requirements(self) -> ImprovementRequirements {
+        match self {
+            BuiltinImprovement::Farm => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::Flat,
+                blocked_terrains:     &[BuiltinTerrain::Snow],
+                required_feature:     None,
+                conditional_features: &[(
+                    BuiltinTerrain::Desert,
+                    &[BuiltinFeature::Floodplain, BuiltinFeature::Oasis],
+                )],
+                required_resource:    None,
+                required_tech:        Some("Pottery"),
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::Mine => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::HillsOrMore,
+                blocked_terrains:     &[],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        Some("Mining"),
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::LumberMill => ImprovementRequirements {
+                requires_land:        false,
+                requires_water:       false,
+                elevation:            ElevationReq::Any,
+                blocked_terrains:     &[],
+                required_feature:     Some(BuiltinFeature::Forest),
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        Some("Unreachable"),
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::TradingPost => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::NotMountain,
+                blocked_terrains:     &[],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        Some("Unreachable"),
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::Fort => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::NotMountain,
+                blocked_terrains:     &[],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        Some("Unreachable"),
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::Airstrip => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::Flat,
+                blocked_terrains:     &[],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        Some("Unreachable"),
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::MissileSilo => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::Flat,
+                blocked_terrains:     &[],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        Some("Unreachable"),
+                required_civic:       None,
+                proximity:            None,
+            },
         }
     }
 }

@@ -122,7 +122,6 @@ impl OneShotEffect {
 mod tests {
     use super::*;
     use crate::world::resource::BuiltinResource;
-    use crate::world::resource::Wheat;
 
     fn empty_civ() -> Civilization {
         use crate::CivId;
@@ -151,9 +150,9 @@ mod tests {
     #[test]
     fn reveal_resource_guard_fires_once() {
         let mut civ = empty_civ();
-        let effect = OneShotEffect::RevealResource(BuiltinResource::Wheat(Wheat));
+        let effect = OneShotEffect::RevealResource(BuiltinResource::Wheat);
         assert!(effect.guard(&civ), "first application should pass guard");
-        civ.revealed_resources.insert(BuiltinResource::Wheat(Wheat));
+        civ.revealed_resources.insert(BuiltinResource::Wheat);
         assert!(!effect.guard(&civ), "second application should be blocked");
     }
 

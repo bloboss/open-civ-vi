@@ -3,7 +3,7 @@ mod common;
 
 use libciv::{DefaultRulesEngine, RulesEngine};
 use libciv::world::feature::BuiltinFeature;
-use libciv::world::resource::{BuiltinResource, Wine};
+use libciv::world::resource::BuiltinResource;
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 
@@ -18,7 +18,7 @@ fn setup_wine_under_forest() -> common::Scenario {
     let coord = HexCoord::from_qr(3, 3);  // Rome's city center (set in build_scenario)
 
     if let Some(tile) = s.state.board.tile_mut(coord) {
-        tile.resource = Some(BuiltinResource::Wine(Wine));
+        tile.resource = Some(BuiltinResource::Wine);
         tile.feature  = Some(BuiltinFeature::Forest);
     }
 

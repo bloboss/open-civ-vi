@@ -113,6 +113,7 @@ pub trait RulesEngine: std::fmt::Debug {
     fn place_improvement(
         &self,
         state: &mut GameState,
+        civ_id: CivId,
         coord: HexCoord,
         improvement: crate::world::improvement::BuiltinImprovement,
     ) -> Result<GameStateDiff, RulesError>;
@@ -173,6 +174,14 @@ pub enum RulesError {
     TileOccupiedByUnit,
     /// The improvement cannot be placed on the target tile (wrong terrain / feature).
     InvalidImprovement,
+    /// Improvement requires a specific resource not present on the tile.
+    ResourceRequired,
+    /// Improvement requires an adjacent tile condition that is not satisfied.
+    ProximityRequired,
+    /// Improvement requires a tech not yet researched by the civilization.
+    TechRequired,
+    /// Improvement requires a civic not yet completed by the civilization.
+    CivicRequired,
 }
 
 impl std::fmt::Display for RulesError {
@@ -203,6 +212,10 @@ impl std::fmt::Display for RulesError {
             RulesError::InvalidFoundingTerrain    => write!(f, "cannot found a city on this terrain"),
             RulesError::TileOccupiedByUnit        => write!(f, "destination tile is occupied by another unit"),
             RulesError::InvalidImprovement        => write!(f, "improvement cannot be placed on this terrain"),
+            RulesError::ResourceRequired          => write!(f, "improvement requires a resource not present on the tile"),
+            RulesError::ProximityRequired         => write!(f, "improvement requires an adjacent tile condition not satisfied"),
+            RulesError::TechRequired              => write!(f, "improvement requires a tech not yet researched"),
+            RulesError::CivicRequired             => write!(f, "improvement requires a civic not yet completed"),
         }
     }
 }
@@ -906,27 +919,108 @@ impl RulesEngine for DefaultRulesEngine {
     fn place_improvement(
         &self,
         state: &mut GameState,
+        civ_id: CivId,
         coord: HexCoord,
         improvement: crate::world::improvement::BuiltinImprovement,
     ) -> Result<GameStateDiff, RulesError> {
         use libhexgrid::HexTile;
+        use crate::world::improvement::{ElevationReq, ProximityReq};
+        use libhexgrid::types::Elevation;
 
         let coord = state.board.normalize(coord).ok_or(RulesError::InvalidCoord)?;
 
-        let (terrain_ok, elevation) = state.board
-            .tile(coord)
-            .map(|t| {
-                let valid = improvement.as_def().valid_on(t.terrain, t.feature, t.elevation());
-                (valid, t.elevation())
-            })
-            .ok_or(RulesError::InvalidCoord)?;
+        let tile = state.board.tile(coord).ok_or(RulesError::InvalidCoord)?;
+        let req  = improvement.requirements();
 
-        let _ = elevation;  // elevation captured for potential logging; not needed after validation
-
-        if !terrain_ok {
+        // 4. requires_land / requires_water
+        if req.requires_land && !tile.terrain.is_land() {
+            return Err(RulesError::InvalidImprovement);
+        }
+        if req.requires_water && tile.terrain.is_land() {
             return Err(RulesError::InvalidImprovement);
         }
 
+        // 5. elevation
+        let elev = tile.elevation();
+        let elev_ok = match req.elevation {
+            ElevationReq::Any         => true,
+            ElevationReq::Flat        => elev < Elevation::HILLS,
+            ElevationReq::HillsOrMore => elev >= Elevation::HILLS && elev != Elevation::High,
+            ElevationReq::NotMountain => elev != Elevation::High,
+        };
+        if !elev_ok {
+            return Err(RulesError::InvalidImprovement);
+        }
+
+        // 6. blocked_terrains
+        if req.blocked_terrains.contains(&tile.terrain) {
+            return Err(RulesError::InvalidImprovement);
+        }
+
+        // 7. required_feature
+        if let Some(req_feat) = req.required_feature {
+            if tile.feature != Some(req_feat) {
+                return Err(RulesError::InvalidImprovement);
+            }
+        }
+
+        // 8. conditional_features: on matching terrain, one of listed features must be present
+        let terrain = tile.terrain;
+        let feature = tile.feature;
+        for &(cond_terrain, allowed_features) in req.conditional_features {
+            if terrain == cond_terrain {
+                let ok = feature.is_some_and(|f| allowed_features.contains(&f));
+                if !ok {
+                    return Err(RulesError::InvalidImprovement);
+                }
+            }
+        }
+
+        // 9. required_resource
+        if let Some(req_res) = req.required_resource {
+            if tile.resource != Some(req_res) {
+                return Err(RulesError::ResourceRequired);
+            }
+        }
+
+        // 10. proximity
+        if let Some(prox) = req.proximity {
+            let ok = state.board.neighbors(coord).iter().any(|&nb| {
+                state.board.tile(nb).is_some_and(|t| match prox {
+                    ProximityReq::AdjacentTerrain(tt) => t.terrain == tt,
+                    ProximityReq::AdjacentFeature(f)  => t.feature == Some(f),
+                    ProximityReq::AdjacentResource(r) => t.resource == Some(r),
+                })
+            });
+            if !ok {
+                return Err(RulesError::ProximityRequired);
+            }
+        }
+
+        // 11. get civ
+        let civ = state.civilizations.iter()
+            .find(|c| c.id == civ_id)
+            .ok_or(RulesError::CivNotFound)?;
+
+        // 12. required_tech
+        if let Some(tech_name) = req.required_tech {
+            let has_tech = state.tech_tree.nodes.values()
+                .any(|n| n.name == tech_name && civ.researched_techs.contains(&n.id));
+            if !has_tech {
+                return Err(RulesError::TechRequired);
+            }
+        }
+
+        // 13. required_civic
+        if let Some(civic_name) = req.required_civic {
+            let has_civic = state.civic_tree.nodes.values()
+                .any(|n| n.name == civic_name && civ.completed_civics.contains(&n.id));
+            if !has_civic {
+                return Err(RulesError::CivicRequired);
+            }
+        }
+
+        // 14. apply
         if let Some(tile) = state.board.tile_mut(coord) {
             tile.improvement = Some(improvement);
             tile.improvement_pillaged = false;
@@ -1169,14 +1263,14 @@ fn tile_yields_gated(tile: &WorldTile, known_techs: &HashSet<&str>) -> YieldBund
         yields += feat.yield_modifier();
     }
 
-    if let Some(ref impr) = tile.improvement {
+    if let Some(impr) = tile.improvement {
         if !tile.improvement_pillaged {
-            yields += impr.as_def().yield_bonus();
+            yields += impr.yield_bonus();
         }
     }
 
-    if let Some(ref res) = tile.resource {
-        let reveal_tech = res.as_def().reveal_tech();
+    if let Some(res) = tile.resource {
+        let reveal_tech = res.reveal_tech();
         // Include resource yields only when:
         //   1. No reveal tech is required, or the civ has already researched it.
         //   2. The resource is not concealed by an overlying feature
@@ -1185,7 +1279,7 @@ fn tile_yields_gated(tile: &WorldTile, known_techs: &HashSet<&str>) -> YieldBund
         let concealed = tile.feature
             .is_some_and(|f| f.conceals_resources());
         if tech_ok && !concealed {
-            yields += res.as_def().base_yields();
+            yields += res.base_yields();
         }
     }
 
@@ -1456,7 +1550,7 @@ mod tests {
 
     #[test]
     fn test_compute_yields_resource_tech_gating() {
-        use crate::world::resource::{BuiltinResource, Iron};
+        use crate::world::resource::BuiltinResource;
 
         let (mut state, civ_id) = make_state();
         let city_id = state.id_gen.next_city_id();
@@ -1465,7 +1559,7 @@ mod tests {
 
         // Place Iron (reveal_tech = "Bronze Working") on the city center tile.
         if let Some(tile) = state.board.tile_mut(coord) {
-            tile.resource = Some(BuiltinResource::Iron(Iron));
+            tile.resource = Some(BuiltinResource::Iron);
         }
         // Also work the center tile.
         city.worked_tiles = vec![coord];
@@ -1666,7 +1760,7 @@ mod tests {
     fn test_research_queue_advances_on_tech_complete() {
         use crate::civ::civilization::TechProgress;
         use crate::rules::tech::TechNode;
-        use crate::world::resource::{BuiltinResource, Aluminum};
+        use crate::world::resource::BuiltinResource;
 
         let (mut state, civ_id) = make_state();
 
@@ -1688,7 +1782,7 @@ mod tests {
 
         let coord = HexCoord::from_qr(1, 1);
         if let Some(tile) = state.board.tile_mut(coord) {
-            tile.resource = Some(BuiltinResource::Aluminum(Aluminum));
+            tile.resource = Some(BuiltinResource::Aluminum);
         }
 
         // City working only the center tile (1 science/turn from Aluminum).

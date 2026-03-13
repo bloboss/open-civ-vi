@@ -126,4 +126,17 @@ tree.add_node(TechNode {
     eureka_description: "Build a Quarry.",
     eureka_effects:     vec![],
 });
+
+// Sentinel tech: self-referential prerequisite means prerequisites_met() is always false.
+// Used by improvements not yet tied to a real tech (required_tech: Some("Unreachable")).
+let unreachable_id = TechId::from_ulid(ids.next_ulid());
+tree.add_node(TechNode {
+    id:                 unreachable_id,
+    name:               "Unreachable",
+    cost:               u32::MAX,
+    prerequisites:      vec![unreachable_id],
+    effects:            vec![],
+    eureka_description: "",
+    eureka_effects:     vec![],
+});
 }

@@ -96,14 +96,14 @@ impl WorldTile {
             yields += feat.yield_modifier();
         }
 
-        if let Some(ref impr) = self.improvement {
+        if let Some(impr) = self.improvement {
             if !self.improvement_pillaged {
-                yields += impr.as_def().yield_bonus();
+                yields += impr.yield_bonus();
             }
         }
 
-        if let Some(ref res) = self.resource {
-            yields += res.as_def().base_yields();
+        if let Some(res) = self.resource {
+            yields += res.base_yields();
         }
 
         yields
@@ -178,18 +178,18 @@ mod tests {
 
     #[test]
     fn test_total_yields_with_improvement() {
-        use crate::world::improvement::{BuiltinImprovement, Farm};
+        use crate::world::improvement::BuiltinImprovement;
         let mut tile = WorldTile::new(HexCoord::from_qr(0, 0), BuiltinTerrain::Grassland);
-        tile.improvement = Some(BuiltinImprovement::Farm(Farm));
+        tile.improvement = Some(BuiltinImprovement::Farm);
         // Grassland 2 food + Farm 1 food = 3 food
         assert_eq!(tile.total_yields().food, 3);
     }
 
     #[test]
     fn test_total_yields_pillaged_improvement_excluded() {
-        use crate::world::improvement::{BuiltinImprovement, Farm};
+        use crate::world::improvement::BuiltinImprovement;
         let mut tile = WorldTile::new(HexCoord::from_qr(0, 0), BuiltinTerrain::Grassland);
-        tile.improvement = Some(BuiltinImprovement::Farm(Farm));
+        tile.improvement = Some(BuiltinImprovement::Farm);
         tile.improvement_pillaged = true;
         // Pillaged: only terrain yields
         assert_eq!(tile.total_yields().food, 2);
@@ -197,20 +197,20 @@ mod tests {
 
     #[test]
     fn test_total_yields_with_resource() {
-        use crate::world::resource::{BuiltinResource, Wheat};
+        use crate::world::resource::BuiltinResource;
         let mut tile = WorldTile::new(HexCoord::from_qr(0, 0), BuiltinTerrain::Grassland);
-        tile.resource = Some(BuiltinResource::Wheat(Wheat));
+        tile.resource = Some(BuiltinResource::Wheat);
         // Grassland 2 food + Wheat 1 food = 3 food
         assert_eq!(tile.total_yields().food, 3);
     }
 
     #[test]
     fn test_total_yields_all_sources() {
-        use crate::world::improvement::{BuiltinImprovement, Farm};
-        use crate::world::resource::{BuiltinResource, Wheat};
+        use crate::world::improvement::BuiltinImprovement;
+        use crate::world::resource::BuiltinResource;
         let mut tile = WorldTile::new(HexCoord::from_qr(0, 0), BuiltinTerrain::Grassland);
-        tile.improvement = Some(BuiltinImprovement::Farm(Farm));
-        tile.resource    = Some(BuiltinResource::Wheat(Wheat));
+        tile.improvement = Some(BuiltinImprovement::Farm);
+        tile.resource    = Some(BuiltinResource::Wheat);
         // Grassland 2 + Farm 1 + Wheat 1 = 4 food
         assert_eq!(tile.total_yields().food, 4);
     }

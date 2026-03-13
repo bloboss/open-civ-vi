@@ -1010,11 +1010,11 @@ fn cmd_tile(state: &GameState, q: i32, r: i32) {
     let feature_name = tile.feature
         .map(|f| f.name().to_string())
         .unwrap_or_else(|| "none".to_string());
-    let resource_name = tile.resource.as_ref()
+    let resource_name = tile.resource
         .map(|r| format!("{r:?}"))
         .unwrap_or_else(|| "none".to_string());
-    let improvement_name = tile.improvement.as_ref()
-        .map(|i| i.as_def().name().to_string())
+    let improvement_name = tile.improvement
+        .map(|i| i.name().to_string())
         .unwrap_or_else(|| "none".to_string());
     let road_name = tile.road.as_ref()
         .map(|r| r.as_def().name().to_string())

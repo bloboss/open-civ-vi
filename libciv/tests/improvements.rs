@@ -4,32 +4,50 @@ mod common;
 use libciv::{DefaultRulesEngine, RulesEngine};
 use libciv::game::StateDelta;
 use libciv::world::feature::BuiltinFeature;
-use libciv::world::improvement::{BuiltinImprovement, Farm, LumberMill, Mine};
+use libciv::world::improvement::BuiltinImprovement;
 use libciv::world::terrain::BuiltinTerrain;
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 
 // ---------------------------------------------------------------------------
-// Tests
+// Helpers
 // ---------------------------------------------------------------------------
 
-/// Farm on a flat Grassland tile succeeds and emits ImprovementPlaced.
+/// Find the TechId of a tech by name in the state's tech_tree.
+fn tech_id_by_name(state: &libciv::GameState, name: &str) -> libciv::TechId {
+    state.tech_tree.nodes.values()
+        .find(|n| n.name == name)
+        .unwrap_or_else(|| panic!("tech '{name}' not found in tree"))
+        .id
+}
+
+// ---------------------------------------------------------------------------
+// Original 3 tests (updated)
+// ---------------------------------------------------------------------------
+
+/// Farm on a flat Grassland tile succeeds (with Pottery) and emits ImprovementPlaced.
 #[test]
 fn farm_on_grassland_succeeds() {
     let mut s = common::build_scenario();
     let coord = HexCoord::from_qr(2, 2);
 
-    // Confirm the tile is Grassland (default board setup).
+    // Grant Pottery so the tech check passes.
+    let pottery_id = tech_id_by_name(&s.state, "Pottery");
+    s.state.civilizations.iter_mut()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .researched_techs.push(pottery_id);
+
     assert!(s.state.board.tile(coord).is_some());
 
     let rules = DefaultRulesEngine;
     let result = rules.place_improvement(
         &mut s.state,
+        s.rome_id,
         coord,
-        BuiltinImprovement::Farm(Farm),
+        BuiltinImprovement::Farm,
     );
 
-    assert!(result.is_ok(), "Farm on Grassland should succeed");
+    assert!(result.is_ok(), "Farm on Grassland should succeed: {result:?}");
 
     let diff = result.unwrap();
     assert!(
@@ -37,7 +55,6 @@ fn farm_on_grassland_succeeds() {
         "Diff should contain ImprovementPlaced"
     );
 
-    // Improvement is set on the tile.
     assert!(
         s.state.board.tile(coord).unwrap().improvement.is_some(),
         "Tile should now have an improvement"
@@ -50,6 +67,12 @@ fn farm_on_ocean_fails() {
     let mut s = common::build_scenario();
     let coord = HexCoord::from_qr(2, 2);
 
+    // Grant Pottery — we want the terrain check to fire, not tech.
+    let pottery_id = tech_id_by_name(&s.state, "Pottery");
+    s.state.civilizations.iter_mut()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .researched_techs.push(pottery_id);
+
     if let Some(t) = s.state.board.tile_mut(coord) {
         t.terrain = BuiltinTerrain::Ocean;
     }
@@ -57,8 +80,9 @@ fn farm_on_ocean_fails() {
     let rules = DefaultRulesEngine;
     let result = rules.place_improvement(
         &mut s.state,
+        s.rome_id,
         coord,
-        BuiltinImprovement::Farm(Farm),
+        BuiltinImprovement::Farm,
     );
 
     assert!(
@@ -67,34 +91,142 @@ fn farm_on_ocean_fails() {
     );
 }
 
-/// LumberMill requires a Forest feature; a tile without Forest is rejected.
+/// LumberMill requires a Forest feature; without it the placement is rejected.
+/// With Forest it is still rejected because LumberMill uses the "Unreachable" tech.
 #[test]
-fn lumbermill_without_forest_fails_and_with_forest_succeeds() {
+fn lumbermill_without_forest_fails_and_with_forest_also_fails_tech() {
     let mut s = common::build_scenario();
     let coord = HexCoord::from_qr(2, 2);
 
     let rules = DefaultRulesEngine;
 
-    // Without Forest: should fail.
+    // Without Forest: fails on feature check.
     let result_no_forest = rules.place_improvement(
         &mut s.state,
+        s.rome_id,
         coord,
-        BuiltinImprovement::LumberMill(LumberMill),
+        BuiltinImprovement::LumberMill,
     );
     assert!(
         matches!(result_no_forest, Err(libciv::game::RulesError::InvalidImprovement)),
-        "LumberMill without Forest should be rejected"
+        "LumberMill without Forest should be rejected (InvalidImprovement)"
     );
 
-    // Add Forest.
+    // Add Forest — now fails on tech (Unreachable).
     if let Some(t) = s.state.board.tile_mut(coord) {
         t.feature = Some(BuiltinFeature::Forest);
     }
 
     let result_with_forest = rules.place_improvement(
         &mut s.state,
+        s.rome_id,
         coord,
-        BuiltinImprovement::LumberMill(LumberMill),
+        BuiltinImprovement::LumberMill,
     );
-    assert!(result_with_forest.is_ok(), "LumberMill on Forest tile should succeed");
+    assert!(
+        matches!(result_with_forest, Err(libciv::game::RulesError::TechRequired)),
+        "LumberMill on Forest should fail TechRequired (Unreachable tech)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// New tests
+// ---------------------------------------------------------------------------
+
+/// Farm is blocked when the civ has not yet researched Pottery.
+#[test]
+fn farm_blocked_without_pottery() {
+    let mut s = common::build_scenario();
+    let coord = HexCoord::from_qr(2, 2);
+
+    // Confirm the tile is flat Grassland — valid terrain, only tech blocks.
+    assert!(s.state.board.tile(coord).is_some());
+
+    let rules = DefaultRulesEngine;
+    let result = rules.place_improvement(
+        &mut s.state,
+        s.rome_id,
+        coord,
+        BuiltinImprovement::Farm,
+    );
+
+    assert!(
+        matches!(result, Err(libciv::game::RulesError::TechRequired)),
+        "Farm without Pottery should return TechRequired, got: {result:?}"
+    );
+}
+
+/// Farm succeeds once the civ has researched Pottery.
+#[test]
+fn farm_succeeds_after_pottery_researched() {
+    let mut s = common::build_scenario();
+    let coord = HexCoord::from_qr(2, 2);
+
+    let pottery_id = tech_id_by_name(&s.state, "Pottery");
+    s.state.civilizations.iter_mut()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .researched_techs.push(pottery_id);
+
+    let rules = DefaultRulesEngine;
+    let result = rules.place_improvement(
+        &mut s.state,
+        s.rome_id,
+        coord,
+        BuiltinImprovement::Farm,
+    );
+
+    assert!(result.is_ok(), "Farm after Pottery should succeed: {result:?}");
+    assert!(
+        result.unwrap().deltas.iter().any(|d| matches!(d, StateDelta::ImprovementPlaced { .. })),
+        "Diff should contain ImprovementPlaced"
+    );
+}
+
+/// Mine is blocked when the civ has not yet researched Mining.
+#[test]
+fn mine_blocked_without_mining() {
+    let mut s = common::build_scenario();
+    let coord = HexCoord::from_qr(2, 2);
+
+    // Make the tile hills so elevation check passes.
+    if let Some(t) = s.state.board.tile_mut(coord) {
+        t.hills = true;
+    }
+
+    let rules = DefaultRulesEngine;
+    let result = rules.place_improvement(
+        &mut s.state,
+        s.rome_id,
+        coord,
+        BuiltinImprovement::Mine,
+    );
+
+    assert!(
+        matches!(result, Err(libciv::game::RulesError::TechRequired)),
+        "Mine without Mining should return TechRequired, got: {result:?}"
+    );
+}
+
+/// LumberMill on a Forest tile returns TechRequired (uses "Unreachable" tech sentinel).
+#[test]
+fn lumbermill_blocked_by_unreachable_tech() {
+    let mut s = common::build_scenario();
+    let coord = HexCoord::from_qr(2, 2);
+
+    if let Some(t) = s.state.board.tile_mut(coord) {
+        t.feature = Some(BuiltinFeature::Forest);
+    }
+
+    let rules = DefaultRulesEngine;
+    let result = rules.place_improvement(
+        &mut s.state,
+        s.rome_id,
+        coord,
+        BuiltinImprovement::LumberMill,
+    );
+
+    assert!(
+        matches!(result, Err(libciv::game::RulesError::TechRequired)),
+        "LumberMill should return TechRequired (Unreachable sentinel), got: {result:?}"
+    );
 }
