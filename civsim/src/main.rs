@@ -6,10 +6,11 @@ use libciv::{
     UnitCategory, UnitDomain, UnitId, UnitTypeId,
 };
 use libciv::ai::{Agent, HeuristicAgent};
-use libciv::civ::{Agenda, BasicUnit, City, Civilization, Leader, ProductionItem, Unit};
+use libciv::civ::{Agenda, BasicUnit, City, Civilization, Leader, ProductionItem, TechProgress, Unit};
 use libciv::game::{AttackType, RulesError, StateDelta, recalculate_visibility};
 use libciv::game::state::UnitTypeDef;
 use libciv::visualize::Visualizer;
+use libciv::world::improvement::BuiltinImprovement;
 use libciv::world::terrain::BuiltinTerrain;
 use libciv::world::tile::WorldTile;
 use libhexgrid::board::HexBoard;
@@ -214,6 +215,24 @@ fn build_session() -> Session {
         movement_left:   200,
         max_movement:    200,
         combat_strength: Some(20),
+        promotions:      Vec::new(),
+        health:          100,
+        range:           0,
+        vision_range:    2,
+    });
+
+    // Starting Builder at city coord (3, 3) — for testing improve command.
+    let builder_id = state.id_gen.next_unit_id();
+    state.units.push(BasicUnit {
+        id:              builder_id,
+        unit_type:       builder_type_id,
+        owner:           civ_id,
+        coord:           city_coord,
+        domain:          UnitDomain::Land,
+        category:        UnitCategory::Civilian,
+        movement_left:   200,
+        max_movement:    200,
+        combat_strength: None,
         promotions:      Vec::new(),
         health:          100,
         range:           0,
@@ -843,6 +862,10 @@ fn run_play() {
                     }
                 }
 
+                Cmd::Improve(name) => cmd_improve(&mut session, &rules, &name),
+
+                Cmd::Research(name) => cmd_research(&mut session, &name),
+
                 Cmd::Switch(n) => {
                     if n == 0 || n > session.city_ids.len() {
                         println!("  [error] City index out of range (1-{}).", session.city_ids.len());
@@ -909,6 +932,8 @@ enum Cmd {
     Techs,
     Civics,
     Switch(usize),
+    Improve(String),
+    Research(String),
     Unknown(String),
 }
 
@@ -959,6 +984,8 @@ fn parse_cmd(raw: &str) -> Cmd {
         ["switch", n] => n.parse::<usize>().ok()
             .map(Cmd::Switch)
             .unwrap_or(Cmd::Unknown(s.to_string())),
+        ["improve" | "imp", rest @ ..] if !rest.is_empty() => Cmd::Improve(rest.join(" ")),
+        ["research" | "res", rest @ ..] if !rest.is_empty() => Cmd::Research(rest.join(" ")),
         _ => Cmd::Unknown(s.to_string()),
     }
 }
@@ -985,6 +1012,8 @@ fn print_help() {
     println!("    attack <q> <r>     -- attack unit at (q,r)             alias:  atk");
     println!("    techs              -- list researched technologies");
     println!("    civics             -- list completed civics");
+    println!("    research <name>    -- queue a technology for research          alias:  res");
+    println!("    improve <name>     -- build improvement with selected builder  alias:  imp");
     println!("    switch <n>         -- switch active city to index n (1-based)");
     println!("    end                -- end turn                         aliases: e, next, n");
     println!("    quit               -- exit                             alias:  exit");
@@ -996,6 +1025,79 @@ fn print_help() {
 }
 
 // ── New command handlers ──────────────────────────────────────────────────────
+
+/// Build an improvement on the selected builder unit's current tile.
+fn cmd_improve(session: &mut Session, rules: &DefaultRulesEngine, name: &str) {
+    let Some(uid) = session.selected_unit else {
+        println!("  [error] No unit selected. Use 'select <q> <r>'.");
+        return;
+    };
+    let Some(unit) = session.state.unit(uid) else {
+        println!("  [error] Selected unit no longer exists.");
+        return;
+    };
+    let type_name = unit_type_name(session, unit.unit_type());
+    if type_name != "builder" {
+        println!("  [error] Selected unit is a {type_name}, not a builder.");
+        return;
+    }
+    let coord = unit.coord();
+
+    let improvement = match name.to_ascii_lowercase().replace(' ', "_").as_str() {
+        "farm"                        => BuiltinImprovement::Farm,
+        "mine"                        => BuiltinImprovement::Mine,
+        "lumber_mill" | "lumbermill"  => BuiltinImprovement::LumberMill,
+        "trading_post" | "tradingpost"=> BuiltinImprovement::TradingPost,
+        "fort"                        => BuiltinImprovement::Fort,
+        "airstrip"                    => BuiltinImprovement::Airstrip,
+        "missile_silo" | "missilesilo"=> BuiltinImprovement::MissileSilo,
+        _ => {
+            println!("  [error] Unknown improvement '{name}'.");
+            println!("  Valid: farm, mine, lumber_mill, trading_post, fort, airstrip, missile_silo");
+            return;
+        }
+    };
+
+    match rules.place_improvement(&mut session.state, session.civ_id, coord, improvement) {
+        Ok(diff) => {
+            for delta in &diff.deltas {
+                if let StateDelta::ImprovementPlaced { coord, improvement } = delta {
+                    println!("  {} built at {}!", improvement.name(), fmtc(*coord));
+                }
+            }
+        }
+        Err(e) => println!("  [error] {e}"),
+    }
+}
+
+/// Queue a technology for research by name.
+fn cmd_research(session: &mut Session, name: &str) {
+    let name_lower = name.to_ascii_lowercase();
+    let found = session.state.tech_tree.nodes.values()
+        .find(|n| n.name.to_ascii_lowercase() == name_lower)
+        .map(|n| (n.id, n.name, n.cost));
+    let Some((tech_id, tech_name, tech_cost)) = found else {
+        println!("  [error] Unknown technology '{name}'. Use 'techs' to list available.");
+        return;
+    };
+    let civ = session.state.civilizations.iter().find(|c| c.id == session.civ_id).unwrap();
+    if civ.researched_techs.contains(&tech_id) {
+        println!("  [info] {tech_name} is already researched.");
+        return;
+    }
+    if civ.research_queue.iter().any(|tp| tp.tech_id == tech_id) {
+        println!("  [info] {tech_name} is already queued.");
+        return;
+    }
+    let researched = civ.researched_techs.clone();
+    if !session.state.tech_tree.prerequisites_met(tech_id, &researched) {
+        println!("  [error] Prerequisites not yet met for {tech_name}.");
+        return;
+    }
+    let civ = session.state.civilizations.iter_mut().find(|c| c.id == session.civ_id).unwrap();
+    civ.research_queue.push_back(TechProgress { tech_id, progress: 0, boosted: false });
+    println!("  Queued: {tech_name} (cost: {tech_cost} science)");
+}
 
 /// Print all properties of the tile at (q, r).
 fn cmd_tile(state: &GameState, q: i32, r: i32) {

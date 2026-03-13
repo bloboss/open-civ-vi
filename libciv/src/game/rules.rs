@@ -347,6 +347,10 @@ impl RulesEngine for DefaultRulesEngine {
             }
         }
 
+        // Base science: every city contributes 1 science/turn before modifiers.
+        let city_count = state.cities.iter().filter(|c| c.owner == civ_id).count();
+        total.science += city_count as i32;
+
         // Collect modifiers: base sources (leader/policies/govt/war) + tech/civic tree grants.
         let modifiers = state.civ(civ_id)
             .map(|civ| {
