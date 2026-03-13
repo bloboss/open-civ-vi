@@ -24,7 +24,7 @@ fn valid_on(&self, terrain: &dyn TerrainDef, feature: Option<&dyn FeatureDef>) -
 
 Implement for each `BuiltinImprovement`:
 - `Farm` — valid on: Grassland, Plains, Desert (Floodplain/Oasis feature), Tundra; NOT on Snow, Coast, Ocean, Mountain
-- `Mine` — valid on: Hills (elevation >= Level(1)), resource tiles with strategic/bonus resource
+- `Mine` — valid on: Hills (a feature, not a specific elevation), resource tiles with strategic/bonus resource
 - `LumberMill` — valid on: tiles with Forest feature only
 - `TradingPost` — valid on: any passable land tile
 - `Fort` — valid on: any passable land tile (not Ocean/Coast)
