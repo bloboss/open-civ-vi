@@ -63,27 +63,27 @@ pub fn svg_dimensions(board_w: u32, board_h: u32) -> (f64, f64) {
 
 fn terrain_fill(t: BuiltinTerrain) -> &'static str {
     match t {
-        BuiltinTerrain::Grassland(_) => "#3a6b45",
-        BuiltinTerrain::Plains(_)    => "#8a7d3a",
-        BuiltinTerrain::Desert(_)    => "#c8a84b",
-        BuiltinTerrain::Tundra(_)    => "#6b7a5e",
-        BuiltinTerrain::Snow(_)      => "#d8e0e8",
-        BuiltinTerrain::Coast(_)     => "#3a7a9e",
-        BuiltinTerrain::Ocean(_)     => "#1a3a5e",
-        BuiltinTerrain::Mountain(_)  => "#5e5e5e",
+        BuiltinTerrain::Grassland => "#3a6b45",
+        BuiltinTerrain::Plains    => "#8a7d3a",
+        BuiltinTerrain::Desert    => "#c8a84b",
+        BuiltinTerrain::Tundra    => "#6b7a5e",
+        BuiltinTerrain::Snow      => "#d8e0e8",
+        BuiltinTerrain::Coast     => "#3a7a9e",
+        BuiltinTerrain::Ocean     => "#1a3a5e",
+        BuiltinTerrain::Mountain  => "#5e5e5e",
     }
 }
 
 fn terrain_label(t: BuiltinTerrain) -> &'static str {
     match t {
-        BuiltinTerrain::Grassland(_) => "G",
-        BuiltinTerrain::Plains(_)    => "P",
-        BuiltinTerrain::Desert(_)    => "D",
-        BuiltinTerrain::Tundra(_)    => "T",
-        BuiltinTerrain::Snow(_)      => "S",
-        BuiltinTerrain::Coast(_)     => "C",
-        BuiltinTerrain::Ocean(_)     => "~",
-        BuiltinTerrain::Mountain(_)  => "M",
+        BuiltinTerrain::Grassland => "G",
+        BuiltinTerrain::Plains    => "P",
+        BuiltinTerrain::Desert    => "D",
+        BuiltinTerrain::Tundra    => "T",
+        BuiltinTerrain::Snow      => "S",
+        BuiltinTerrain::Coast     => "C",
+        BuiltinTerrain::Ocean     => "~",
+        BuiltinTerrain::Mountain  => "M",
     }
 }
 
