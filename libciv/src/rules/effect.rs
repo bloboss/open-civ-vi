@@ -1,4 +1,4 @@
-use crate::CityId;
+use crate::{CityId, CivicId, TechId};
 use crate::civ::civilization::Civilization;
 use crate::rules::modifier::Modifier;
 use crate::world::resource::BuiltinResource;
@@ -43,10 +43,10 @@ pub enum OneShotEffect {
     UnlockImprovement(&'static str),
 
     // ── Research boosts ──────────────────────────────────────────────────────
-    /// Trigger a Eureka boost, halving the remaining cost of the named tech.
-    TriggerEureka { tech: &'static str },
-    /// Trigger an Inspiration boost, halving the remaining cost of the named civic.
-    TriggerInspiration { civic: &'static str },
+    /// Trigger a Eureka boost, halving the remaining cost of the given tech.
+    TriggerEureka { tech: TechId },
+    /// Trigger an Inspiration boost, halving the remaining cost of the given civic.
+    TriggerInspiration { civic: CivicId },
 
     // ── Free grants ─────────────────────────────────────────────────────────
     /// Spawn a free unit. `city` hints at placement; if `None` or invalid the
@@ -103,9 +103,9 @@ impl OneShotEffect {
             OneShotEffect::RevealResource(r) =>
                 !civ.revealed_resources.contains(r),
             OneShotEffect::TriggerEureka { tech } =>
-                !civ.eureka_triggered.contains(*tech),
+                !civ.eureka_triggered.contains(tech),
             OneShotEffect::TriggerInspiration { civic } =>
-                !civ.inspiration_triggered.contains(*civic),
+                !civ.inspiration_triggered.contains(civic),
             OneShotEffect::UnlockGovernment(g) =>
                 !civ.unlocked_governments.contains(g),
             OneShotEffect::AdoptGovernment(g) =>
@@ -158,10 +158,12 @@ mod tests {
 
     #[test]
     fn eureka_guard_fires_once() {
+        use ulid::Ulid;
         let mut civ = empty_civ();
-        let effect = OneShotEffect::TriggerEureka { tech: "Pottery" };
+        let pottery_id = TechId::from_ulid(Ulid::nil());
+        let effect = OneShotEffect::TriggerEureka { tech: pottery_id };
         assert!(effect.guard(&civ));
-        civ.eureka_triggered.insert("Pottery");
+        civ.eureka_triggered.insert(pottery_id);
         assert!(!effect.guard(&civ));
     }
 

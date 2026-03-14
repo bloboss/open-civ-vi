@@ -12,22 +12,6 @@ use libhexgrid::coord::HexCoord;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Find the TechId of a tech by name in the state's tech_tree.
-fn tech_id_by_name(state: &libciv::GameState, name: &str) -> libciv::TechId {
-    state.tech_tree.nodes.values()
-        .find(|n| n.name == name)
-        .unwrap_or_else(|| panic!("tech '{name}' not found in tree"))
-        .id
-}
-
-/// Find the CivicId of a civic by name in the state's civic_tree.
-fn civic_id_by_name(state: &libciv::GameState, name: &str) -> libciv::CivicId {
-    state.civic_tree.nodes.values()
-        .find(|n| n.name == name)
-        .unwrap_or_else(|| panic!("civic '{name}' not found in tree"))
-        .id
-}
-
 /// Claim a tile for a civilization by setting tile.owner.
 fn claim_tile(state: &mut libciv::GameState, coord: HexCoord, civ_id: libciv::CivId) {
     if let Some(t) = state.board.tile_mut(coord) {
@@ -50,8 +34,8 @@ fn campus_on_owned_land_succeeds() {
     // Claim the tile for Rome.
     claim_tile(&mut s.state, target, s.rome_id);
 
-    // Grant "Writing" so the tech check passes.
-    let writing_id = tech_id_by_name(&s.state, "Writing");
+    // Grant Writing so the tech check passes.
+    let writing_id = s.state.tech_refs.writing;
     s.state.civilizations.iter_mut()
         .find(|c| c.id == s.rome_id).unwrap()
         .researched_techs.push(writing_id);
@@ -103,7 +87,7 @@ fn district_on_unowned_tile_fails() {
     let target = HexCoord::from_qr(4, 3);
     // Do NOT claim the tile for Rome — it stays owner=None.
 
-    let writing_id = tech_id_by_name(&s.state, "Writing");
+    let writing_id = s.state.tech_refs.writing;
     s.state.civilizations.iter_mut()
         .find(|c| c.id == s.rome_id).unwrap()
         .researched_techs.push(writing_id);
@@ -124,7 +108,7 @@ fn district_too_far_from_city_fails() {
     let target = HexCoord::from_qr(7, 3); // 4 tiles from (3,3)
     claim_tile(&mut s.state, target, s.rome_id);
 
-    let writing_id = tech_id_by_name(&s.state, "Writing");
+    let writing_id = s.state.tech_refs.writing;
     s.state.civilizations.iter_mut()
         .find(|c| c.id == s.rome_id).unwrap()
         .researched_techs.push(writing_id);
@@ -145,7 +129,7 @@ fn district_on_city_center_fails() {
     let city_coord = HexCoord::from_qr(3, 3);
     claim_tile(&mut s.state, city_coord, s.rome_id);
 
-    let writing_id = tech_id_by_name(&s.state, "Writing");
+    let writing_id = s.state.tech_refs.writing;
     s.state.civilizations.iter_mut()
         .find(|c| c.id == s.rome_id).unwrap()
         .researched_techs.push(writing_id);
@@ -168,7 +152,7 @@ fn duplicate_district_fails() {
     claim_tile(&mut s.state, target1, s.rome_id);
     claim_tile(&mut s.state, target2, s.rome_id);
 
-    let writing_id = tech_id_by_name(&s.state, "Writing");
+    let writing_id = s.state.tech_refs.writing;
     s.state.civilizations.iter_mut()
         .find(|c| c.id == s.rome_id).unwrap()
         .researched_techs.push(writing_id);
@@ -193,8 +177,8 @@ fn two_different_districts_succeed() {
     claim_tile(&mut s.state, target1, s.rome_id);
     claim_tile(&mut s.state, target2, s.rome_id);
 
-    let writing_id     = tech_id_by_name(&s.state, "Writing");
-    let bronze_id      = tech_id_by_name(&s.state, "Bronze Working");
+    let writing_id    = s.state.tech_refs.writing;
+    let bronze_id     = s.state.tech_refs.bronze_working;
     s.state.civilizations.iter_mut()
         .find(|c| c.id == s.rome_id).unwrap()
         .researched_techs.extend([writing_id, bronze_id]);
@@ -217,8 +201,8 @@ fn district_on_occupied_tile_fails() {
     let target = HexCoord::from_qr(4, 3);
     claim_tile(&mut s.state, target, s.rome_id);
 
-    let writing_id = tech_id_by_name(&s.state, "Writing");
-    let bronze_id  = tech_id_by_name(&s.state, "Bronze Working");
+    let writing_id = s.state.tech_refs.writing;
+    let bronze_id  = s.state.tech_refs.bronze_working;
     s.state.civilizations.iter_mut()
         .find(|c| c.id == s.rome_id).unwrap()
         .researched_techs.extend([writing_id, bronze_id]);
@@ -243,7 +227,7 @@ fn harbor_on_land_fails() {
     claim_tile(&mut s.state, target, s.rome_id);
     // Leave terrain as Grassland (land).
 
-    let sailing_id = tech_id_by_name(&s.state, "Sailing");
+    let sailing_id = s.state.tech_refs.sailing;
     s.state.civilizations.iter_mut()
         .find(|c| c.id == s.rome_id).unwrap()
         .researched_techs.push(sailing_id);
@@ -267,7 +251,7 @@ fn harbor_on_coast_succeeds() {
         t.owner = Some(s.rome_id);
     }
 
-    let sailing_id = tech_id_by_name(&s.state, "Sailing");
+    let sailing_id = s.state.tech_refs.sailing;
     s.state.civilizations.iter_mut()
         .find(|c| c.id == s.rome_id).unwrap()
         .researched_techs.push(sailing_id);
@@ -288,7 +272,7 @@ fn campus_on_mountain_fails() {
         t.owner = Some(s.rome_id);
     }
 
-    let writing_id = tech_id_by_name(&s.state, "Writing");
+    let writing_id = s.state.tech_refs.writing;
     s.state.civilizations.iter_mut()
         .find(|c| c.id == s.rome_id).unwrap()
         .researched_techs.push(writing_id);
@@ -302,7 +286,7 @@ fn campus_on_mountain_fails() {
     );
 }
 
-/// Theater Square requires the "Craftsmanship" civic (no tech).
+/// Theater Square requires the Craftsmanship civic (no tech).
 #[test]
 fn theater_square_requires_craftsmanship_civic() {
     let mut s = common::build_scenario();
@@ -319,7 +303,7 @@ fn theater_square_requires_craftsmanship_civic() {
     );
 
     // Grant the civic.
-    let civic_id = civic_id_by_name(&s.state, "Craftsmanship");
+    let civic_id = s.state.civic_refs.craftsmanship;
     s.state.civilizations.iter_mut()
         .find(|c| c.id == s.rome_id).unwrap()
         .completed_civics.push(civic_id);

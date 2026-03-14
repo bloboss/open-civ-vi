@@ -188,19 +188,19 @@ fn build_session() -> Session {
         UnitTypeDef { id: warrior_type_id, name: "warrior", production_cost: 40,
                       max_movement: 200, combat_strength: Some(20),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 0, vision_range: 2, can_found_city: false },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None },
         UnitTypeDef { id: settler_type_id, name: "settler", production_cost: 80,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: true },
+                      range: 0, vision_range: 2, can_found_city: true, resource_cost: None },
         UnitTypeDef { id: builder_type_id, name: "builder", production_cost: 50,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: false },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None },
         UnitTypeDef { id: slinger_type_id, name: "slinger", production_cost: 35,
                       max_movement: 200, combat_strength: Some(10),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 2, vision_range: 2, can_found_city: false },
+                      range: 2, vision_range: 2, can_found_city: false, resource_cost: None },
     ]);
 
     // Starting Warrior at (7, 3).
@@ -320,15 +320,15 @@ fn build_ai_demo(seed: u64) -> AiDemo {
         UnitTypeDef { id: warrior_type, name: "warrior", production_cost: 40,
                       max_movement: 200, combat_strength: Some(20),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 0, vision_range: 2, can_found_city: false },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None },
         UnitTypeDef { id: settler_type, name: "settler", production_cost: 80,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: true },
+                      range: 0, vision_range: 2, can_found_city: true, resource_cost: None },
         UnitTypeDef { id: slinger_type, name: "slinger", production_cost: 35,
                       max_movement: 200, combat_strength: Some(10),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 2, vision_range: 2, can_found_city: false },
+                      range: 2, vision_range: 2, can_found_city: false, resource_cost: None },
     ]);
 
     // ── Rome (west side) ──────────────────────────────────────────────────
@@ -397,55 +397,9 @@ fn build_ai_demo(seed: u64) -> AiDemo {
     }
 }
 
-/// Complete production for one civilization: pop units off the queue when cost
-/// is met, spawn them at the city coord, and push their IDs into `new_unit_ids`.
-fn complete_production_civ(
-    demo: &mut AiDemo,
-    civ_id: CivId,
-    new_unit_ids: &mut Vec<(UnitId, &'static str)>,
-    new_city_ids: &mut Vec<CityId>,
-) {
-    let city_indices: Vec<usize> = (0..demo.state.cities.len())
-        .filter(|&i| demo.state.cities[i].owner == civ_id)
-        .collect();
-
-    for city_idx in city_indices {
-        loop {
-            let front = demo.state.cities[city_idx].production_queue.front().cloned();
-            let Some(ProductionItem::Unit(tid)) = front else { break };
-
-            let def_idx = match demo.state.unit_type_defs.iter().position(|d| d.id == tid) {
-                Some(i) => i,
-                None    => break,
-            };
-            let cost = demo.state.unit_type_defs[def_idx].production_cost;
-            if demo.state.cities[city_idx].production_stored < cost { break; }
-
-            demo.state.cities[city_idx].production_stored -= cost;
-            demo.state.cities[city_idx].production_queue.pop_front();
-
-            let def         = &demo.state.unit_type_defs[def_idx];
-            let unit_id     = demo.state.id_gen.next_unit_id();
-            let coord       = demo.state.cities[city_idx].coord;
-            let def_name    = def.name;
-            let def_domain  = def.domain;
-            let def_cat     = def.category;
-            let def_mv      = def.max_movement;
-            let def_cs      = def.combat_strength;
-            let def_range   = def.range;
-            let def_vision  = def.vision_range;
-            demo.state.units.push(BasicUnit {
-                id: unit_id, unit_type: tid, owner: civ_id, coord,
-                domain: def_domain, category: def_cat,
-                movement_left: def_mv, max_movement: def_mv,
-                combat_strength: def_cs, promotions: Vec::new(),
-                health: 100, range: def_range, vision_range: def_vision,
-            });
-            new_unit_ids.push((unit_id, def_name));
-        }
-    }
-
-    // Track any city IDs produced by the AI that we don't know about yet.
+/// Track any city IDs that appeared for `civ_id` since the last turn
+/// (founded by AI agents) and push them into `new_city_ids`.
+fn track_new_cities(demo: &mut AiDemo, civ_id: CivId, new_city_ids: &mut Vec<CityId>) {
     for city in demo.state.cities.iter() {
         if city.owner == civ_id {
             let tracker = if civ_id == demo.rome_id {
@@ -552,15 +506,14 @@ fn run_ai_demo(turns: u32, seed: u64, board_every: u32) {
         let rome_diff    = rome_agent.take_turn(&mut demo.state, &rules);
         let babylon_diff = babylon_agent.take_turn(&mut demo.state, &rules);
 
-        // ── Production completion for both civs ───────────────────────────
-        let mut rome_new_units:    Vec<(UnitId, &str)> = Vec::new();
-        let mut babylon_new_units: Vec<(UnitId, &str)> = Vec::new();
-        let mut rome_new_cities:   Vec<CityId>         = Vec::new();
-        let mut babylon_new_cities: Vec<CityId>        = Vec::new();
+        // ── Track newly founded AI cities ─────────────────────────────────
+        // Unit production is handled by advance_turn inside process_turn.
+        let mut rome_new_cities:    Vec<CityId> = Vec::new();
+        let mut babylon_new_cities: Vec<CityId> = Vec::new();
 
         let (rid, bid) = (demo.rome_id, demo.babylon_id);
-        complete_production_civ(&mut demo, rid, &mut rome_new_units,    &mut rome_new_cities);
-        complete_production_civ(&mut demo, bid, &mut babylon_new_units, &mut babylon_new_cities);
+        track_new_cities(&mut demo, rid, &mut rome_new_cities);
+        track_new_cities(&mut demo, bid, &mut babylon_new_cities);
 
         // Refresh visibility again for newly spawned units.
         for cid in civ_ids {
@@ -584,12 +537,6 @@ fn run_ai_demo(turns: u32, seed: u64, board_every: u32) {
                 }
                 _ => {}
             }
-        }
-        for (_, name) in &rome_new_units {
-            notes.push(format!("Rome completed a {}!", capitalize(name)));
-        }
-        for (_, name) in &babylon_new_units {
-            notes.push(format!("Babylon completed a {}!", capitalize(name)));
         }
         for cid in &rome_new_cities {
             let name = demo.state.cities.iter().find(|c| c.id == *cid)
@@ -896,13 +843,11 @@ fn run_play() {
         }
 
         // ── End of turn ───────────────────────────────────────────────────────
+        // advance_turn handles production completion, strategic resource yield,
+        // science, culture, and gold. UnitCreated events appear in print_turn_events.
         let diff = rules.advance_turn(&mut session.state);
-        let prod_log = complete_production(&mut session);
         reset_movement(&mut session.state);
         print_turn_events(&diff);
-        for msg in &prod_log {
-            println!("  [+] {msg}");
-        }
     }
 }
 
@@ -1441,74 +1386,6 @@ fn cmd_select(session: &mut Session, q: i32, r: i32) {
             println!("  Selected: {} at ({},{})", capitalize(&name), q, r);
         }
     }
-}
-
-// ── Production completion ─────────────────────────────────────────────────────
-
-/// Check the production queue after `advance_turn`. Complete any items whose
-/// cost has been met, spawn units via the `unit_type_defs` registry.
-fn complete_production(session: &mut Session) -> Vec<String> {
-    let mut log  = Vec::new();
-    let civ_id   = session.civ_id;
-    // Iterate over all cities.
-    let city_indices: Vec<usize> = (0..session.state.cities.len())
-        .filter(|&i| session.state.cities[i].owner == civ_id)
-        .collect();
-
-    for city_idx in city_indices {
-        loop {
-            let front = session.state.cities[city_idx].production_queue.front().cloned();
-            let Some(item) = front else { break };
-
-            let (cost, def_idx) = match &item {
-                ProductionItem::Unit(tid) => {
-                    let idx = session.state.unit_type_defs.iter().position(|d| d.id == *tid);
-                    match idx {
-                        Some(i) => (session.state.unit_type_defs[i].production_cost, i),
-                        None    => break,
-                    }
-                }
-                _ => break, // buildings/districts: not yet wired
-            };
-
-            if session.state.cities[city_idx].production_stored < cost { break; }
-
-            session.state.cities[city_idx].production_stored -= cost;
-            session.state.cities[city_idx].production_queue.pop_front();
-
-            if let ProductionItem::Unit(type_id) = item {
-                let def       = &session.state.unit_type_defs[def_idx];
-                let unit_id   = session.state.id_gen.next_unit_id();
-                let coord     = session.state.cities[city_idx].coord;
-                let city_name = session.state.cities[city_idx].name.clone();
-                let def_range        = def.range;
-                let def_vision_range = def.vision_range;
-                let def_domain       = def.domain;
-                let def_category     = def.category;
-                let def_max_movement = def.max_movement;
-                let def_combat_strength = def.combat_strength;
-                let def_name         = def.name;
-                session.state.units.push(BasicUnit {
-                    id:              unit_id,
-                    unit_type:       type_id,
-                    owner:           civ_id,
-                    coord,
-                    domain:          def_domain,
-                    category:        def_category,
-                    movement_left:   def_max_movement,
-                    max_movement:    def_max_movement,
-                    combat_strength: def_combat_strength,
-                    promotions:      Vec::new(),
-                    health:          100,
-                    range:           def_range,
-                    vision_range:    def_vision_range,
-                });
-                log.push(format!("{} completed in {}!", capitalize(def_name), city_name));
-            }
-        }
-    }
-
-    log
 }
 
 // ── Turn header ───────────────────────────────────────────────────────────────

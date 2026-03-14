@@ -51,3 +51,33 @@ define_id!(TerrainId);
 define_id!(FeatureId);
 define_id!(EdgeFeatureId);
 define_id!(NaturalWonderId);
+
+/// Named handles to every built-in tech ID, produced alongside the TechTree.
+#[derive(Debug, Clone, Copy)]
+pub struct TechRefs {
+    pub pottery:          TechId,
+    pub animal_husbandry: TechId,
+    pub mining:           TechId,
+    pub sailing:          TechId,
+    pub archery:          TechId,
+    pub astrology:        TechId,
+    pub writing:          TechId,
+    pub irrigation:       TechId,
+    pub bronze_working:   TechId,
+    pub the_wheel:        TechId,
+    pub masonry:          TechId,
+    /// Sentinel: self-referential prereq → `prerequisites_met()` always returns false.
+    pub unreachable:      TechId,
+}
+
+/// Named handles to every built-in civic ID, produced alongside the CivicTree.
+#[derive(Debug, Clone, Copy)]
+pub struct CivicRefs {
+    pub code_of_laws:  CivicId,
+    pub craftsmanship: CivicId,
+    pub foreign_trade: CivicId,
+    pub early_empire:  CivicId,
+    pub mysticism:     CivicId,
+    /// Sentinel: self-referential prereq → `prerequisites_met()` always returns false.
+    pub unreachable:   CivicId,
+}

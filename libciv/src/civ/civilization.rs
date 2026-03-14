@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use crate::{
-    AgeType, CivId, CivicId, GovernmentId, PolicyId, ResourceId, TechId, YieldType,
+    AgeType, CivId, CivicId, GovernmentId, PolicyId, TechId, YieldType,
 };
 use crate::rules::effect::OneShotEffect;
 use crate::rules::modifier::{EffectType, Modifier, ModifierSource, StackingRule, TargetSelector};
@@ -74,16 +74,16 @@ pub struct Civilization {
     // treasury_per_turn removed (PHASE3-3.4): gold income is computed per turn
     // via compute_yields().gold and goes stale when policies or government change.
     /// Stockpile of consumable strategic resources (e.g. Iron, Horses).
-    pub strategic_resources: HashMap<ResourceId, u32>,
+    pub strategic_resources: HashMap<BuiltinResource, u32>,
 
     // ── OneShotEffect tracking fields ─────────────────────────────────────────
     /// Resources made visible by tech or effect. Used as idempotency guard for
     /// `OneShotEffect::RevealResource`.
     pub revealed_resources: HashSet<BuiltinResource>,
     /// Techs for which the Eureka boost has been earned. Guards re-triggering.
-    pub eureka_triggered: HashSet<&'static str>,
+    pub eureka_triggered: HashSet<TechId>,
     /// Civics for which the Inspiration boost has been earned. Guards re-triggering.
-    pub inspiration_triggered: HashSet<&'static str>,
+    pub inspiration_triggered: HashSet<CivicId>,
     /// Government types unlocked for adoption.
     pub unlocked_governments: Vec<&'static str>,
     /// Name of the currently adopted government, if any.

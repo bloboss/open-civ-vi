@@ -868,17 +868,6 @@ The following systems have data structures defined but no gameplay logic impleme
 - Resource scatter with strategic/luxury quotas
 - Natural wonder placement (exactly one tile, specific terrain requirements)
 
-### 8.2 — District Placement and Building Construction
-
-**Status:** Data structures exist (`PlacedDistrict`, `DistrictDef`, `BuildingDef`). `StateDelta::DistrictBuilt` and `StateDelta::BuildingCompleted` are defined. `City.production_queue` holds `ProductionItem::District` and `ProductionItem::Building` items but production completion in `advance_turn` does not handle them.
-
-**Needed:**
-- `RulesEngine::place_district()` with adjacency validation and production deduction
-- Adjacency bonus scoring (`AdjacencyContext`) wired into `compute_yields`
-- `advance_turn` production completion for buildings and districts (unit completion is already wired in `civsim`)
-- `GameState.placed_districts: Vec<PlacedDistrict>` collection (currently absent)
-- Buildings in `building_defs` registry with yields summed into `compute_yields`
-
 ### 8.3 — City Defenses and Ranged Attacks
 
 **Status:** `WallLevel` has `defense_bonus()` and `max_hp()`. `city.wall_hp` tracks damage. Combat resolution applies terrain bonuses. No city-initiated attacks exist.

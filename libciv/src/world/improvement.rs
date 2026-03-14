@@ -1,4 +1,4 @@
-use crate::YieldBundle;
+use crate::{CivicId, CivicRefs, TechId, TechRefs, YieldBundle};
 
 use super::feature::BuiltinFeature;
 use super::resource::BuiltinResource;
@@ -43,11 +43,11 @@ pub struct ImprovementRequirements {
     pub conditional_features: &'static [(BuiltinTerrain, &'static [BuiltinFeature])],
     /// Resource that must be present on the tile itself.
     pub required_resource: Option<BuiltinResource>,
-    /// Tech node name (matches TechNode::name) that must be researched.
-    /// Use "Unreachable" for improvements not yet tied to a real tech.
-    pub required_tech: Option<&'static str>,
-    /// Civic node name (matches CivicNode::name) that must be completed.
-    pub required_civic: Option<&'static str>,
+    /// Tech that must be researched. Use `tech_refs.unreachable` for improvements
+    /// not yet tied to a real tech (prerequisites_met() is always false for it).
+    pub required_tech: Option<TechId>,
+    /// Civic that must be completed.
+    pub required_civic: Option<CivicId>,
     /// Adjacency constraint: at least one of the 6 neighbors must satisfy this.
     pub proximity: Option<ProximityReq>,
 }
@@ -101,7 +101,7 @@ impl BuiltinImprovement {
         }
     }
 
-    pub fn requirements(self) -> ImprovementRequirements {
+    pub fn requirements(self, tech_refs: &TechRefs, _civic_refs: &CivicRefs) -> ImprovementRequirements {
         match self {
             BuiltinImprovement::Farm => ImprovementRequirements {
                 requires_land:        true,
@@ -114,7 +114,7 @@ impl BuiltinImprovement {
                     &[BuiltinFeature::Floodplain, BuiltinFeature::Oasis],
                 )],
                 required_resource:    None,
-                required_tech:        Some("Pottery"),
+                required_tech:        Some(tech_refs.pottery),
                 required_civic:       None,
                 proximity:            None,
             },
@@ -126,7 +126,7 @@ impl BuiltinImprovement {
                 required_feature:     None,
                 conditional_features: &[],
                 required_resource:    None,
-                required_tech:        Some("Mining"),
+                required_tech:        Some(tech_refs.mining),
                 required_civic:       None,
                 proximity:            None,
             },
@@ -138,7 +138,7 @@ impl BuiltinImprovement {
                 required_feature:     Some(BuiltinFeature::Forest),
                 conditional_features: &[],
                 required_resource:    None,
-                required_tech:        Some("Unreachable"),
+                required_tech:        Some(tech_refs.unreachable),
                 required_civic:       None,
                 proximity:            None,
             },
@@ -150,7 +150,7 @@ impl BuiltinImprovement {
                 required_feature:     None,
                 conditional_features: &[],
                 required_resource:    None,
-                required_tech:        Some("Unreachable"),
+                required_tech:        Some(tech_refs.unreachable),
                 required_civic:       None,
                 proximity:            None,
             },
@@ -162,7 +162,7 @@ impl BuiltinImprovement {
                 required_feature:     None,
                 conditional_features: &[],
                 required_resource:    None,
-                required_tech:        Some("Unreachable"),
+                required_tech:        Some(tech_refs.unreachable),
                 required_civic:       None,
                 proximity:            None,
             },
@@ -174,7 +174,7 @@ impl BuiltinImprovement {
                 required_feature:     None,
                 conditional_features: &[],
                 required_resource:    None,
-                required_tech:        Some("Unreachable"),
+                required_tech:        Some(tech_refs.unreachable),
                 required_civic:       None,
                 proximity:            None,
             },
@@ -186,7 +186,7 @@ impl BuiltinImprovement {
                 required_feature:     None,
                 conditional_features: &[],
                 required_resource:    None,
-                required_tech:        Some("Unreachable"),
+                required_tech:        Some(tech_refs.unreachable),
                 required_civic:       None,
                 proximity:            None,
             },

@@ -1,4 +1,4 @@
-use crate::{BuildingId, CityId, NaturalWonderId, YieldBundle};
+use crate::{BuildingId, CityId, CivicId, CivicRefs, NaturalWonderId, TechId, TechRefs, YieldBundle};
 use libhexgrid::coord::HexCoord;
 
 use super::super::world::terrain::BuiltinTerrain;
@@ -12,11 +12,12 @@ pub struct DistrictRequirements {
     pub requires_water: bool,
     /// Terrains that are never valid for this district.
     pub forbidden_terrains: &'static [BuiltinTerrain],
-    /// Tech node name (matches TechNode::name) that must be researched.
-    /// Use "Unreachable" for districts not yet tied to a real tech.
-    pub required_tech: Option<&'static str>,
-    /// Civic node name (matches CivicNode::name) that must be completed.
-    pub required_civic: Option<&'static str>,
+    /// Tech that must be researched. Use `tech_refs.unreachable` for districts
+    /// not yet tied to a real tech (prerequisites_met() is always false for it).
+    pub required_tech: Option<TechId>,
+    /// Civic that must be completed. Use `civic_refs.unreachable` for districts
+    /// not yet tied to a real civic.
+    pub required_civic: Option<CivicId>,
 }
 
 /// All built-in district types, following Civilization VI's district system.
@@ -71,13 +72,13 @@ impl BuiltinDistrict {
         }
     }
 
-    pub fn requirements(self) -> DistrictRequirements {
+    pub fn requirements(self, tech_refs: &TechRefs, civic_refs: &CivicRefs) -> DistrictRequirements {
         match self {
             BuiltinDistrict::Campus => DistrictRequirements {
                 requires_land:      true,
                 requires_water:     false,
                 forbidden_terrains: &[BuiltinTerrain::Mountain],
-                required_tech:      Some("Writing"),
+                required_tech:      Some(tech_refs.writing),
                 required_civic:     None,
             },
             BuiltinDistrict::TheaterSquare => DistrictRequirements {
@@ -85,43 +86,43 @@ impl BuiltinDistrict {
                 requires_water:     false,
                 forbidden_terrains: &[BuiltinTerrain::Mountain],
                 required_tech:      None,
-                required_civic:     Some("Craftsmanship"),
+                required_civic:     Some(civic_refs.craftsmanship),
             },
             BuiltinDistrict::CommercialHub => DistrictRequirements {
                 requires_land:      true,
                 requires_water:     false,
                 forbidden_terrains: &[BuiltinTerrain::Mountain],
-                // "Currency" is not yet in the tech tree — use Unreachable sentinel.
-                required_tech:      Some("Unreachable"),
+                // "Currency" is not yet in the tech tree — use unreachable sentinel.
+                required_tech:      Some(tech_refs.unreachable),
                 required_civic:     None,
             },
             BuiltinDistrict::Harbor => DistrictRequirements {
                 requires_land:      false,
                 requires_water:     true,
                 forbidden_terrains: &[],
-                required_tech:      Some("Sailing"),
+                required_tech:      Some(tech_refs.sailing),
                 required_civic:     None,
             },
             BuiltinDistrict::HolySite => DistrictRequirements {
                 requires_land:      true,
                 requires_water:     false,
                 forbidden_terrains: &[BuiltinTerrain::Mountain],
-                required_tech:      Some("Astrology"),
+                required_tech:      Some(tech_refs.astrology),
                 required_civic:     None,
             },
             BuiltinDistrict::Encampment => DistrictRequirements {
                 requires_land:      true,
                 requires_water:     false,
                 forbidden_terrains: &[BuiltinTerrain::Mountain],
-                required_tech:      Some("Bronze Working"),
+                required_tech:      Some(tech_refs.bronze_working),
                 required_civic:     None,
             },
             BuiltinDistrict::IndustrialZone => DistrictRequirements {
                 requires_land:      true,
                 requires_water:     false,
                 forbidden_terrains: &[BuiltinTerrain::Mountain],
-                // "Apprenticeship" is not yet in the tech tree — use Unreachable sentinel.
-                required_tech:      Some("Unreachable"),
+                // "Apprenticeship" is not yet in the tech tree — use unreachable sentinel.
+                required_tech:      Some(tech_refs.unreachable),
                 required_civic:     None,
             },
             BuiltinDistrict::EntertainmentComplex => DistrictRequirements {
@@ -129,15 +130,15 @@ impl BuiltinDistrict {
                 requires_water:     false,
                 forbidden_terrains: &[BuiltinTerrain::Mountain],
                 required_tech:      None,
-                required_civic:     Some("Early Empire"),
+                required_civic:     Some(civic_refs.early_empire),
             },
             BuiltinDistrict::WaterPark => DistrictRequirements {
                 requires_land:      false,
                 requires_water:     true,
                 forbidden_terrains: &[],
                 required_tech:      None,
-                // "Natural History" is not yet in the civic tree — use Unreachable sentinel.
-                required_civic:     Some("Unreachable"),
+                // "Natural History" is not yet in the civic tree — use unreachable sentinel.
+                required_civic:     Some(civic_refs.unreachable),
             },
         }
     }

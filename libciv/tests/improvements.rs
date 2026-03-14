@@ -13,14 +13,6 @@ use libhexgrid::coord::HexCoord;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Find the TechId of a tech by name in the state's tech_tree.
-fn tech_id_by_name(state: &libciv::GameState, name: &str) -> libciv::TechId {
-    state.tech_tree.nodes.values()
-        .find(|n| n.name == name)
-        .unwrap_or_else(|| panic!("tech '{name}' not found in tree"))
-        .id
-}
-
 /// Mark a tile as owned by the given civilization.
 fn claim_tile(state: &mut libciv::GameState, coord: HexCoord, civ_id: libciv::CivId) {
     if let Some(t) = state.board.tile_mut(coord) {
@@ -42,7 +34,7 @@ fn farm_on_grassland_succeeds() {
     claim_tile(&mut s.state, coord, s.rome_id);
 
     // Grant Pottery so the tech check passes.
-    let pottery_id = tech_id_by_name(&s.state, "Pottery");
+    let pottery_id = s.state.tech_refs.pottery;
     s.state.civilizations.iter_mut()
         .find(|c| c.id == s.rome_id).unwrap()
         .researched_techs.push(pottery_id);
@@ -78,7 +70,7 @@ fn farm_on_ocean_fails() {
     let coord = HexCoord::from_qr(2, 2);
 
     // Grant Pottery — we want the terrain check to fire, not tech.
-    let pottery_id = tech_id_by_name(&s.state, "Pottery");
+    let pottery_id = s.state.tech_refs.pottery;
     s.state.civilizations.iter_mut()
         .find(|c| c.id == s.rome_id).unwrap()
         .researched_techs.push(pottery_id);
@@ -103,7 +95,7 @@ fn farm_on_ocean_fails() {
 }
 
 /// LumberMill requires a Forest feature; without it the placement is rejected.
-/// With Forest it is still rejected because LumberMill uses the "Unreachable" tech.
+/// With Forest it is still rejected because LumberMill uses the unreachable tech sentinel.
 #[test]
 fn lumbermill_without_forest_fails_and_with_forest_also_fails_tech() {
     let mut s = common::build_scenario();
@@ -126,7 +118,7 @@ fn lumbermill_without_forest_fails_and_with_forest_also_fails_tech() {
         "LumberMill without Forest should be rejected (InvalidImprovement)"
     );
 
-    // Add Forest — now fails on tech (Unreachable).
+    // Add Forest — now fails on tech (unreachable sentinel).
     if let Some(t) = s.state.board.tile_mut(coord) {
         t.feature = Some(BuiltinFeature::Forest);
     }
@@ -139,7 +131,7 @@ fn lumbermill_without_forest_fails_and_with_forest_also_fails_tech() {
     );
     assert!(
         matches!(result_with_forest, Err(libciv::game::RulesError::TechRequired)),
-        "LumberMill on Forest should fail TechRequired (Unreachable tech)"
+        "LumberMill on Forest should fail TechRequired (unreachable sentinel)"
     );
 }
 
@@ -181,7 +173,7 @@ fn farm_succeeds_after_pottery_researched() {
 
     claim_tile(&mut s.state, coord, s.rome_id);
 
-    let pottery_id = tech_id_by_name(&s.state, "Pottery");
+    let pottery_id = s.state.tech_refs.pottery;
     s.state.civilizations.iter_mut()
         .find(|c| c.id == s.rome_id).unwrap()
         .researched_techs.push(pottery_id);
@@ -227,7 +219,7 @@ fn mine_blocked_without_mining() {
     );
 }
 
-/// LumberMill on a Forest tile returns TechRequired (uses "Unreachable" tech sentinel).
+/// LumberMill on a Forest tile returns TechRequired (uses unreachable tech sentinel).
 #[test]
 fn lumbermill_blocked_by_unreachable_tech() {
     let mut s = common::build_scenario();
@@ -248,6 +240,6 @@ fn lumbermill_blocked_by_unreachable_tech() {
 
     assert!(
         matches!(result, Err(libciv::game::RulesError::TechRequired)),
-        "LumberMill should return TechRequired (Unreachable sentinel), got: {result:?}"
+        "LumberMill should return TechRequired (unreachable sentinel), got: {result:?}"
     );
 }

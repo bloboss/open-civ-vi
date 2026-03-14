@@ -138,12 +138,30 @@ pub trait RulesEngine: std::fmt::Debug {
     /// Validation:
     /// - City must exist.
     /// - `coord` must be within 1–3 tiles of the city center.
-    /// - Tile must not be owned by a *different* civilization (`TileOwnedByEnemy`).
-    /// - If already owned by the same civ, returns an empty diff (idempotent).
+    /// - If the tile is already owned by the same civ, returns an empty diff (idempotent).
+    /// - If the tile is owned by a different civ and `force` is `false`, returns
+    ///   `TileOwnedByEnemy`. If `force` is `true` (culture flip), the tile is taken.
     fn claim_tile(
         &self,
         state: &mut GameState,
         city_id: CityId,
+        coord: HexCoord,
+        force: bool,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// Reassign `coord` from one city to another within the same civilization.
+    ///
+    /// Validation:
+    /// - Both cities must exist.
+    /// - Both cities must belong to the same civilization (`CitiesNotSameCiv`).
+    /// - The tile must be owned by that civilization (`TileNotOwned`).
+    /// - `coord` must be within 1–3 tiles of `to_city`'s center (`TileNotInCityRange`).
+    /// - If `from_city == to_city`, returns an empty diff (idempotent).
+    fn reassign_tile(
+        &self,
+        state: &mut GameState,
+        from_city: CityId,
+        to_city: CityId,
         coord: HexCoord,
     ) -> Result<GameStateDiff, RulesError>;
 
@@ -221,6 +239,10 @@ pub enum RulesError {
     TileOccupiedByDistrict,
     /// The target tile is owned by a different civilization; cannot claim enemy territory.
     TileOwnedByEnemy,
+    /// The two cities belong to different civilizations; tile reassignment requires same-civ cities.
+    CitiesNotSameCiv,
+    /// The civilization does not have enough of the required strategic resource to train the unit.
+    InsufficientStrategicResource,
 }
 
 impl std::fmt::Display for RulesError {
@@ -261,6 +283,8 @@ impl std::fmt::Display for RulesError {
             RulesError::TileNotInCityRange        => write!(f, "tile is not within 1–3 tiles of the city center"),
             RulesError::TileOccupiedByDistrict    => write!(f, "tile is already occupied by a district"),
             RulesError::TileOwnedByEnemy          => write!(f, "tile is owned by a different civilization"),
+            RulesError::CitiesNotSameCiv          => write!(f, "tile reassignment requires both cities to belong to the same civilization"),
+            RulesError::InsufficientStrategicResource => write!(f, "insufficient strategic resource to train this unit"),
         }
     }
 }
@@ -475,29 +499,154 @@ impl RulesEngine for DefaultRulesEngine {
             auto_assign_citizen(&state.board, &mut state.cities[i]);
         }
 
-        // ── Per-city production accumulation ──────────────────────────────────
-        // Add production yield to production_stored. Completion requires a
-        // building/unit registry (Part 6.2) which is not yet implemented.
-        let city_prod: Vec<(usize, u32)> = {
+        // ── Per-city production accumulation + strategic resource yield ────────
+        // Collect production yield and strategic resource tiles from worked tiles
+        // (immutable board borrow), then apply mutations in separate passes.
+        use crate::world::resource::BuiltinResource;
+        use crate::enums::ResourceCategory;
+        use std::collections::HashMap as StdHashMap;
+
+        struct CityTurnData {
+            city_idx: usize,
+            civ_id:   CivId,
+            coord:    HexCoord,
+            prod:     u32,
+            /// Strategic resources yielded this turn by worked tiles with an improvement.
+            resource_yields: Vec<BuiltinResource>,
+        }
+
+        let city_turn_data: Vec<CityTurnData> = {
             let board = &state.board;
             state.cities.iter().enumerate().map(|(i, city)| {
                 let prod: i32 = city.worked_tiles.iter()
                     .filter_map(|&coord| board.tile(coord))
                     .map(|t| t.total_yields().production)
                     .sum();
-                (i, prod.max(0) as u32)
+                let resource_yields: Vec<BuiltinResource> = city.worked_tiles.iter()
+                    .filter_map(|&coord| board.tile(coord))
+                    .filter_map(|t| {
+                        let res = t.resource?;
+                        if res.category() == ResourceCategory::Strategic && t.improvement.is_some() {
+                            Some(res)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                CityTurnData {
+                    city_idx: i,
+                    civ_id:   city.owner,
+                    coord:    city.coord,
+                    prod:     prod.max(0) as u32,
+                    resource_yields,
+                }
             }).collect()
         };
 
-        for (i, prod) in city_prod {
-            let city = &mut state.cities[i];
-            city.production_stored += prod;
-            // TODO(PHASE3-4.3/6.2): When production_stored >= item cost, complete the item:
-            //   Building(b) -> push to city.buildings; emit BuildingCompleted.
-            //   Unit(t)     -> look up UnitTypeDef; spawn BasicUnit; emit UnitCreated.
-            //   District(d) -> validate location; compute adjacency; emit DistrictBuilt.
-            //   Wonder(w)   -> mark globally completed; emit WonderBuilt.
-            //   Then reset production_stored = 0 and call pop_front().
+        // Apply production accumulation.
+        for d in &city_turn_data {
+            state.cities[d.city_idx].production_stored += d.prod;
+        }
+
+        // Aggregate strategic resource gains per (civ, resource) and apply.
+        let mut resource_gains: StdHashMap<(CivId, BuiltinResource), u32> = StdHashMap::new();
+        for d in &city_turn_data {
+            for &res in &d.resource_yields {
+                *resource_gains.entry((d.civ_id, res)).or_insert(0) += 1;
+            }
+        }
+        for ((civ_id, resource), amount) in resource_gains {
+            if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == civ_id) {
+                *civ.strategic_resources.entry(resource).or_insert(0) += amount;
+                diff.push(StateDelta::StrategicResourceChanged { civ: civ_id, resource, delta: amount as i32 });
+            }
+        }
+
+        // Complete unit production for cities whose stored production meets the cost.
+        // Units with a strategic resource cost are blocked if the civ lacks the resource.
+        struct UnitCompletion {
+            city_idx:        usize,
+            civ_id:          CivId,
+            coord:           HexCoord,
+            type_id:         UnitTypeId,
+            production_cost: u32,
+            resource_cost:   Option<(BuiltinResource, u32)>,
+            domain:          crate::UnitDomain,
+            category:        crate::UnitCategory,
+            max_movement:    u32,
+            combat_strength: Option<u32>,
+            range:           u8,
+            vision_range:    u8,
+        }
+
+        let unit_completions: Vec<UnitCompletion> = city_turn_data.iter().filter_map(|d| {
+            use crate::civ::city::ProductionItem;
+            let city = &state.cities[d.city_idx];
+            if let Some(ProductionItem::Unit(tid)) = city.production_queue.front() {
+                let def = state.unit_type_defs.iter().find(|def| def.id == *tid)?;
+                if city.production_stored >= def.production_cost {
+                    Some(UnitCompletion {
+                        city_idx:        d.city_idx,
+                        civ_id:          d.civ_id,
+                        coord:           d.coord,
+                        type_id:         def.id,
+                        production_cost: def.production_cost,
+                        resource_cost:   def.resource_cost,
+                        domain:          def.domain,
+                        category:        def.category,
+                        max_movement:    def.max_movement,
+                        combat_strength: def.combat_strength,
+                        range:           def.range,
+                        vision_range:    def.vision_range,
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        }).collect();
+
+        for uc in unit_completions {
+            // Check and deduct strategic resource cost.
+            if let Some((resource, required)) = uc.resource_cost {
+                let available = state.civilizations.iter()
+                    .find(|c| c.id == uc.civ_id)
+                    .map(|c| *c.strategic_resources.get(&resource).unwrap_or(&0))
+                    .unwrap_or(0);
+                if available < required {
+                    continue; // Insufficient — defer until resources are available.
+                }
+                if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == uc.civ_id) {
+                    *civ.strategic_resources.entry(resource).or_insert(0) -= required;
+                    diff.push(StateDelta::StrategicResourceChanged {
+                        civ: uc.civ_id, resource, delta: -(required as i32),
+                    });
+                }
+            }
+
+            // Deduct production cost and complete the item.
+            state.cities[uc.city_idx].production_stored -= uc.production_cost;
+            state.cities[uc.city_idx].production_queue.pop_front();
+
+            let unit_id = state.id_gen.next_unit_id();
+            state.units.push(crate::civ::BasicUnit {
+                id:              unit_id,
+                unit_type:       uc.type_id,
+                owner:           uc.civ_id,
+                coord:           uc.coord,
+                domain:          uc.domain,
+                category:        uc.category,
+                movement_left:   uc.max_movement,
+                max_movement:    uc.max_movement,
+                combat_strength: uc.combat_strength,
+                promotions:      Vec::new(),
+                health:          100,
+                range:           uc.range,
+                vision_range:    uc.vision_range,
+            });
+            diff.push(StateDelta::UnitCreated { unit: unit_id, coord: uc.coord, owner: uc.civ_id });
+            // TODO(PHASE3-4.3): Building, District, Wonder completion.
         }
 
         // ── Per-civ yields: gold, science, culture ────────────────────────────
@@ -990,6 +1139,7 @@ impl RulesEngine for DefaultRulesEngine {
         state: &mut GameState,
         city_id: CityId,
         coord: HexCoord,
+        force: bool,
     ) -> Result<GameStateDiff, RulesError> {
         let coord = state.board.normalize(coord).ok_or(RulesError::InvalidCoord)?;
 
@@ -1010,8 +1160,8 @@ impl RulesEngine for DefaultRulesEngine {
                 // Already owned by this civ — idempotent.
                 return Ok(GameStateDiff::new());
             }
-            Some(_) => return Err(RulesError::TileOwnedByEnemy),
-            None => {}
+            Some(_) if !force => return Err(RulesError::TileOwnedByEnemy),
+            Some(_) | None => {}  // unclaimed, or enemy tile with force=true (culture flip)
         }
 
         if let Some(t) = state.board.tile_mut(coord) {
@@ -1019,6 +1169,51 @@ impl RulesEngine for DefaultRulesEngine {
         }
         let mut diff = GameStateDiff::new();
         diff.push(StateDelta::TileClaimed { civ: civ_id, city: city_id, coord });
+        Ok(diff)
+    }
+
+    fn reassign_tile(
+        &self,
+        state: &mut GameState,
+        from_city: CityId,
+        to_city: CityId,
+        coord: HexCoord,
+    ) -> Result<GameStateDiff, RulesError> {
+        let coord = state.board.normalize(coord).ok_or(RulesError::InvalidCoord)?;
+
+        let from_civ = state.cities.iter()
+            .find(|c| c.id == from_city)
+            .map(|c| c.owner)
+            .ok_or(RulesError::CityNotFound)?;
+
+        let (to_coord, to_civ) = state.cities.iter()
+            .find(|c| c.id == to_city)
+            .map(|c| (c.coord, c.owner))
+            .ok_or(RulesError::CityNotFound)?;
+
+        if from_civ != to_civ {
+            return Err(RulesError::CitiesNotSameCiv);
+        }
+        let civ_id = from_civ;
+
+        if from_city == to_city {
+            return Ok(GameStateDiff::new());
+        }
+
+        let owner = state.board.tile(coord)
+            .ok_or(RulesError::InvalidCoord)?
+            .owner;
+        if owner != Some(civ_id) {
+            return Err(RulesError::TileNotOwned);
+        }
+
+        let to_dist = to_coord.distance(&coord);
+        if !(1..=3).contains(&to_dist) {
+            return Err(RulesError::TileNotInCityRange);
+        }
+
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::TileReassigned { civ: civ_id, from_city, to_city, coord });
         Ok(diff)
     }
 
@@ -1036,7 +1231,7 @@ impl RulesEngine for DefaultRulesEngine {
         let coord = state.board.normalize(coord).ok_or(RulesError::InvalidCoord)?;
 
         let tile = state.board.tile(coord).ok_or(RulesError::InvalidCoord)?;
-        let req  = improvement.requirements();
+        let req  = improvement.requirements(&state.tech_refs, &state.civic_refs);
 
         // 3. tile must be owned by this civilization
         if tile.owner != Some(civ_id) {
@@ -1114,19 +1309,15 @@ impl RulesEngine for DefaultRulesEngine {
             .ok_or(RulesError::CivNotFound)?;
 
         // 12. required_tech
-        if let Some(tech_name) = req.required_tech {
-            let has_tech = state.tech_tree.nodes.values()
-                .any(|n| n.name == tech_name && civ.researched_techs.contains(&n.id));
-            if !has_tech {
+        if let Some(tech_id) = req.required_tech {
+            if !civ.researched_techs.contains(&tech_id) {
                 return Err(RulesError::TechRequired);
             }
         }
 
         // 13. required_civic
-        if let Some(civic_name) = req.required_civic {
-            let has_civic = state.civic_tree.nodes.values()
-                .any(|n| n.name == civic_name && civ.completed_civics.contains(&n.id));
-            if !has_civic {
+        if let Some(civic_id) = req.required_civic {
+            if !civ.completed_civics.contains(&civic_id) {
                 return Err(RulesError::CivicRequired);
             }
         }
@@ -1187,7 +1378,7 @@ impl RulesEngine for DefaultRulesEngine {
             return Err(RulesError::DistrictAlreadyPresent);
         }
 
-        let req = district.requirements();
+        let req = district.requirements(&state.tech_refs, &state.civic_refs);
 
         // 7. requires_land / requires_water
         if req.requires_land && !tile.terrain.is_land() {
@@ -1203,25 +1394,21 @@ impl RulesEngine for DefaultRulesEngine {
         }
 
         // 9. required_tech
-        if let Some(tech_name) = req.required_tech {
+        if let Some(tech_id) = req.required_tech {
             let civ = state.civilizations.iter()
                 .find(|c| c.id == civ_id)
                 .ok_or(RulesError::CivNotFound)?;
-            let has_tech = state.tech_tree.nodes.values()
-                .any(|n| n.name == tech_name && civ.researched_techs.contains(&n.id));
-            if !has_tech {
+            if !civ.researched_techs.contains(&tech_id) {
                 return Err(RulesError::TechRequired);
             }
         }
 
         // 10. required_civic
-        if let Some(civic_name) = req.required_civic {
+        if let Some(civic_id) = req.required_civic {
             let civ = state.civilizations.iter()
                 .find(|c| c.id == civ_id)
                 .ok_or(RulesError::CivNotFound)?;
-            let has_civic = state.civic_tree.nodes.values()
-                .any(|n| n.name == civic_name && civ.completed_civics.contains(&n.id));
-            if !has_civic {
+            if !civ.completed_civics.contains(&civic_id) {
                 return Err(RulesError::CivicRequired);
             }
         }
@@ -1279,38 +1466,35 @@ fn apply_effect(
         }
 
         OneShotEffect::TriggerEureka { tech } => {
-            // Check if the front of the research queue matches this eureka by name.
+            // Check if the front of the research queue matches this tech.
             let in_progress_id = state.civilizations[civ_idx]
                 .research_queue.front().map(|tp| tp.tech_id);
-            let matches_current = in_progress_id
-                .and_then(|id| state.tech_tree.get(id))
-                .map(|n| n.name == *tech)
-                .unwrap_or(false);
+            let matches_current = in_progress_id.map(|id| id == *tech).unwrap_or(false);
 
-            state.civilizations[civ_idx].eureka_triggered.insert(tech);
+            state.civilizations[civ_idx].eureka_triggered.insert(*tech);
             if matches_current {
                 if let Some(tp) = state.civilizations[civ_idx].research_queue.front_mut() {
                     tp.boosted = true;
                 }
             }
-            diff.push(StateDelta::EurekaTriggered { civ: civ_id, tech });
+            let tech_name = state.tech_tree.get(*tech).map(|n| n.name).unwrap_or("?");
+            diff.push(StateDelta::EurekaTriggered { civ: civ_id, tech: tech_name });
         }
 
         OneShotEffect::TriggerInspiration { civic } => {
+            // Check if the current civic in progress matches this civic.
             let in_progress_id = state.civilizations[civ_idx]
                 .civic_in_progress.as_ref().map(|cp| cp.civic_id);
-            let matches_current = in_progress_id
-                .and_then(|id| state.civic_tree.get(id))
-                .map(|n| n.name == *civic)
-                .unwrap_or(false);
+            let matches_current = in_progress_id.map(|id| id == *civic).unwrap_or(false);
 
-            state.civilizations[civ_idx].inspiration_triggered.insert(civic);
+            state.civilizations[civ_idx].inspiration_triggered.insert(*civic);
             if matches_current {
                 if let Some(cp) = state.civilizations[civ_idx].civic_in_progress.as_mut() {
                     cp.inspired = true;
                 }
             }
-            diff.push(StateDelta::InspirationTriggered { civ: civ_id, civic });
+            let civic_name = state.civic_tree.get(*civic).map(|n| n.name).unwrap_or("?");
+            diff.push(StateDelta::InspirationTriggered { civ: civ_id, civic: civic_name });
         }
 
         OneShotEffect::FreeUnit { unit_type, city: hint_city } => {
@@ -2223,6 +2407,7 @@ mod tests {
             range: 0,
             vision_range: 2,
             can_found_city: false,
+            resource_cost: None,
         });
 
         let effect = OneShotEffect::FreeUnit { unit_type: "Warrior", city: None };

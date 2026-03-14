@@ -76,8 +76,14 @@ pub enum StateDelta {
     /// An improvement was placed on a tile.
     ImprovementPlaced { coord: HexCoord, improvement: BuiltinImprovement },
 
+    /// A civilization's strategic resource stockpile changed (positive = gained, negative = consumed).
+    StrategicResourceChanged { civ: CivId, resource: BuiltinResource, delta: i32 },
+
     /// A tile has been claimed by a civilization (city founding or cultural expansion).
     TileClaimed { civ: CivId, city: CityId, coord: HexCoord },
+
+    /// A tile has been moved from one city to another within the same civilization.
+    TileReassigned { civ: CivId, from_city: CityId, to_city: CityId, coord: HexCoord },
 
     // ── TODO(PHASE3-8.8): Era advancement ────────────────────────────────────
     // EraAdvanced { civ: CivId, new_era: crate::AgeType },

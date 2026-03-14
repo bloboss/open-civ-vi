@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use crate::{
-    BuildingId, CivId, CityId, GrievanceId, UnitCategory, UnitDomain, UnitId, UnitTypeId, EraId, YieldBundle,
+    BuildingId, CivId, CivicRefs, CityId, GrievanceId, TechRefs, UnitCategory, UnitDomain, UnitId, UnitTypeId, EraId, YieldBundle,
 };
 use crate::civ::{
     BasicUnit, Civilization, City, CityKind, DiplomaticRelation, GreatPerson, PlacedDistrict,
@@ -33,6 +33,9 @@ pub struct UnitTypeDef {
     pub vision_range:    u8,
     /// True for settler-class units: `found_city` may be called on them.
     pub can_found_city:  bool,
+    /// Strategic resource consumed from the civilization's stockpile when this
+    /// unit completes production. `None` means no resource cost.
+    pub resource_cost:   Option<(crate::world::resource::BuiltinResource, u32)>,
 }
 
 /// Static descriptor for a building type; stored in `GameState.building_defs`.
@@ -122,7 +125,9 @@ pub struct GameState {
     pub trade_routes: Vec<TradeRoute>,
     pub great_people: Vec<GreatPerson>,
     pub tech_tree: TechTree,
+    pub tech_refs: TechRefs,
     pub civic_tree: CivicTree,
+    pub civic_refs: CivicRefs,
     pub governments: Vec<Government>,
     pub policies: Vec<Policy>,
     pub current_era: EraId,
@@ -144,8 +149,8 @@ impl GameState {
         let board = WorldBoard::new(width, height);
         let mut id_gen = IdGenerator::new(seed);
         let era_id = EraId::from_ulid(id_gen.next_ulid());
-        let tech_tree  = build_tech_tree(&mut id_gen);
-        let civic_tree = build_civic_tree(&mut id_gen);
+        let (tech_tree, tech_refs)   = build_tech_tree(&mut id_gen);
+        let (civic_tree, civic_refs) = build_civic_tree(&mut id_gen);
 
         Self {
             turn: 0,
@@ -161,7 +166,9 @@ impl GameState {
             trade_routes: Vec::new(),
             great_people: Vec::new(),
             tech_tree,
+            tech_refs,
             civic_tree,
+            civic_refs,
             governments: Vec::new(),
             policies: Vec::new(),
             current_era: era_id,

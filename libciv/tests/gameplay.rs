@@ -509,6 +509,7 @@ fn spawn_slinger(s: &mut common::Scenario, coord: HexCoord) -> libciv::UnitId {
         range:           2,
         vision_range:    2,
         can_found_city:  false,
+        resource_cost:   None,
     });
     let unit_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
@@ -849,4 +850,229 @@ fn combat_unit_cannot_walk_into_enemy_tile() {
         rules.attack(&mut s.state, s.rome_warrior, enemy_id).is_ok(),
         "explicit attack() should still succeed"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Strategic resource consumption (8.7)
+// ---------------------------------------------------------------------------
+
+use libciv::civ::city::ProductionItem;
+use libciv::game::state::UnitTypeDef;
+use libciv::world::improvement::BuiltinImprovement;
+
+/// Unit with no resource cost completes production normally.
+#[test]
+fn unit_production_no_resource_cost_completes() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Register a unit type with no resource cost.
+    let warrior_tid = s.warrior_type;
+
+    // Queue a warrior in Rome (production_cost = 40).
+    s.state.cities.iter_mut()
+        .find(|c| c.id == s.rome_city).unwrap()
+        .production_queue.push_back(ProductionItem::Unit(warrior_tid));
+
+    // Put a Plains tile adjacent to Rome in worked_tiles to get 1 production/turn.
+    let plains_tile = HexCoord::from_qr(4, 3);
+    if let Some(t) = s.state.board.tile_mut(plains_tile) {
+        t.terrain = libciv::world::terrain::BuiltinTerrain::Plains; // 1 production
+        t.owner   = Some(s.rome_id);
+    }
+    s.state.cities.iter_mut()
+        .find(|c| c.id == s.rome_city).unwrap()
+        .worked_tiles.push(plains_tile);
+
+    let units_before = s.state.units.len();
+
+    // Set production one turn away from completion.
+    s.state.cities.iter_mut()
+        .find(|c| c.id == s.rome_city).unwrap()
+        .production_stored = 39;
+
+    let diff = rules.advance_turn(&mut s.state);
+
+    // After advance_turn adds 1 Plains production, 40 >= 40, unit should complete.
+    assert_eq!(s.state.units.len(), units_before + 1, "warrior should have been produced");
+    assert!(
+        diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitCreated { .. })),
+        "UnitCreated delta expected"
+    );
+    // Queue should be empty.
+    assert!(
+        s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap()
+            .production_queue.is_empty(),
+        "production queue should be empty after completion"
+    );
+}
+
+/// Unit with a resource cost is blocked when the civ lacks the resource.
+#[test]
+fn unit_production_blocked_without_resource() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Register a unit type that costs 1 Iron.
+    let swordsman_tid = libciv::UnitTypeId::from_ulid(s.state.id_gen.next_ulid());
+    s.state.unit_type_defs.push(UnitTypeDef {
+        id:              swordsman_tid,
+        name:            "swordsman",
+        production_cost: 1,           // trivially met
+        domain:          UnitDomain::Land,
+        category:        UnitCategory::Combat,
+        max_movement:    200,
+        combat_strength: Some(35),
+        range:           0,
+        vision_range:    2,
+        can_found_city:  false,
+        resource_cost:   Some((BuiltinResource::Iron, 1)),
+    });
+
+    s.state.cities.iter_mut()
+        .find(|c| c.id == s.rome_city).unwrap()
+        .production_queue.push_back(ProductionItem::Unit(swordsman_tid));
+
+    // Ensure production_stored already covers the cost.
+    s.state.cities.iter_mut()
+        .find(|c| c.id == s.rome_city).unwrap()
+        .production_stored = 10;
+
+    let units_before = s.state.units.len();
+
+    // Rome has no Iron — production should be deferred.
+    let diff = rules.advance_turn(&mut s.state);
+
+    assert_eq!(s.state.units.len(), units_before, "no unit should be produced without Iron");
+    assert!(
+        !diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitCreated { .. })),
+        "no UnitCreated delta expected when blocked by resource"
+    );
+    // Queue still has the item.
+    assert!(
+        !s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap()
+            .production_queue.is_empty(),
+        "production queue should remain non-empty when blocked"
+    );
+}
+
+/// Unit with a resource cost completes when the civ has enough of the resource.
+#[test]
+fn unit_production_consumes_strategic_resource() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Register swordsman (costs 1 Iron).
+    let swordsman_tid = libciv::UnitTypeId::from_ulid(s.state.id_gen.next_ulid());
+    s.state.unit_type_defs.push(UnitTypeDef {
+        id:              swordsman_tid,
+        name:            "swordsman",
+        production_cost: 1,
+        domain:          UnitDomain::Land,
+        category:        UnitCategory::Combat,
+        max_movement:    200,
+        combat_strength: Some(35),
+        range:           0,
+        vision_range:    2,
+        can_found_city:  false,
+        resource_cost:   Some((BuiltinResource::Iron, 1)),
+    });
+
+    // Grant Rome 3 Iron.
+    s.state.civilizations.iter_mut()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .strategic_resources.insert(BuiltinResource::Iron, 3);
+
+    s.state.cities.iter_mut()
+        .find(|c| c.id == s.rome_city).unwrap()
+        .production_queue.push_back(ProductionItem::Unit(swordsman_tid));
+    s.state.cities.iter_mut()
+        .find(|c| c.id == s.rome_city).unwrap()
+        .production_stored = 10;
+
+    let units_before = s.state.units.len();
+
+    let diff = rules.advance_turn(&mut s.state);
+
+    assert_eq!(s.state.units.len(), units_before + 1, "swordsman should be produced");
+    assert!(
+        diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitCreated { .. })),
+        "UnitCreated expected"
+    );
+    // Iron should have been decremented by 1 (from 3 to 2).
+    let iron_left = *s.state.civilizations.iter()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .strategic_resources.get(&BuiltinResource::Iron).unwrap_or(&0);
+    assert_eq!(iron_left, 2, "1 Iron should be consumed");
+    // StrategicResourceChanged delta with delta = -1 should be emitted.
+    assert!(
+        diff.deltas.iter().any(|d| matches!(d,
+            StateDelta::StrategicResourceChanged { resource, delta, .. }
+            if *resource == BuiltinResource::Iron && *delta == -1
+        )),
+        "StrategicResourceChanged(-1 Iron) expected"
+    );
+}
+
+/// Strategic resources are accumulated from worked tiles with improvements each turn.
+#[test]
+fn strategic_resource_accumulated_from_improvement() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Place Iron on a tile adjacent to Rome and add an improvement (Mine).
+    let iron_tile = HexCoord::from_qr(4, 3);
+    if let Some(t) = s.state.board.tile_mut(iron_tile) {
+        t.resource   = Some(BuiltinResource::Iron);
+        t.improvement = Some(BuiltinImprovement::Mine);
+        t.owner      = Some(s.rome_id);
+    }
+    // Add the tile to Rome's worked tiles.
+    s.state.cities.iter_mut()
+        .find(|c| c.id == s.rome_city).unwrap()
+        .worked_tiles.push(iron_tile);
+
+    let iron_before = *s.state.civilizations.iter()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .strategic_resources.get(&BuiltinResource::Iron).unwrap_or(&0);
+
+    let diff = rules.advance_turn(&mut s.state);
+
+    let iron_after = *s.state.civilizations.iter()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .strategic_resources.get(&BuiltinResource::Iron).unwrap_or(&0);
+
+    assert_eq!(iron_after, iron_before + 1, "1 Iron should be gained per turn from the Mine");
+    assert!(
+        diff.deltas.iter().any(|d| matches!(d,
+            StateDelta::StrategicResourceChanged { resource, delta, civ }
+            if *resource == BuiltinResource::Iron && *delta == 1 && *civ == s.rome_id
+        )),
+        "StrategicResourceChanged(+1 Iron) expected in diff"
+    );
+}
+
+/// Strategic resources are NOT accumulated from tiles without an improvement.
+#[test]
+fn strategic_resource_not_accumulated_without_improvement() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Place Iron but no improvement.
+    let iron_tile = HexCoord::from_qr(4, 3);
+    if let Some(t) = s.state.board.tile_mut(iron_tile) {
+        t.resource = Some(BuiltinResource::Iron);
+        t.owner    = Some(s.rome_id);
+        // No improvement.
+    }
+    s.state.cities.iter_mut()
+        .find(|c| c.id == s.rome_city).unwrap()
+        .worked_tiles.push(iron_tile);
+
+    rules.advance_turn(&mut s.state);
+
+    let iron = *s.state.civilizations.iter()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .strategic_resources.get(&BuiltinResource::Iron).unwrap_or(&0);
+    assert_eq!(iron, 0, "Iron without improvement should not accumulate");
 }
