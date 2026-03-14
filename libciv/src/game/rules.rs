@@ -133,6 +133,20 @@ pub trait RulesEngine: std::fmt::Debug {
         coord: HexCoord,
     ) -> Result<GameStateDiff, RulesError>;
 
+    /// Claim `coord` for the civilization that owns `city_id`.
+    ///
+    /// Validation:
+    /// - City must exist.
+    /// - `coord` must be within 1–3 tiles of the city center.
+    /// - Tile must not be owned by a *different* civilization (`TileOwnedByEnemy`).
+    /// - If already owned by the same civ, returns an empty diff (idempotent).
+    fn claim_tile(
+        &self,
+        state: &mut GameState,
+        city_id: CityId,
+        coord: HexCoord,
+    ) -> Result<GameStateDiff, RulesError>;
+
     // TODO(PHASE3-8.3): fn create_trade_route(&self, state: &mut GameState, origin: CityId,
     //   destination: CityId, owner: CivId) -> Result<GameStateDiff, RulesError>;
 }
@@ -205,6 +219,8 @@ pub enum RulesError {
     TileNotInCityRange,
     /// The target tile is already occupied by a different district.
     TileOccupiedByDistrict,
+    /// The target tile is owned by a different civilization; cannot claim enemy territory.
+    TileOwnedByEnemy,
 }
 
 impl std::fmt::Display for RulesError {
@@ -244,6 +260,7 @@ impl std::fmt::Display for RulesError {
             RulesError::DistrictAlreadyPresent    => write!(f, "city already has a district of this type"),
             RulesError::TileNotInCityRange        => write!(f, "tile is not within 1–3 tiles of the city center"),
             RulesError::TileOccupiedByDistrict    => write!(f, "tile is already occupied by a district"),
+            RulesError::TileOwnedByEnemy          => write!(f, "tile is owned by a different civilization"),
         }
     }
 }
@@ -254,6 +271,27 @@ impl std::error::Error for RulesError {}
 
 #[derive(Debug, Default)]
 pub struct DefaultRulesEngine;
+
+/// Claim a single tile for a city, emitting `TileClaimed` if the tile was unclaimed.
+/// Skips enemy-owned tiles silently (happens at map edge during founding near a rival).
+fn try_claim_tile(
+    state: &mut GameState,
+    civ_id: CivId,
+    city_id: CityId,
+    coord: HexCoord,
+    diff: &mut GameStateDiff,
+) {
+    if let Some(t) = state.board.tile_mut(coord) {
+        match t.owner {
+            Some(owner) if owner == civ_id => {}  // already ours, no delta
+            Some(_) => {}                          // enemy tile, skip
+            None => {
+                t.owner = Some(civ_id);
+                diff.push(StateDelta::TileClaimed { civ: civ_id, city: city_id, coord });
+            }
+        }
+    }
+}
 
 impl RulesEngine for DefaultRulesEngine {
     fn move_unit(
@@ -929,13 +967,6 @@ impl RulesEngine for DefaultRulesEngine {
         let mut city = crate::civ::City::new(city_id, name, civ_id, coord);
         city.is_capital = is_capital;
 
-        if let Some(t) = state.board.tile_mut(coord) { t.owner = Some(civ_id); }
-        for nb in state.board.neighbors(coord) {
-            if let Some(t) = state.board.tile_mut(nb) {
-                if t.owner.is_none() { t.owner = Some(civ_id); }
-            }
-        }
-
         if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == civ_id) {
             civ.cities.push(city_id);
         }
@@ -945,6 +976,49 @@ impl RulesEngine for DefaultRulesEngine {
         let mut diff = GameStateDiff::new();
         diff.push(StateDelta::UnitDestroyed { unit: settler });
         diff.push(StateDelta::CityFounded { city: city_id, coord, owner: civ_id });
+
+        try_claim_tile(state, civ_id, city_id, coord, &mut diff);
+        for nb in state.board.neighbors(coord) {
+            try_claim_tile(state, civ_id, city_id, nb, &mut diff);
+        }
+
+        Ok(diff)
+    }
+
+    fn claim_tile(
+        &self,
+        state: &mut GameState,
+        city_id: CityId,
+        coord: HexCoord,
+    ) -> Result<GameStateDiff, RulesError> {
+        let coord = state.board.normalize(coord).ok_or(RulesError::InvalidCoord)?;
+
+        let (city_coord, civ_id) = state.cities.iter()
+            .find(|c| c.id == city_id)
+            .map(|c| (c.coord, c.owner))
+            .ok_or(RulesError::CityNotFound)?;
+
+        let dist = city_coord.distance(&coord);
+        if !(1..=3).contains(&dist) {
+            return Err(RulesError::TileNotInCityRange);
+        }
+
+        let tile = state.board.tile(coord).ok_or(RulesError::InvalidCoord)?;
+
+        match tile.owner {
+            Some(owner) if owner == civ_id => {
+                // Already owned by this civ — idempotent.
+                return Ok(GameStateDiff::new());
+            }
+            Some(_) => return Err(RulesError::TileOwnedByEnemy),
+            None => {}
+        }
+
+        if let Some(t) = state.board.tile_mut(coord) {
+            t.owner = Some(civ_id);
+        }
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::TileClaimed { civ: civ_id, city: city_id, coord });
         Ok(diff)
     }
 

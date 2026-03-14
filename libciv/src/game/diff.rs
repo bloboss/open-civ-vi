@@ -76,6 +76,9 @@ pub enum StateDelta {
     /// An improvement was placed on a tile.
     ImprovementPlaced { coord: HexCoord, improvement: BuiltinImprovement },
 
+    /// A tile has been claimed by a civilization (city founding or cultural expansion).
+    TileClaimed { civ: CivId, city: CityId, coord: HexCoord },
+
     // ── TODO(PHASE3-8.8): Era advancement ────────────────────────────────────
     // EraAdvanced { civ: CivId, new_era: crate::AgeType },
 
