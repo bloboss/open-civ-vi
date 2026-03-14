@@ -1,7 +1,8 @@
 use std::collections::{HashSet, VecDeque};
-use crate::{BuildingId, CityId, CivId, DistrictTypeId, UnitTypeId, WonderId};
+use crate::{BuildingId, CityId, CivId, UnitTypeId, WonderId};
 use libhexgrid::coord::HexCoord;
 use super::city_state::CityStateData;
+use super::district::BuiltinDistrict;
 
 /// Whether this city is a regular player city or an independent city-state.
 #[derive(Debug)]
@@ -42,7 +43,7 @@ pub enum WallLevel {
 pub enum ProductionItem {
     Unit(UnitTypeId),
     Building(BuildingId),
-    District(DistrictTypeId),
+    District(BuiltinDistrict),
     Wonder(WonderId),
 }
 
@@ -66,9 +67,9 @@ pub struct City {
     pub walls: WallLevel,
     pub wall_hp: u32,
     pub buildings: Vec<BuildingId>,
-    // TODO(PHASE3-8.2): Change to Vec<PlacedDistrict> (from civ/district.rs) to store
-    //   coord alongside district type; needed for adjacency bonus computation.
-    pub districts: Vec<DistrictTypeId>,
+    /// District types present in this city. Each `BuiltinDistrict` may appear at most once.
+    /// The corresponding `PlacedDistrict` (with coord) lives in `GameState::placed_districts`.
+    pub districts: Vec<BuiltinDistrict>,
     /// Tiles currently being worked by citizens. Always includes the city center
     /// (set at founding). Citizens are auto-assigned on population growth and can
     /// be overridden via `RulesEngine::assign_citizen`.

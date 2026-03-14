@@ -1,5 +1,6 @@
 use crate::{CivId, CityId, PolicyId, UnitId};
 use crate::civ::DiplomaticStatus;
+use crate::civ::district::BuiltinDistrict;
 use crate::world::improvement::BuiltinImprovement;
 use crate::world::resource::BuiltinResource;
 use libhexgrid::coord::HexCoord;
@@ -50,7 +51,7 @@ pub enum StateDelta {
     /// A building has been completed and added to the city.
     BuildingCompleted    { city: CityId, building: &'static str },
     /// A district has been placed on the map.
-    DistrictBuilt        { city: CityId, district: &'static str, coord: HexCoord },
+    DistrictBuilt        { city: CityId, district: BuiltinDistrict, coord: HexCoord },
     /// A wonder has been completed globally.
     WonderBuilt          { civ: CivId, wonder: &'static str, city: CityId },
     /// A new production item has moved to the front of the queue.

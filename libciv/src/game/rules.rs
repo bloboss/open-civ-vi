@@ -118,8 +118,21 @@ pub trait RulesEngine: std::fmt::Debug {
         improvement: crate::world::improvement::BuiltinImprovement,
     ) -> Result<GameStateDiff, RulesError>;
 
-    // TODO(PHASE3-8.2): fn place_district(&self, state: &mut GameState, city: CityId,
-    //   district_type: DistrictTypeId, coord: HexCoord) -> Result<GameStateDiff, RulesError>;
+    /// Place a district for `city_id` at `coord`.
+    ///
+    /// Validation: coord must be within 1–3 tiles of the city center; the tile
+    /// must be owned by the city's civilization; no existing district on the tile;
+    /// coord must not be a city center; the city must not already have this
+    /// district type; terrain and water constraints from `DistrictRequirements`
+    /// must be satisfied; required tech/civic must be researched/completed.
+    fn place_district(
+        &self,
+        state: &mut GameState,
+        city_id: CityId,
+        district: crate::civ::district::BuiltinDistrict,
+        coord: HexCoord,
+    ) -> Result<GameStateDiff, RulesError>;
+
     // TODO(PHASE3-8.3): fn create_trade_route(&self, state: &mut GameState, origin: CityId,
     //   destination: CityId, owner: CivId) -> Result<GameStateDiff, RulesError>;
 }
@@ -182,6 +195,16 @@ pub enum RulesError {
     TechRequired,
     /// Improvement requires a civic not yet completed by the civilization.
     CivicRequired,
+    /// The target tile is not owned by the acting civilization.
+    TileNotOwned,
+    /// The district cannot be placed on this terrain or tile type.
+    InvalidDistrict,
+    /// The city already contains a district of this type (max 1 per city).
+    DistrictAlreadyPresent,
+    /// The target coord is not within the valid range (1–3 tiles) of the city center.
+    TileNotInCityRange,
+    /// The target tile is already occupied by a different district.
+    TileOccupiedByDistrict,
 }
 
 impl std::fmt::Display for RulesError {
@@ -214,8 +237,13 @@ impl std::fmt::Display for RulesError {
             RulesError::InvalidImprovement        => write!(f, "improvement cannot be placed on this terrain"),
             RulesError::ResourceRequired          => write!(f, "improvement requires a resource not present on the tile"),
             RulesError::ProximityRequired         => write!(f, "improvement requires an adjacent tile condition not satisfied"),
-            RulesError::TechRequired              => write!(f, "improvement requires a tech not yet researched"),
-            RulesError::CivicRequired             => write!(f, "improvement requires a civic not yet completed"),
+            RulesError::TechRequired              => write!(f, "requires a tech not yet researched"),
+            RulesError::CivicRequired             => write!(f, "requires a civic not yet completed"),
+            RulesError::TileNotOwned              => write!(f, "tile is not owned by the acting civilization"),
+            RulesError::InvalidDistrict           => write!(f, "district cannot be placed on this terrain"),
+            RulesError::DistrictAlreadyPresent    => write!(f, "city already has a district of this type"),
+            RulesError::TileNotInCityRange        => write!(f, "tile is not within 1–3 tiles of the city center"),
+            RulesError::TileOccupiedByDistrict    => write!(f, "tile is already occupied by a district"),
         }
     }
 }
@@ -936,6 +964,11 @@ impl RulesEngine for DefaultRulesEngine {
         let tile = state.board.tile(coord).ok_or(RulesError::InvalidCoord)?;
         let req  = improvement.requirements();
 
+        // 3. tile must be owned by this civilization
+        if tile.owner != Some(civ_id) {
+            return Err(RulesError::TileNotOwned);
+        }
+
         // 4. requires_land / requires_water
         if req.requires_land && !tile.terrain.is_land() {
             return Err(RulesError::InvalidImprovement);
@@ -1032,6 +1065,103 @@ impl RulesEngine for DefaultRulesEngine {
 
         let mut diff = GameStateDiff::new();
         diff.push(StateDelta::ImprovementPlaced { coord, improvement });
+        Ok(diff)
+    }
+
+    fn place_district(
+        &self,
+        state: &mut GameState,
+        city_id: CityId,
+        district: crate::civ::district::BuiltinDistrict,
+        coord: HexCoord,
+    ) -> Result<GameStateDiff, RulesError> {
+        let coord = state.board.normalize(coord).ok_or(RulesError::InvalidCoord)?;
+
+        // 1. City must exist and we grab its coord + owner.
+        let (city_coord, civ_id) = state.cities.iter()
+            .find(|c| c.id == city_id)
+            .map(|c| (c.coord, c.owner))
+            .ok_or(RulesError::CityNotFound)?;
+
+        // 2. Coord must be within 1–3 tiles from city center (not the city center itself).
+        let dist = city_coord.distance(&coord);
+        if !(1..=3).contains(&dist) {
+            return Err(RulesError::TileNotInCityRange);
+        }
+
+        // 3. Tile must exist and be owned by this civ.
+        let tile = state.board.tile(coord).ok_or(RulesError::InvalidCoord)?;
+        if tile.owner != Some(civ_id) {
+            return Err(RulesError::TileNotOwned);
+        }
+
+        // 4. Tile must not already host a district.
+        if state.placed_districts.iter().any(|d| d.coord == coord) {
+            return Err(RulesError::TileOccupiedByDistrict);
+        }
+
+        // 5. Tile must not be a city center.
+        if state.cities.iter().any(|c| c.coord == coord) {
+            return Err(RulesError::TileOccupied);
+        }
+
+        // 6. City must not already have this district type.
+        let already_has = state.cities.iter()
+            .find(|c| c.id == city_id)
+            .is_some_and(|c| c.districts.contains(&district));
+        if already_has {
+            return Err(RulesError::DistrictAlreadyPresent);
+        }
+
+        let req = district.requirements();
+
+        // 7. requires_land / requires_water
+        if req.requires_land && !tile.terrain.is_land() {
+            return Err(RulesError::InvalidDistrict);
+        }
+        if req.requires_water && tile.terrain.is_land() {
+            return Err(RulesError::InvalidDistrict);
+        }
+
+        // 8. forbidden_terrains
+        if req.forbidden_terrains.contains(&tile.terrain) {
+            return Err(RulesError::InvalidDistrict);
+        }
+
+        // 9. required_tech
+        if let Some(tech_name) = req.required_tech {
+            let civ = state.civilizations.iter()
+                .find(|c| c.id == civ_id)
+                .ok_or(RulesError::CivNotFound)?;
+            let has_tech = state.tech_tree.nodes.values()
+                .any(|n| n.name == tech_name && civ.researched_techs.contains(&n.id));
+            if !has_tech {
+                return Err(RulesError::TechRequired);
+            }
+        }
+
+        // 10. required_civic
+        if let Some(civic_name) = req.required_civic {
+            let civ = state.civilizations.iter()
+                .find(|c| c.id == civ_id)
+                .ok_or(RulesError::CivNotFound)?;
+            let has_civic = state.civic_tree.nodes.values()
+                .any(|n| n.name == civic_name && civ.completed_civics.contains(&n.id));
+            if !has_civic {
+                return Err(RulesError::CivicRequired);
+            }
+        }
+
+        // 11. Apply: record the placed district and update the city's district list.
+        state.placed_districts.push(crate::civ::district::PlacedDistrict::new(
+            district, city_id, coord,
+        ));
+        if let Some(city) = state.cities.iter_mut().find(|c| c.id == city_id) {
+            city.districts.push(district);
+        }
+
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::DistrictBuilt { city: city_id, district, coord });
         Ok(diff)
     }
 }

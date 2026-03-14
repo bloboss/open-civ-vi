@@ -19,7 +19,7 @@ pub use diplomacy::{
     GrievanceRecord, GrievanceVisibility,
 };
 pub use grievance::{CapturedCityGrievance, DeclaredWarGrievance, PillageGrievance};
-pub use district::{AdjacencyContext, BuildingDef, DistrictDef, PlacedDistrict};
+pub use district::{AdjacencyContext, BuildingDef, BuiltinDistrict, DistrictDef, DistrictRequirements, PlacedDistrict};
 pub use era::{Era, EraTrigger};
 pub use governor::{Governor, GovernorDef, GovernorPromotion};
 pub use great_people::{GreatPerson, GreatPersonAbility};

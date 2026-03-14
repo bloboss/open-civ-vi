@@ -1,8 +1,150 @@
-use crate::{BuildingId, CityId, DistrictTypeId, NaturalWonderId, YieldBundle};
+use crate::{BuildingId, CityId, NaturalWonderId, YieldBundle};
 use libhexgrid::coord::HexCoord;
 
+use super::super::world::terrain::BuiltinTerrain;
+
+/// Placement constraints for a `BuiltinDistrict`.
+#[derive(Debug, Clone, Copy)]
+pub struct DistrictRequirements {
+    /// Tile must be land (not Coast or Ocean).
+    pub requires_land: bool,
+    /// Tile must be a water tile (Coast or Ocean).
+    pub requires_water: bool,
+    /// Terrains that are never valid for this district.
+    pub forbidden_terrains: &'static [BuiltinTerrain],
+    /// Tech node name (matches TechNode::name) that must be researched.
+    /// Use "Unreachable" for districts not yet tied to a real tech.
+    pub required_tech: Option<&'static str>,
+    /// Civic node name (matches CivicNode::name) that must be completed.
+    pub required_civic: Option<&'static str>,
+}
+
+/// All built-in district types, following Civilization VI's district system.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BuiltinDistrict {
+    /// Science district — produces Great Scientists and science.
+    Campus,
+    /// Culture district — produces Great Writers, Artists, and Musicians.
+    TheaterSquare,
+    /// Commerce district — produces Great Merchants and gold.
+    CommercialHub,
+    /// Maritime district — built on coast; produces Great Admirals and gold.
+    Harbor,
+    /// Faith district — produces Great Prophets and faith.
+    HolySite,
+    /// Military district — trains units and provides early defenses.
+    Encampment,
+    /// Production district — produces Great Engineers and production.
+    IndustrialZone,
+    /// Amenities district — provides entertainment and amenities.
+    EntertainmentComplex,
+    /// Coastal amenities district — built on coast; provides amenities.
+    WaterPark,
+}
+
+impl BuiltinDistrict {
+    pub fn name(self) -> &'static str {
+        match self {
+            BuiltinDistrict::Campus               => "Campus",
+            BuiltinDistrict::TheaterSquare        => "Theater Square",
+            BuiltinDistrict::CommercialHub        => "Commercial Hub",
+            BuiltinDistrict::Harbor               => "Harbor",
+            BuiltinDistrict::HolySite             => "Holy Site",
+            BuiltinDistrict::Encampment           => "Encampment",
+            BuiltinDistrict::IndustrialZone       => "Industrial Zone",
+            BuiltinDistrict::EntertainmentComplex => "Entertainment Complex",
+            BuiltinDistrict::WaterPark            => "Water Park",
+        }
+    }
+
+    pub fn base_cost(self) -> u32 {
+        match self {
+            BuiltinDistrict::Campus               => 54,
+            BuiltinDistrict::TheaterSquare        => 54,
+            BuiltinDistrict::CommercialHub        => 54,
+            BuiltinDistrict::Harbor               => 54,
+            BuiltinDistrict::HolySite             => 54,
+            BuiltinDistrict::Encampment           => 54,
+            BuiltinDistrict::IndustrialZone       => 54,
+            BuiltinDistrict::EntertainmentComplex => 54,
+            BuiltinDistrict::WaterPark            => 54,
+        }
+    }
+
+    pub fn requirements(self) -> DistrictRequirements {
+        match self {
+            BuiltinDistrict::Campus => DistrictRequirements {
+                requires_land:      true,
+                requires_water:     false,
+                forbidden_terrains: &[BuiltinTerrain::Mountain],
+                required_tech:      Some("Writing"),
+                required_civic:     None,
+            },
+            BuiltinDistrict::TheaterSquare => DistrictRequirements {
+                requires_land:      true,
+                requires_water:     false,
+                forbidden_terrains: &[BuiltinTerrain::Mountain],
+                required_tech:      None,
+                required_civic:     Some("Craftsmanship"),
+            },
+            BuiltinDistrict::CommercialHub => DistrictRequirements {
+                requires_land:      true,
+                requires_water:     false,
+                forbidden_terrains: &[BuiltinTerrain::Mountain],
+                // "Currency" is not yet in the tech tree — use Unreachable sentinel.
+                required_tech:      Some("Unreachable"),
+                required_civic:     None,
+            },
+            BuiltinDistrict::Harbor => DistrictRequirements {
+                requires_land:      false,
+                requires_water:     true,
+                forbidden_terrains: &[],
+                required_tech:      Some("Sailing"),
+                required_civic:     None,
+            },
+            BuiltinDistrict::HolySite => DistrictRequirements {
+                requires_land:      true,
+                requires_water:     false,
+                forbidden_terrains: &[BuiltinTerrain::Mountain],
+                required_tech:      Some("Astrology"),
+                required_civic:     None,
+            },
+            BuiltinDistrict::Encampment => DistrictRequirements {
+                requires_land:      true,
+                requires_water:     false,
+                forbidden_terrains: &[BuiltinTerrain::Mountain],
+                required_tech:      Some("Bronze Working"),
+                required_civic:     None,
+            },
+            BuiltinDistrict::IndustrialZone => DistrictRequirements {
+                requires_land:      true,
+                requires_water:     false,
+                forbidden_terrains: &[BuiltinTerrain::Mountain],
+                // "Apprenticeship" is not yet in the tech tree — use Unreachable sentinel.
+                required_tech:      Some("Unreachable"),
+                required_civic:     None,
+            },
+            BuiltinDistrict::EntertainmentComplex => DistrictRequirements {
+                requires_land:      true,
+                requires_water:     false,
+                forbidden_terrains: &[BuiltinTerrain::Mountain],
+                required_tech:      None,
+                required_civic:     Some("Early Empire"),
+            },
+            BuiltinDistrict::WaterPark => DistrictRequirements {
+                requires_land:      false,
+                requires_water:     true,
+                forbidden_terrains: &[],
+                required_tech:      None,
+                // "Natural History" is not yet in the civic tree — use Unreachable sentinel.
+                required_civic:     Some("Unreachable"),
+            },
+        }
+    }
+}
+
+/// Trait for custom (downstream) district types. Built-in districts use `BuiltinDistrict`.
 pub trait DistrictDef: std::fmt::Debug {
-    fn id(&self) -> DistrictTypeId;
     fn name(&self) -> &'static str;
     fn base_cost(&self) -> u32;
     fn max_per_city(&self) -> u32 { 1 }
@@ -14,7 +156,7 @@ pub trait BuildingDef: std::fmt::Debug {
     fn cost(&self) -> u32;
     fn maintenance(&self) -> u32;
     fn yields(&self) -> YieldBundle;
-    fn requires_district(&self) -> Option<DistrictTypeId>;
+    fn requires_district(&self) -> Option<BuiltinDistrict>;
 }
 
 /// Adjacency bonus context for a district placement.
@@ -24,7 +166,7 @@ pub trait BuildingDef: std::fmt::Debug {
 /// bonuses (e.g. Uluru grants +2 Faith to an adjacent Holy Site).
 #[derive(Debug, Clone, Default)]
 pub struct AdjacencyContext {
-    pub adjacent_districts: Vec<DistrictTypeId>,
+    pub adjacent_districts: Vec<BuiltinDistrict>,
     pub adjacent_natural_wonders: Vec<NaturalWonderId>,
     pub adjacent_mountains: u32,
     pub adjacent_rivers: u32,
@@ -37,13 +179,10 @@ impl AdjacencyContext {
     }
 }
 
-// TODO(PHASE3-8.2): PlacedDistrict is ready; wire it into City.districts (replace
-//   Vec<DistrictTypeId>) and into place_district() on RulesEngine. See also 4.3
-//   which triggers DistrictBuilt StateDelta.
 /// A district that has been placed on the map.
 #[derive(Debug, Clone)]
 pub struct PlacedDistrict {
-    pub district_type: DistrictTypeId,
+    pub district_type: BuiltinDistrict,
     pub city_id: CityId,
     pub coord: HexCoord,
     pub buildings: Vec<BuildingId>,
@@ -51,7 +190,7 @@ pub struct PlacedDistrict {
 }
 
 impl PlacedDistrict {
-    pub fn new(district_type: DistrictTypeId, city_id: CityId, coord: HexCoord) -> Self {
+    pub fn new(district_type: BuiltinDistrict, city_id: CityId, coord: HexCoord) -> Self {
         Self {
             district_type,
             city_id,

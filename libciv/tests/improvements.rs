@@ -21,6 +21,13 @@ fn tech_id_by_name(state: &libciv::GameState, name: &str) -> libciv::TechId {
         .id
 }
 
+/// Mark a tile as owned by the given civilization.
+fn claim_tile(state: &mut libciv::GameState, coord: HexCoord, civ_id: libciv::CivId) {
+    if let Some(t) = state.board.tile_mut(coord) {
+        t.owner = Some(civ_id);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Original 3 tests (updated)
 // ---------------------------------------------------------------------------
@@ -30,6 +37,9 @@ fn tech_id_by_name(state: &libciv::GameState, name: &str) -> libciv::TechId {
 fn farm_on_grassland_succeeds() {
     let mut s = common::build_scenario();
     let coord = HexCoord::from_qr(2, 2);
+
+    // Claim tile for Rome so the ownership check passes.
+    claim_tile(&mut s.state, coord, s.rome_id);
 
     // Grant Pottery so the tech check passes.
     let pottery_id = tech_id_by_name(&s.state, "Pottery");
@@ -75,6 +85,7 @@ fn farm_on_ocean_fails() {
 
     if let Some(t) = s.state.board.tile_mut(coord) {
         t.terrain = BuiltinTerrain::Ocean;
+        t.owner = Some(s.rome_id);
     }
 
     let rules = DefaultRulesEngine;
@@ -97,6 +108,9 @@ fn farm_on_ocean_fails() {
 fn lumbermill_without_forest_fails_and_with_forest_also_fails_tech() {
     let mut s = common::build_scenario();
     let coord = HexCoord::from_qr(2, 2);
+
+    // Claim the tile so the ownership check passes.
+    claim_tile(&mut s.state, coord, s.rome_id);
 
     let rules = DefaultRulesEngine;
 
@@ -139,6 +153,9 @@ fn farm_blocked_without_pottery() {
     let mut s = common::build_scenario();
     let coord = HexCoord::from_qr(2, 2);
 
+    // Claim the tile so the ownership check passes; only tech should block.
+    claim_tile(&mut s.state, coord, s.rome_id);
+
     // Confirm the tile is flat Grassland — valid terrain, only tech blocks.
     assert!(s.state.board.tile(coord).is_some());
 
@@ -161,6 +178,8 @@ fn farm_blocked_without_pottery() {
 fn farm_succeeds_after_pottery_researched() {
     let mut s = common::build_scenario();
     let coord = HexCoord::from_qr(2, 2);
+
+    claim_tile(&mut s.state, coord, s.rome_id);
 
     let pottery_id = tech_id_by_name(&s.state, "Pottery");
     s.state.civilizations.iter_mut()
@@ -188,9 +207,10 @@ fn mine_blocked_without_mining() {
     let mut s = common::build_scenario();
     let coord = HexCoord::from_qr(2, 2);
 
-    // Make the tile hills so elevation check passes.
+    // Make the tile hills and claim it for Rome.
     if let Some(t) = s.state.board.tile_mut(coord) {
         t.hills = true;
+        t.owner = Some(s.rome_id);
     }
 
     let rules = DefaultRulesEngine;
@@ -215,6 +235,7 @@ fn lumbermill_blocked_by_unreachable_tech() {
 
     if let Some(t) = s.state.board.tile_mut(coord) {
         t.feature = Some(BuiltinFeature::Forest);
+        t.owner = Some(s.rome_id);
     }
 
     let rules = DefaultRulesEngine;

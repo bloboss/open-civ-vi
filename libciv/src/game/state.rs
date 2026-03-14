@@ -3,7 +3,8 @@ use crate::{
     BuildingId, CivId, CityId, GrievanceId, UnitCategory, UnitDomain, UnitId, UnitTypeId, EraId, YieldBundle,
 };
 use crate::civ::{
-    BasicUnit, Civilization, City, CityKind, DiplomaticRelation, GreatPerson, Religion, TradeRoute,
+    BasicUnit, Civilization, City, CityKind, DiplomaticRelation, GreatPerson, PlacedDistrict,
+    Religion, TradeRoute,
 };
 use crate::rules::{TechTree, CivicTree, Government, Policy, OneShotEffect};
 use crate::rules::tech::{build_tech_tree, build_civic_tree};
@@ -115,6 +116,7 @@ pub struct GameState {
     pub civilizations: Vec<Civilization>,
     pub cities: Vec<City>,
     pub units: Vec<BasicUnit>,
+    pub placed_districts: Vec<PlacedDistrict>,
     pub diplomatic_relations: Vec<DiplomaticRelation>,
     pub religions: Vec<Religion>,
     pub trade_routes: Vec<TradeRoute>,
@@ -153,6 +155,7 @@ impl GameState {
             civilizations: Vec::new(),
             cities: Vec::new(),
             units: Vec::new(),
+            placed_districts: Vec::new(),
             diplomatic_relations: Vec::new(),
             religions: Vec::new(),
             trade_routes: Vec::new(),
