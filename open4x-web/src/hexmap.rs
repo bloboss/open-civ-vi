@@ -6,11 +6,18 @@
 ///   - Explored-but-foggy: semi-transparent overlay, city outline still shown.
 ///   - Fully visible: no overlay, all markers shown.
 ///
+/// Territory is rendered on top of the fog overlay so it is always legible:
+///   - A semi-transparent tinted polygon fills each owned tile.
+///   - Thick coloured lines are drawn along every edge that separates an
+///     owned tile from an unowned (or off-map) tile, forming the civ border.
+///     Each civilization gets a deterministic colour from a fixed palette.
+///
 /// Clicking a hex fires `on_hex_click(coord)`.
 ///
 /// Coordinate system: axial (q, r) → pixel using pointy-top layout:
 ///   px = size * sqrt(3) * (q + r / 2)
 ///   py = size * 3/2     * r
+use std::collections::HashMap;
 use std::sync::Arc;
 use leptos::prelude::*;
 use libciv::world::terrain::BuiltinTerrain;
@@ -55,6 +62,50 @@ fn corners_to_points(corners: &[(f64, f64); 6]) -> String {
 pub fn svg_dimensions(board_w: u32, board_h: u32) -> (f64, f64) {
     let (max_x, max_y) = axial_to_pixel(board_w as i32 - 1, board_h as i32 - 1);
     (max_x + HEX_SIZE * 2.0, max_y + HEX_SIZE * 2.0)
+}
+
+// ---------------------------------------------------------------------------
+// Territory rendering helpers
+// ---------------------------------------------------------------------------
+
+/// Axial offsets to the 6 hex neighbours, indexed 0-5:
+///   0=East, 1=NE, 2=NW, 3=West, 4=SW, 5=SE
+const NEIGHBOR_OFFSETS: [(i32, i32); 6] = [
+    ( 1,  0),  // East
+    ( 1, -1),  // NE
+    ( 0, -1),  // NW
+    (-1,  0),  // West
+    (-1,  1),  // SW
+    ( 0,  1),  // SE
+];
+
+/// For each neighbour direction (same indexing as NEIGHBOR_OFFSETS), the pair
+/// of `hex_corners` indices that form the shared edge with that neighbour.
+/// Corners are numbered 0-5 clockwise from the upper-right vertex:
+///   0=upper-right, 1=lower-right, 2=bottom, 3=lower-left, 4=upper-left, 5=top
+const BORDER_CORNER_PAIRS: [(usize, usize); 6] = [
+    (0, 1),  // East  — right edge
+    (5, 0),  // NE    — upper-right edge
+    (4, 5),  // NW    — upper-left edge
+    (3, 4),  // West  — left edge
+    (2, 3),  // SW    — lower-left edge
+    (1, 2),  // SE    — lower-right edge
+];
+
+/// Deterministic territory colour for a civilization by its index in the
+/// `state.civilizations` vec.  The palette is chosen to be visually distinct
+/// from the terrain colours and legible over the fog overlay.
+fn civ_territory_color(civ_index: usize) -> (&'static str, &'static str) {
+    // (fill colour, border/stroke colour)
+    const PALETTE: &[(&str, &str)] = &[
+        ("#4e7df4", "#3a6de0"),  // blue   (index 0 — player default)
+        ("#e05050", "#c83030"),  // red
+        ("#d4a800", "#b88e00"),  // gold
+        ("#40b840", "#289028"),  // green
+        ("#b040c0", "#8c28a0"),  // purple
+        ("#e07030", "#c05010"),  // orange
+    ];
+    PALETTE[civ_index % PALETTE.len()]
 }
 
 // ---------------------------------------------------------------------------
@@ -129,6 +180,23 @@ pub fn HexMap(
                 .map(|c| (c.visible_tiles.clone(), c.explored_tiles.clone()))
                 .unwrap_or_default();
 
+            // Build territory mask from city.territory (the authoritative source).
+            // Maps each claimed coord → the owning civ's palette index, so that
+            // adjacent cities within the same civilization share a colour and do
+            // not draw a border between each other.
+            let territory_mask: HashMap<HexCoord, usize> = {
+                let mut map = HashMap::new();
+                for city in &s.state.cities {
+                    let civ_idx = s.state.civilizations.iter()
+                        .position(|c| c.id == city.owner)
+                        .unwrap_or(0);
+                    for &coord in &city.territory {
+                        map.insert(coord, civ_idx);
+                    }
+                }
+                map
+            };
+
             let mut elems: Vec<_> = Vec::new();
 
             for r in 0..board_h as i32 {
@@ -171,6 +239,46 @@ pub fn HexMap(
                         Some("0.50")
                     } else {
                         Some("0.88")
+                    };
+
+                    // ── Territory tint + border lines ─────────────────────────────────
+                    // Derived from city.territory (the authoritative per-city coord set),
+                    // not from tile.owner.  Rendered after the fog overlay so borders
+                    // are always legible regardless of exploration state.
+                    let territory_civ_idx: Option<usize> = territory_mask.get(&coord).copied();
+                    let territory_colors: Option<(&'static str, &'static str)> =
+                        territory_civ_idx.map(civ_territory_color);
+
+                    // For each of the 6 neighbour directions, draw a border segment when
+                    // the neighbour does not belong to the same civilization's territory
+                    // (including off-map neighbours, which always trigger a border).
+                    let border_line_views = match territory_civ_idx {
+                        None => Vec::new(),
+                        Some(own_idx) => {
+                            let (_, stroke_color) = territory_colors.unwrap();
+                            (0..6usize).filter_map(|d| {
+                                let (dq, dr) = NEIGHBOR_OFFSETS[d];
+                                let nb_idx = s.state.board
+                                    .normalize(HexCoord::from_qr(q + dq, r + dr))
+                                    .and_then(|nc| territory_mask.get(&nc).copied());
+                                if nb_idx != Some(own_idx) {
+                                    let (ci, cj) = BORDER_CORNER_PAIRS[d];
+                                    let (ax, ay) = corners[ci];
+                                    let (bx, by) = corners[cj];
+                                    Some(view! {
+                                        <line
+                                            x1=ax y1=ay x2=bx y2=by
+                                            stroke=stroke_color
+                                            stroke-width="2.5"
+                                            stroke-linecap="round"
+                                            pointer-events="none"
+                                        />
+                                    })
+                                } else {
+                                    None
+                                }
+                            }).collect::<Vec<_>>()
+                        }
                     };
 
                     elems.push(view! {
@@ -242,6 +350,20 @@ pub fn HexMap(
                                     pointer-events="none"
                                 />
                             })}
+
+                            // Territory tint (semi-transparent fill over the fog).
+                            {territory_colors.map(|(fill_color, _)| view! {
+                                <polygon
+                                    points=points.clone()
+                                    fill=fill_color
+                                    fill-opacity="0.20"
+                                    stroke="none"
+                                    pointer-events="none"
+                                />
+                            })}
+
+                            // Territory border lines (drawn last to stay on top).
+                            {border_line_views}
                         </g>
                     });
                 }

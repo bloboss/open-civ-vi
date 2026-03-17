@@ -136,14 +136,14 @@ impl HeuristicAgent {
 
         if let Some((unit_type_id, unit_name)) = best_unit_type {
             for city_id in city_ids {
-                if let Some(city) = state.cities.iter_mut().find(|c| c.id == city_id) {
-                    if city.owner == self.civ_id && city.production_queue.is_empty() {
-                        city.production_queue.push_back(ProductionItem::Unit(unit_type_id));
-                        diff.push(StateDelta::ProductionStarted {
-                            city: city_id,
-                            item: unit_name,
-                        });
-                    }
+                if let Some(city) = state.cities.iter_mut().find(|c| c.id == city_id)
+                    && city.owner == self.civ_id && city.production_queue.is_empty()
+                {
+                    city.production_queue.push_back(ProductionItem::Unit(unit_type_id));
+                    diff.push(StateDelta::ProductionStarted {
+                        city: city_id,
+                        item: unit_name,
+                    });
                 }
             }
         }
@@ -223,11 +223,11 @@ impl Agent for HeuristicAgent {
 /// subsequent decisions within the same turn.
 fn apply_unit_moved(state: &mut GameState, diff: &GameStateDiff) {
     for delta in &diff.deltas {
-        if let StateDelta::UnitMoved { unit, to, cost, .. } = delta {
-            if let Some(u) = state.unit_mut(*unit) {
-                u.coord         = *to;
-                u.movement_left = u.movement_left.saturating_sub(*cost);
-            }
+        if let StateDelta::UnitMoved { unit, to, cost, .. } = delta
+            && let Some(u) = state.unit_mut(*unit)
+        {
+            u.coord         = *to;
+            u.movement_left = u.movement_left.saturating_sub(*cost);
         }
     }
 }

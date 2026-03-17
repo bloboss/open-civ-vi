@@ -167,6 +167,12 @@ pub trait RulesEngine: std::fmt::Debug {
 
     // TODO(PHASE3-8.3): fn create_trade_route(&self, state: &mut GameState, origin: CityId,
     //   destination: CityId, owner: CivId) -> Result<GameStateDiff, RulesError>;
+
+    // TODO(PHASE3-BORDERS): fn purchase_tile(&self, state: &mut GameState, city_id: CityId,
+    //   coord: HexCoord) -> Result<GameStateDiff, RulesError>;
+    //   Spends gold (or culture) from the civilization's treasury to immediately claim a tile
+    //   within radius 3 of the city. Cost scales with tile distance. Distinct from automatic
+    //   cultural expansion: this is a player action and debits the main treasury.
 }
 
 /// Errors returned by rules engine operations.
@@ -305,16 +311,44 @@ fn try_claim_tile(
     coord: HexCoord,
     diff: &mut GameStateDiff,
 ) {
-    if let Some(t) = state.board.tile_mut(coord) {
+    let newly_claimed = if let Some(t) = state.board.tile_mut(coord) {
         match t.owner {
-            Some(owner) if owner == civ_id => {}  // already ours, no delta
-            Some(_) => {}                          // enemy tile, skip
+            Some(owner) if owner == civ_id => false, // already ours, no delta
+            Some(_) => false,                         // enemy tile, skip
             None => {
                 t.owner = Some(civ_id);
-                diff.push(StateDelta::TileClaimed { civ: civ_id, city: city_id, coord });
+                true
             }
         }
+    } else {
+        false
+    };
+
+    if newly_claimed {
+        if let Some(city) = state.cities.iter_mut().find(|c| c.id == city_id) {
+            city.territory.insert(coord);
+        }
+        diff.push(StateDelta::TileClaimed { civ: civ_id, city: city_id, coord });
     }
+}
+
+/// Cost in shadow-culture to claim a tile at `distance` hexes from the city center.
+/// Ring 1 tiles are free and claimed automatically at founding; this is only
+/// called for distances 2–5.
+fn tile_border_cost(distance: u32) -> u32 {
+    (10.0 + (6.0 * distance as f64).powf(1.3)) as u32
+}
+
+/// Per-city culture output for one turn: 1 base culture plus culture from
+/// worked tiles. The base matches the per-city culture added in `compute_yields`.
+/// Used exclusively for the border expansion shadow accumulator; does not
+/// affect the civilization's culture pool.
+fn city_culture_output(board: &WorldBoard, city: &crate::civ::City) -> u32 {
+    let tile_culture: u32 = city.worked_tiles.iter()
+        .filter_map(|&c| board.tile(c))
+        .map(|t| t.total_yields().culture.max(0) as u32)
+        .sum();
+    1 + tile_culture
 }
 
 impl RulesEngine for DefaultRulesEngine {
@@ -437,9 +471,10 @@ impl RulesEngine for DefaultRulesEngine {
             }
         }
 
-        // Base science: every city contributes 1 science/turn before modifiers.
+        // Base yields: every city contributes 1 science and 1 culture per turn.
         let city_count = state.cities.iter().filter(|c| c.owner == civ_id).count();
         total.science += city_count as i32;
+        total.culture += city_count as i32;
 
         // Collect modifiers: base sources (leader/policies/govt/war) + tech/civic tree grants.
         let modifiers = state.civ(civ_id)
@@ -659,11 +694,11 @@ impl RulesEngine for DefaultRulesEngine {
 
         // Apply gold.
         for (civ_id, yields) in &civ_yields {
-            if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == *civ_id) {
-                if yields.gold != 0 {
-                    civ.gold += yields.gold;
-                    diff.push(StateDelta::GoldChanged { civ: *civ_id, delta: yields.gold });
-                }
+            if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == *civ_id)
+                && yields.gold != 0
+            {
+                civ.gold += yields.gold;
+                diff.push(StateDelta::GoldChanged { civ: *civ_id, delta: yields.gold });
             }
         }
 
@@ -677,16 +712,15 @@ impl RulesEngine for DefaultRulesEngine {
             if yields.science <= 0 { continue; }
             if let Some((idx, civ)) = state.civilizations.iter_mut()
                 .enumerate().find(|(_, c)| c.id == *civ_id)
+                && let Some(tp) = civ.research_queue.front_mut()
             {
-                if let Some(tp) = civ.research_queue.front_mut() {
-                    tp.progress += yields.science as u32;
-                    tech_checks.push(TechCheck {
-                        civ_idx: idx,
-                        civ_id:  *civ_id,
-                        tech_id: tp.tech_id,
-                        progress: tp.progress,
-                    });
-                }
+                tp.progress += yields.science as u32;
+                tech_checks.push(TechCheck {
+                    civ_idx: idx,
+                    civ_id:  *civ_id,
+                    tech_id: tp.tech_id,
+                    progress: tp.progress,
+                });
             }
         }
 
@@ -718,16 +752,15 @@ impl RulesEngine for DefaultRulesEngine {
             if yields.culture <= 0 { continue; }
             if let Some((idx, civ)) = state.civilizations.iter_mut()
                 .enumerate().find(|(_, c)| c.id == *civ_id)
+                && let Some(cp) = civ.civic_in_progress.as_mut()
             {
-                if let Some(cp) = civ.civic_in_progress.as_mut() {
-                    cp.progress += yields.culture as u32;
-                    civic_checks.push(CivicCheck {
-                        civ_idx: idx,
-                        civ_id:  *civ_id,
-                        civic_id: cp.civic_id,
-                        progress: cp.progress,
-                    });
-                }
+                cp.progress += yields.culture as u32;
+                civic_checks.push(CivicCheck {
+                    civ_idx: idx,
+                    civ_id:  *civ_id,
+                    civic_id: cp.civic_id,
+                    progress: cp.progress,
+                });
             }
         }
 
@@ -748,6 +781,66 @@ impl RulesEngine for DefaultRulesEngine {
                         state.effect_queue.push_back((cc.civ_id, effect));
                     }
                 }
+            }
+        }
+
+        // ── Phase 3b: Cultural border expansion ───────────────────────────────
+        // For each regular city, accumulate shadow culture and claim the cheapest
+        // unclaimed tile within radius 2–5 while the budget allows.
+        // City-states use different expansion rules (TBD); they are skipped here.
+        // TODO(PHASE3-BORDERS-CITYSTATE): implement city-state territory expansion.
+        let city_indices: Vec<usize> = (0..state.cities.len()).collect();
+        for city_idx in city_indices {
+            {
+                let city = &state.cities[city_idx];
+                // Skip city-states — different expansion rules TBD.
+                if matches!(city.kind, crate::civ::city::CityKind::CityState(_)) {
+                    continue;
+                }
+            }
+            let (city_coord, civ_id, culture) = {
+                let city = &state.cities[city_idx];
+                (city.coord, city.owner, city_culture_output(&state.board, city))
+            };
+            state.cities[city_idx].culture_border += culture;
+
+            loop {
+                // Collect unclaimed candidates at radius 2–5 (re-evaluated each
+                // iteration so that tiles claimed in this same turn are not re-selected).
+                let candidates: Vec<(u32, HexCoord)> = state.board.all_coords()
+                    .into_iter()
+                    .filter(|&coord| {
+                        let dist = city_coord.distance(&coord);
+                        (2..=5).contains(&dist)
+                            && state.board.tile(coord)
+                                .map(|t| t.owner != Some(civ_id))
+                                .unwrap_or(false)
+                    })
+                    .map(|coord| (tile_border_cost(city_coord.distance(&coord)), coord))
+                    .collect();
+
+                let Some(&(min_cost, _)) = candidates.iter().min_by_key(|(c, _)| c) else {
+                    break;
+                };
+                if state.cities[city_idx].culture_border < min_cost {
+                    break;
+                }
+
+                let cheapest: Vec<HexCoord> = candidates.iter()
+                    .filter(|(c, _)| *c == min_cost)
+                    .map(|(_, coord)| *coord)
+                    .collect();
+
+                let chosen = if cheapest.len() == 1 {
+                    cheapest[0]
+                } else {
+                    let idx = (state.id_gen.next_f32() * cheapest.len() as f32) as usize;
+                    cheapest[idx.min(cheapest.len() - 1)]
+                };
+
+                state.cities[city_idx].culture_border -= min_cost;
+                let city_id = state.cities[city_idx].id;
+                try_claim_tile(state, civ_id, city_id, chosen, &mut diff);
             }
         }
 
@@ -1062,12 +1155,12 @@ impl RulesEngine for DefaultRulesEngine {
                 diff.push(StateDelta::UnitDestroyed { unit: defender_id });
             }
         }
-        if atk_damage > 0 {
-            if let Some(u) = state.unit_mut(attacker_id) {
-                u.health = u.health.saturating_sub(atk_damage);
-                if u.health == 0 {
-                    diff.push(StateDelta::UnitDestroyed { unit: attacker_id });
-                }
+        if atk_damage > 0
+            && let Some(u) = state.unit_mut(attacker_id)
+        {
+            u.health = u.health.saturating_sub(atk_damage);
+            if u.health == 0 {
+                diff.push(StateDelta::UnitDestroyed { unit: attacker_id });
             }
         }
         state.units.retain(|u| u.health > 0);
@@ -1167,6 +1260,9 @@ impl RulesEngine for DefaultRulesEngine {
         if let Some(t) = state.board.tile_mut(coord) {
             t.owner = Some(civ_id);
         }
+        if let Some(city) = state.cities.iter_mut().find(|c| c.id == city_id) {
+            city.territory.insert(coord);
+        }
         let mut diff = GameStateDiff::new();
         diff.push(StateDelta::TileClaimed { civ: civ_id, city: city_id, coord });
         Ok(diff)
@@ -1264,10 +1360,10 @@ impl RulesEngine for DefaultRulesEngine {
         }
 
         // 7. required_feature
-        if let Some(req_feat) = req.required_feature {
-            if tile.feature != Some(req_feat) {
-                return Err(RulesError::InvalidImprovement);
-            }
+        if let Some(req_feat) = req.required_feature
+            && tile.feature != Some(req_feat)
+        {
+            return Err(RulesError::InvalidImprovement);
         }
 
         // 8. conditional_features: on matching terrain, one of listed features must be present
@@ -1283,10 +1379,10 @@ impl RulesEngine for DefaultRulesEngine {
         }
 
         // 9. required_resource
-        if let Some(req_res) = req.required_resource {
-            if tile.resource != Some(req_res) {
-                return Err(RulesError::ResourceRequired);
-            }
+        if let Some(req_res) = req.required_resource
+            && tile.resource != Some(req_res)
+        {
+            return Err(RulesError::ResourceRequired);
         }
 
         // 10. proximity
@@ -1309,17 +1405,17 @@ impl RulesEngine for DefaultRulesEngine {
             .ok_or(RulesError::CivNotFound)?;
 
         // 12. required_tech
-        if let Some(tech_id) = req.required_tech {
-            if !civ.researched_techs.contains(&tech_id) {
-                return Err(RulesError::TechRequired);
-            }
+        if let Some(tech_id) = req.required_tech
+            && !civ.researched_techs.contains(&tech_id)
+        {
+            return Err(RulesError::TechRequired);
         }
 
         // 13. required_civic
-        if let Some(civic_id) = req.required_civic {
-            if !civ.completed_civics.contains(&civic_id) {
-                return Err(RulesError::CivicRequired);
-            }
+        if let Some(civic_id) = req.required_civic
+            && !civ.completed_civics.contains(&civic_id)
+        {
+            return Err(RulesError::CivicRequired);
         }
 
         // 14. apply
@@ -1472,10 +1568,10 @@ fn apply_effect(
             let matches_current = in_progress_id.map(|id| id == *tech).unwrap_or(false);
 
             state.civilizations[civ_idx].eureka_triggered.insert(*tech);
-            if matches_current {
-                if let Some(tp) = state.civilizations[civ_idx].research_queue.front_mut() {
-                    tp.boosted = true;
-                }
+            if matches_current
+                && let Some(tp) = state.civilizations[civ_idx].research_queue.front_mut()
+            {
+                tp.boosted = true;
             }
             let tech_name = state.tech_tree.get(*tech).map(|n| n.name).unwrap_or("?");
             diff.push(StateDelta::EurekaTriggered { civ: civ_id, tech: tech_name });
@@ -1488,10 +1584,10 @@ fn apply_effect(
             let matches_current = in_progress_id.map(|id| id == *civic).unwrap_or(false);
 
             state.civilizations[civ_idx].inspiration_triggered.insert(*civic);
-            if matches_current {
-                if let Some(cp) = state.civilizations[civ_idx].civic_in_progress.as_mut() {
-                    cp.inspired = true;
-                }
+            if matches_current
+                && let Some(cp) = state.civilizations[civ_idx].civic_in_progress.as_mut()
+            {
+                cp.inspired = true;
             }
             let civic_name = state.civic_tree.get(*civic).map(|n| n.name).unwrap_or("?");
             diff.push(StateDelta::InspirationTriggered { civ: civ_id, civic: civic_name });
@@ -1655,10 +1751,10 @@ fn tile_yields_gated(tile: &WorldTile, known_techs: &HashSet<&str>) -> YieldBund
         yields += feat.yield_modifier();
     }
 
-    if let Some(impr) = tile.improvement {
-        if !tile.improvement_pillaged {
-            yields += impr.yield_bonus();
-        }
+    if let Some(impr) = tile.improvement
+        && !tile.improvement_pillaged
+    {
+        yields += impr.yield_bonus();
     }
 
     if let Some(res) = tile.resource {

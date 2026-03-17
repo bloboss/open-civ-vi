@@ -790,11 +790,11 @@ fn run_play() {
                             println!("    - {}", node.name);
                         }
                     }
-                    if let Some(prog) = civ.research_queue.front() {
-                        if let Some(node) = session.state.tech_tree.get(prog.tech_id) {
-                            println!("  In progress: {} ({}/{})",
-                                node.name, prog.progress, node.cost);
-                        }
+                    if let Some(prog) = civ.research_queue.front()
+                        && let Some(node) = session.state.tech_tree.get(prog.tech_id)
+                    {
+                        println!("  In progress: {} ({}/{})",
+                            node.name, prog.progress, node.cost);
                     }
                 }
 
@@ -1633,11 +1633,11 @@ fn overlay(buf: &mut [String], coord: HexCoord, ch: char, n: usize) {
 /// Apply UnitMoved deltas to state (move unit, deduct movement).
 fn apply_diff(state: &mut GameState, diff: &GameStateDiff) {
     for delta in &diff.deltas {
-        if let StateDelta::UnitMoved { unit, to, cost, .. } = delta {
-            if let Some(u) = state.unit_mut(*unit) {
-                u.coord         = *to;
-                u.movement_left  = u.movement_left.saturating_sub(*cost);
-            }
+        if let StateDelta::UnitMoved { unit, to, cost, .. } = delta
+            && let Some(u) = state.unit_mut(*unit)
+        {
+            u.coord         = *to;
+            u.movement_left  = u.movement_left.saturating_sub(*cost);
         }
     }
 }

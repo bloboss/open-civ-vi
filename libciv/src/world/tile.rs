@@ -96,10 +96,10 @@ impl WorldTile {
             yields += feat.yield_modifier();
         }
 
-        if let Some(impr) = self.improvement {
-            if !self.improvement_pillaged {
-                yields += impr.yield_bonus();
-            }
+        if let Some(impr) = self.improvement
+            && !self.improvement_pillaged
+        {
+            yields += impr.yield_bonus();
         }
 
         if let Some(res) = self.resource {

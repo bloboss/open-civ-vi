@@ -122,6 +122,22 @@ pub fn build_session() -> Session {
     state.cities.push(city);
     state.civilizations[0].cities.push(city_id);
 
+    // Claim the city center and ring-1 as initial territory (mirrors what
+    // found_city() does internally via try_claim_tile).
+    {
+        let initial: Vec<HexCoord> = std::iter::once(city_coord)
+            .chain(state.board.neighbors(city_coord))
+            .collect();
+        for &coord in &initial {
+            if let Some(tile) = state.board.tile_mut(coord) {
+                tile.owner = Some(civ_id);
+            }
+        }
+        if let Some(city) = state.cities.iter_mut().find(|c| c.id == city_id) {
+            city.territory = initial.into_iter().collect();
+        }
+    }
+
     randomize_terrain(&mut state, seed, city_coord);
 
     // Unit-type registry.
@@ -133,19 +149,19 @@ pub fn build_session() -> Session {
         UnitTypeDef { id: warrior_type_id, name: "warrior", production_cost: 40,
                       max_movement: 200, combat_strength: Some(20),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 0, vision_range: 2, can_found_city: false },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None },
         UnitTypeDef { id: settler_type_id, name: "settler", production_cost: 80,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: true },
+                      range: 0, vision_range: 2, can_found_city: true, resource_cost: None },
         UnitTypeDef { id: builder_type_id, name: "builder", production_cost: 50,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: false },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None },
         UnitTypeDef { id: slinger_type_id, name: "slinger", production_cost: 35,
                       max_movement: 200, combat_strength: Some(10),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 2, vision_range: 2, can_found_city: false },
+                      range: 2, vision_range: 2, can_found_city: false, resource_cost: None },
     ]);
 
     // Starting Warrior.
@@ -160,6 +176,24 @@ pub fn build_session() -> Session {
         movement_left:   200,
         max_movement:    200,
         combat_strength: Some(20),
+        promotions:      Vec::new(),
+        health:          100,
+        range:           0,
+        vision_range:    2,
+    });
+
+    // Starting Builder at city coord for testing improvements.
+    let builder_id = state.id_gen.next_unit_id();
+    state.units.push(BasicUnit {
+        id:              builder_id,
+        unit_type:       builder_type_id,
+        owner:           civ_id,
+        coord:           city_coord,
+        domain:          UnitDomain::Land,
+        category:        UnitCategory::Civilian,
+        movement_left:   200,
+        max_movement:    200,
+        combat_strength: None,
         promotions:      Vec::new(),
         health:          100,
         range:           0,

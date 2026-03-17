@@ -1037,11 +1037,13 @@ version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
  "getrandom 0.3.4",
+ "js-sys",
  "leptos",
  "libciv",
  "libhexgrid",
  "rand",
  "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

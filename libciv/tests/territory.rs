@@ -246,6 +246,142 @@ fn reassign_tile_to_out_of_range_city_fails() {
 // found_city emits TileClaimed
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Cultural border expansion (advance_turn Phase 3b)
+// ---------------------------------------------------------------------------
+
+/// Helper: cost in shadow-culture to claim a tile at `distance` from the city center.
+/// Mirrors `tile_border_cost` in rules.rs.
+fn border_cost(distance: u32) -> u32 {
+    (10.0 + (6.0 * distance as f64).powf(1.3)) as u32
+}
+
+/// Every city contributes 1 base culture/turn to its shadow border accumulator,
+/// even when no worked tile yields culture.
+#[test]
+fn border_accumulates_base_culture_each_turn() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    assert_eq!(s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap().culture_border, 0);
+
+    // After N turns, culture_border should equal N (base 1/turn, no tile culture,
+    // ring-2 cost ~35 so no tile is claimed yet).
+    for n in 1..=5u32 {
+        rules.advance_turn(&mut s.state);
+        let border = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap().culture_border;
+        assert_eq!(border, n, "after {n} turn(s), culture_border should be {n}");
+    }
+}
+
+/// Seeding a city with enough culture causes the expansion phase to claim a ring-2 tile.
+/// The TileClaimed delta for that tile must appear in the advance_turn diff.
+#[test]
+fn border_expands_when_sufficient_culture() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Seed culture_border with exactly enough to claim one ring-2 tile.
+    let ring2_cost = border_cost(2);
+    s.state.cities.iter_mut()
+        .find(|c| c.id == s.rome_city).unwrap()
+        .culture_border = ring2_cost;
+
+    let diff = rules.advance_turn(&mut s.state);
+
+    // At least one TileClaimed delta must be present.
+    let claimed: Vec<_> = diff.deltas.iter().filter_map(|d| {
+        if let libciv::game::StateDelta::TileClaimed { civ, city, coord } = d {
+            Some((*civ, *city, *coord))
+        } else {
+            None
+        }
+    }).collect();
+    assert!(!claimed.is_empty(), "expected at least one TileClaimed when culture is sufficient");
+
+    // All claimed tiles must belong to Rome's city.
+    let city_coord = HexCoord::from_qr(3, 3);
+    for (civ, city, coord) in &claimed {
+        assert_eq!(*civ, s.rome_id, "claimed tile should belong to Rome");
+        assert_eq!(*city, s.rome_city);
+        let dist = city_coord.distance(coord);
+        assert!((2..=5).contains(&dist), "claimed tile at dist {dist} must be 2–5 from city");
+    }
+}
+
+/// With exactly ring-2 cost available, the expansion claims a ring-2 tile (not ring-3).
+/// After the claim, culture_border drops to 0 (ring-2 cost is higher than 0 remaining).
+#[test]
+fn border_prefers_ring2_over_ring3() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    let ring2_cost = border_cost(2);
+    let ring3_cost = border_cost(3);
+    assert!(ring2_cost < ring3_cost, "ring-2 should be cheaper than ring-3");
+
+    // Set budget to exactly the ring-2 cost (not enough for ring-3).
+    s.state.cities.iter_mut()
+        .find(|c| c.id == s.rome_city).unwrap()
+        .culture_border = ring2_cost;
+
+    let diff = rules.advance_turn(&mut s.state);
+
+    let city_coord = HexCoord::from_qr(3, 3);
+
+    // Exactly one TileClaimed should have been emitted.
+    let expansion_claims: Vec<_> = diff.deltas.iter().filter_map(|d| {
+        if let libciv::game::StateDelta::TileClaimed { coord, city, civ } = d {
+            if *city == s.rome_city {
+                Some((*civ, *city, *coord))
+            } else { None }
+        } else { None }
+    }).collect();
+    assert_eq!(expansion_claims.len(), 1, "exactly one tile should be claimed");
+
+    // The claimed tile must be at ring-2 distance.
+    let (_, _, coord) = expansion_claims[0];
+    let dist = city_coord.distance(&coord);
+    assert_eq!(dist, 2, "claimed tile should be at ring-2 (cheapest), got dist {dist}");
+
+    // advance_turn adds 1 base culture before spending, so after claiming the
+    // ring-2 tile the remainder is 1 (not enough for ring-3 at ~52).
+    let remaining = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap().culture_border;
+    assert_eq!(remaining, 1);
+    assert!(remaining < ring3_cost, "remaining {remaining} must be below ring-3 cost {ring3_cost}");
+}
+
+/// Cultural expansion never claims a tile beyond radius 5 from the city center.
+#[test]
+fn border_stops_at_radius_5() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Give the city a huge culture budget — enough to claim many tiles.
+    s.state.cities.iter_mut()
+        .find(|c| c.id == s.rome_city).unwrap()
+        .culture_border = 100_000;
+
+    let diff = rules.advance_turn(&mut s.state);
+
+    let city_coord = HexCoord::from_qr(3, 3);
+    for delta in &diff.deltas {
+        if let libciv::game::StateDelta::TileClaimed { city, coord, .. } = delta {
+            if *city == s.rome_city {
+                let dist = city_coord.distance(coord);
+                assert!(
+                    dist <= 5,
+                    "claimed tile at dist {dist} exceeds maximum expansion radius of 5"
+                );
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// found_city emits TileClaimed
+// ---------------------------------------------------------------------------
+
 /// `found_city` diff contains TileClaimed deltas for the city center and its
 /// ring-1 neighbours.
 #[test]

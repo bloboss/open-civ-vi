@@ -12,7 +12,8 @@
 ///   - Every mutation (end turn, move unit, …) sends a POST to the server
 ///     and updates the `GameView` signal with the returned snapshot.
 use leptos::prelude::*;
-use libciv::civ::Unit;
+use libciv::civ::{ProductionItem, TechProgress, Unit};
+use libciv::world::improvement::BuiltinImprovement;
 use libciv::{DefaultRulesEngine, RulesEngine};
 use libciv::game::{StateDelta, RulesError, recalculate_visibility};
 use libhexgrid::board::HexBoard;
@@ -20,6 +21,50 @@ use libhexgrid::coord::HexCoord;
 
 use crate::hexmap::HexMap;
 use crate::session::{Session, build_session};
+
+// ---------------------------------------------------------------------------
+// Debug save helper
+// ---------------------------------------------------------------------------
+
+/// Trigger a browser file-download of `content` as a plain-text `.txt` file.
+///
+/// Uses the standard Blob → object-URL → hidden `<a>` click pattern so the
+/// file ends up in the user's Downloads folder without opening a new tab.
+fn download_text(filename: &str, content: &str) {
+    use wasm_bindgen::JsCast;
+    use wasm_bindgen::JsValue;
+
+    let parts = js_sys::Array::new();
+    parts.push(&JsValue::from_str(content));
+
+    let opts = web_sys::BlobPropertyBag::new();
+    opts.set_type("text/plain");
+
+    let blob = web_sys::Blob::new_with_str_sequence_and_options(&parts, &opts)
+        .expect("Blob::new failed");
+    let url = web_sys::Url::create_object_url_with_blob(&blob)
+        .expect("URL.createObjectURL failed");
+
+    let document = web_sys::window()
+        .expect("no window")
+        .document()
+        .expect("no document");
+
+    let a = document
+        .create_element("a")
+        .expect("create_element('a') failed")
+        .dyn_into::<web_sys::HtmlAnchorElement>()
+        .expect("dyn_into::<HtmlAnchorElement> failed");
+    a.set_href(&url);
+    a.set_download(filename);
+
+    let body = document.body().expect("no <body>");
+    body.append_child(&a).expect("append_child failed");
+    a.click();
+    let _ = body.remove_child(&a);
+
+    web_sys::Url::revoke_object_url(&url).expect("revokeObjectURL failed");
+}
 
 // ---------------------------------------------------------------------------
 // GamePage
@@ -85,11 +130,11 @@ pub fn GamePage(on_quit: impl Fn() + 'static) -> impl IntoView {
                     };
                     if let Some(diff) = diff {
                         for delta in &diff.deltas {
-                            if let StateDelta::UnitMoved { unit, to, cost, .. } = delta {
-                                if let Some(u) = s.state.unit_mut(*unit) {
-                                    u.coord = *to;
-                                    u.movement_left = u.movement_left.saturating_sub(*cost);
-                                }
+                            if let StateDelta::UnitMoved { unit, to, cost, .. } = delta
+                                && let Some(u) = s.state.unit_mut(*unit)
+                            {
+                                u.coord = *to;
+                                u.movement_left = u.movement_left.saturating_sub(*cost);
                             }
                         }
                         recalculate_visibility(&mut s.state, civ_id);
@@ -126,6 +171,16 @@ pub fn GamePage(on_quit: impl Fn() + 'static) -> impl IntoView {
         }
     };
 
+    // Save handler: dump the full GameState debug snapshot to a .txt download.
+    let on_save = move || {
+        session.with_value(|s| {
+            let turn = s.state.turn;
+            let content = format!("{:#?}", s.state);
+            let filename = format!("gamestate-turn{turn}.txt");
+            download_text(&filename, &content);
+        });
+    };
+
     // End-turn handler: process turn, reset movement, recalculate visibility.
     let on_end_turn = move || {
         session.update_value(|s| {
@@ -150,6 +205,7 @@ pub fn GamePage(on_quit: impl Fn() + 'static) -> impl IntoView {
                 tick=tick
                 session=session
                 on_end_turn=move || on_end_turn()
+                on_save=move || on_save()
                 on_quit=on_quit
             />
 
@@ -187,6 +243,7 @@ fn TopBar(
     tick: ReadSignal<u32>,
     session: StoredValue<Session>,
     on_end_turn: impl Fn() + 'static,
+    on_save: impl Fn() + 'static,
     on_quit: impl Fn() + 'static,
 ) -> impl IntoView {
     let turn_label = move || {
@@ -220,6 +277,9 @@ fn TopBar(
             <button class="btn btn-primary" on:click=move |_| on_end_turn()>
                 "End Turn"
             </button>
+            <button class="btn btn-ghost" on:click=move |_| on_save()>
+                "Save"
+            </button>
             <button class="btn btn-ghost" on:click=move |_| on_quit()>
                 "Quit"
             </button>
@@ -242,8 +302,11 @@ fn Sidebar(
     view! {
         <div class="sidebar">
             <TileInfo tick=tick session=session selected_tile=selected_tile />
+            <CityPanel tick=tick set_tick=set_tick session=session selected_tile=selected_tile />
             <UnitInfo tick=tick set_tick=set_tick session=session selected_unit=selected_unit />
-            <TechPanel tick=tick session=session />
+            <YieldsPanel tick=tick session=session />
+            <TechPanel tick=tick set_tick=set_tick session=session />
+            <CivicsPanel tick=tick session=session />
         </div>
     }
 }
@@ -287,13 +350,14 @@ fn TileInfo(
             let prod       = tile.total_yields().production;
             let gold       = tile.total_yields().gold;
 
-            let city_name: String = s.state.cities.iter()
-                .find(|c| c.coord == coord)
-                .map(|c| c.name.clone())
-                .unwrap_or_default();
             let owner_name: String = tile.owner
                 .and_then(|id| s.state.civilizations.iter().find(|c| c.id == id))
                 .map(|c| c.name.to_string())
+                .unwrap_or_default();
+
+            // Skip city name here — CityPanel handles city tiles.
+            let improvement_name: String = tile.improvement
+                .map(|i| i.name().to_string())
                 .unwrap_or_default();
 
             view! {
@@ -319,10 +383,10 @@ fn TileInfo(
                         <span class="info-label">"Gold"</span>
                         <span>{gold}</span>
                     </div>
-                    {(!city_name.is_empty()).then(|| view! {
+                    {(!improvement_name.is_empty()).then(|| view! {
                         <div class="info-row">
-                            <span class="info-label">"City"</span>
-                            <span>{city_name}</span>
+                            <span class="info-label">"Improvement"</span>
+                            <span>{improvement_name}</span>
                         </div>
                     })}
                     {(!owner_name.is_empty()).then(|| view! {
@@ -330,6 +394,235 @@ fn TileInfo(
                             <span class="info-label">"Owner"</span>
                             <span>{owner_name}</span>
                         </div>
+                    })}
+                </div>
+            }.into_any()
+        })
+    };
+
+    view! { <div>{content}</div> }
+}
+
+// ---------------------------------------------------------------------------
+// CityPanel — shown when the selected tile has a city
+// ---------------------------------------------------------------------------
+
+#[component]
+fn CityPanel(
+    tick: ReadSignal<u32>,
+    set_tick: WriteSignal<u32>,
+    session: StoredValue<Session>,
+    selected_tile: RwSignal<Option<HexCoord>>,
+) -> impl IntoView {
+    let content = move || {
+        tick.get();
+        let Some(coord) = selected_tile.get() else {
+            return view! { <span /> }.into_any();
+        };
+
+        // Only render if a city sits on this tile and it's explored.
+        let city_data = session.with_value(|s| {
+            let civ_id = s.civ_id;
+            let is_explored = s.state.civilizations.iter()
+                .find(|c| c.id == civ_id)
+                .is_some_and(|c| c.explored_tiles.contains(&coord));
+            if !is_explored { return None; }
+            s.state.cities.iter()
+                .find(|c| c.coord == coord)
+                .map(|c| c.id)
+        });
+
+        let Some(city_id) = city_data else {
+            return view! { <span /> }.into_any();
+        };
+
+        session.with_value(|s| {
+            let Some(city) = s.state.cities.iter().find(|c| c.id == city_id) else {
+                return view! { <span /> }.into_any();
+            };
+
+            let city_name  = city.name.clone();
+            let population = city.population;
+            let food_stored = city.food_stored;
+            let food_to_grow = city.food_to_grow;
+            let prod_stored = city.production_stored;
+            let capital_tag = if city.is_capital { " ★" } else { "" };
+
+            // Production queue front item name and cost.
+            let prod_info: Option<(String, u32)> = city.production_queue.front()
+                .and_then(|item| match item {
+                    ProductionItem::Unit(tid) => s.state.unit_type_defs.iter()
+                        .find(|d| d.id == *tid)
+                        .map(|d| (capitalize(d.name), d.production_cost)),
+                    _ => None,
+                });
+
+            let prod_label = prod_info.as_ref()
+                .map(|(name, _)| name.clone())
+                .unwrap_or_else(|| "idle".to_string());
+            let prod_cost_str = prod_info.as_ref()
+                .map(|(_, cost)| format!("{prod_stored}/{cost}"))
+                .unwrap_or_else(|| format!("{prod_stored}/—"));
+
+            // Worked tiles count.
+            let worked_count = city.worked_tiles.len();
+
+            // Buildings.
+            let building_count = city.buildings.len();
+
+            // Available unit types for production.
+            let unit_defs: Vec<(libciv::UnitTypeId, String, u32)> = s.state.unit_type_defs.iter()
+                .map(|d| (d.id, capitalize(d.name), d.production_cost))
+                .collect();
+
+            // Available tiles to assign (rings 1-3, not yet worked, on-map).
+            let available_tiles: Vec<HexCoord> = (1u32..=3)
+                .flat_map(|r| city.coord.ring(r))
+                .filter(|c| {
+                    s.state.board.tile(*c).is_some() && !city.worked_tiles.contains(c)
+                })
+                .collect();
+
+            // Worked tiles for unassign.
+            let worked_tiles: Vec<HexCoord> = city.worked_tiles.clone();
+            let city_center = city.coord;
+
+            view! {
+                <div style="margin-top:10px;border-top:1px solid #333;padding-top:8px">
+                    <h3>{format!("{city_name}{capital_tag}")}</h3>
+                    <div class="info-row">
+                        <span class="info-label">"Population"</span>
+                        <span>{population}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">"Food"</span>
+                        <span>{format!("{food_stored}/{food_to_grow}")}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">"Production"</span>
+                        <span>{format!("{prod_label} [{prod_cost_str}]")}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">"Worked"</span>
+                        <span>{format!("{worked_count}/{population} tiles")}</span>
+                    </div>
+                    {(building_count > 0).then(|| view! {
+                        <div class="info-row">
+                            <span class="info-label">"Buildings"</span>
+                            <span>{building_count}</span>
+                        </div>
+                    })}
+
+                    // Production queue management
+                    <p style="font-size:11px;color:#aaa;margin:6px 0 2px">"Queue unit:"</p>
+                    <div style="display:flex;flex-wrap:wrap;gap:3px">
+                        {unit_defs.into_iter().map(|(type_id, name, cost)| {
+                            let name_clone = name.clone();
+                            view! {
+                                <button
+                                    class="btn btn-ghost"
+                                    style="font-size:10px;padding:2px 5px"
+                                    on:click=move |_| {
+                                        session.update_value(|s| {
+                                            if let Some(city) = s.state.cities.iter_mut()
+                                                .find(|c| c.id == city_id)
+                                            {
+                                                city.production_queue
+                                                    .push_back(ProductionItem::Unit(type_id));
+                                            }
+                                        });
+                                        set_tick.update(|n| *n += 1);
+                                    }
+                                >
+                                    {format!("{name_clone} ({cost})")}
+                                </button>
+                            }
+                        }).collect::<Vec<_>>()}
+                    </div>
+
+                    // Cancel front production item
+                    <button
+                        class="btn btn-ghost"
+                        style="font-size:10px;margin-top:3px;width:100%"
+                        on:click=move |_| {
+                            session.update_value(|s| {
+                                if let Some(city) = s.state.cities.iter_mut()
+                                    .find(|c| c.id == city_id)
+                                {
+                                    city.production_queue.pop_front();
+                                    city.production_stored = 0;
+                                }
+                            });
+                            set_tick.update(|n| *n += 1);
+                        }
+                    >
+                        "Cancel Production"
+                    </button>
+
+                    // Citizen assignment
+                    {(!available_tiles.is_empty()).then(|| {
+                        let tiles = available_tiles.clone();
+                        view! {
+                            <div>
+                                <p style="font-size:11px;color:#aaa;margin:6px 0 2px">"Assign citizen:"</p>
+                                <div style="display:flex;flex-wrap:wrap;gap:3px">
+                                    {tiles.into_iter().map(|tile_coord| {
+                                        view! {
+                                            <button
+                                                class="btn btn-ghost"
+                                                style="font-size:10px;padding:2px 5px"
+                                                on:click=move |_| {
+                                                    session.update_value(|s| {
+                                                        let rules = DefaultRulesEngine;
+                                                        let _ = rules.assign_citizen(
+                                                            &mut s.state, city_id, tile_coord, false
+                                                        );
+                                                    });
+                                                    set_tick.update(|n| *n += 1);
+                                                }
+                                            >
+                                                {format!("({},{})", tile_coord.q, tile_coord.r)}
+                                            </button>
+                                        }
+                                    }).collect::<Vec<_>>()}
+                                </div>
+                            </div>
+                        }
+                    })}
+
+                    // Citizen unassignment
+                    {(!worked_tiles.is_empty()).then(|| {
+                        let tiles = worked_tiles.clone();
+                        view! {
+                            <div>
+                                <p style="font-size:11px;color:#aaa;margin:6px 0 2px">"Unassign citizen:"</p>
+                                <div style="display:flex;flex-wrap:wrap;gap:3px">
+                                    {tiles.into_iter()
+                                        .filter(|c| *c != city_center)
+                                        .map(|tile_coord| {
+                                            view! {
+                                                <button
+                                                    class="btn btn-ghost"
+                                                    style="font-size:10px;padding:2px 5px"
+                                                    on:click=move |_| {
+                                                        session.update_value(|s| {
+                                                            if let Some(city) = s.state.cities.iter_mut()
+                                                                .find(|c| c.id == city_id)
+                                                            {
+                                                                city.worked_tiles.retain(|c| *c != tile_coord);
+                                                                city.locked_tiles.remove(&tile_coord);
+                                                            }
+                                                        });
+                                                        set_tick.update(|n| *n += 1);
+                                                    }
+                                                >
+                                                    {format!("({},{})", tile_coord.q, tile_coord.r)}
+                                                </button>
+                                            }
+                                        }).collect::<Vec<_>>()}
+                                </div>
+                            </div>
+                        }
                     })}
                 </div>
             }.into_any()
@@ -350,6 +643,8 @@ fn UnitInfo(
     session: StoredValue<Session>,
     selected_unit: RwSignal<Option<libciv::UnitId>>,
 ) -> impl IntoView {
+    let improve_msg = RwSignal::new(None::<String>);
+
     let content = move || {
         tick.get();
         let Some(uid) = selected_unit.get() else {
@@ -366,6 +661,7 @@ fn UnitInfo(
                 .find(|d| d.id == unit.unit_type);
             let type_name   = type_def.map(|d| d.name).unwrap_or("Unknown");
             let can_settle  = type_def.map(|d| d.can_found_city).unwrap_or(false);
+            let is_builder  = type_name == "builder";
             let has_movement = unit.movement_left() > 0;
 
             let owner_name = s.state.civilizations.iter()
@@ -373,13 +669,15 @@ fn UnitInfo(
                 .map(|c| c.name)
                 .unwrap_or("?");
             let is_owned = unit.owner == s.civ_id;
+            let unit_coord = unit.coord;
+            let civ_id = s.civ_id;
 
             view! {
                 <div>
                     <h3>"Unit"</h3>
                     <div class="info-row">
                         <span class="info-label">"Type"</span>
-                        <span>{type_name}</span>
+                        <span>{capitalize(type_name)}</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">"Owner"</span>
@@ -436,8 +734,61 @@ fn UnitInfo(
                         }
                     })}
 
+                    // Improvement buttons for builder units.
+                    {(is_owned && is_builder).then(|| {
+                        let improvements = [
+                            ("Farm",         BuiltinImprovement::Farm),
+                            ("Mine",         BuiltinImprovement::Mine),
+                            ("Lumber Mill",  BuiltinImprovement::LumberMill),
+                            ("Trading Post", BuiltinImprovement::TradingPost),
+                            ("Fort",         BuiltinImprovement::Fort),
+                            ("Airstrip",     BuiltinImprovement::Airstrip),
+                            ("Missile Silo", BuiltinImprovement::MissileSilo),
+                        ];
+                        view! {
+                            <div>
+                                <p style="font-size:11px;color:#aaa;margin:6px 0 2px">"Build improvement:"</p>
+                                <div style="display:flex;flex-wrap:wrap;gap:3px">
+                                    {improvements.into_iter().map(|(label, imp)| {
+                                        view! {
+                                            <button
+                                                class="btn btn-ghost"
+                                                style="font-size:10px;padding:2px 5px"
+                                                on:click=move |_| {
+                                                    let mut ok = false;
+                                                    let mut err = String::new();
+                                                    session.update_value(|s| {
+                                                        let rules = DefaultRulesEngine;
+                                                        match rules.place_improvement(
+                                                            &mut s.state, civ_id, unit_coord, imp
+                                                        ) {
+                                                            Ok(_)  => { ok = true; }
+                                                            Err(e) => { err = format!("{e}"); }
+                                                        }
+                                                    });
+                                                    let msg = if ok {
+                                                        format!("{label} built!")
+                                                    } else {
+                                                        format!("Error: {err}")
+                                                    };
+                                                    improve_msg.set(Some(msg));
+                                                    set_tick.update(|n| *n += 1);
+                                                }
+                                            >
+                                                {label}
+                                            </button>
+                                        }
+                                    }).collect::<Vec<_>>()}
+                                </div>
+                                {move || improve_msg.get().map(|m| view! {
+                                    <p style="font-size:11px;color:#ffe066;margin-top:4px">{m}</p>
+                                })}
+                            </div>
+                        }
+                    })}
+
                     // Move hint for owned units.
-                    {(is_owned && has_movement && !can_settle).then(|| view! {
+                    {(is_owned && has_movement && !can_settle && !is_builder).then(|| view! {
                         <p style="font-size:11px;color:#aaa;margin-top:4px">
                             "Click a tile to move or attack."
                         </p>
@@ -451,11 +802,182 @@ fn UnitInfo(
 }
 
 // ---------------------------------------------------------------------------
-// TechPanel — available technologies
+// YieldsPanel — per-turn yield breakdown
+// ---------------------------------------------------------------------------
+
+#[component]
+fn YieldsPanel(
+    tick: ReadSignal<u32>,
+    session: StoredValue<Session>,
+) -> impl IntoView {
+    let content = move || {
+        tick.get();
+        session.with_value(|s| {
+            let rules = DefaultRulesEngine;
+            let y = rules.compute_yields(&s.state, s.civ_id);
+            let civ = s.state.civilizations.iter().find(|c| c.id == s.civ_id);
+            let treasury = civ.map(|c| c.gold).unwrap_or(0);
+
+            view! {
+                <div style="margin-top:10px;border-top:1px solid #333;padding-top:8px">
+                    <h3 style="margin-bottom:4px">"Yields / turn"</h3>
+                    <div class="info-row">
+                        <span class="info-label">"Food"</span>
+                        <span>{format!("{:+}", y.food)}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">"Production"</span>
+                        <span>{format!("{:+}", y.production)}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">"Gold"</span>
+                        <span>{format!("{:+} (treasury: {})", y.gold, treasury)}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">"Science"</span>
+                        <span>{format!("{:+}", y.science)}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">"Culture"</span>
+                        <span>{format!("{:+}", y.culture)}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">"Faith"</span>
+                        <span>{format!("{:+}", y.faith)}</span>
+                    </div>
+                </div>
+            }.into_any()
+        })
+    };
+
+    view! { <div>{content}</div> }
+}
+
+// ---------------------------------------------------------------------------
+// TechPanel — available technologies with research queuing
 // ---------------------------------------------------------------------------
 
 #[component]
 fn TechPanel(
+    tick: ReadSignal<u32>,
+    set_tick: WriteSignal<u32>,
+    session: StoredValue<Session>,
+) -> impl IntoView {
+    let content = move || {
+        tick.get();
+        session.with_value(|s| {
+            let civ = match s.state.civilizations.iter().find(|c| c.id == s.civ_id) {
+                Some(c) => c,
+                None    => return view! { <span /> }.into_any(),
+            };
+
+            // Available techs: prerequisites met and not yet researched or queued.
+            let queued_ids: Vec<libciv::TechId> = civ.research_queue.iter()
+                .map(|p| p.tech_id)
+                .collect();
+            let mut available: Vec<(libciv::TechId, &'static str)> = s.state.tech_tree.nodes.values()
+                .filter(|node| {
+                    !civ.researched_techs.contains(&node.id)
+                        && !queued_ids.contains(&node.id)
+                        && s.state.tech_tree.prerequisites_met(node.id, &civ.researched_techs)
+                })
+                .map(|node| (node.id, node.name))
+                .collect();
+            available.sort_unstable_by_key(|(_, name)| *name);
+
+            // Current research progress.
+            let in_progress: Option<String> = civ.research_queue.front().and_then(|prog| {
+                s.state.tech_tree.get(prog.tech_id).map(|node| {
+                    format!("{} ({}/{})", node.name, prog.progress, node.cost)
+                })
+            });
+
+            // Queued (beyond front).
+            let queue_tail: Vec<String> = civ.research_queue.iter().skip(1)
+                .filter_map(|prog| s.state.tech_tree.get(prog.tech_id).map(|n| n.name.to_string()))
+                .collect();
+
+            // Completed count.
+            let done = civ.researched_techs.len();
+
+            view! {
+                <div style="margin-top:12px;border-top:1px solid #333;padding-top:8px">
+                    <h3 style="margin-bottom:4px">"Technologies"</h3>
+                    <p style="font-size:11px;color:#888;margin:0 0 6px">
+                        {format!("{done} researched")}
+                    </p>
+                    {in_progress.map(|label| view! {
+                        <div class="info-row" style="color:#ffe066">
+                            <span class="info-label">"Researching"</span>
+                            <span>{label}</span>
+                        </div>
+                    })}
+                    {(!queue_tail.is_empty()).then(|| view! {
+                        <div>
+                            <p style="font-size:11px;color:#aaa;margin:4px 0 2px">"Queued:"</p>
+                            <ul style="margin:0;padding-left:14px;font-size:12px;color:#aaa">
+                                {queue_tail.into_iter().map(|name| view! {
+                                    <li>{name}</li>
+                                }).collect::<Vec<_>>()}
+                            </ul>
+                        </div>
+                    })}
+                    {if available.is_empty() {
+                        view! {
+                            <p style="font-size:11px;color:#888">"No techs available."</p>
+                        }.into_any()
+                    } else {
+                        view! {
+                            <div>
+                                <p style="font-size:11px;color:#aaa;margin:4px 0 2px">"Available (click to queue):"</p>
+                                <div style="display:flex;flex-wrap:wrap;gap:3px">
+                                    {available.into_iter().map(|(tech_id, name)| {
+                                        view! {
+                                            <button
+                                                class="btn btn-ghost"
+                                                style="font-size:10px;padding:2px 5px"
+                                                on:click=move |_| {
+                                                    session.update_value(|s| {
+                                                        if let Some(civ) = s.state.civilizations
+                                                            .iter_mut().find(|c| c.id == s.civ_id)
+                                                            && !civ.researched_techs.contains(&tech_id)
+                                                            && !civ.research_queue.iter()
+                                                                .any(|p| p.tech_id == tech_id)
+                                                        {
+                                                            civ.research_queue.push_back(
+                                                                TechProgress {
+                                                                    tech_id,
+                                                                    progress: 0,
+                                                                    boosted: false,
+                                                                }
+                                                            );
+                                                        }
+                                                    });
+                                                    set_tick.update(|n| *n += 1);
+                                                }
+                                            >
+                                                {name}
+                                            </button>
+                                        }
+                                    }).collect::<Vec<_>>()}
+                                </div>
+                            </div>
+                        }.into_any()
+                    }}
+                </div>
+            }.into_any()
+        })
+    };
+
+    view! { <div>{content}</div> }
+}
+
+// ---------------------------------------------------------------------------
+// CivicsPanel — completed civics and in-progress civic
+// ---------------------------------------------------------------------------
+
+#[component]
+fn CivicsPanel(
     tick: ReadSignal<u32>,
     session: StoredValue<Session>,
 ) -> impl IntoView {
@@ -467,51 +989,33 @@ fn TechPanel(
                 None    => return view! { <span /> }.into_any(),
             };
 
-            // Available techs: prerequisites met and not yet researched.
-            let mut available: Vec<&'static str> = s.state.tech_tree.nodes.values()
-                .filter(|node| {
-                    !civ.researched_techs.contains(&node.id)
-                        && s.state.tech_tree.prerequisites_met(node.id, &civ.researched_techs)
-                })
-                .map(|node| node.name)
-                .collect();
-            available.sort_unstable();
+            let done = civ.completed_civics.len();
 
-            // Current research progress.
-            let in_progress: Option<String> = civ.research_queue.front().and_then(|prog| {
-                s.state.tech_tree.get(prog.tech_id).map(|node| {
-                    format!("{} ({}/{})", node.name, prog.progress, node.cost)
-                })
-            });
-
-            // Completed count.
-            let done = civ.researched_techs.len();
+            let in_progress: Option<String> = civ.civic_in_progress.as_ref()
+                .and_then(|prog| {
+                    s.state.civic_tree.get(prog.civic_id).map(|node| {
+                        format!("{} ({}/{})", node.name, prog.progress, node.cost)
+                    })
+                });
 
             view! {
-                <div style="margin-top:12px">
-                    <h3 style="margin-bottom:4px">"Technologies"</h3>
+                <div style="margin-top:12px;border-top:1px solid #333;padding-top:8px">
+                    <h3 style="margin-bottom:4px">"Civics"</h3>
                     <p style="font-size:11px;color:#888;margin:0 0 6px">
-                        {format!("{done} researched")}
+                        {format!("{done} completed")}
                     </p>
-                    {in_progress.map(|label| view! {
-                        <div class="info-row" style="color:#ffe066">
-                            <span class="info-label">"Researching"</span>
-                            <span>{label}</span>
-                        </div>
-                    })}
-                    {if available.is_empty() {
+                    {if let Some(label) = in_progress {
                         view! {
-                            <p style="font-size:11px;color:#888">"No techs available."</p>
+                            <div class="info-row" style="color:#ffe066">
+                                <span class="info-label">"In progress"</span>
+                                <span>{label}</span>
+                            </div>
                         }.into_any()
                     } else {
                         view! {
-                            <div>
-                                <p style="font-size:11px;color:#aaa;margin:4px 0 2px">"Available:"</p>
-                                <ul style="margin:0;padding-left:14px;font-size:12px">
-                                    {available.into_iter().map(|name| view! {
-                                        <li>{name}</li>
-                                    }).collect::<Vec<_>>()}
-                                </ul>
+                            <div class="info-row">
+                                <span class="info-label">"In progress"</span>
+                                <span style="color:#888">"none"</span>
                             </div>
                         }.into_any()
                     }}
@@ -521,4 +1025,16 @@ fn TechPanel(
     };
 
     view! { <div>{content}</div> }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+fn capitalize(s: &str) -> String {
+    let mut c = s.chars();
+    match c.next() {
+        None    => String::new(),
+        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+    }
 }

@@ -524,10 +524,14 @@ struct City {
     pub districts: Vec<DistrictTypeId>,
     pub worked_tiles: Vec<HexCoord>,
     pub locked_tiles: HashSet<HexCoord>,  // tiles pinned by the player
+    pub territory: HashSet<HexCoord>,     // all tiles claimed for this city (authoritative)
+    pub culture_border: u32,              // shadow culture accumulated for border expansion
 }
 ```
 
-Yields, amenities, housing are **not stored** on City — computed by `RulesEngine::compute_yields()` at query time so modifiers always apply correctly. The base rule: every city contributes 1 science/turn before modifiers.
+Yields, amenities, housing are **not stored** on City — computed by `RulesEngine::compute_yields()` at query time so modifiers always apply correctly. The base rules: every city contributes 1 science/turn and 1 culture/turn before modifiers.
+
+`territory` is the authoritative per-city tile list. `WorldTile::owner` (a `CivId`) is the civ-level ownership field, kept in sync by `try_claim_tile`. The renderer uses `city.territory` to colour tiles per-civilization and draw border outlines.
 
 ### City States
 
@@ -791,7 +795,9 @@ trait RulesEngine: Debug {
 struct DefaultRulesEngine;  // zero-sized; implements all RulesEngine methods
 ```
 
-`advance_turn` phases: (1) food accumulation + population growth + auto citizen assign, (2) production accumulation, (3) gold/science/culture collection → tech and civic progress + completion, (4) effect queue drain, (5) diplomacy decay + war timer, (6) turn counter increment.
+`advance_turn` phases: (1) food accumulation + population growth + auto citizen assign, (2) production accumulation, (3) gold/science/culture collection → tech and civic progress + completion, (3b) cultural border expansion — per-city shadow culture (`culture_border`) accumulates from worked-tile culture + 1 base; cheapest unclaimed tile at radius 2–5 is claimed when affordable (cost = `10 + (6·d)^1.3`, d = hex distance), (4) effect queue drain, (5) diplomacy decay + war timer, (6) turn counter increment.
+
+Two helper free functions support phase 3b: `tile_border_cost(distance: u32) -> u32` and `city_culture_output(board, city) -> u32` (1 + sum of worked-tile culture yields). City-states are skipped in phase 3b (TODO: distinct city-state expansion rules).
 
 ### Semantic Diffs
 
@@ -830,6 +836,7 @@ enum StateDelta {
                    attacker_damage: u32, defender_damage: u32 },
     TilesRevealed { civ: CivId, coords: Vec<HexCoord> },
     ImprovementPlaced { coord: HexCoord, improvement: BuiltinImprovement },
+    TileClaimed { civ: CivId, city: CityId, coord: HexCoord },
 }
 
 struct GameStateDiff { pub deltas: Vec<StateDelta> }
@@ -902,23 +909,12 @@ The following systems have data structures defined but no gameplay logic impleme
 
 ### 8.6 — Culture Borders, Loyalty, and Tourism
 
-**Status:** Culture is computed as a yield and accumulates civic progress. No territorial expansion, loyalty pressure, or tourism comparison is implemented.
+**Status (borders):** ✅ Automatic cultural border expansion is implemented. Per-city `culture_border` accumulates from worked-tile culture + 1 base/turn. Tiles at radius 2–5 are claimed when affordable; cheapest tile first, random tie-breaking among equal-cost tiles. `TileClaimed` delta emitted on each claim. `city.territory` is the authoritative tile set; `WorldTile::owner` tracks civ-level ownership. City-states are skipped (TODO). Player tile purchasing is deferred (TODO: `purchase_tile()`).
 
 **Needed:**
-- Cultural border expansion: tile acquisition triggered by culture accumulation
 - Loyalty system: per-city loyalty score influenced by adjacent city culture output, amenities, governors; cities with 0 loyalty revolt
 - Tourism generation from wonders, national parks, great works
 - Culture victory: check if a civ's tourism exceeds every other civ's home culture
-
-### 8.7 — Strategic Resource Consumption for Unit Production
-
-**Status:** `Civilization.strategic_resources` tracks stockpile. `UnitTypeDef` has no resource cost field. Production completion in `civsim` deducts production but not resources.
-
-**Needed:**
-- `resource_cost: Option<(BuiltinResource, u32)>` field on `UnitTypeDef`
-- Deduct resources from `civ.strategic_resources` on unit production completion
-- `RulesError::InsufficientStrategicResource` if stockpile is depleted
-- Strategic resource yields from improvements wired into `advance_turn` stockpile update
 
 ### 8.8 — Road Placement
 

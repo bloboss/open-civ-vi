@@ -76,6 +76,14 @@ pub struct City {
     pub worked_tiles: Vec<HexCoord>,
     /// Tiles pinned by player/AI override; survive auto-reassignment.
     pub locked_tiles: HashSet<HexCoord>,
+    /// All tiles claimed for this city (city center + ring-1 at founding, plus
+    /// tiles acquired via cultural expansion). Used by the border expansion phase
+    /// to track which tiles belong to which city (WorldTile.owner only tracks CivId).
+    pub territory: HashSet<HexCoord>,
+    /// Accumulated per-city shadow culture used exclusively for automatic border
+    /// expansion. Does NOT affect the civilization's culture pool (civic research).
+    /// Increases each turn by this city's culture output; spent when a tile is claimed.
+    pub culture_border: u32,
 }
 
 impl City {
@@ -100,6 +108,8 @@ impl City {
             districts: Vec::new(),
             worked_tiles: vec![coord],
             locked_tiles: HashSet::new(),
+            territory: HashSet::new(),
+            culture_border: 0,
         }
     }
 

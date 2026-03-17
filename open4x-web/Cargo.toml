@@ -10,6 +10,11 @@ crate-type = ["cdylib", "rlib"]
 leptos      = { version = "0.7", features = ["csr"] }
 wasm-bindgen = "0.2"
 console_error_panic_hook = "0.1"
+js-sys   = "0.3"
+web-sys  = { version = "0.3", features = [
+    "Blob", "BlobPropertyBag", "Document",
+    "HtmlAnchorElement", "Url", "Window",
+] }
 
 # Game logic — compiled to WASM for now.
 # FIXME: In a client-server split these should live server-side only; the

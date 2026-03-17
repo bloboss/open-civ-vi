@@ -177,10 +177,10 @@ impl Civilization {
             }
         }
 
-        if let Some(gov_id) = self.current_government {
-            if let Some(gov) = governments.iter().find(|g| g.id == gov_id) {
-                modifiers.extend(gov.inherent_modifiers.iter().cloned());
-            }
+        if let Some(gov_id) = self.current_government
+            && let Some(gov) = governments.iter().find(|g| g.id == gov_id)
+        {
+            modifiers.extend(gov.inherent_modifiers.iter().cloned());
         }
 
         // War weariness: each active war applies a culture and amenity penalty.
