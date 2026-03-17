@@ -184,6 +184,7 @@ fn build_session() -> Session {
     let settler_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
     let builder_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
     let slinger_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
+    let trader_type_id  = UnitTypeId::from_ulid(state.id_gen.next_ulid());
     state.unit_type_defs.extend([
         UnitTypeDef { id: warrior_type_id, name: "warrior", production_cost: 40,
                       max_movement: 200, combat_strength: Some(20),
@@ -201,6 +202,10 @@ fn build_session() -> Session {
                       max_movement: 200, combat_strength: Some(10),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
                       range: 2, vision_range: 2, can_found_city: false, resource_cost: None },
+        UnitTypeDef { id: trader_type_id, name: "trader", production_cost: 40,
+                      max_movement: 200, combat_strength: None,
+                      domain: UnitDomain::Land, category: UnitCategory::Trader,
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None },
     ]);
 
     // Starting Warrior at (7, 3).
@@ -238,6 +243,42 @@ fn build_session() -> Session {
         range:           0,
         vision_range:    2,
     });
+
+    // Starting Trader at city coord (3, 3) — for testing trade commands.
+    let trader_id = state.id_gen.next_unit_id();
+    state.units.push(BasicUnit {
+        id:              trader_id,
+        unit_type:       trader_type_id,
+        owner:           civ_id,
+        coord:           city_coord,
+        domain:          UnitDomain::Land,
+        category:        UnitCategory::Trader,
+        movement_left:   200,
+        max_movement:    200,
+        combat_strength: None,
+        promotions:      Vec::new(),
+        health:          100,
+        range:           0,
+        vision_range:    2,
+    });
+
+    // Babylon — a trade partner civilization with a single city at (10, 4).
+    // No units; exists only as a trade destination for the play session.
+    let babylon_id = state.id_gen.next_civ_id();
+    state.civilizations.push(Civilization::new(
+        babylon_id, "Babylon", "Babylonian",
+        Leader { name: "Hammurabi", civ_id: babylon_id,
+                 abilities: Vec::new(), agenda: Box::new(NoOpAgenda) },
+    ));
+    let babylon_city_coord = HexCoord::from_qr(10, 4);
+    let babylon_city_id = state.id_gen.next_city_id();
+    let mut babylon_city = City::new(babylon_city_id, "Babylon".to_string(),
+                                     babylon_id, babylon_city_coord);
+    babylon_city.is_capital = true;
+    state.cities.push(babylon_city);
+    state.civilizations.iter_mut()
+        .find(|c| c.id == babylon_id).unwrap()
+        .cities.push(babylon_city_id);
 
     recalculate_visibility(&mut state, civ_id);
 
@@ -827,6 +868,46 @@ fn run_play() {
                     }
                 }
 
+                Cmd::Trade(q, r) => {
+                    let dest_coord = HexCoord::from_qr(q, r);
+                    match session.selected_unit {
+                        None => println!("  [error] No unit selected. Select a trader with 'select <q> <r>'."),
+                        Some(uid) => {
+                            let dest = session.state.cities.iter()
+                                .find(|c| c.coord == dest_coord)
+                                .map(|c| c.id);
+                            match dest {
+                                None => println!("  [error] No city at ({q},{r})."),
+                                Some(dest_id) => {
+                                    match rules.establish_trade_route(&mut session.state, uid, dest_id) {
+                                        Ok(diff) => {
+                                            for delta in &diff.deltas {
+                                                if let StateDelta::TradeRouteEstablished {
+                                                    origin, destination, ..
+                                                } = delta {
+                                                    let orig = session.state.cities.iter()
+                                                        .find(|c| c.id == *origin)
+                                                        .map(|c| c.name.as_str()).unwrap_or("?");
+                                                    let dest_name = session.state.cities.iter()
+                                                        .find(|c| c.id == *destination)
+                                                        .map(|c| c.name.as_str()).unwrap_or("?");
+                                                    println!("  Trade route established: {} -> {}!", orig, dest_name);
+                                                }
+                                            }
+                                            if session.state.unit(uid).is_none() {
+                                                session.selected_unit = None;
+                                            }
+                                        }
+                                        Err(e) => println!("  [error] {e}"),
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Cmd::Routes => cmd_routes(&session),
+
                 Cmd::EndTurn => break,
 
                 Cmd::Quit => {
@@ -879,6 +960,8 @@ enum Cmd {
     Switch(usize),
     Improve(String),
     Research(String),
+    Trade(i32, i32),
+    Routes,
     Unknown(String),
 }
 
@@ -931,6 +1014,10 @@ fn parse_cmd(raw: &str) -> Cmd {
             .unwrap_or(Cmd::Unknown(s.to_string())),
         ["improve" | "imp", rest @ ..] if !rest.is_empty() => Cmd::Improve(rest.join(" ")),
         ["research" | "res", rest @ ..] if !rest.is_empty() => Cmd::Research(rest.join(" ")),
+        ["trade" | "tr", q, r] => {
+            parse_coord(q, r).map(|(q, r)| Cmd::Trade(q, r)).unwrap_or(Cmd::Unknown(s.to_string()))
+        }
+        ["routes" | "rt"] => Cmd::Routes,
         _ => Cmd::Unknown(s.to_string()),
     }
 }
@@ -960,6 +1047,8 @@ fn print_help() {
     println!("    research <name>    -- queue a technology for research          alias:  res");
     println!("    improve <name>     -- build improvement with selected builder  alias:  imp");
     println!("    switch <n>         -- switch active city to index n (1-based)");
+    println!("    trade <q> <r>      -- establish trade route to city at (q,r)  alias:  tr");
+    println!("    routes             -- list active trade routes                 alias:  rt");
     println!("    end                -- end turn                         aliases: e, next, n");
     println!("    quit               -- exit                             alias:  exit");
     println!("    help               -- this message                     aliases: h, ?");
@@ -1374,6 +1463,37 @@ fn cmd_units(session: &Session) {
     }
 }
 
+/// List all active trade routes for the civilization.
+fn cmd_routes(session: &Session) {
+    let state  = &session.state;
+    let civ_id = session.civ_id;
+    let owned: Vec<_> = state.trade_routes.iter()
+        .filter(|r| r.owner == civ_id)
+        .collect();
+    if owned.is_empty() {
+        println!("  No active trade routes.");
+        return;
+    }
+    println!("  Active trade routes ({}):", owned.len());
+    for (i, route) in owned.iter().enumerate() {
+        let origin_name = state.cities.iter()
+            .find(|c| c.id == route.origin)
+            .map(|c| c.name.as_str()).unwrap_or("?");
+        let dest_name = state.cities.iter()
+            .find(|c| c.id == route.destination)
+            .map(|c| c.name.as_str()).unwrap_or("?");
+        let turns_str = match route.turns_remaining {
+            Some(t) => format!("{t} turns left"),
+            None    => "permanent".to_string(),
+        };
+        println!("    {:2}.  {} -> {}   gold={:+}/turn   {}",
+            i + 1, origin_name, dest_name,
+            route.origin_yields.gold,
+            turns_str,
+        );
+    }
+}
+
 /// Select the unit at (q, r) as the target for move commands.
 fn cmd_select(session: &mut Session, q: i32, r: i32) {
     let coord  = HexCoord::from_qr(q, r);
@@ -1701,6 +1821,14 @@ fn print_turn_events(diff: &GameStateDiff) {
             }
             StateDelta::TilesRevealed { coords, .. } => {
                 println!("  {} new tile(s) explored.", coords.len());
+                any = true;
+            }
+            StateDelta::TradeRouteExpired { .. } => {
+                println!("  A trade route has expired.");
+                any = true;
+            }
+            StateDelta::TileClaimed { coord, .. } => {
+                println!("  Border expanded to ({},{}).", coord.q, coord.r);
                 any = true;
             }
             _ => {}

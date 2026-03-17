@@ -165,8 +165,16 @@ pub trait RulesEngine: std::fmt::Debug {
         coord: HexCoord,
     ) -> Result<GameStateDiff, RulesError>;
 
-    // TODO(PHASE3-8.3): fn create_trade_route(&self, state: &mut GameState, origin: CityId,
-    //   destination: CityId, owner: CivId) -> Result<GameStateDiff, RulesError>;
+    /// Consume a trader unit and establish a trade route to `destination`.
+    ///
+    /// The trader must be located at a city tile owned by its civilization (origin city).
+    /// The route lasts 30 turns; yields are delivered each turn via `compute_yields`.
+    fn establish_trade_route(
+        &self,
+        state: &mut GameState,
+        trader_unit: UnitId,
+        destination: CityId,
+    ) -> Result<GameStateDiff, RulesError>;
 
     // TODO(PHASE3-BORDERS): fn purchase_tile(&self, state: &mut GameState, city_id: CityId,
     //   coord: HexCoord) -> Result<GameStateDiff, RulesError>;
@@ -249,6 +257,12 @@ pub enum RulesError {
     CitiesNotSameCiv,
     /// The civilization does not have enough of the required strategic resource to train the unit.
     InsufficientStrategicResource,
+    /// The unit is not a trader (UnitCategory::Trader).
+    NotATrader,
+    /// The trader is not located on a tile owned by one of the civ's cities.
+    NoOriginCity,
+    /// The origin and destination cities are the same.
+    SameCity,
 }
 
 impl std::fmt::Display for RulesError {
@@ -291,6 +305,9 @@ impl std::fmt::Display for RulesError {
             RulesError::TileOwnedByEnemy          => write!(f, "tile is owned by a different civilization"),
             RulesError::CitiesNotSameCiv          => write!(f, "tile reassignment requires both cities to belong to the same civilization"),
             RulesError::InsufficientStrategicResource => write!(f, "insufficient strategic resource to train this unit"),
+            RulesError::NotATrader                    => write!(f, "unit is not a trader"),
+            RulesError::NoOriginCity                  => write!(f, "trader is not located at a city owned by this civilization"),
+            RulesError::SameCity                      => write!(f, "origin and destination are the same city"),
         }
     }
 }
@@ -475,6 +492,24 @@ impl RulesEngine for DefaultRulesEngine {
         let city_count = state.cities.iter().filter(|c| c.owner == civ_id).count();
         total.science += city_count as i32;
         total.culture += city_count as i32;
+
+        // ── Trade route yields ────────────────────────────────────────────────
+        // Origin side: routes owned by this civ deliver origin_yields.
+        for route in &state.trade_routes {
+            if route.owner == civ_id {
+                total += route.origin_yields.clone();
+            }
+        }
+        // Destination side: destination city's owner receives destination_yields
+        // (only for routes owned by a *different* civ — avoids double-counting domestic).
+        for route in &state.trade_routes {
+            let dest_owner = state.cities.iter()
+                .find(|c| c.id == route.destination)
+                .map(|c| c.owner);
+            if dest_owner == Some(civ_id) && route.owner != civ_id {
+                total += route.destination_yields.clone();
+            }
+        }
 
         // Collect modifiers: base sources (leader/policies/govt/war) + tech/civic tree grants.
         let modifiers = state.civ(civ_id)
@@ -682,6 +717,26 @@ impl RulesEngine for DefaultRulesEngine {
             });
             diff.push(StateDelta::UnitCreated { unit: unit_id, coord: uc.coord, owner: uc.civ_id });
             // TODO(PHASE3-4.3): Building, District, Wonder completion.
+        }
+
+        // ── Phase 2b: Trade route countdown ──────────────────────────────────
+        // Expire routes that reached turns_remaining == 0 last turn (they already
+        // delivered on all their turns), then decrement remaining routes.
+        {
+            use crate::TradeRouteId;
+            let expired: Vec<TradeRouteId> = state.trade_routes.iter()
+                .filter(|r| r.turns_remaining == Some(0))
+                .map(|r| r.id)
+                .collect();
+            for id in &expired {
+                state.trade_routes.retain(|r| r.id != *id);
+                diff.push(StateDelta::TradeRouteExpired { route: *id });
+            }
+            for route in state.trade_routes.iter_mut() {
+                if let Some(ref mut t) = route.turns_remaining {
+                    *t = t.saturating_sub(1);
+                }
+            }
         }
 
         // ── Per-civ yields: gold, science, culture ────────────────────────────
@@ -1519,6 +1574,73 @@ impl RulesEngine for DefaultRulesEngine {
 
         let mut diff = GameStateDiff::new();
         diff.push(StateDelta::DistrictBuilt { city: city_id, district, coord });
+        Ok(diff)
+    }
+
+    fn establish_trade_route(
+        &self,
+        state: &mut GameState,
+        trader_unit: UnitId,
+        destination: CityId,
+    ) -> Result<GameStateDiff, RulesError> {
+        use crate::UnitCategory;
+        use crate::civ::trade::compute_route_yields;
+
+        // 1. Unit must exist.
+        let (unit_owner, unit_coord, unit_category) = state.units.iter()
+            .find(|u| u.id() == trader_unit)
+            .map(|u| (u.owner(), u.coord(), u.category()))
+            .ok_or(RulesError::UnitNotFound)?;
+
+        // 2. Must be a trader.
+        if unit_category != UnitCategory::Trader {
+            return Err(RulesError::NotATrader);
+        }
+
+        // 3. Trader must be at a city owned by its civ (origin city).
+        let origin_id = state.cities.iter()
+            .find(|c| c.owner == unit_owner && c.coord == unit_coord)
+            .map(|c| c.id)
+            .ok_or(RulesError::NoOriginCity)?;
+
+        // 4. Destination city must exist.
+        if !state.cities.iter().any(|c| c.id == destination) {
+            return Err(RulesError::CityNotFound);
+        }
+
+        // 5. Origin and destination must differ.
+        if origin_id == destination {
+            return Err(RulesError::SameCity);
+        }
+
+        // TODO(PHASE3-8.4-CAPACITY): check max trade routes per civ.
+
+        // Determine international status and compute yields.
+        let international = {
+            let origin_owner = state.cities.iter().find(|c| c.id == origin_id).map(|c| c.owner);
+            let dest_owner   = state.cities.iter().find(|c| c.id == destination).map(|c| c.owner);
+            matches!((origin_owner, dest_owner), (Some(a), Some(b)) if a != b)
+        };
+        let (origin_yields, dest_yields) = compute_route_yields(international);
+
+        let route_id = state.id_gen.next_trade_route_id();
+        let mut route = crate::civ::TradeRoute::new(route_id, origin_id, destination, unit_owner);
+        route.origin_yields      = origin_yields;
+        route.destination_yields = dest_yields;
+        route.turns_remaining    = Some(30);
+
+        // Consume the trader unit.
+        state.units.retain(|u| u.id() != trader_unit);
+        state.trade_routes.push(route);
+
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::UnitDestroyed { unit: trader_unit });
+        diff.push(StateDelta::TradeRouteEstablished {
+            route: route_id,
+            origin: origin_id,
+            destination,
+            owner: unit_owner,
+        });
         Ok(diff)
     }
 }

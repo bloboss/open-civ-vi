@@ -1,4 +1,5 @@
-use crate::{CityId, CivId, TradeRouteId, YieldBundle};
+use crate::{CityId, CivId, TradeRouteId, YieldBundle, YieldType};
+use crate::civ::City;
 
 #[derive(Debug, Clone)]
 pub struct TradeRoute {
@@ -26,10 +27,28 @@ impl TradeRoute {
         }
     }
 
-    // TODO(PHASE3-8.3): Receives &[City] (or &GameState); compare state.city(origin).owner
-    //   vs state.city(destination).owner to determine international status.
-    pub fn is_international(&self) -> bool {
-        // Will be determined by comparing owning civs of cities in Phase 2.
-        false
+    /// Returns `true` when origin and destination belong to different civilizations.
+    pub fn is_international(&self, cities: &[City]) -> bool {
+        let origin_owner = cities.iter().find(|c| c.id == self.origin).map(|c| c.owner);
+        let dest_owner   = cities.iter().find(|c| c.id == self.destination).map(|c| c.owner);
+        matches!((origin_owner, dest_owner), (Some(a), Some(b)) if a != b)
+    }
+}
+
+/// Returns `(origin_yields, destination_yields)` per-turn for a trade route.
+///
+/// Yields are civ-level (gold only). Per-city food/production delivery is a
+/// future TODO(PHASE3-8.4-FOOD).
+pub fn compute_route_yields(is_international: bool) -> (YieldBundle, YieldBundle) {
+    if is_international {
+        (
+            YieldBundle::default().with(YieldType::Gold, 6),
+            YieldBundle::default().with(YieldType::Gold, 4),
+        )
+    } else {
+        (
+            YieldBundle::default().with(YieldType::Gold, 3),
+            YieldBundle::default().with(YieldType::Gold, 1),
+        )
     }
 }

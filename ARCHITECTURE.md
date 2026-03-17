@@ -711,10 +711,10 @@ struct TradeRoute {
     pub destination_yields: YieldBundle,
     pub turns_remaining: Option<u32>,
 }
-// is_international() -> bool  (stub: always false)
+// is_international(&self, cities: &[City]) -> bool  — compares city owners
 ```
 
-No trader unit, route creation, or yield delivery is wired into `advance_turn`.
+`compute_route_yields(is_international: bool) -> (YieldBundle, YieldBundle)` (free fn in `civ/trade.rs`) returns `(origin_yields, destination_yields)`: domestic = (+3 gold, +1 gold), international = (+6 gold, +4 gold). The trader unit (`UnitCategory::Trader`) is consumed by `establish_trade_route()`; route lasts 30 turns. Route yields are summed in `compute_yields` for both origin civ (owner) and destination civ.
 
 ---
 
@@ -790,14 +790,16 @@ trait RulesEngine: Debug {
         -> Result<GameStateDiff, RulesError>;
     fn place_improvement(&self, state: &mut GameState, civ_id: CivId, coord: HexCoord,
                          improvement: BuiltinImprovement) -> Result<GameStateDiff, RulesError>;
+    fn establish_trade_route(&self, state: &mut GameState, trader_unit: UnitId,
+                             destination: CityId) -> Result<GameStateDiff, RulesError>;
 }
 
 struct DefaultRulesEngine;  // zero-sized; implements all RulesEngine methods
 ```
 
-`advance_turn` phases: (1) food accumulation + population growth + auto citizen assign, (2) production accumulation, (3) gold/science/culture collection → tech and civic progress + completion, (3b) cultural border expansion — per-city shadow culture (`culture_border`) accumulates from worked-tile culture + 1 base; cheapest unclaimed tile at radius 2–5 is claimed when affordable (cost = `10 + (6·d)^1.3`, d = hex distance), (4) effect queue drain, (5) diplomacy decay + war timer, (6) turn counter increment.
+`advance_turn` phases: (1) food accumulation + population growth + auto citizen assign, (2) production accumulation, (2b) trade route countdown — routes at `turns_remaining == 0` are removed (`TradeRouteExpired`), then all remaining routes are decremented, (3) gold/science/culture collection → tech and civic progress + completion — trade route yields are included in `compute_yields`, (3b) cultural border expansion — per-city shadow culture (`culture_border`) accumulates from worked-tile culture + 1 base; cheapest unclaimed tile at radius 2–5 is claimed when affordable (cost = `10 + (6·d)^1.3`, d = hex distance), (4) effect queue drain, (5) diplomacy decay + war timer, (6) turn counter increment.
 
-Two helper free functions support phase 3b: `tile_border_cost(distance: u32) -> u32` and `city_culture_output(board, city) -> u32` (1 + sum of worked-tile culture yields). City-states are skipped in phase 3b (TODO: distinct city-state expansion rules).
+Free helper functions: `tile_border_cost(distance: u32) -> u32` and `city_culture_output(board, city) -> u32` support phase 3b. `compute_route_yields(is_international: bool) -> (YieldBundle, YieldBundle)` in `civ/trade.rs` returns per-turn gold yields for origin and destination. City-states are skipped in phase 3b (TODO: distinct rules).
 
 ### Semantic Diffs
 
@@ -837,6 +839,8 @@ enum StateDelta {
     TilesRevealed { civ: CivId, coords: Vec<HexCoord> },
     ImprovementPlaced { coord: HexCoord, improvement: BuiltinImprovement },
     TileClaimed { civ: CivId, city: CityId, coord: HexCoord },
+    TradeRouteEstablished { route: TradeRouteId, origin: CityId, destination: CityId, owner: CivId },
+    TradeRouteExpired { route: TradeRouteId },
 }
 
 struct GameStateDiff { pub deltas: Vec<StateDelta> }
@@ -887,14 +891,14 @@ The following systems have data structures defined but no gameplay logic impleme
 
 ### 8.4 — Trade Routes and Trader Units
 
-**Status:** `TradeRoute` struct and `GameState.trade_routes` exist. `is_international()` is a stub returning `false`. No trader unit type or route creation logic exists.
+**Status:** ✅ Core trade lifecycle implemented. `establish_trade_route(trader_unit, destination)` consumes the trader unit and creates a route lasting 30 turns. Yields: domestic (origin +3 gold, destination +1 gold), international (origin +6, destination +4). `is_international()` compares city owners. Phase 2b of `advance_turn` counts down and removes expired routes. `compute_yields` includes route contributions for both sides. Domestic and international routes both tested.
 
 **Needed:**
-- Trader unit (`UnitCategory::Trader`) with establish-route action
-- `RulesEngine::establish_trade_route()` validating path between cities
-- Yield calculation based on origin/destination city attributes and international status
-- Route delivery wired into `advance_turn` (add `origin_yields` to civ each turn)
-- Route expiry / cancellation when cities are captured
+- Per-city food/production delivery from trade routes (currently gold-only)
+- Max trade route capacity per civ (Commercial Hub district gates additional slots)
+- Route cancellation when origin/destination city is captured (`CityCaptured` not yet emitted)
+- Trader unit re-spawn when route expires (return to origin city)
+- Trade route path validation (land/sea connectivity)
 
 ### 8.5 — Religion System
 

@@ -1,4 +1,4 @@
-use crate::{CivId, CityId, PolicyId, UnitId};
+use crate::{CivId, CityId, PolicyId, TradeRouteId, UnitId};
 use crate::civ::DiplomaticStatus;
 use crate::civ::district::BuiltinDistrict;
 use crate::world::improvement::BuiltinImprovement;
@@ -84,6 +84,17 @@ pub enum StateDelta {
 
     /// A tile has been moved from one city to another within the same civilization.
     TileReassigned { civ: CivId, from_city: CityId, to_city: CityId, coord: HexCoord },
+
+    // ── Trade routes (PHASE3-8.4) ─────────────────────────────────────────────
+    /// A trade route was established by a trader unit (which is consumed).
+    TradeRouteEstablished {
+        route:       TradeRouteId,
+        origin:      CityId,
+        destination: CityId,
+        owner:       CivId,
+    },
+    /// A trade route has expired (turns_remaining reached 0) or was cancelled.
+    TradeRouteExpired { route: TradeRouteId },
 
     // ── TODO(PHASE3-8.8): Era advancement ────────────────────────────────────
     // EraAdvanced { civ: CivId, new_era: crate::AgeType },

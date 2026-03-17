@@ -101,6 +101,10 @@ impl IdGenerator {
         GrievanceId::from_ulid(self.next_ulid())
     }
 
+    pub fn next_trade_route_id(&mut self) -> crate::TradeRouteId {
+        crate::TradeRouteId::from_ulid(self.next_ulid())
+    }
+
     /// Returns a pseudo-random f32 in [0.0, 1.0) drawn from the seeded RNG.
     /// Used for combat randomisation; does not affect the ULID sequence.
     pub fn next_f32(&mut self) -> f32 {
