@@ -41,19 +41,14 @@ impl Era {
 // Era Age -- the "quality" of a civ's era (Dark/Normal/Golden/Heroic)
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum EraAge {
     Dark,
+    #[default]
     Normal,
     Golden,
     /// A Golden Age that immediately follows a Dark Age.
     Heroic,
-}
-
-impl Default for EraAge {
-    fn default() -> Self {
-        EraAge::Normal
-    }
 }
 
 // ---------------------------------------------------------------------------

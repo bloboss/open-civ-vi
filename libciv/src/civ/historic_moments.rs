@@ -128,17 +128,16 @@ fn resolve_city_owner(delta: &StateDelta, state: &GameState) -> Option<(CivId, H
 fn detect_battle_victories(deltas: &[StateDelta], state: &GameState) -> Vec<(CivId, HistoricMomentKind)> {
     let mut results = Vec::new();
     for delta in deltas {
-        if let StateDelta::UnitAttacked { attacker, defender, defender_damage, .. } = delta {
+        if let StateDelta::UnitAttacked { attacker, defender, .. } = delta {
             // Check if defender was destroyed (appears as UnitDestroyed in same diff)
             let defender_destroyed = deltas.iter().any(|d| {
                 matches!(d, StateDelta::UnitDestroyed { unit } if *unit == *defender)
             });
-            if defender_destroyed {
-                if let Some(attacker_unit) = state.units.iter().find(|u| u.id == *attacker) {
-                    results.push((attacker_unit.owner, HistoricMomentKind::BattleWon));
-                }
+            if defender_destroyed
+                && let Some(attacker_unit) = state.units.iter().find(|u| u.id == *attacker)
+            {
+                results.push((attacker_unit.owner, HistoricMomentKind::BattleWon));
             }
-            let _ = defender_damage;
         }
     }
     results

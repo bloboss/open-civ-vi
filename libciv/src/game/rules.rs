@@ -1270,9 +1270,65 @@ impl RulesEngine for DefaultRulesEngine {
         // TODO(PHASE3-8.5): Compute religion spread per city pair; update Religion.followers.
         // TODO(PHASE3-8.6): Accumulate great_person_points yield into per-type counters.
         // TODO(PHASE3-8.7): Decrement turns_to_establish for assigned governors.
-        // TODO(PHASE3-8.8): Evaluate EraTrigger conditions; emit EraAdvanced.
 
-        // ── Phase 5b: Victory condition evaluation ────────────────────────────
+        // ── Phase 5b-1: Era score observer ──────────────────────────────────────
+        // Scan deltas produced so far and award era score for matching historic moments.
+        {
+            use crate::civ::historic_moments::observe_deltas;
+            use crate::civ::era::{HistoricMoment, compute_era_age, should_advance_era};
+
+            let moments = observe_deltas(&diff.deltas, state);
+            for (civ_id, moment_def) in moments {
+                if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == civ_id) {
+                    civ.era_score += moment_def.era_score;
+                    civ.historic_moments.push(HistoricMoment {
+                        civ: civ_id,
+                        moment_name: moment_def.name,
+                        era_score: moment_def.era_score,
+                        turn: state.turn,
+                        era: civ.current_era,
+                    });
+                    if moment_def.unique {
+                        civ.earned_moments.insert(moment_def.name);
+                    }
+                    diff.push(StateDelta::HistoricMomentEarned {
+                        civ: civ_id,
+                        moment: moment_def.name,
+                        era_score: moment_def.era_score,
+                    });
+                }
+            }
+
+            // ── Phase 5b-2: Era advancement check ───────────────────────────────
+            if !state.eras.is_empty() && state.current_era_index < state.eras.len() {
+                let should_advance = should_advance_era(
+                    &state.eras[state.current_era_index],
+                    &state.civilizations,
+                );
+                if should_advance && state.current_era_index + 1 < state.eras.len() {
+                    state.current_era_index += 1;
+                    let new_era = &state.eras[state.current_era_index];
+                    let new_age_type = new_era.age;
+
+                    for civ in &mut state.civilizations {
+                        let was_dark = civ.era_age == crate::civ::era::EraAge::Dark;
+                        let new_era_age = compute_era_age(civ.era_score, was_dark);
+                        civ.era_age = new_era_age;
+                        civ.current_era = new_age_type;
+                        civ.era_score = 0;
+                        civ.earned_moments.clear();
+
+                        diff.push(StateDelta::EraAdvanced {
+                            civ: civ.id,
+                            new_era: new_age_type,
+                            era_age: new_era_age,
+                        });
+                    }
+                }
+            }
+        }
+
+        // ── Phase 5c: Victory condition evaluation ─────────────────────────────
         if state.game_over.is_none() {
             use super::victory::{GameOver, VictoryKind};
             use super::score::all_scores;
@@ -1295,7 +1351,7 @@ impl RulesEngine for DefaultRulesEngine {
             }
 
             // Check TurnLimit conditions when the turn limit is reached.
-            // Compare `state.turn + 1` because Phase 5b runs before the turn counter
+            // Compare `state.turn + 1` because Phase 5c runs before the turn counter
             // is incremented; `turn + 1` is the turn that will be completed.
             if state.game_over.is_none() {
                 for vc_idx in 0..state.victory_conditions.len() {
