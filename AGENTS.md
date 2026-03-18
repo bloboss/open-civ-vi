@@ -59,11 +59,11 @@ open4x-web  ← Leptos/WASM frontend (imports libciv compiled to wasm32)
 | `libciv/src/civ/diplomacy.rs` | `DiplomaticRelation`, `DiplomaticStatus`, `GrievanceRecord`, `GrievanceVisibility` |
 | `libciv/src/civ/district.rs` | `DistrictDef`/`BuildingDef` traits, `AdjacencyContext`, `PlacedDistrict` |
 | `libciv/src/civ/religion.rs` | `Religion`, `Belief` trait, `BeliefContext` (no spread/conversion logic) |
-| `libciv/src/civ/trade.rs` | `TradeRoute` (stub; `is_international()` always false, no delivery logic) |
+| `libciv/src/civ/trade.rs` | `TradeRoute`; `is_international(&[City])` compares city owners; `compute_route_yields(bool)` returns gold yields; full lifecycle via `establish_trade_route()` |
 | `libciv/src/game/state.rs` | `GameState` (single source of truth), `IdGenerator`, `UnitTypeDef`, `BuildingDef` registries, `effect_queue` |
 | `libciv/src/game/board.rs` | `WorldBoard`: `HexBoard` impl, Dijkstra pathfinding (road override active), LOS, edge canonicalization |
-| `libciv/src/game/rules.rs` | `RulesEngine` trait (11 methods) + `DefaultRulesEngine` |
-| `libciv/src/game/diff.rs` | `StateDelta` enum (30+ variants), `GameStateDiff`, `AttackType` |
+| `libciv/src/game/rules.rs` | `RulesEngine` trait (14 methods) + `DefaultRulesEngine` |
+| `libciv/src/game/diff.rs` | `StateDelta` enum (35+ variants), `GameStateDiff`, `AttackType` |
 | `libciv/src/game/turn.rs` | `TurnEngine` (stub: calls `advance_turn`, discards diff) |
 | `libciv/src/game/visibility.rs` | `recalculate_visibility()` free function |
 | `libciv/src/ai/deterministic.rs` | `Agent` trait + `HeuristicAgent` (exploration/production heuristic) |
@@ -75,10 +75,12 @@ open4x-web  ← Leptos/WASM frontend (imports libciv compiled to wasm32)
 ### Implementation status
 
 - **Active**: rules evaluation, modifier stacking, LOS, road movement, AI agent, improvement
-  placement with tech/terrain validation, research queue, base city science (1/turn), Leptos/WASM
-  frontend; all tests pass with zero ignored
-- **Next**: district placement, production completion in TurnEngine, trade route delivery,
-  cultural borders, strategic resource consumption, coherent map generation
+  placement with tech/terrain validation, district placement with territory/tech/civic validation,
+  trade routes (establish/expire/yields), cultural border expansion (per-city culture accumulation,
+  tile claiming), research queue, base city science + culture (1/turn each), Leptos/WASM frontend;
+  all tests pass with zero ignored (169+ tests)
+- **Next**: coherent map generation, city defenses + ranged attacks, road placement by builders,
+  builder charges, religion founding + spread, loyalty system, TurnEngine diff aggregation
 
 ### Conventions
 
@@ -123,11 +125,11 @@ See `ARCHITECTURE.md` §8 for detailed specs. Summary:
 | # | System | Status |
 |---|--------|--------|
 | 8.1 | Coherent map generation | Not started |
-| 8.2 | District placement + building construction | Data structures only |
+| 8.2 | District placement + building construction | ✅ District placement; building construction in production queue |
 | 8.3 | City defenses + ranged city attacks | Data structures only |
-| 8.4 | Trade routes + trader units | Stub only |
+| 8.4 | Trade routes + trader units | ✅ Implemented (establish/expire/yields/civsim UI) |
 | 8.5 | Religion (founding, spread, beliefs) | Stub only |
-| 8.6 | Culture borders, loyalty, tourism | Not started |
+| 8.6 | Culture borders, loyalty, tourism | ✅ Borders; loyalty/tourism not started |
 | 8.7 | Strategic resource consumption for units | Not started |
 | 8.8 | Road placement by builders | Not started |
 | 8.9 | Builder charges | Not started |

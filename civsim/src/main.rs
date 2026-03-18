@@ -11,13 +11,10 @@ use libciv::game::{AttackType, RulesError, StateDelta, recalculate_visibility};
 use libciv::game::state::UnitTypeDef;
 use libciv::visualize::Visualizer;
 use libciv::world::improvement::BuiltinImprovement;
-use libciv::world::terrain::BuiltinTerrain;
+use libciv::world::mapgen::{MapGenConfig, generate as mapgen_generate};
 use libciv::world::tile::WorldTile;
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
-use rand::SeedableRng;
-use rand::rngs::SmallRng;
-use rand::Rng;
 
 // ── CLI ───────────────────────────────────────────────────────────────────────
 
@@ -116,47 +113,27 @@ struct Session {
     city_ids:      Vec<CityId>,
     current_city:  usize,
     selected_unit: Option<UnitId>,
+    /// Civilization ID of the AI adversary, if one is present in this session.
+    ai_civ_id:     Option<CivId>,
 }
 
-/// Randomly assign terrain to every board tile using a seeded RNG.
-/// Tiles within 1 hex of `safe_coord` are kept habitable (Grassland/Plains only).
-/// Weighted distribution: 35% Grassland, 25% Plains, 15% Desert, 10% Tundra,
-///   8% Mountain, 4% Ocean, 3% (rolled as Ocean -> Coast in the visualizer).
-fn randomize_terrain(state: &mut GameState, seed: u64, safe_coord: HexCoord) {
-    let mut rng = SmallRng::seed_from_u64(seed);
-    let safe: std::collections::HashSet<HexCoord> = {
-        let mut s = std::collections::HashSet::new();
-        s.insert(safe_coord);
-        for n in state.board.neighbors(safe_coord) { s.insert(n); }
-        s
-    };
-    let coords: Vec<HexCoord> = state.board.all_coords();
-    for coord in coords {
-        let terrain = if safe.contains(&coord) {
-            // Near the capital: only habitable terrain.
-            match rng.random_range(0u8..4) {
-                0 | 1 => BuiltinTerrain::Grassland,
-                _     => BuiltinTerrain::Plains,
-            }
-        } else {
-            match rng.random_range(0u8..100) {
-                0..35  => BuiltinTerrain::Grassland,
-                35..60 => BuiltinTerrain::Plains,
-                60..75 => BuiltinTerrain::Desert,
-                75..85 => BuiltinTerrain::Tundra,
-                85..93 => BuiltinTerrain::Mountain,
-                _      => BuiltinTerrain::Ocean,
-            }
-        };
-        if let Some(tile) = state.board.tile_mut(coord) {
-            tile.terrain = terrain;
-        }
-    }
-}
 
 fn build_session() -> Session {
     let seed = 42u64;
-    let mut state = GameState::new(seed, 14, 8);
+    const W: u32 = 40;
+    const H: u32 = 24;
+    let mut state = GameState::new(seed, W, H);
+
+    // Generate terrain via mapgen pipeline; get two habitable starting positions.
+    let mapgen_result = mapgen_generate(
+        &MapGenConfig { width: W, height: H, seed,
+                        land_fraction: None, num_continents: None,
+                        num_zone_seeds: None, num_starts: 2 },
+        &mut state.board,
+    );
+    let starts = &mapgen_result.starting_positions;
+    let city_coord         = starts.first().copied().unwrap_or(HexCoord::from_qr(10, 8));
+    let babylon_city_coord = starts.get(1).copied().unwrap_or(HexCoord::from_qr(30, 16));
 
     // Civilization: Rome / Caesar
     let civ_id = state.id_gen.next_civ_id();
@@ -168,16 +145,12 @@ fn build_session() -> Session {
     };
     state.civilizations.push(Civilization::new(civ_id, "Rome", "Roman", leader));
 
-    // Capital city at (3, 3)
-    let city_coord = HexCoord::from_qr(3, 3);
+    // Capital city.
     let city_id    = state.id_gen.next_city_id();
     let mut city   = City::new(city_id, "Roma".to_string(), civ_id, city_coord);
     city.is_capital = true;
     state.cities.push(city);
     state.civilizations[0].cities.push(city_id);
-
-    // Randomize terrain, keeping the city's immediate neighborhood habitable.
-    randomize_terrain(&mut state, seed, city_coord);
 
     // Populate unit type registry. Each def has a stable ID used for production lookups.
     let warrior_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
@@ -208,13 +181,13 @@ fn build_session() -> Session {
                       range: 0, vision_range: 2, can_found_city: false, resource_cost: None },
     ]);
 
-    // Starting Warrior at (7, 3).
+    // Starting Warrior (co-located with capital for simplicity).
     let unit_id = state.id_gen.next_unit_id();
     state.units.push(BasicUnit {
         id:              unit_id,
         unit_type:       warrior_type_id,
         owner:           civ_id,
-        coord:           HexCoord::from_qr(7, 3),
+        coord:           city_coord,
         domain:          UnitDomain::Land,
         category:        UnitCategory::Combat,
         movement_left:   200,
@@ -262,15 +235,13 @@ fn build_session() -> Session {
         vision_range:    2,
     });
 
-    // Babylon — a trade partner civilization with a single city at (10, 4).
-    // No units; exists only as a trade destination for the play session.
+    // Babylon — AI adversary civilization.
     let babylon_id = state.id_gen.next_civ_id();
     state.civilizations.push(Civilization::new(
         babylon_id, "Babylon", "Babylonian",
         Leader { name: "Hammurabi", civ_id: babylon_id,
                  abilities: Vec::new(), agenda: Box::new(NoOpAgenda) },
     ));
-    let babylon_city_coord = HexCoord::from_qr(10, 4);
     let babylon_city_id = state.id_gen.next_city_id();
     let mut babylon_city = City::new(babylon_city_id, "Babylon".to_string(),
                                      babylon_id, babylon_city_coord);
@@ -280,9 +251,34 @@ fn build_session() -> Session {
         .find(|c| c.id == babylon_id).unwrap()
         .cities.push(babylon_city_id);
 
-    recalculate_visibility(&mut state, civ_id);
+    // Babylon gets a starting Warrior so the AI has something to move immediately.
+    let babylon_warrior_id = state.id_gen.next_unit_id();
+    state.units.push(BasicUnit {
+        id:              babylon_warrior_id,
+        unit_type:       warrior_type_id,
+        owner:           babylon_id,
+        coord:           babylon_city_coord,
+        domain:          UnitDomain::Land,
+        category:        UnitCategory::Combat,
+        movement_left:   200,
+        max_movement:    200,
+        combat_strength: Some(20),
+        promotions:      Vec::new(),
+        health:          100,
+        range:           0,
+        vision_range:    2,
+    });
 
-    Session { state, civ_id, city_ids: vec![city_id], current_city: 0, selected_unit: Some(unit_id) }
+    recalculate_visibility(&mut state, civ_id);
+    recalculate_visibility(&mut state, babylon_id);
+
+    Session {
+        state, civ_id,
+        city_ids: vec![city_id],
+        current_city: 0,
+        selected_unit: Some(unit_id),
+        ai_civ_id: Some(babylon_id),
+    }
 }
 
 // ── Non-interactive demo ──────────────────────────────────────────────────────
@@ -353,6 +349,17 @@ fn build_ai_demo(seed: u64) -> AiDemo {
     // Larger map so exploration is interesting over 50 turns.
     let mut state = GameState::new(seed, 20, 12);
 
+    // Generate terrain via mapgen; get two well-separated starting positions.
+    let mapgen_result = mapgen_generate(
+        &MapGenConfig { width: 20, height: 12, seed,
+                        land_fraction: None, num_continents: None,
+                        num_zone_seeds: None, num_starts: 2 },
+        &mut state.board,
+    );
+    let starts = &mapgen_result.starting_positions;
+    let rome_city_coord    = starts.first().copied().unwrap_or(HexCoord::from_qr(3, 4));
+    let babylon_city_coord = starts.get(1).copied().unwrap_or(HexCoord::from_qr(16, 7));
+
     // ── Unit-type registry ────────────────────────────────────────────────
     let warrior_type = UnitTypeId::from_ulid(state.id_gen.next_ulid());
     let settler_type = UnitTypeId::from_ulid(state.id_gen.next_ulid());
@@ -378,9 +385,6 @@ fn build_ai_demo(seed: u64) -> AiDemo {
         Leader { name: "Caesar", civ_id: rome_id, abilities: Vec::new(),
                  agenda: Box::new(NoOpAgenda) }));
 
-    let rome_city_coord = HexCoord::from_qr(3, 4);
-    randomize_terrain(&mut state, seed, rome_city_coord);
-
     let rome_city = state.id_gen.next_city_id();
     let mut rc = City::new(rome_city, "Roma".to_string(), rome_id, rome_city_coord);
     rc.is_capital = true;
@@ -388,11 +392,11 @@ fn build_ai_demo(seed: u64) -> AiDemo {
     state.civilizations.iter_mut().find(|c| c.id == rome_id).unwrap()
         .cities.push(rome_city);
 
-    // Rome's starting warrior.
+    // Rome's starting warrior (co-located with capital).
     let rome_warrior = state.id_gen.next_unit_id();
     state.units.push(BasicUnit {
         id: rome_warrior, unit_type: warrior_type, owner: rome_id,
-        coord: HexCoord::from_qr(5, 4),
+        coord: rome_city_coord,
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
@@ -405,9 +409,6 @@ fn build_ai_demo(seed: u64) -> AiDemo {
         Leader { name: "Hammurabi", civ_id: babylon_id, abilities: Vec::new(),
                  agenda: Box::new(NoOpAgenda) }));
 
-    let babylon_city_coord = HexCoord::from_qr(16, 7);
-    randomize_terrain(&mut state, seed.wrapping_add(1), babylon_city_coord);
-
     let babylon_city = state.id_gen.next_city_id();
     let mut bc = City::new(babylon_city, "Babylon".to_string(), babylon_id, babylon_city_coord);
     bc.is_capital = true;
@@ -415,11 +416,11 @@ fn build_ai_demo(seed: u64) -> AiDemo {
     state.civilizations.iter_mut().find(|c| c.id == babylon_id).unwrap()
         .cities.push(babylon_city);
 
-    // Babylon's starting warrior.
+    // Babylon's starting warrior (co-located with capital).
     let babylon_warrior = state.id_gen.next_unit_id();
     state.units.push(BasicUnit {
         id: babylon_warrior, unit_type: warrior_type, owner: babylon_id,
-        coord: HexCoord::from_qr(14, 7),
+        coord: babylon_city_coord,
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
@@ -639,6 +640,9 @@ fn run_ai_demo(turns: u32, seed: u64, board_every: u32) {
 fn run_play() {
     let rules   = DefaultRulesEngine;
     let mut session = build_session();
+
+    // Create the AI adversary agent if one is present.
+    let ai_agent = session.ai_civ_id.map(HeuristicAgent::new);
 
     print_help();
 
@@ -929,6 +933,14 @@ fn run_play() {
         let diff = rules.advance_turn(&mut session.state);
         reset_movement(&mut session.state);
         print_turn_events(&diff);
+
+        // ── AI adversary turn ─────────────────────────────────────────────────
+        if let Some(ref agent) = ai_agent {
+            let ai_diff = agent.take_turn(&mut session.state, &rules);
+            print_ai_turn_events(&session.state, agent.civ_id, &ai_diff);
+            recalculate_visibility(&mut session.state, agent.civ_id);
+        }
+        recalculate_visibility(&mut session.state, session.civ_id);
     }
 }
 
@@ -1837,6 +1849,38 @@ fn print_turn_events(diff: &GameStateDiff) {
     if !any {
         println!("  (no notable events this turn)");
     }
+}
+
+/// Print a brief summary of the AI adversary's actions after their turn.
+fn print_ai_turn_events(state: &GameState, ai_civ_id: CivId, diff: &GameStateDiff) {
+    let civ_name = state.civilizations.iter()
+        .find(|c| c.id == ai_civ_id)
+        .map(|c| c.name)
+        .unwrap_or("AI");
+
+    let mut moves    = 0usize;
+    let mut attacks  = 0usize;
+    let mut founded  = 0usize;
+
+    for delta in &diff.deltas {
+        match delta {
+            StateDelta::UnitMoved  { .. }   => moves   += 1,
+            StateDelta::UnitAttacked { .. } => attacks += 1,
+            StateDelta::CityFounded  { .. } => founded += 1,
+            _ => {}
+        }
+    }
+
+    if moves == 0 && attacks == 0 && founded == 0 {
+        println!("  [{civ_name}] (no actions)");
+        return;
+    }
+
+    print!("  [{civ_name}]");
+    if moves   > 0 { print!("  {moves} unit move(s)"); }
+    if attacks > 0 { print!("  {attacks} attack(s)"); }
+    if founded > 0 { print!("  founded {founded} city/cities"); }
+    println!();
 }
 
 fn read_line() -> Option<String> {

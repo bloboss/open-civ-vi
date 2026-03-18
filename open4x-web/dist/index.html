@@ -213,14 +213,66 @@
 
       .unit-dot { pointer-events: none; }
       .city-marker { pointer-events: none; }
+
+      /* ---- map config page ---- */
+      .config-card {
+        background: #1a1d27;
+        border: 1px solid #2e3248;
+        border-radius: 10px;
+        padding: 1.8rem 2rem;
+        max-width: 480px;
+        width: 100%;
+      }
+
+      .config-label {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #7a7f99;
+        margin-bottom: 0.5rem;
+      }
+
+      .preset-row {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .preset-btn {
+        flex: 1;
+        min-width: 100px;
+        font-size: 0.85rem;
+        padding: 0.45rem 0.8rem;
+      }
+
+      .preset-active {
+        background: #4e7df4 !important;
+        color: #fff !important;
+        border-color: #4e7df4 !important;
+      }
+
+      .config-input {
+        width: 100%;
+        background: #0f1117;
+        border: 1px solid #2e3248;
+        border-radius: 6px;
+        color: #d8d8d8;
+        font-size: 0.95rem;
+        padding: 0.45rem 0.7rem;
+      }
+
+      .config-input:focus {
+        outline: none;
+        border-color: #4e7df4;
+      }
     </style>
-  <link rel="modulepreload" href="/open4x-web-919a33c90b2662c4.js" crossorigin="anonymous" integrity="sha384-MPHAWlBfql42R/8FAvNZpEg31ix+gFlYWuW03fwb4TB4mmZlAJDbrKYgonpRyOTA"><link rel="preload" href="/open4x-web-919a33c90b2662c4_bg.wasm" crossorigin="anonymous" integrity="sha384-kX6tFYM7dJkWcG/z86MxrU28N1qXhXbFKubzgYo2/d23hmNHh0UyklAanEGnkwiX" as="fetch" type="application/wasm"></head>
+  <link rel="modulepreload" href="/open4x-web-f46aae0e9a024f30.js" crossorigin="anonymous" integrity="sha384-XvrqurTm+4p+WUPjNEkfBeuTMiOSGUjbY9IUNnSzSEhraKmLFXfAIk4fh7cmXEu0"><link rel="preload" href="/open4x-web-f46aae0e9a024f30_bg.wasm" crossorigin="anonymous" integrity="sha384-d+oERLYsX+Nvl9vr6GrRJ8hkoiEk8c70rnZTgEmAHyGZvfauE+aDf0OlkM282ymq" as="fetch" type="application/wasm"></head>
   <body>
     <!-- trunk replaces this with the WASM bundle -->
   
 <script type="module">
-import init, * as bindings from '/open4x-web-919a33c90b2662c4.js';
-const wasm = await init({ module_or_path: '/open4x-web-919a33c90b2662c4_bg.wasm' });
+import init, * as bindings from '/open4x-web-f46aae0e9a024f30.js';
+const wasm = await init({ module_or_path: '/open4x-web-f46aae0e9a024f30_bg.wasm' });
 
 
 window.wasmBindings = bindings;

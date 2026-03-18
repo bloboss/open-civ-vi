@@ -218,16 +218,24 @@ pub fn HexMap(
                     let stroke_w    = if is_selected { "2.5" } else { "0.8" };
 
                     // Unit on this tile (only shown when visible).
-                    let unit_here: Option<UnitId> = if is_visible {
+                    // Tuple: (UnitId, is_friendly) — drives dot colour.
+                    let unit_here: Option<(UnitId, bool)> = if is_visible {
                         s.state.units.iter()
                             .find(|u| u.coord == coord)
-                            .map(|u| u.id)
+                            .map(|u| (u.id, u.owner == civ_id))
                     } else {
                         None
                     };
 
                     // City on this tile (shown when explored or visible).
-                    let city_here = is_explored && s.state.cities.iter().any(|c| c.coord == coord);
+                    // Some(true) = player-owned, Some(false) = enemy, None = no city.
+                    let city_here: Option<bool> = if is_explored {
+                        s.state.cities.iter()
+                            .find(|c| c.coord == coord)
+                            .map(|c| c.owner == civ_id)
+                    } else {
+                        None
+                    };
 
                     let sel_unit = selected_unit;
                     let click_fn = on_hex_click.clone();
@@ -307,27 +315,37 @@ pub fn HexMap(
                                 </text>
                             })}
 
-                            // City marker: white diamond outline (visible when explored).
-                            {city_here.then(|| view! {
-                                <polygon
-                                    class="city-marker"
-                                    points=format!(
-                                        "{cx},{top} {rx},{cy} {cx},{bot} {lx},{cy}",
-                                        cx=cx, cy=cy,
-                                        top=cy - 10.0, bot=cy + 10.0,
-                                        lx=cx - 10.0, rx=cx + 10.0,
-                                    )
-                                    fill="none"
-                                    stroke="#ffffff"
-                                    stroke-width="1.5"
-                                    pointer-events="none"
-                                />
+                            // City marker: diamond outline (white=friendly, red=enemy).
+                            {city_here.map(|is_friendly| {
+                                let city_stroke = if is_friendly { "#ffffff" } else { "#e05050" };
+                                view! {
+                                    <polygon
+                                        class="city-marker"
+                                        points=format!(
+                                            "{cx},{top} {rx},{cy} {cx},{bot} {lx},{cy}",
+                                            cx=cx, cy=cy,
+                                            top=cy - 10.0, bot=cy + 10.0,
+                                            lx=cx - 10.0, rx=cx + 10.0,
+                                        )
+                                        fill="none"
+                                        stroke=city_stroke
+                                        stroke-width="1.5"
+                                        pointer-events="none"
+                                    />
+                                }
                             })}
 
                             // Unit dot (only when tile is fully visible).
-                            {unit_here.map(|uid| {
+                            // yellow=selected  blue=friendly  red=enemy
+                            {unit_here.map(|(uid, is_friendly)| {
                                 let is_sel = sel_unit.get_untracked() == Some(uid);
-                                let dot_fill = if is_sel { "#ffe066" } else { "#4e7df4" };
+                                let dot_fill = if is_sel {
+                                    "#ffe066"
+                                } else if is_friendly {
+                                    "#4e7df4"
+                                } else {
+                                    "#e05050"
+                                };
                                 view! {
                                     <circle
                                         class="unit-dot"

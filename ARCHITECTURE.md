@@ -790,6 +790,13 @@ trait RulesEngine: Debug {
         -> Result<GameStateDiff, RulesError>;
     fn place_improvement(&self, state: &mut GameState, civ_id: CivId, coord: HexCoord,
                          improvement: BuiltinImprovement) -> Result<GameStateDiff, RulesError>;
+    fn place_district(&self, state: &mut GameState, city_id: CityId,
+                      district: BuiltinDistrict, coord: HexCoord)
+        -> Result<GameStateDiff, RulesError>;
+    fn claim_tile(&self, state: &mut GameState, city_id: CityId, coord: HexCoord, force: bool)
+        -> Result<GameStateDiff, RulesError>;
+    fn reassign_tile(&self, state: &mut GameState, from_city: CityId, to_city: CityId,
+                     coord: HexCoord) -> Result<GameStateDiff, RulesError>;
     fn establish_trade_route(&self, state: &mut GameState, trader_unit: UnitId,
                              destination: CityId) -> Result<GameStateDiff, RulesError>;
 }

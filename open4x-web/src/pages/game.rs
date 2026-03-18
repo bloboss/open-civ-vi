@@ -12,15 +12,16 @@
 ///   - Every mutation (end turn, move unit, …) sends a POST to the server
 ///     and updates the `GameView` signal with the returned snapshot.
 use leptos::prelude::*;
+use libciv::ai::{Agent, HeuristicAgent};
 use libciv::civ::{ProductionItem, TechProgress, Unit};
 use libciv::world::improvement::BuiltinImprovement;
-use libciv::{DefaultRulesEngine, RulesEngine};
+use libciv::{DefaultRulesEngine, RulesEngine, UnitCategory};
 use libciv::game::{StateDelta, RulesError, recalculate_visibility};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 
 use crate::hexmap::HexMap;
-use crate::session::{Session, build_session};
+use crate::session::{GameConfig, Session, build_session};
 
 // ---------------------------------------------------------------------------
 // Debug save helper
@@ -71,9 +72,12 @@ fn download_text(filename: &str, content: &str) {
 // ---------------------------------------------------------------------------
 
 #[component]
-pub fn GamePage(on_quit: impl Fn() + 'static) -> impl IntoView {
+pub fn GamePage(
+    game_config: RwSignal<GameConfig>,
+    on_quit: impl Fn() + 'static,
+) -> impl IntoView {
     // Non-Clone game session held in StoredValue; tick drives re-renders.
-    let session      = StoredValue::new(build_session());
+    let session = StoredValue::new(build_session(&game_config.get_untracked()));
     let (tick, set_tick) = signal(0u32);
 
     // UI selection state (lightweight signals — always Clone-able).
@@ -181,19 +185,30 @@ pub fn GamePage(on_quit: impl Fn() + 'static) -> impl IntoView {
         });
     };
 
-    // End-turn handler: process turn, reset movement, recalculate visibility.
+    // End-turn handler: process turn, run AI, reset movement, recalculate visibility.
     let on_end_turn = move || {
         session.update_value(|s| {
             use libciv::TurnEngine;
             let engine = TurnEngine::new();
             let rules  = DefaultRulesEngine;
             engine.process_turn(&mut s.state, &rules);
-            // Reset movement for the new turn.
+
+            // Reset movement for all units (player + AI).
             for unit in &mut s.state.units {
                 unit.movement_left = unit.max_movement;
             }
+
             let civ_id = s.civ_id;
             recalculate_visibility(&mut s.state, civ_id);
+
+            // AI adversary takes its turn.
+            if let Some(ai_id) = s.ai_civ_id {
+                let ai_agent = HeuristicAgent::new(ai_id);
+                let _ai_diff = ai_agent.take_turn(&mut s.state, &rules);
+                recalculate_visibility(&mut s.state, ai_id);
+                // Re-check player visibility (AI may have moved into view).
+                recalculate_visibility(&mut s.state, civ_id);
+            }
         });
         set_tick.update(|n| *n += 1);
     };
@@ -268,11 +283,27 @@ fn TopBar(
         })
     };
 
+    let ai_status = move || {
+        tick.get();
+        session.with_value(|s| {
+            s.ai_civ_id.map(|ai_id| {
+                let name    = s.state.civilizations.iter().find(|c| c.id == ai_id)
+                    .map(|c| c.name).unwrap_or("AI");
+                let cities  = s.state.cities.iter().filter(|c| c.owner == ai_id).count();
+                let units   = s.state.units.iter().filter(|u| u.owner == ai_id).count();
+                format!("{name}: {cities}c {units}u")
+            })
+        })
+    };
+
     view! {
         <div class="game-topbar">
             <span class="civ-name">{civ_name}</span>
             <span class="turn-label">{turn_label}</span>
             <span class="turn-label">{gold_label}</span>
+            {move || ai_status().map(|s| view! {
+                <span class="turn-label" style="color:#e05050">{s}</span>
+            })}
             <div style="flex:1" />
             <button class="btn btn-primary" on:click=move |_| on_end_turn()>
                 "End Turn"
@@ -304,6 +335,7 @@ fn Sidebar(
             <TileInfo tick=tick session=session selected_tile=selected_tile />
             <CityPanel tick=tick set_tick=set_tick session=session selected_tile=selected_tile />
             <UnitInfo tick=tick set_tick=set_tick session=session selected_unit=selected_unit />
+            <TradePanel tick=tick set_tick=set_tick session=session selected_unit=selected_unit />
             <YieldsPanel tick=tick session=session />
             <TechPanel tick=tick set_tick=set_tick session=session />
             <CivicsPanel tick=tick session=session />
@@ -662,6 +694,7 @@ fn UnitInfo(
             let type_name   = type_def.map(|d| d.name).unwrap_or("Unknown");
             let can_settle  = type_def.map(|d| d.can_found_city).unwrap_or(false);
             let is_builder  = type_name == "builder";
+            let is_trader   = type_def.map(|d| d.category == UnitCategory::Trader).unwrap_or(false);
             let has_movement = unit.movement_left() > 0;
 
             let owner_name = s.state.civilizations.iter()
@@ -787,11 +820,166 @@ fn UnitInfo(
                         }
                     })}
 
-                    // Move hint for owned units.
-                    {(is_owned && has_movement && !can_settle && !is_builder).then(|| view! {
+                    // Trader hint.
+                    {(is_owned && is_trader).then(|| view! {
+                        <p style="font-size:11px;color:#aaa;margin-top:4px">
+                            "Move to a city, then use the Trade panel to establish a route."
+                        </p>
+                    })}
+
+                    // Move hint for combat units.
+                    {(is_owned && has_movement && !can_settle && !is_builder && !is_trader).then(|| view! {
                         <p style="font-size:11px;color:#aaa;margin-top:4px">
                             "Click a tile to move or attack."
                         </p>
+                    })}
+                </div>
+            }.into_any()
+        })
+    };
+
+    view! { <div>{content}</div> }
+}
+
+// ---------------------------------------------------------------------------
+// TradePanel — active trade routes + establish-route UI for traders
+// ---------------------------------------------------------------------------
+
+#[component]
+fn TradePanel(
+    tick: ReadSignal<u32>,
+    set_tick: WriteSignal<u32>,
+    session: StoredValue<Session>,
+    selected_unit: RwSignal<Option<libciv::UnitId>>,
+) -> impl IntoView {
+    let trade_msg = RwSignal::new(None::<String>);
+
+    let content = move || {
+        tick.get();
+        session.with_value(|s| {
+            let civ_id = s.civ_id;
+
+            // Active routes owned by this civ.
+            let routes: Vec<(String, String, i32, Option<u32>)> = s.state.trade_routes.iter()
+                .filter(|r| r.owner == civ_id)
+                .map(|r| {
+                    let orig = s.state.cities.iter().find(|c| c.id == r.origin)
+                        .map(|c| c.name.clone()).unwrap_or_default();
+                    let dest = s.state.cities.iter().find(|c| c.id == r.destination)
+                        .map(|c| c.name.clone()).unwrap_or_default();
+                    (orig, dest, r.origin_yields.gold, r.turns_remaining)
+                })
+                .collect();
+
+            // Determine if the selected unit is an owned Trader at a city.
+            let trader_at_city: Option<(libciv::UnitId, libciv::CityId)> =
+                selected_unit.get_untracked()
+                    .and_then(|uid| s.state.unit(uid))
+                    .and_then(|u| {
+                        if u.owner != civ_id { return None; }
+                        let def = s.state.unit_type_defs.iter().find(|d| d.id == u.unit_type)?;
+                        if def.category != UnitCategory::Trader { return None; }
+                        let origin = s.state.cities.iter()
+                            .find(|c| c.coord == u.coord && c.owner == civ_id)?;
+                        Some((u.id, origin.id))
+                    });
+
+            // Available destinations: all explored cities except origin.
+            let explored = s.state.civilizations.iter()
+                .find(|c| c.id == civ_id)
+                .map(|c| c.explored_tiles.clone())
+                .unwrap_or_default();
+
+            let dest_cities: Vec<(libciv::CityId, String)> =
+                if let Some((_, origin_id)) = trader_at_city {
+                    s.state.cities.iter()
+                        .filter(|c| c.id != origin_id && explored.contains(&c.coord))
+                        .map(|c| (c.id, c.name.clone()))
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+
+            // Only show establish UI when trader is at a city AND there are dests.
+            let establish_uid: Option<libciv::UnitId> =
+                trader_at_city.filter(|_| !dest_cities.is_empty()).map(|(id, _)| id);
+
+            view! {
+                <div style="margin-top:10px;border-top:1px solid #333;padding-top:8px">
+                    <h3>"Trade"</h3>
+
+                    // Active route list.
+                    {if routes.is_empty() {
+                        view! {
+                            <p class="no-selection">"No active routes."</p>
+                        }.into_any()
+                    } else {
+                        view! {
+                            <div>
+                                {routes.into_iter().map(|(orig, dest, gold, turns)| {
+                                    let turns_str = match turns {
+                                        Some(t) => format!("{t}t"),
+                                        None    => "perm".to_string(),
+                                    };
+                                    view! {
+                                        <div class="info-row" style="font-size:12px">
+                                            <span>{format!("{orig}→{dest}")}</span>
+                                            <span style="color:#aaa">{format!("+{gold}g {turns_str}")}</span>
+                                        </div>
+                                    }
+                                }).collect::<Vec<_>>()}
+                            </div>
+                        }.into_any()
+                    }}
+
+                    // Establish-route buttons (only when trader is at an origin city).
+                    {establish_uid.map(|uid| {
+                        view! {
+                            <div>
+                                <p style="font-size:11px;color:#aaa;margin:6px 0 2px">
+                                    "Establish route to:"
+                                </p>
+                                <div style="display:flex;flex-wrap:wrap;gap:3px">
+                                    {dest_cities.into_iter().map(|(dest_id, dest_name)| {
+                                        let name_clone = dest_name.clone();
+                                        view! {
+                                            <button
+                                                class="btn btn-ghost"
+                                                style="font-size:10px;padding:2px 5px"
+                                                on:click=move |_| {
+                                                    let mut msg = String::new();
+                                                    session.update_value(|s| {
+                                                        let rules = DefaultRulesEngine;
+                                                        match rules.establish_trade_route(
+                                                            &mut s.state, uid, dest_id
+                                                        ) {
+                                                            Ok(_) => {
+                                                                msg = format!(
+                                                                    "Route to {} established!",
+                                                                    dest_name
+                                                                );
+                                                                s.selected_unit = None;
+                                                            }
+                                                            Err(e) => {
+                                                                msg = format!("Error: {e}");
+                                                            }
+                                                        }
+                                                    });
+                                                    trade_msg.set(Some(msg));
+                                                    set_tick.update(|n| *n += 1);
+                                                }
+                                            >
+                                                {name_clone}
+                                            </button>
+                                        }
+                                    }).collect::<Vec<_>>()}
+                                </div>
+                            </div>
+                        }
+                    })}
+
+                    {move || trade_msg.get().map(|m| view! {
+                        <p style="font-size:11px;color:#ffe066;margin-top:4px">{m}</p>
                     })}
                 </div>
             }.into_any()

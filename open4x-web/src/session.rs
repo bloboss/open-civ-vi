@@ -5,20 +5,35 @@
 //          GET  /api/games/{id}/state -> returns GameView (serialized snapshot)
 //          POST /api/games/{id}/action -> mutates state, returns updated GameView
 
-use std::collections::HashSet;
-
 use libciv::{
     CityId, CivId, GameState, UnitCategory, UnitDomain, UnitId, UnitTypeId,
 };
 use libciv::civ::{Agenda, BasicUnit, City, Civilization, Leader};
 use libciv::game::state::UnitTypeDef;
 use libciv::game::recalculate_visibility;
-use libciv::world::terrain::BuiltinTerrain;
+use libciv::world::mapgen::{MapGenConfig, generate as mapgen_generate};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
-use rand::SeedableRng;
-use rand::rngs::SmallRng;
-use rand::Rng;
+
+// ---------------------------------------------------------------------------
+// GameConfig
+// ---------------------------------------------------------------------------
+
+/// Pre-game configuration set on the map-config screen.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GameConfig {
+    pub width:  u32,
+    pub height: u32,
+    pub seed:   u64,
+    /// Number of AI opponents.  0 = solo play.
+    pub num_ai: u32,
+}
+
+impl Default for GameConfig {
+    fn default() -> Self {
+        Self { width: 40, height: 24, seed: 42, num_ai: 1 }
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Session
@@ -36,6 +51,8 @@ pub struct Session {
     #[allow(dead_code)]
     pub current_city:  usize,
     pub selected_unit: Option<UnitId>,
+    /// CivId of the AI adversary (Babylon), or None in solo play.
+    pub ai_civ_id:     Option<CivId>,
 }
 
 // ---------------------------------------------------------------------------
@@ -57,73 +74,52 @@ impl Agenda for NoOpAgenda {
 }
 
 // ---------------------------------------------------------------------------
-// Terrain randomization
-// ---------------------------------------------------------------------------
-
-// FIXME: Map generation should run server-side and be sent to the client as
-//        part of the initial game state snapshot.
-fn randomize_terrain(state: &mut GameState, seed: u64, safe_coord: HexCoord) {
-    let mut rng = SmallRng::seed_from_u64(seed);
-    let safe: HashSet<HexCoord> = {
-        let mut s = HashSet::new();
-        s.insert(safe_coord);
-        for n in state.board.neighbors(safe_coord) { s.insert(n); }
-        s
-    };
-    let coords: Vec<HexCoord> = state.board.all_coords();
-    for coord in coords {
-        let terrain = if safe.contains(&coord) {
-            match rng.random_range(0u8..4) {
-                0 | 1 => BuiltinTerrain::Grassland,
-                _     => BuiltinTerrain::Plains,
-            }
-        } else {
-            match rng.random_range(0u8..100) {
-                0..35  => BuiltinTerrain::Grassland,
-                35..60 => BuiltinTerrain::Plains,
-                60..75 => BuiltinTerrain::Desert,
-                75..85 => BuiltinTerrain::Tundra,
-                85..93 => BuiltinTerrain::Mountain,
-                _      => BuiltinTerrain::Ocean,
-            }
-        };
-        if let Some(tile) = state.board.tile_mut(coord) {
-            tile.terrain = terrain;
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
 // Session constructor
 // ---------------------------------------------------------------------------
 
 // FIXME: This function should become a call to POST /api/games.  The server
 //        runs all of this logic and returns a serialised GameView; the client
 //        never touches GameState directly.
-pub fn build_session() -> Session {
-    let seed = 42u64;
-    let mut state = GameState::new(seed, 14, 8);
+pub fn build_session(config: &GameConfig) -> Session {
+    let seed = config.seed;
+    let w    = config.width;
+    let h    = config.height;
+    let mut state = GameState::new(seed, w, h);
 
-    // Civilization: Rome / Caesar.
+    // ── Terrain via mapgen pipeline ──────────────────────────────────────
+    let num_starts = 1 + config.num_ai;
+    let mapgen_result = mapgen_generate(
+        &MapGenConfig {
+            width: w, height: h, seed,
+            land_fraction:  None,
+            num_continents: None,
+            num_zone_seeds: None,
+            num_starts,
+        },
+        &mut state.board,
+    );
+    let starts = &mapgen_result.starting_positions;
+    let city_coord         = starts.first().copied()
+        .unwrap_or(HexCoord::from_qr(w as i32 / 4, h as i32 / 2));
+    let babylon_city_coord = starts.get(1).copied()
+        .unwrap_or(HexCoord::from_qr(w as i32 * 3 / 4, h as i32 / 2));
+
+    // ── Civilization: Rome / Caesar ──────────────────────────────────────
     let civ_id = state.id_gen.next_civ_id();
-    let leader = Leader {
-        name: "Caesar",
-        civ_id,
-        abilities: Vec::new(),
-        agenda: Box::new(NoOpAgenda),
-    };
-    state.civilizations.push(Civilization::new(civ_id, "Rome", "Roman", leader));
+    state.civilizations.push(Civilization::new(
+        civ_id, "Rome", "Roman",
+        Leader { name: "Caesar", civ_id, abilities: Vec::new(),
+                 agenda: Box::new(NoOpAgenda) },
+    ));
 
-    // Capital city at (3, 3).
-    let city_coord = HexCoord::from_qr(3, 3);
-    let city_id    = state.id_gen.next_city_id();
-    let mut city   = City::new(city_id, "Roma".to_string(), civ_id, city_coord);
+    // Capital city.
+    let city_id  = state.id_gen.next_city_id();
+    let mut city = City::new(city_id, "Roma".to_string(), civ_id, city_coord);
     city.is_capital = true;
     state.cities.push(city);
     state.civilizations[0].cities.push(city_id);
 
-    // Claim the city center and ring-1 as initial territory (mirrors what
-    // found_city() does internally via try_claim_tile).
+    // Claim initial territory for Rome.
     {
         let initial: Vec<HexCoord> = std::iter::once(city_coord)
             .chain(state.board.neighbors(city_coord))
@@ -133,18 +129,17 @@ pub fn build_session() -> Session {
                 tile.owner = Some(civ_id);
             }
         }
-        if let Some(city) = state.cities.iter_mut().find(|c| c.id == city_id) {
-            city.territory = initial.into_iter().collect();
+        if let Some(c) = state.cities.iter_mut().find(|c| c.id == city_id) {
+            c.territory = initial.into_iter().collect();
         }
     }
 
-    randomize_terrain(&mut state, seed, city_coord);
-
-    // Unit-type registry.
+    // ── Unit-type registry ────────────────────────────────────────────────
     let warrior_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
     let settler_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
     let builder_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
     let slinger_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
+    let trader_type_id  = UnitTypeId::from_ulid(state.id_gen.next_ulid());
     state.unit_type_defs.extend([
         UnitTypeDef { id: warrior_type_id, name: "warrior", production_cost: 40,
                       max_movement: 200, combat_strength: Some(20),
@@ -162,45 +157,86 @@ pub fn build_session() -> Session {
                       max_movement: 200, combat_strength: Some(10),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
                       range: 2, vision_range: 2, can_found_city: false, resource_cost: None },
+        UnitTypeDef { id: trader_type_id, name: "trader", production_cost: 40,
+                      max_movement: 200, combat_strength: None,
+                      domain: UnitDomain::Land, category: UnitCategory::Trader,
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None },
     ]);
 
-    // Starting Warrior.
+    // ── Starting units ────────────────────────────────────────────────────
     let unit_id = state.id_gen.next_unit_id();
     state.units.push(BasicUnit {
-        id:              unit_id,
-        unit_type:       warrior_type_id,
-        owner:           civ_id,
-        coord:           HexCoord::from_qr(7, 3),
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Combat,
-        movement_left:   200,
-        max_movement:    200,
-        combat_strength: Some(20),
-        promotions:      Vec::new(),
-        health:          100,
-        range:           0,
-        vision_range:    2,
+        id: unit_id, unit_type: warrior_type_id, owner: civ_id,
+        coord: city_coord, domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200, combat_strength: Some(20),
+        promotions: Vec::new(), health: 100, range: 0, vision_range: 2,
     });
 
-    // Starting Builder at city coord for testing improvements.
     let builder_id = state.id_gen.next_unit_id();
     state.units.push(BasicUnit {
-        id:              builder_id,
-        unit_type:       builder_type_id,
-        owner:           civ_id,
-        coord:           city_coord,
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Civilian,
-        movement_left:   200,
-        max_movement:    200,
-        combat_strength: None,
-        promotions:      Vec::new(),
-        health:          100,
-        range:           0,
-        vision_range:    2,
+        id: builder_id, unit_type: builder_type_id, owner: civ_id,
+        coord: city_coord, domain: UnitDomain::Land, category: UnitCategory::Civilian,
+        movement_left: 200, max_movement: 200, combat_strength: None,
+        promotions: Vec::new(), health: 100, range: 0, vision_range: 2,
+    });
+
+    let trader_id = state.id_gen.next_unit_id();
+    state.units.push(BasicUnit {
+        id: trader_id, unit_type: trader_type_id, owner: civ_id,
+        coord: city_coord, domain: UnitDomain::Land, category: UnitCategory::Trader,
+        movement_left: 200, max_movement: 200, combat_strength: None,
+        promotions: Vec::new(), health: 100, range: 0, vision_range: 2,
     });
 
     recalculate_visibility(&mut state, civ_id);
+
+    // ── Optional AI adversary: Babylon ────────────────────────────────────
+    let ai_civ_id = if config.num_ai > 0 {
+        let babylon_id = state.id_gen.next_civ_id();
+        state.civilizations.push(Civilization::new(
+            babylon_id, "Babylon", "Babylonian",
+            Leader { name: "Hammurabi", civ_id: babylon_id,
+                     abilities: Vec::new(), agenda: Box::new(NoOpAgenda) },
+        ));
+
+        let babylon_city_id = state.id_gen.next_city_id();
+        let mut bc = City::new(babylon_city_id, "Babylon".to_string(),
+                               babylon_id, babylon_city_coord);
+        bc.is_capital = true;
+        state.cities.push(bc);
+        state.civilizations.iter_mut()
+            .find(|c| c.id == babylon_id).unwrap()
+            .cities.push(babylon_city_id);
+
+        // Claim initial territory for Babylon.
+        {
+            let initial: Vec<HexCoord> = std::iter::once(babylon_city_coord)
+                .chain(state.board.neighbors(babylon_city_coord))
+                .collect();
+            for &coord in &initial {
+                if let Some(tile) = state.board.tile_mut(coord) {
+                    tile.owner = Some(babylon_id);
+                }
+            }
+            if let Some(c) = state.cities.iter_mut().find(|c| c.id == babylon_city_id) {
+                c.territory = initial.into_iter().collect();
+            }
+        }
+
+        // Babylon's starting warrior.
+        let bab_warrior = state.id_gen.next_unit_id();
+        state.units.push(BasicUnit {
+            id: bab_warrior, unit_type: warrior_type_id, owner: babylon_id,
+            coord: babylon_city_coord, domain: UnitDomain::Land, category: UnitCategory::Combat,
+            movement_left: 200, max_movement: 200, combat_strength: Some(20),
+            promotions: Vec::new(), health: 100, range: 0, vision_range: 2,
+        });
+
+        recalculate_visibility(&mut state, babylon_id);
+        Some(babylon_id)
+    } else {
+        None
+    };
 
     Session {
         state,
@@ -208,5 +244,6 @@ pub fn build_session() -> Session {
         city_ids: vec![city_id],
         current_city: 0,
         selected_unit: Some(unit_id),
+        ai_civ_id,
     }
 }

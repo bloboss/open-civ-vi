@@ -1,6 +1,7 @@
 pub mod edge;
 pub mod feature;
 pub mod improvement;
+pub mod mapgen;
 pub mod resource;
 pub mod road;
 pub mod terrain;

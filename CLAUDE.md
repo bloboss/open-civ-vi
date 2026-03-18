@@ -24,9 +24,10 @@ cargo test --test gameplay
 # Lint (must be clean with no warnings)
 cargo clippy --workspace -- -D warnings
 
-# Run the CLI binary
-cargo run -p civsim -- new
-cargo run -p civsim -- run
+# Run the CLI binary  (package name is `open4x`)
+cargo run -p open4x -- new
+cargo run -p open4x -- run
+cargo run -p open4x -- play
 
 # Build WASM frontend (requires wasm-pack or trunk)
 # The WASM target config is in .cargo/config.toml (sets getrandom_backend="wasm_js")
