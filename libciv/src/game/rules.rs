@@ -1013,6 +1013,58 @@ impl RulesEngine for DefaultRulesEngine {
             }
         }
 
+        // ── Phase 3a: Tourism accumulation ────────────────────────────────────
+        // Accumulate lifetime culture from this turn's culture output, compute
+        // tourism, and distribute tourism pressure to other civilizations.
+        {
+            use crate::civ::tourism::compute_tourism;
+
+            let civ_ids_for_tourism: Vec<CivId> = state.civilizations.iter().map(|c| c.id).collect();
+
+            // Accumulate lifetime culture from this turn's culture yield.
+            for (civ_id, yields) in &civ_yields {
+                if yields.culture > 0
+                    && let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == *civ_id)
+                {
+                    civ.lifetime_culture += yields.culture as u32;
+                }
+            }
+
+            // Compute tourism and distribute to all other civs.
+            // Must collect tourism values first (immutable borrow) then mutate.
+            let tourism_outputs: Vec<(CivId, u32)> = civ_ids_for_tourism.iter()
+                .map(|&id| (id, compute_tourism(state, id)))
+                .collect();
+
+            for (civ_id, tourism) in &tourism_outputs {
+                if *tourism == 0 { continue; }
+
+                // Find the civ's lifetime culture for the delta.
+                let lifetime_culture = state.civ(*civ_id)
+                    .map(|c| c.lifetime_culture)
+                    .unwrap_or(0);
+
+                diff.push(StateDelta::TourismGenerated {
+                    civ: *civ_id,
+                    tourism: *tourism,
+                    lifetime_culture,
+                });
+
+                // Distribute tourism equally to all other civs.
+                let other_count = civ_ids_for_tourism.len().saturating_sub(1);
+                if other_count == 0 { continue; }
+
+                let per_civ = *tourism; // Each other civ gets full tourism pressure.
+                if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == *civ_id) {
+                    for &target in &civ_ids_for_tourism {
+                        if target != *civ_id {
+                            *civ.tourism_accumulated.entry(target).or_insert(0) += per_civ;
+                        }
+                    }
+                }
+            }
+        }
+
         // ── Phase 3b: Cultural border expansion ───────────────────────────────
         // For each regular city, accumulate shadow culture and claim the cheapest
         // unclaimed tile within radius 2–5 while the budget allows.

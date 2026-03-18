@@ -52,6 +52,61 @@ pub struct ScoreVictory {
     pub turn_limit: u32,
 }
 
+// ── Culture Victory ──────────────────────────────────────────────────────────
+
+/// Culture victory: a civ wins when its accumulated tourism toward every other
+/// civ exceeds that civ's domestic tourists (derived from lifetime culture).
+///
+/// Evaluated every turn as an `ImmediateWin` condition.
+#[derive(Debug)]
+pub struct CultureVictory {
+    pub id: VictoryId,
+}
+
+impl VictoryCondition for CultureVictory {
+    fn id(&self) -> VictoryId { self.id }
+    fn name(&self) -> &'static str { "Culture Victory" }
+    fn description(&self) -> &'static str {
+        "Achieve cultural dominance over all other civilizations by generating \
+         more tourism toward each civ than their domestic tourists."
+    }
+    fn kind(&self) -> VictoryKind { VictoryKind::ImmediateWin }
+    fn check_progress(&self, civ_id: CivId, state: &GameState) -> VictoryProgress {
+        use crate::civ::tourism::{has_cultural_dominance, domestic_tourists};
+
+        let other_civs: Vec<_> = state.civilizations.iter()
+            .filter(|c| c.id != civ_id)
+            .collect();
+
+        if other_civs.is_empty() {
+            return VictoryProgress {
+                victory_id: self.id, civ_id, current: 0, target: 1,
+            };
+        }
+
+        // Count how many civs we have cultural dominance over.
+        let dominated = if let Some(civ) = state.civ(civ_id) {
+            other_civs.iter().filter(|other| {
+                let sent = civ.tourism_accumulated
+                    .get(&other.id).copied().unwrap_or(0);
+                sent > domestic_tourists(other)
+            }).count() as u32
+        } else {
+            0
+        };
+
+        let target = other_civs.len() as u32;
+        // Also check full dominance for the `is_won()` shortcut.
+        let won = has_cultural_dominance(state, civ_id);
+        VictoryProgress {
+            victory_id: self.id,
+            civ_id,
+            current: if won { target } else { dominated },
+            target,
+        }
+    }
+}
+
 impl VictoryCondition for ScoreVictory {
     fn id(&self) -> VictoryId { self.id }
     fn name(&self) -> &'static str { "Score Victory" }

@@ -4,8 +4,8 @@ use crate::{
 };
 use super::victory::VictoryCondition;
 use crate::civ::{
-    BasicUnit, Civilization, City, CityKind, DiplomaticRelation, Governor, GreatPerson,
-    PlacedDistrict, Religion, TradeRoute,
+    BasicUnit, Civilization, City, CityKind, DiplomaticRelation, GreatPerson, Governor,
+    GreatPerson, PlacedDistrict, Religion, TradeRoute, WonderTourism,
 };
 use crate::rules::{TechTree, CivicTree, Government, Policy, OneShotEffect};
 use crate::rules::tech::{build_tech_tree, build_civic_tree};
@@ -159,6 +159,9 @@ pub struct GameState {
     /// Set when a civilization has won the game. `advance_turn` no longer
     /// evaluates victory conditions once this is `Some`.
     pub game_over: Option<super::victory::GameOver>,
+    /// Built wonders that generate tourism per turn. Entries are added when a
+    /// wonder completes production (or manually for testing).
+    pub wonder_tourism: Vec<WonderTourism>,
     /// Pending one-shot effects to be drained at the end of each turn's
     /// completion sweep (Phase 4 of `advance_turn`).
     pub effect_queue: VecDeque<(CivId, OneShotEffect)>,
@@ -197,6 +200,7 @@ impl GameState {
             building_defs: Vec::new(),
             victory_conditions: Vec::new(),
             game_over: None,
+            wonder_tourism: Vec::new(),
             effect_queue: VecDeque::new(),
         }
     }
