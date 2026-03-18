@@ -387,6 +387,156 @@ fn city_culture_output(board: &WorldBoard, city: &crate::civ::City) -> u32 {
     1 + tile_culture
 }
 
+// ── Loyalty pressure helpers ─────────────────────────────────────────────────
+
+/// Maximum distance (hex tiles) at which a foreign city exerts loyalty pressure.
+const LOYALTY_PRESSURE_RADIUS: u32 = 9;
+
+/// Base loyalty pressure exerted by a single city at distance `d`.
+/// Falls off as `10 / d` so closer cities exert dramatically more pressure.
+/// Returns 0 when `d == 0` (the city itself) or `d > LOYALTY_PRESSURE_RADIUS`.
+fn city_loyalty_pressure_at_distance(population: u32, distance: u32) -> i32 {
+    if distance == 0 || distance > LOYALTY_PRESSURE_RADIUS {
+        return 0;
+    }
+    // Base pressure scales with population: each pop adds +1 base pressure.
+    let base = population as i32;
+    // Fall-off: 10 / d, so adjacent city (d=1) gives full 10×base,
+    // d=2 gives 5×base, d=9 gives ~1×base.
+    (base * 10) / distance as i32
+}
+
+/// Compute the net loyalty delta for a single city this turn.
+///
+/// Positive delta means loyalty trends toward max (owner has strong presence);
+/// negative means foreign pressure is eroding loyalty.
+///
+/// Sources of loyalty pressure:
+/// - **Domestic cities**: Each city owned by the same civ within
+///   `LOYALTY_PRESSURE_RADIUS` adds positive pressure proportional to population
+///   and inversely proportional to distance.
+/// - **Foreign cities**: Each city owned by a different civ within
+///   `LOYALTY_PRESSURE_RADIUS` adds negative pressure (same formula).
+/// - **Capital bonus**: The city's own civ's capital within range adds +5 flat.
+/// - **Occupied penalty**: Occupied cities suffer -5 per turn base penalty.
+/// - **Governor bonus**: An established governor in this city adds +8 loyalty/turn.
+/// - **Population bonus**: City's own population adds +1 per 2 pop (loyalty
+///   from its own citizens).
+fn compute_city_loyalty_delta(
+    city_idx: usize,
+    cities: &[crate::civ::City],
+    governors: &[crate::civ::Governor],
+) -> i32 {
+    let city = &cities[city_idx];
+    let owner = city.owner;
+    let coord = city.coord;
+
+    // Skip city-states — they don't participate in the loyalty system.
+    if matches!(city.kind, crate::civ::city::CityKind::CityState(_)) {
+        return 0;
+    }
+
+    let mut domestic_pressure: i32 = 0;
+    let mut foreign_pressure: i32 = 0;
+    let mut has_capital_nearby = false;
+
+    for (i, other) in cities.iter().enumerate() {
+        if i == city_idx {
+            continue;
+        }
+        // Skip city-states as pressure sources.
+        if matches!(other.kind, crate::civ::city::CityKind::CityState(_)) {
+            continue;
+        }
+        let dist = coord.distance(&other.coord);
+        if dist > LOYALTY_PRESSURE_RADIUS {
+            continue;
+        }
+        let pressure = city_loyalty_pressure_at_distance(other.population, dist);
+        if other.owner == owner {
+            domestic_pressure += pressure;
+            if other.is_capital {
+                has_capital_nearby = true;
+            }
+        } else {
+            foreign_pressure += pressure;
+        }
+    }
+
+    let mut delta: i32 = 0;
+
+    // Net city pressure: domestic pushes loyalty up, foreign pushes it down.
+    delta += domestic_pressure - foreign_pressure;
+
+    // Capital proximity bonus.
+    if has_capital_nearby {
+        delta += 5;
+    }
+
+    // Occupied city penalty: loyalty erodes faster.
+    if city.ownership == crate::civ::city::CityOwnership::Occupied {
+        delta -= 5;
+    }
+
+    // Governor bonus: an established governor stabilizes loyalty.
+    let has_governor = governors.iter().any(|g| {
+        g.owner == owner
+            && g.assigned_city == Some(city.id)
+            && g.is_established()
+    });
+    if has_governor {
+        delta += 8;
+    }
+
+    // Self-population bonus: the city's own citizens contribute loyalty.
+    delta += city.population as i32 / 2;
+
+    // Is-capital bonus: capitals are naturally more loyal.
+    if city.is_capital {
+        delta += 10;
+    }
+
+    // Clamp the delta so loyalty changes are gradual (max ±20 per turn).
+    delta.clamp(-20, 20)
+}
+
+/// Find the civilization exerting the highest foreign loyalty pressure on a city.
+/// Returns `None` if no foreign civ exerts any pressure (city becomes Free City).
+fn highest_pressure_civ(
+    city_idx: usize,
+    cities: &[crate::civ::City],
+) -> Option<CivId> {
+    let city = &cities[city_idx];
+    let owner = city.owner;
+    let coord = city.coord;
+
+    let mut pressure_by_civ: Vec<(CivId, i32)> = Vec::new();
+
+    for (i, other) in cities.iter().enumerate() {
+        if i == city_idx {
+            continue;
+        }
+        if other.owner == owner {
+            continue;
+        }
+        if matches!(other.kind, crate::civ::city::CityKind::CityState(_)) {
+            continue;
+        }
+        let dist = coord.distance(&other.coord);
+        let pressure = city_loyalty_pressure_at_distance(other.population, dist);
+        if pressure > 0 {
+            if let Some(entry) = pressure_by_civ.iter_mut().find(|(c, _)| *c == other.owner) {
+                entry.1 += pressure;
+            } else {
+                pressure_by_civ.push((other.owner, pressure));
+            }
+        }
+    }
+
+    pressure_by_civ.sort_by(|a, b| b.1.cmp(&a.1));
+    pressure_by_civ.first().map(|(civ, _)| *civ)
+}
+
 impl RulesEngine for DefaultRulesEngine {
     fn move_unit(
         &self,
@@ -920,6 +1070,96 @@ impl RulesEngine for DefaultRulesEngine {
                 state.cities[city_idx].culture_border -= min_cost;
                 let city_id = state.cities[city_idx].id;
                 try_claim_tile(state, civ_id, city_id, chosen, &mut diff);
+            }
+        }
+
+        // ── Phase 3c: Loyalty pressure ──────────────────────────────────────────
+        // For each non-city-state city, compute the loyalty delta from nearby
+        // friendly/foreign cities, governor bonuses, occupation penalties, etc.
+        // When loyalty reaches 0 the city revolts: it flips to the civ exerting
+        // the highest foreign pressure, or becomes independent if none.
+        {
+            let num_cities = state.cities.len();
+            // Compute deltas first (immutable borrow of cities slice).
+            let loyalty_deltas: Vec<(usize, i32)> = (0..num_cities)
+                .map(|i| (i, compute_city_loyalty_delta(i, &state.cities, &state.governors)))
+                .filter(|(_, d)| *d != 0)
+                .collect();
+
+            // Apply loyalty changes.
+            for &(city_idx, delta) in &loyalty_deltas {
+                let city = &mut state.cities[city_idx];
+                let old = city.loyalty;
+                city.loyalty = (old + delta).clamp(0, 100);
+                if city.loyalty != old {
+                    diff.push(StateDelta::LoyaltyChanged {
+                        city: city.id,
+                        delta: city.loyalty - old,
+                        new_value: city.loyalty,
+                    });
+                }
+            }
+
+            // Handle revolts (loyalty == 0). Collect revolt info first, then mutate.
+            let revolts: Vec<(usize, CityId, CivId)> = (0..state.cities.len())
+                .filter_map(|i| {
+                    let c = &state.cities[i];
+                    if c.loyalty == 0
+                        && !matches!(c.kind, crate::civ::city::CityKind::CityState(_))
+                    {
+                        Some((i, c.id, c.owner))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            // Determine new owner for each revolting city.
+            let revolt_targets: Vec<(usize, CityId, CivId, Option<CivId>)> = revolts.iter()
+                .map(|&(idx, cid, old_owner)| {
+                    let new_owner = highest_pressure_civ(idx, &state.cities);
+                    (idx, cid, old_owner, new_owner)
+                })
+                .collect();
+
+            for (city_idx, city_id, old_owner, new_owner) in revolt_targets {
+                let city = &mut state.cities[city_idx];
+                if let Some(new_civ) = new_owner {
+                    // Flip to the pressuring civilization.
+                    city.owner = new_civ;
+                    city.ownership = crate::civ::city::CityOwnership::Occupied;
+                    city.loyalty = 50; // starts at reduced loyalty under new owner
+
+                    // Update civ city lists.
+                    if let Some(old_civ) = state.civilizations.iter_mut().find(|c| c.id == old_owner) {
+                        old_civ.cities.retain(|&id| id != city_id);
+                    }
+                    if let Some(new_civ_obj) = state.civilizations.iter_mut().find(|c| c.id == new_civ) {
+                        new_civ_obj.cities.push(city_id);
+                    }
+
+                    // Update tile ownership for city's territory.
+                    let territory: Vec<HexCoord> = city.territory.iter().copied().collect();
+                    for coord in territory {
+                        if let Some(tile) = state.board.tile_mut(coord) {
+                            tile.owner = Some(new_civ);
+                        }
+                    }
+                } else {
+                    // No foreign pressure — city becomes independent (Free City).
+                    // Remove from old owner's city list; owner stays but ownership
+                    // is set to Occupied to signal the city is in revolt.
+                    // In a full implementation this would create a new "Free City"
+                    // civilization; for now we leave the owner and mark Occupied.
+                    city.ownership = crate::civ::city::CityOwnership::Occupied;
+                    city.loyalty = 25; // low loyalty as an independent
+                }
+
+                diff.push(StateDelta::CityRevolted {
+                    city: city_id,
+                    new_owner,
+                    old_owner,
+                });
             }
         }
 
