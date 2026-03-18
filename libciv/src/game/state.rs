@@ -40,6 +40,10 @@ pub struct UnitTypeDef {
     /// Extra combat strength added when this unit attacks a unit on a city tile.
     /// 0 for non-siege units.
     pub siege_bonus:     u32,
+    /// Maximum build charges for builder-type units. 0 for non-builder units.
+    /// When a unit is spawned, `BasicUnit.charges` is set to `Some(max_charges)`
+    /// if `max_charges > 0`, or `None` otherwise.
+    pub max_charges:     u8,
 }
 
 /// Static descriptor for a building type; stored in `GameState.building_defs`.

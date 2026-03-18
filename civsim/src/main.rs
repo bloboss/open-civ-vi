@@ -162,23 +162,23 @@ fn build_session() -> Session {
         UnitTypeDef { id: warrior_type_id, name: "warrior", production_cost: 40,
                       max_movement: 200, combat_strength: Some(20),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0 },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, },
         UnitTypeDef { id: settler_type_id, name: "settler", production_cost: 80,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: true, resource_cost: None, siege_bonus: 0 },
+                      range: 0, vision_range: 2, can_found_city: true, resource_cost: None, siege_bonus: 0, max_charges: 0, },
         UnitTypeDef { id: builder_type_id, name: "builder", production_cost: 50,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0 },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, },
         UnitTypeDef { id: slinger_type_id, name: "slinger", production_cost: 35,
                       max_movement: 200, combat_strength: Some(10),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 2, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0 },
+                      range: 2, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, },
         UnitTypeDef { id: trader_type_id, name: "trader", production_cost: 40,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Trader,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0 },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, },
     ]);
 
     // Starting Warrior (co-located with capital for simplicity).
@@ -197,6 +197,7 @@ fn build_session() -> Session {
         health:          100,
         range:           0,
         vision_range:    2,
+        charges: None,
     });
 
     // Starting Builder at city coord (3, 3) — for testing improve command.
@@ -215,6 +216,7 @@ fn build_session() -> Session {
         health:          100,
         range:           0,
         vision_range:    2,
+        charges: None,
     });
 
     // Starting Trader at city coord (3, 3) — for testing trade commands.
@@ -233,6 +235,7 @@ fn build_session() -> Session {
         health:          100,
         range:           0,
         vision_range:    2,
+        charges: None,
     });
 
     // Babylon — AI adversary civilization.
@@ -267,6 +270,7 @@ fn build_session() -> Session {
         health:          100,
         range:           0,
         vision_range:    2,
+        charges: None,
     });
 
     recalculate_visibility(&mut state, civ_id);
@@ -368,15 +372,15 @@ fn build_ai_demo(seed: u64) -> AiDemo {
         UnitTypeDef { id: warrior_type, name: "warrior", production_cost: 40,
                       max_movement: 200, combat_strength: Some(20),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0 },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, },
         UnitTypeDef { id: settler_type, name: "settler", production_cost: 80,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: true, resource_cost: None, siege_bonus: 0 },
+                      range: 0, vision_range: 2, can_found_city: true, resource_cost: None, siege_bonus: 0, max_charges: 0, },
         UnitTypeDef { id: slinger_type, name: "slinger", production_cost: 35,
                       max_movement: 200, combat_strength: Some(10),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 2, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0 },
+                      range: 2, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, },
     ]);
 
     // ── Rome (west side) ──────────────────────────────────────────────────
@@ -400,7 +404,7 @@ fn build_ai_demo(seed: u64) -> AiDemo {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     // ── Babylon (east side) ───────────────────────────────────────────────
@@ -424,7 +428,7 @@ fn build_ai_demo(seed: u64) -> AiDemo {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     // ── Victory conditions ────────────────────────────────────────────────
@@ -1150,7 +1154,7 @@ fn cmd_improve(session: &mut Session, rules: &DefaultRulesEngine, name: &str) {
         }
     };
 
-    match rules.place_improvement(&mut session.state, session.civ_id, coord, improvement) {
+    match rules.place_improvement(&mut session.state, session.civ_id, coord, improvement, None) {
         Ok(diff) => {
             for delta in &diff.deltas {
                 if let StateDelta::ImprovementPlaced { coord, improvement } = delta {

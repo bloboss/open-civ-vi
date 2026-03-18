@@ -789,7 +789,10 @@ trait RulesEngine: Debug {
     fn found_city(&self, state: &mut GameState, settler: UnitId, name: String)
         -> Result<GameStateDiff, RulesError>;
     fn place_improvement(&self, state: &mut GameState, civ_id: CivId, coord: HexCoord,
-                         improvement: BuiltinImprovement) -> Result<GameStateDiff, RulesError>;
+                         improvement: BuiltinImprovement, builder: Option<UnitId>)
+        -> Result<GameStateDiff, RulesError>;
+    fn place_road(&self, state: &mut GameState, unit_id: UnitId, coord: HexCoord,
+                  road: BuiltinRoad) -> Result<GameStateDiff, RulesError>;
     fn place_district(&self, state: &mut GameState, city_id: CityId,
                       district: BuiltinDistrict, coord: HexCoord)
         -> Result<GameStateDiff, RulesError>;
@@ -845,6 +848,8 @@ enum StateDelta {
                    attacker_damage: u32, defender_damage: u32 },
     TilesRevealed { civ: CivId, coords: Vec<HexCoord> },
     ImprovementPlaced { coord: HexCoord, improvement: BuiltinImprovement },
+    RoadPlaced { coord: HexCoord, road: BuiltinRoad },
+    ChargesChanged { unit: UnitId, remaining: u8 },
     TileClaimed { civ: CivId, city: CityId, coord: HexCoord },
     TradeRouteEstablished { route: TradeRouteId, origin: CityId, destination: CityId, owner: CivId },
     TradeRouteExpired { route: TradeRouteId },
@@ -927,23 +932,13 @@ The following systems have data structures defined but no gameplay logic impleme
 - Tourism generation from wonders, national parks, great works
 - Culture victory: check if a civ's tourism exceeds every other civ's home culture
 
-### 8.8 — Road Placement
+### 8.8 — Road Placement ✅
 
-**Status:** `BuiltinRoad` and `RoadDef` trait defined. Road cost override active in Dijkstra. No action exists to place a road.
+**Status:** Complete. `RulesEngine::place_road()` validates builder unit, coord, land tile, ownership, tech requirements, and upgrade path (no downgrades). Emits `StateDelta::RoadPlaced`. Road maintenance is deducted in `advance_turn()` Phase 2c per civ.
 
-**Needed:**
-- `RulesEngine::place_road()` callable by builder units
-- Road upgrade path: Ancient → Medieval → Industrial → Railroad (tech-gated)
-- Road maintenance gold deduction in `advance_turn`
+### 8.9 — Builder Charges ✅
 
-### 8.9 — Builder Charges
-
-**Status:** Builder unit type exists. `place_improvement()` works but consumes no unit resource.
-
-**Needed:**
-- `charges: u8` field on `BasicUnit` (or `UnitTypeDef`)
-- Decrement charges on improvement placement; destroy unit at 0
-- Optionally: track charges in `StateDelta`
+**Status:** Complete. `BasicUnit.charges: Option<u8>` tracks remaining charges; `UnitTypeDef.max_charges: u8` sets initial value. Both `place_improvement()` (via optional `builder: Option<UnitId>` param) and `place_road()` call `decrement_builder_charges()` which emits `StateDelta::ChargesChanged` and destroys the unit (`StateDelta::UnitDestroyed`) at zero charges.
 
 ### 8.10 — Great People System
 

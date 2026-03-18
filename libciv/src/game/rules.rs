@@ -110,12 +110,30 @@ pub trait RulesEngine: std::fmt::Debug {
     /// Place an improvement on `coord`. Validates `valid_on()` for the tile's
     /// terrain/feature combination. Returns `InvalidImprovement` when the
     /// placement is illegal (water tile, wrong terrain, etc.).
+    ///
+    /// When `builder` is `Some(unit_id)`, the builder's charges are decremented
+    /// after successful placement. If charges reach 0, the builder is destroyed.
     fn place_improvement(
         &self,
         state: &mut GameState,
         civ_id: CivId,
         coord: HexCoord,
         improvement: crate::world::improvement::BuiltinImprovement,
+        builder: Option<UnitId>,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// Place a road on `coord` using a builder unit.
+    ///
+    /// Validation: builder must be at `coord` with charges remaining; tile must
+    /// be land and owned by the builder's civ; road tier cannot be a downgrade;
+    /// tech requirements must be met (Ancient = none, Medieval = Engineering,
+    /// Industrial = Steam Power, Railroad = Railroads).
+    fn place_road(
+        &self,
+        state: &mut GameState,
+        unit_id: UnitId,
+        coord: HexCoord,
+        road: crate::world::road::BuiltinRoad,
     ) -> Result<GameStateDiff, RulesError>;
 
     /// Place a district for `city_id` at `coord`.
@@ -292,6 +310,12 @@ pub enum RulesError {
     CityCannotAttack,
     /// City has already performed its bombardment this turn.
     CityAlreadyAttacked,
+    /// The unit is not a builder (has no charges).
+    NotABuilder,
+    /// The builder has no charges remaining.
+    NoChargesRemaining,
+    /// Cannot downgrade to a lower-tier road.
+    RoadDowngrade,
     /// The great person ID was not found in `state.great_people`.
     GreatPersonNotFound,
     /// The great person has already been retired.
@@ -345,6 +369,9 @@ impl std::fmt::Display for RulesError {
             RulesError::SameCity                      => write!(f, "origin and destination are the same city"),
             RulesError::CityCannotAttack              => write!(f, "city has no walls and cannot bombard"),
             RulesError::CityAlreadyAttacked           => write!(f, "city has already attacked this turn"),
+            RulesError::NotABuilder                   => write!(f, "unit is not a builder"),
+            RulesError::NoChargesRemaining            => write!(f, "builder has no charges remaining"),
+            RulesError::RoadDowngrade                 => write!(f, "cannot downgrade to a lower-tier road"),
             RulesError::GreatPersonNotFound            => write!(f, "great person not found"),
             RulesError::GreatPersonAlreadyRetired      => write!(f, "great person already retired"),
             RulesError::GreatPersonDefNotFound         => write!(f, "great person definition not found"),
@@ -358,6 +385,21 @@ impl std::error::Error for RulesError {}
 
 #[derive(Debug, Default)]
 pub struct DefaultRulesEngine;
+
+/// Decrement builder charges and destroy the unit if charges reach 0.
+fn decrement_builder_charges(state: &mut GameState, unit_id: UnitId, diff: &mut GameStateDiff) {
+    if let Some(unit) = state.unit_mut(unit_id)
+        && let Some(ref mut c) = unit.charges
+    {
+        *c = c.saturating_sub(1);
+        let remaining = *c;
+        diff.push(StateDelta::ChargesChanged { unit: unit_id, remaining });
+        if remaining == 0 {
+            diff.push(StateDelta::UnitDestroyed { unit: unit_id });
+            state.units.retain(|u| u.id != unit_id);
+        }
+    }
+}
 
 /// Claim a single tile for a city, emitting `TileClaimed` if the tile was unclaimed.
 /// Skips enemy-owned tiles silently (happens at map edge during founding near a rival).
@@ -842,6 +884,7 @@ impl RulesEngine for DefaultRulesEngine {
             combat_strength: Option<u32>,
             range:           u8,
             vision_range:    u8,
+            max_charges:     u8,
         }
 
         let unit_completions: Vec<UnitCompletion> = city_turn_data.iter().filter_map(|d| {
@@ -863,6 +906,7 @@ impl RulesEngine for DefaultRulesEngine {
                         combat_strength: def.combat_strength,
                         range:           def.range,
                         vision_range:    def.vision_range,
+                        max_charges:     def.max_charges,
                     })
                 } else {
                     None
@@ -895,6 +939,7 @@ impl RulesEngine for DefaultRulesEngine {
             state.cities[uc.city_idx].production_queue.pop_front();
 
             let unit_id = state.id_gen.next_unit_id();
+            let charges = if uc.max_charges > 0 { Some(uc.max_charges) } else { None };
             state.units.push(crate::civ::BasicUnit {
                 id:              unit_id,
                 unit_type:       uc.type_id,
@@ -909,6 +954,7 @@ impl RulesEngine for DefaultRulesEngine {
                 health:          100,
                 range:           uc.range,
                 vision_range:    uc.vision_range,
+                charges,
             });
             diff.push(StateDelta::UnitCreated { unit: unit_id, coord: uc.coord, owner: uc.civ_id });
             // TODO(PHASE3-4.3): Building, District, Wonder completion.
@@ -930,6 +976,29 @@ impl RulesEngine for DefaultRulesEngine {
             for route in state.trade_routes.iter_mut() {
                 if let Some(ref mut t) = route.turns_remaining {
                     *t = t.saturating_sub(1);
+                }
+            }
+        }
+
+        // ── Phase 2c: Road maintenance gold deduction ──────────────────────────
+        // For each civilization, sum maintenance costs of all road tiles they own
+        // and deduct from the civ's gold.
+        {
+            use std::collections::HashMap as RoadMap;
+            let mut road_costs: RoadMap<CivId, i32> = RoadMap::new();
+            for coord in state.board.all_coords() {
+                if let Some(tile) = state.board.tile(coord)
+                    && let (Some(owner), Some(road)) = (tile.owner, &tile.road)
+                {
+                    *road_costs.entry(owner).or_insert(0) += road.as_def().maintenance() as i32;
+                }
+            }
+            for (civ_id, cost) in road_costs {
+                if cost > 0
+                    && let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == civ_id)
+                {
+                    civ.gold -= cost;
+                    diff.push(StateDelta::GoldChanged { civ: civ_id, delta: -cost });
                 }
             }
         }
@@ -1851,12 +1920,27 @@ impl RulesEngine for DefaultRulesEngine {
         civ_id: CivId,
         coord: HexCoord,
         improvement: crate::world::improvement::BuiltinImprovement,
+        builder: Option<UnitId>,
     ) -> Result<GameStateDiff, RulesError> {
         use libhexgrid::HexTile;
         use crate::world::improvement::{ElevationReq, ProximityReq};
         use libhexgrid::types::Elevation;
 
         let coord = state.board.normalize(coord).ok_or(RulesError::InvalidCoord)?;
+
+        // Validate builder if provided.
+        if let Some(uid) = builder {
+            let unit = state.unit(uid).ok_or(RulesError::UnitNotFound)?;
+            if unit.charges.is_none() {
+                return Err(RulesError::NotABuilder);
+            }
+            if unit.charges == Some(0) {
+                return Err(RulesError::NoChargesRemaining);
+            }
+            if unit.coord != coord {
+                return Err(RulesError::InvalidCoord);
+            }
+        }
 
         let tile = state.board.tile(coord).ok_or(RulesError::InvalidCoord)?;
         let req  = improvement.requirements(&state.tech_refs, &state.civic_refs);
@@ -1958,6 +2042,79 @@ impl RulesEngine for DefaultRulesEngine {
 
         let mut diff = GameStateDiff::new();
         diff.push(StateDelta::ImprovementPlaced { coord, improvement });
+
+        // 15. Decrement builder charges if provided.
+        if let Some(uid) = builder {
+            decrement_builder_charges(state, uid, &mut diff);
+        }
+
+        Ok(diff)
+    }
+
+    fn place_road(
+        &self,
+        state: &mut GameState,
+        unit_id: UnitId,
+        coord: HexCoord,
+        road: crate::world::road::BuiltinRoad,
+    ) -> Result<GameStateDiff, RulesError> {
+        let coord = state.board.normalize(coord).ok_or(RulesError::InvalidCoord)?;
+
+        // 1. Validate builder unit.
+        let unit = state.unit(unit_id).ok_or(RulesError::UnitNotFound)?;
+        if unit.charges.is_none() {
+            return Err(RulesError::NotABuilder);
+        }
+        if unit.charges == Some(0) {
+            return Err(RulesError::NoChargesRemaining);
+        }
+        if unit.coord != coord {
+            return Err(RulesError::InvalidCoord);
+        }
+        let civ_id = unit.owner;
+
+        // 2. Tile must be land and owned by builder's civ.
+        let tile = state.board.tile(coord).ok_or(RulesError::InvalidCoord)?;
+        if !tile.terrain.is_land() {
+            return Err(RulesError::InvalidImprovement);
+        }
+        if tile.owner != Some(civ_id) {
+            return Err(RulesError::TileNotOwned);
+        }
+
+        // 3. No downgrades.
+        if let Some(existing) = &tile.road
+            && road.tier() <= existing.tier()
+        {
+            return Err(RulesError::RoadDowngrade);
+        }
+
+        // 4. Tech requirement.
+        if let Some(tech_name) = road.required_tech() {
+            let civ = state.civilizations.iter()
+                .find(|c| c.id == civ_id)
+                .ok_or(RulesError::CivNotFound)?;
+            let has_tech = civ.researched_techs.iter().any(|&tid| {
+                state.tech_tree.get(tid)
+                    .map(|node| node.name == tech_name)
+                    .unwrap_or(false)
+            });
+            if !has_tech {
+                return Err(RulesError::TechRequired);
+            }
+        }
+
+        // 5. Apply road.
+        if let Some(tile) = state.board.tile_mut(coord) {
+            tile.road = Some(road);
+        }
+
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::RoadPlaced { coord, road });
+
+        // 6. Decrement builder charges.
+        decrement_builder_charges(state, unit_id, &mut diff);
+
         Ok(diff)
     }
 
@@ -2398,6 +2555,7 @@ fn apply_effect(
                     health:          100,
                     range:           0,
                     vision_range:    2,
+                    charges:         if def.max_charges > 0 { Some(def.max_charges) } else { None },
                 });
                 diff.push(StateDelta::UnitCreated { unit: unit_id, coord, owner: civ_id });
             } else {
@@ -2683,6 +2841,7 @@ mod tests {
             health:         100,
             range:          0,
             vision_range:   2,
+            charges:        None,
         });
         unit_id
     }
@@ -3282,7 +3441,7 @@ mod tests {
             vision_range: 2,
             can_found_city: false,
             resource_cost: None,
-            siege_bonus: 0,
+            siege_bonus: 0, max_charges: 0,
         });
 
         let effect = OneShotEffect::FreeUnit { unit_type: "Warrior", city: None };
