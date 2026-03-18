@@ -84,6 +84,9 @@ pub struct City {
     /// expansion. Does NOT affect the civilization's culture pool (civic research).
     /// Increases each turn by this city's culture output; spent when a tile is claimed.
     pub culture_border: u32,
+    /// Whether this city has already performed its ranged bombardment this turn.
+    /// Reset to false at the start of each `advance_turn`.
+    pub has_attacked_this_turn: bool,
 }
 
 impl City {
@@ -110,6 +113,7 @@ impl City {
             locked_tiles: HashSet::new(),
             territory: HashSet::new(),
             culture_border: 0,
+            has_attacked_this_turn: false,
         }
     }
 

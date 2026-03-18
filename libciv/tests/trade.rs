@@ -27,6 +27,7 @@ fn spawn_trader(s: &mut common::Scenario, owner: CivId, coord: HexCoord) -> Unit
         vision_range: 2,
         can_found_city: false,
         resource_cost: None,
+        siege_bonus: 0,
     });
     let unit_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {

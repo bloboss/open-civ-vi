@@ -8,7 +8,8 @@ mod common;
 
 use libciv::{DefaultRulesEngine, RulesEngine, TechId, UnitCategory, UnitDomain};
 use libciv::civ::{BasicUnit, TechProgress};
-use libciv::game::{recalculate_visibility, StateDelta};
+use libciv::civ::city::WallLevel;
+use libciv::game::{recalculate_visibility, AttackType, RulesError, StateDelta};
 use libciv::rules::TechNode;
 use libciv::world::resource::BuiltinResource;
 use libhexgrid::board::HexBoard;
@@ -510,6 +511,7 @@ fn spawn_slinger(s: &mut common::Scenario, coord: HexCoord) -> libciv::UnitId {
         vision_range:    2,
         can_found_city:  false,
         resource_cost:   None,
+        siege_bonus:     0,
     });
     let unit_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
@@ -927,6 +929,7 @@ fn unit_production_blocked_without_resource() {
         vision_range:    2,
         can_found_city:  false,
         resource_cost:   Some((BuiltinResource::Iron, 1)),
+        siege_bonus:     0,
     });
 
     s.state.cities.iter_mut()
@@ -976,6 +979,7 @@ fn unit_production_consumes_strategic_resource() {
         vision_range:    2,
         can_found_city:  false,
         resource_cost:   Some((BuiltinResource::Iron, 1)),
+        siege_bonus:     0,
     });
 
     // Grant Rome 3 Iron.
@@ -1075,4 +1079,540 @@ fn strategic_resource_not_accumulated_without_improvement() {
         .find(|c| c.id == s.rome_id).unwrap()
         .strategic_resources.get(&BuiltinResource::Iron).unwrap_or(&0);
     assert_eq!(iron, 0, "Iron without improvement should not accumulate");
+}
+
+// ---------------------------------------------------------------------------
+// City Defenses -- wall defense bonus
+// ---------------------------------------------------------------------------
+
+/// When a defender stands on a city tile with walls, the wall defense bonus
+/// increases effective combat strength, reducing damage taken.
+#[test]
+fn wall_defense_bonus_reduces_damage_to_defender() {
+    // Run two attacks with the same seed setup: one without walls, one with.
+    // The defender on the walled city should take less damage.
+
+    fn run_attack_on_city(wall_level: WallLevel) -> u32 {
+        let mut s = common::build_scenario();
+        let rules = DefaultRulesEngine;
+
+        // Give Babylon's city the specified wall level.
+        let city = s.state.cities.iter_mut()
+            .find(|c| c.id == s.babylon_city).unwrap();
+        city.walls = wall_level;
+        city.wall_hp = wall_level.max_hp();
+
+        // Place an enemy unit on Babylon's city tile to defend it.
+        let defender_id = s.state.id_gen.next_unit_id();
+        let city_coord = HexCoord::from_qr(10, 5);
+        s.state.units.push(BasicUnit {
+            id:              defender_id,
+            unit_type:       s.warrior_type,
+            owner:           s.babylon_id,
+            coord:           city_coord,
+            domain:          UnitDomain::Land,
+            category:        UnitCategory::Combat,
+            movement_left:   200,
+            max_movement:    200,
+            combat_strength: Some(20),
+            promotions:      Vec::new(),
+            health:          100,
+            range:           0,
+            vision_range:    2,
+        });
+
+        // Place an attacker adjacent to the city.
+        let attacker_id = s.state.id_gen.next_unit_id();
+        let atk_coord = HexCoord::from_qr(11, 5);
+        s.state.units.push(BasicUnit {
+            id:              attacker_id,
+            unit_type:       s.warrior_type,
+            owner:           s.rome_id,
+            coord:           atk_coord,
+            domain:          UnitDomain::Land,
+            category:        UnitCategory::Combat,
+            movement_left:   200,
+            max_movement:    200,
+            combat_strength: Some(20),
+            promotions:      Vec::new(),
+            health:          100,
+            range:           0,
+            vision_range:    2,
+        });
+
+        let diff = rules.attack(&mut s.state, attacker_id, defender_id)
+            .expect("attack should succeed");
+
+        // Extract defender damage from the diff.
+        diff.deltas.iter().find_map(|d| {
+            if let StateDelta::UnitAttacked { defender_damage, .. } = d {
+                Some(*defender_damage)
+            } else {
+                None
+            }
+        }).expect("UnitAttacked delta expected")
+    }
+
+    let damage_no_walls   = run_attack_on_city(WallLevel::None);
+    let damage_with_walls = run_attack_on_city(WallLevel::Renaissance);
+
+    // Renaissance walls add +8 defense; defender should take strictly less damage.
+    assert!(
+        damage_with_walls < damage_no_walls,
+        "Renaissance walls should reduce defender damage: without={damage_no_walls}, with={damage_with_walls}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// City Defenses -- wall HP damage on melee attacks
+// ---------------------------------------------------------------------------
+
+/// A melee attack on a unit standing on a walled city deals splash damage
+/// to the city's wall HP and emits a `WallDamaged` delta.
+#[test]
+fn melee_attack_damages_city_walls() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Give Babylon's city Ancient walls (50 HP).
+    let city = s.state.cities.iter_mut()
+        .find(|c| c.id == s.babylon_city).unwrap();
+    city.walls = WallLevel::Ancient;
+    city.wall_hp = WallLevel::Ancient.max_hp();
+    let initial_wall_hp = city.wall_hp;
+
+    // Place a defender on the city tile.
+    let defender_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: defender_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        coord: HexCoord::from_qr(10, 5),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    // Place a melee attacker adjacent.
+    let attacker_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: attacker_id, unit_type: s.warrior_type, owner: s.rome_id,
+        coord: HexCoord::from_qr(11, 5),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    let diff = rules.attack(&mut s.state, attacker_id, defender_id)
+        .expect("attack should succeed");
+
+    // WallDamaged delta must be present.
+    let wall_damaged = diff.deltas.iter().find_map(|d| {
+        if let StateDelta::WallDamaged { city, damage, hp_remaining } = d {
+            Some((*city, *damage, *hp_remaining))
+        } else {
+            None
+        }
+    });
+    assert!(wall_damaged.is_some(), "WallDamaged delta expected after melee attack on walled city");
+    let (city_id, damage, hp_remaining) = wall_damaged.unwrap();
+    assert_eq!(city_id, s.babylon_city);
+    assert!(damage > 0, "wall should take non-zero damage");
+    assert!(hp_remaining < initial_wall_hp, "wall HP should decrease");
+
+    // Verify state was mutated.
+    let city = s.state.cities.iter().find(|c| c.id == s.babylon_city).unwrap();
+    assert_eq!(city.wall_hp, hp_remaining, "city.wall_hp should match delta");
+}
+
+/// When wall HP reaches zero from a melee attack, WallDestroyed is emitted
+/// and the wall level is set to None.
+#[test]
+fn wall_destruction_when_hp_reaches_zero() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Give Babylon's city Ancient walls with just 1 HP remaining.
+    let city = s.state.cities.iter_mut()
+        .find(|c| c.id == s.babylon_city).unwrap();
+    city.walls = WallLevel::Ancient;
+    city.wall_hp = 1;
+
+    // Defender on city tile.
+    let defender_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: defender_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        coord: HexCoord::from_qr(10, 5),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    // Strong attacker to ensure enough damage for wall_damage = def_damage/2 >= 1.
+    let attacker_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: attacker_id, unit_type: s.warrior_type, owner: s.rome_id,
+        coord: HexCoord::from_qr(11, 5),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(40), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    let diff = rules.attack(&mut s.state, attacker_id, defender_id)
+        .expect("attack should succeed");
+
+    // WallDestroyed delta must be present.
+    let wall_destroyed = diff.deltas.iter().find_map(|d| {
+        if let StateDelta::WallDestroyed { city, previous_level } = d {
+            Some((*city, *previous_level))
+        } else {
+            None
+        }
+    });
+    assert!(wall_destroyed.is_some(), "WallDestroyed delta expected when wall HP reaches 0");
+    let (city_id, prev) = wall_destroyed.unwrap();
+    assert_eq!(city_id, s.babylon_city);
+    assert_eq!(prev, WallLevel::Ancient);
+
+    // City should now have no walls.
+    let city = s.state.cities.iter().find(|c| c.id == s.babylon_city).unwrap();
+    assert_eq!(city.walls, WallLevel::None);
+    assert_eq!(city.wall_hp, 0);
+}
+
+/// Ranged attacks do NOT damage city walls (only melee does).
+#[test]
+fn ranged_attack_does_not_damage_walls() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Give Babylon's city Ancient walls.
+    let city = s.state.cities.iter_mut()
+        .find(|c| c.id == s.babylon_city).unwrap();
+    city.walls = WallLevel::Ancient;
+    city.wall_hp = WallLevel::Ancient.max_hp();
+    let initial_wall_hp = city.wall_hp;
+
+    // Defender on city tile.
+    let defender_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: defender_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        coord: HexCoord::from_qr(10, 5),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    // Ranged attacker within range 2.
+    let attacker_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: attacker_id, unit_type: s.warrior_type, owner: s.rome_id,
+        coord: HexCoord::from_qr(12, 5),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(25), promotions: Vec::new(),
+        health: 100, range: 2, vision_range: 2,
+    });
+
+    let diff = rules.attack(&mut s.state, attacker_id, defender_id)
+        .expect("attack should succeed");
+
+    // No WallDamaged delta for ranged attacks.
+    let has_wall_damaged = diff.deltas.iter().any(|d| {
+        matches!(d, StateDelta::WallDamaged { .. })
+    });
+    assert!(!has_wall_damaged, "ranged attacks should not damage city walls");
+
+    let city = s.state.cities.iter().find(|c| c.id == s.babylon_city).unwrap();
+    assert_eq!(city.wall_hp, initial_wall_hp, "wall HP should be unchanged after ranged attack");
+}
+
+// ---------------------------------------------------------------------------
+// City Defenses -- city bombardment
+// ---------------------------------------------------------------------------
+
+/// A city with walls can bombard an adjacent enemy unit, dealing damage
+/// with no counter-damage, using AttackType::CityBombard.
+#[test]
+fn city_bombard_deals_damage_no_counter() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Give Rome's city Ancient walls.
+    let city = s.state.cities.iter_mut()
+        .find(|c| c.id == s.rome_city).unwrap();
+    city.walls = WallLevel::Ancient;
+    city.wall_hp = WallLevel::Ancient.max_hp();
+
+    // Place an enemy unit adjacent to Rome's city (3,3) -> (4,3).
+    let target_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: target_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        coord: HexCoord::from_qr(4, 3),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    let diff = rules.city_bombard(&mut s.state, s.rome_city, target_id)
+        .expect("city_bombard should succeed");
+
+    // Must have UnitAttacked with CityBombard type.
+    let attacked = diff.deltas.iter().find_map(|d| {
+        if let StateDelta::UnitAttacked { attack_type, attacker_damage, defender_damage, .. } = d {
+            Some((*attack_type, *attacker_damage, *defender_damage))
+        } else {
+            None
+        }
+    }).expect("UnitAttacked delta expected");
+    assert_eq!(attacked.0, AttackType::CityBombard);
+    assert_eq!(attacked.1, 0, "city should take no counter-damage");
+    assert!(attacked.2 > 0, "target should take damage from bombardment");
+
+    // Target health should be reduced.
+    let target_hp = s.state.unit(target_id).map(|u| u.health).unwrap_or(0);
+    assert!(target_hp < 100, "target health should be reduced");
+}
+
+/// A city without walls cannot bombard -- returns CityCannotAttack.
+#[test]
+fn city_bombard_requires_walls() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Rome's city has WallLevel::None by default.
+    let target_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: target_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        coord: HexCoord::from_qr(4, 3),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    let result = rules.city_bombard(&mut s.state, s.rome_city, target_id);
+    assert!(matches!(result, Err(RulesError::CityCannotAttack)),
+        "city without walls should return CityCannotAttack, got: {result:?}");
+}
+
+/// City bombardment has range 2; targets at distance 3 are out of range.
+#[test]
+fn city_bombard_range_check() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    let city = s.state.cities.iter_mut()
+        .find(|c| c.id == s.rome_city).unwrap();
+    city.walls = WallLevel::Ancient;
+    city.wall_hp = WallLevel::Ancient.max_hp();
+
+    // Place target at distance 3 from Rome's city (3,3) -> (6,3).
+    let target_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: target_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        coord: HexCoord::from_qr(6, 3),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    let result = rules.city_bombard(&mut s.state, s.rome_city, target_id);
+    assert!(matches!(result, Err(RulesError::NotInRange)),
+        "target at distance 3 should be out of range, got: {result:?}");
+}
+
+/// A city can only bombard once per turn; second attempt returns
+/// CityAlreadyAttacked, and the flag resets after advance_turn.
+#[test]
+fn city_bombard_once_per_turn_resets_after_advance() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    let city = s.state.cities.iter_mut()
+        .find(|c| c.id == s.rome_city).unwrap();
+    city.walls = WallLevel::Ancient;
+    city.wall_hp = WallLevel::Ancient.max_hp();
+
+    // Place two enemy units adjacent to Rome's city.
+    let target1 = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: target1, unit_type: s.warrior_type, owner: s.babylon_id,
+        coord: HexCoord::from_qr(4, 3),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+    let target2 = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: target2, unit_type: s.warrior_type, owner: s.babylon_id,
+        coord: HexCoord::from_qr(2, 3),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    // First bombardment succeeds.
+    rules.city_bombard(&mut s.state, s.rome_city, target1)
+        .expect("first bombardment should succeed");
+
+    // Second bombardment same turn fails.
+    let result = rules.city_bombard(&mut s.state, s.rome_city, target2);
+    assert!(matches!(result, Err(RulesError::CityAlreadyAttacked)),
+        "second bombardment same turn should fail, got: {result:?}");
+
+    // After advance_turn, the flag resets and bombardment works again.
+    common::advance_turn(&mut s);
+    let result2 = rules.city_bombard(&mut s.state, s.rome_city, target2);
+    assert!(result2.is_ok(), "bombardment should succeed after advance_turn resets the flag");
+}
+
+// ---------------------------------------------------------------------------
+// City Defenses -- siege unit bonus
+// ---------------------------------------------------------------------------
+
+/// A siege unit gets bonus attack strength when attacking a unit on a city tile.
+#[test]
+fn siege_unit_bonus_applies_on_city_tile() {
+    use libciv::game::state::UnitTypeDef;
+
+    // Run two attacks: one with siege_bonus, one without. Same base strength.
+    fn run_attack(siege_bonus: u32) -> u32 {
+        let mut s = common::build_scenario();
+        let rules = DefaultRulesEngine;
+
+        // Register a ranged unit type with the specified siege_bonus.
+        let catapult_type = libciv::UnitTypeId::from_ulid(s.state.id_gen.next_ulid());
+        s.state.unit_type_defs.push(UnitTypeDef {
+            id:              catapult_type,
+            name:            "catapult",
+            production_cost: 120,
+            domain:          UnitDomain::Land,
+            category:        UnitCategory::Combat,
+            max_movement:    200,
+            combat_strength: Some(20),
+            range:           2,
+            vision_range:    2,
+            can_found_city:  false,
+            resource_cost:   None,
+            siege_bonus,
+        });
+
+        // Defender on Babylon's city tile (10, 5).
+        let defender_id = s.state.id_gen.next_unit_id();
+        s.state.units.push(BasicUnit {
+            id: defender_id, unit_type: s.warrior_type, owner: s.babylon_id,
+            coord: HexCoord::from_qr(10, 5),
+            domain: UnitDomain::Land, category: UnitCategory::Combat,
+            movement_left: 200, max_movement: 200,
+            combat_strength: Some(20), promotions: Vec::new(),
+            health: 100, range: 0, vision_range: 2,
+        });
+
+        // Attacker within range 2 of the city.
+        let attacker_id = s.state.id_gen.next_unit_id();
+        s.state.units.push(BasicUnit {
+            id: attacker_id, unit_type: catapult_type, owner: s.rome_id,
+            coord: HexCoord::from_qr(12, 5),
+            domain: UnitDomain::Land, category: UnitCategory::Combat,
+            movement_left: 200, max_movement: 200,
+            combat_strength: Some(20), promotions: Vec::new(),
+            health: 100, range: 2, vision_range: 2,
+        });
+
+        let diff = rules.attack(&mut s.state, attacker_id, defender_id)
+            .expect("attack should succeed");
+
+        diff.deltas.iter().find_map(|d| {
+            if let StateDelta::UnitAttacked { defender_damage, .. } = d {
+                Some(*defender_damage)
+            } else {
+                None
+            }
+        }).expect("UnitAttacked delta expected")
+    }
+
+    let damage_no_siege   = run_attack(0);
+    let damage_with_siege = run_attack(10);
+
+    assert!(
+        damage_with_siege > damage_no_siege,
+        "siege bonus should increase damage on city tile: without={damage_no_siege}, with={damage_with_siege}"
+    );
+}
+
+/// Siege bonus does NOT apply when the defender is not on a city tile.
+#[test]
+fn siege_bonus_not_applied_in_open_field() {
+    use libciv::game::state::UnitTypeDef;
+
+    fn run_attack_open_field(siege_bonus: u32) -> u32 {
+        let mut s = common::build_scenario();
+        let rules = DefaultRulesEngine;
+
+        let catapult_type = libciv::UnitTypeId::from_ulid(s.state.id_gen.next_ulid());
+        s.state.unit_type_defs.push(UnitTypeDef {
+            id:              catapult_type,
+            name:            "catapult",
+            production_cost: 120,
+            domain:          UnitDomain::Land,
+            category:        UnitCategory::Combat,
+            max_movement:    200,
+            combat_strength: Some(20),
+            range:           2,
+            vision_range:    2,
+            can_found_city:  false,
+            resource_cost:   None,
+            siege_bonus,
+        });
+
+        // Defender in open field (not on a city tile).
+        let defender_id = s.state.id_gen.next_unit_id();
+        s.state.units.push(BasicUnit {
+            id: defender_id, unit_type: s.warrior_type, owner: s.babylon_id,
+            coord: HexCoord::from_qr(7, 4),
+            domain: UnitDomain::Land, category: UnitCategory::Combat,
+            movement_left: 200, max_movement: 200,
+            combat_strength: Some(20), promotions: Vec::new(),
+            health: 100, range: 0, vision_range: 2,
+        });
+
+        // Ranged attacker within range 2.
+        let attacker_id = s.state.id_gen.next_unit_id();
+        s.state.units.push(BasicUnit {
+            id: attacker_id, unit_type: catapult_type, owner: s.rome_id,
+            coord: HexCoord::from_qr(9, 4),
+            domain: UnitDomain::Land, category: UnitCategory::Combat,
+            movement_left: 200, max_movement: 200,
+            combat_strength: Some(20), promotions: Vec::new(),
+            health: 100, range: 2, vision_range: 2,
+        });
+
+        let diff = rules.attack(&mut s.state, attacker_id, defender_id)
+            .expect("attack should succeed");
+
+        diff.deltas.iter().find_map(|d| {
+            if let StateDelta::UnitAttacked { defender_damage, .. } = d {
+                Some(*defender_damage)
+            } else {
+                None
+            }
+        }).expect("UnitAttacked delta expected")
+    }
+
+    let damage_no_siege   = run_attack_open_field(0);
+    let damage_with_siege = run_attack_open_field(10);
+
+    // In open field, siege bonus should NOT apply -- damage should be equal.
+    assert_eq!(
+        damage_no_siege, damage_with_siege,
+        "siege bonus should not apply in open field: without={damage_no_siege}, with={damage_with_siege}"
+    );
 }

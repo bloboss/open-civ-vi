@@ -1,17 +1,18 @@
 use crate::{CivId, CityId, PolicyId, TradeRouteId, UnitId};
 use crate::civ::DiplomaticStatus;
+use crate::civ::city::WallLevel;
 use crate::civ::district::BuiltinDistrict;
 use crate::world::improvement::BuiltinImprovement;
 use crate::world::resource::BuiltinResource;
 use libhexgrid::coord::HexCoord;
 
 /// Distinguishes how a combat event was initiated.
-/// `CityAssault` is a stub for future work (attacking city walls / HP directly).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AttackType {
     Melee,
     Ranged,
-    // TODO(PHASE3-8.1): CityAssault -- siege / wall damage; stub
+    /// A city with walls fires a ranged attack at a nearby enemy unit.
+    CityBombard,
 }
 
 /// A single atomic change to the game state.
@@ -95,6 +96,12 @@ pub enum StateDelta {
     },
     /// A trade route has expired (turns_remaining reached 0) or was cancelled.
     TradeRouteExpired { route: TradeRouteId },
+
+    // ── City defense (PHASE3-8.3) ──────────────────────────────────────────────
+    /// City walls took damage from a melee attack.
+    WallDamaged { city: CityId, damage: u32, hp_remaining: u32 },
+    /// City walls were destroyed (HP reached 0); walls breached.
+    WallDestroyed { city: CityId, previous_level: WallLevel },
 
     // ── TODO(PHASE3-8.8): Era advancement ────────────────────────────────────
     // EraAdvanced { civ: CivId, new_era: crate::AgeType },

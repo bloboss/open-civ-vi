@@ -162,23 +162,23 @@ fn build_session() -> Session {
         UnitTypeDef { id: warrior_type_id, name: "warrior", production_cost: 40,
                       max_movement: 200, combat_strength: Some(20),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0 },
         UnitTypeDef { id: settler_type_id, name: "settler", production_cost: 80,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: true, resource_cost: None },
+                      range: 0, vision_range: 2, can_found_city: true, resource_cost: None, siege_bonus: 0 },
         UnitTypeDef { id: builder_type_id, name: "builder", production_cost: 50,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0 },
         UnitTypeDef { id: slinger_type_id, name: "slinger", production_cost: 35,
                       max_movement: 200, combat_strength: Some(10),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 2, vision_range: 2, can_found_city: false, resource_cost: None },
+                      range: 2, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0 },
         UnitTypeDef { id: trader_type_id, name: "trader", production_cost: 40,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Trader,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0 },
     ]);
 
     // Starting Warrior (co-located with capital for simplicity).
@@ -368,15 +368,15 @@ fn build_ai_demo(seed: u64) -> AiDemo {
         UnitTypeDef { id: warrior_type, name: "warrior", production_cost: 40,
                       max_movement: 200, combat_strength: Some(20),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0 },
         UnitTypeDef { id: settler_type, name: "settler", production_cost: 80,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: true, resource_cost: None },
+                      range: 0, vision_range: 2, can_found_city: true, resource_cost: None, siege_bonus: 0 },
         UnitTypeDef { id: slinger_type, name: "slinger", production_cost: 35,
                       max_movement: 200, combat_strength: Some(10),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 2, vision_range: 2, can_found_city: false, resource_cost: None },
+                      range: 2, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0 },
     ]);
 
     // ── Rome (west side) ──────────────────────────────────────────────────
@@ -828,8 +828,9 @@ fn run_play() {
                                                         attacker_damage, defender_damage, attack_type, ..
                                                     } => {
                                                         let type_str = match attack_type {
-                                                            AttackType::Melee  => "Melee",
-                                                            AttackType::Ranged => "Ranged",
+                                                            AttackType::Melee       => "Melee",
+                                                            AttackType::Ranged      => "Ranged",
+                                                            AttackType::CityBombard => "CityBombard",
                                                         };
                                                         println!("  [{type_str}] dealt {defender_damage} dmg, took {attacker_damage} dmg");
                                                     }
@@ -1885,8 +1886,9 @@ fn print_turn_events(diff: &GameStateDiff) {
             }
             StateDelta::UnitAttacked { attacker_damage, defender_damage, attack_type, .. } => {
                 let type_str = match attack_type {
-                    AttackType::Melee  => "Melee",
-                    AttackType::Ranged => "Ranged",
+                    AttackType::Melee       => "Melee",
+                    AttackType::Ranged      => "Ranged",
+                    AttackType::CityBombard => "CityBombard",
                 };
                 println!("  [{type_str}] attacker -{attacker_damage}, defender -{defender_damage}");
                 any = true;
