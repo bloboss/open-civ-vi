@@ -37,6 +37,9 @@ pub struct UnitTypeDef {
     /// Strategic resource consumed from the civilization's stockpile when this
     /// unit completes production. `None` means no resource cost.
     pub resource_cost:   Option<(crate::world::resource::BuiltinResource, u32)>,
+    /// Extra combat strength added when this unit attacks a unit on a city tile.
+    /// 0 for non-siege units.
+    pub siege_bonus:     u32,
 }
 
 /// Static descriptor for a building type; stored in `GameState.building_defs`.

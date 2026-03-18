@@ -10,6 +10,12 @@ macro_rules! define_id {
                 Self(ulid)
             }
 
+            /// A sentinel value (all-zero ULID). Used when an ID slot must be
+            /// filled but no real entity exists (e.g. city bombardment attacker).
+            pub fn nil() -> Self {
+                Self(Ulid::nil())
+            }
+
             pub fn as_ulid(&self) -> Ulid {
                 self.0
             }

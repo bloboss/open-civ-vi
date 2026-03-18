@@ -176,6 +176,19 @@ pub trait RulesEngine: std::fmt::Debug {
         destination: CityId,
     ) -> Result<GameStateDiff, RulesError>;
 
+    /// City with walls fires a ranged bombardment at an enemy unit within range 2.
+    ///
+    /// Requires `WallLevel != None`. Each city may fire once per turn
+    /// (`has_attacked_this_turn`). City bombardments deal damage using the
+    /// standard exponential formula; no counter-damage is taken. City ranged
+    /// strength = 15 + wall_defense_bonus.
+    fn city_bombard(
+        &self,
+        state: &mut GameState,
+        city_id: CityId,
+        target: UnitId,
+    ) -> Result<GameStateDiff, RulesError>;
+
     // TODO(PHASE3-BORDERS): fn purchase_tile(&self, state: &mut GameState, city_id: CityId,
     //   coord: HexCoord) -> Result<GameStateDiff, RulesError>;
     //   Spends gold (or culture) from the civilization's treasury to immediately claim a tile
@@ -263,6 +276,10 @@ pub enum RulesError {
     NoOriginCity,
     /// The origin and destination cities are the same.
     SameCity,
+    /// City has no walls and cannot perform a ranged bombardment.
+    CityCannotAttack,
+    /// City has already performed its bombardment this turn.
+    CityAlreadyAttacked,
 }
 
 impl std::fmt::Display for RulesError {
@@ -308,6 +325,8 @@ impl std::fmt::Display for RulesError {
             RulesError::NotATrader                    => write!(f, "unit is not a trader"),
             RulesError::NoOriginCity                  => write!(f, "trader is not located at a city owned by this civilization"),
             RulesError::SameCity                      => write!(f, "origin and destination are the same city"),
+            RulesError::CityCannotAttack              => write!(f, "city has no walls and cannot bombard"),
+            RulesError::CityAlreadyAttacked           => write!(f, "city has already attacked this turn"),
         }
     }
 }
@@ -530,6 +549,11 @@ impl RulesEngine for DefaultRulesEngine {
 
     fn advance_turn(&self, state: &mut GameState) -> GameStateDiff {
         let mut diff = GameStateDiff::new();
+
+        // ── Reset per-turn city bombardment flag ─────────────────────────────
+        for city in &mut state.cities {
+            city.has_attacked_this_turn = false;
+        }
 
         // ── Per-city food accumulation and population growth ──────────────────
         // Collect food from worked_tiles (immutable board borrow), then mutate cities.
@@ -1185,9 +1209,9 @@ impl RulesEngine for DefaultRulesEngine {
         defender_id: UnitId,
     ) -> Result<GameStateDiff, RulesError> {
         // --- validation -------------------------------------------------------
-        let (atk_coord, atk_range, atk_cs, atk_owner) = {
+        let (atk_coord, atk_range, atk_cs, atk_owner, atk_unit_type) = {
             let u = state.unit(attacker_id).ok_or(RulesError::UnitNotFound)?;
-            (u.coord, u.range, u.combat_strength, u.owner)
+            (u.coord, u.range, u.combat_strength, u.owner, u.unit_type)
         };
         let atk_cs = atk_cs.ok_or(RulesError::UnitCannotAttack)?;
 
@@ -1217,12 +1241,30 @@ impl RulesEngine for DefaultRulesEngine {
             .tile(def_coord)
             .map(|t| t.terrain_defense_bonus())
             .unwrap_or(0);
-        let effective_def_cs = (def_cs as i32 + terrain_def_bonus).max(1) as u32;
+        // Wall defense bonus: if the defender is on a city tile with walls,
+        // the wall's defense_bonus is added to effective combat strength.
+        let wall_def_bonus = state.cities.iter()
+            .find(|c| c.coord == def_coord)
+            .map(|c| c.walls.defense_bonus())
+            .unwrap_or(0);
+        let effective_def_cs = (def_cs as i32 + terrain_def_bonus + wall_def_bonus).max(1) as u32;
+
+        // Siege bonus: extra attack strength when attacking a unit on a city tile.
+        let is_city_tile = state.cities.iter().any(|c| c.coord == def_coord);
+        let siege_bonus = if is_city_tile {
+            state.unit_type_defs.iter()
+                .find(|d| d.id == atk_unit_type)
+                .map(|d| d.siege_bonus)
+                .unwrap_or(0)
+        } else {
+            0
+        };
+        let effective_atk_cs = atk_cs + siege_bonus;
 
         // Formula: 30 * exp((cs_atk - cs_def_effective) / 25) * rng[0.75, 1.25]
         let rng_a = 0.75 + state.id_gen.next_f32() * 0.5;
         let def_damage = (30.0_f32
-            * f32::exp((atk_cs as f32 - effective_def_cs as f32) / 25.0)
+            * f32::exp((effective_atk_cs as f32 - effective_def_cs as f32) / 25.0)
             * rng_a) as u32;
 
         let (attack_type, atk_damage) = if atk_range == 0 {
@@ -1260,6 +1302,82 @@ impl RulesEngine for DefaultRulesEngine {
             }
         }
         state.units.retain(|u| u.health > 0);
+
+        // --- wall damage on melee attacks against city tiles ─────────────────
+        if attack_type == AttackType::Melee
+            && let Some(city_idx) = state.cities.iter().position(|c| c.coord == def_coord)
+        {
+            let city = &state.cities[city_idx];
+            if city.walls != crate::civ::city::WallLevel::None && city.wall_hp > 0 {
+                let wall_damage = def_damage / 2;
+                if wall_damage > 0 {
+                    let city = &mut state.cities[city_idx];
+                    city.wall_hp = city.wall_hp.saturating_sub(wall_damage);
+                    let hp_remaining = city.wall_hp;
+                    diff.push(StateDelta::WallDamaged {
+                        city: city.id,
+                        damage: wall_damage,
+                        hp_remaining,
+                    });
+                    if hp_remaining == 0 {
+                        let previous_level = city.walls;
+                        city.walls = crate::civ::city::WallLevel::None;
+                        diff.push(StateDelta::WallDestroyed {
+                            city: city.id,
+                            previous_level,
+                        });
+                    }
+                }
+            }
+        }
+
+        // --- city capture on melee kill ───────────────────────────────────────
+        // When a melee attacker kills a unit on an enemy city tile the city is
+        // captured immediately.  Any other old-owner units still on the tile
+        // (garrisoned units that cannot escape) are also destroyed.
+        // If the attacked unit survived (no kill) no capture occurs.
+        let defender_was_killed = !state.units.iter().any(|u| u.id() == defender_id);
+        if attack_type == AttackType::Melee
+            && defender_was_killed
+            && let Some(city_idx) = state.cities.iter().position(|c| c.coord == def_coord)
+        {
+            let old_owner = state.cities[city_idx].owner;
+            if old_owner != atk_owner {
+                    // Destroy any old-owner units still garrisoned on the tile.
+                    let garrison: Vec<UnitId> = state.units.iter()
+                        .filter(|u| u.owner == old_owner && u.coord == def_coord)
+                        .map(|u| u.id())
+                        .collect();
+                    for uid in &garrison {
+                        diff.push(StateDelta::UnitDestroyed { unit: *uid });
+                    }
+                    state.units.retain(|u| !(u.owner == old_owner && u.coord == def_coord));
+
+                    // Transfer city ownership.
+                    let city = &mut state.cities[city_idx];
+                    city.owner     = atk_owner;
+                    city.ownership = crate::civ::city::CityOwnership::Occupied;
+                    let city_id    = city.id;
+                    diff.push(StateDelta::CityCaptured {
+                        city:      city_id,
+                        new_owner: atk_owner,
+                        old_owner,
+                    });
+
+                    // Update civilization city lists.
+                    if let Some(old_civ) = state.civilizations.iter_mut()
+                        .find(|c| c.id == old_owner)
+                    {
+                        old_civ.cities.retain(|&id| id != city_id);
+                    }
+                    if let Some(new_civ) = state.civilizations.iter_mut()
+                        .find(|c| c.id == atk_owner)
+                    {
+                        new_civ.cities.push(city_id);
+                    }
+                }
+        }
+
         if let Some(u) = state.unit_mut(attacker_id) {
             u.movement_left = 0;
         }
@@ -1682,6 +1800,70 @@ impl RulesEngine for DefaultRulesEngine {
             destination,
             owner: unit_owner,
         });
+        Ok(diff)
+    }
+
+    fn city_bombard(
+        &self,
+        state: &mut GameState,
+        city_id: CityId,
+        target:  UnitId,
+    ) -> Result<GameStateDiff, RulesError> {
+        // 1. Validate city exists and has walls.
+        let city_idx = state.cities.iter().position(|c| c.id == city_id)
+            .ok_or(RulesError::CityNotFound)?;
+        let city = &state.cities[city_idx];
+        if city.walls == crate::civ::city::WallLevel::None {
+            return Err(RulesError::CityCannotAttack);
+        }
+        if city.has_attacked_this_turn {
+            return Err(RulesError::CityAlreadyAttacked);
+        }
+        let city_coord = city.coord;
+        let city_owner = city.owner;
+
+        // City ranged strength = 15 + wall defense bonus.
+        let city_cs = 15_u32 + city.walls.defense_bonus() as u32;
+
+        // 2. Validate target unit exists, is an enemy, and is within range 2.
+        let (def_coord, def_cs) = {
+            let u = state.unit(target).ok_or(RulesError::UnitNotFound)?;
+            if u.owner == city_owner {
+                return Err(RulesError::SameCivilization);
+            }
+            (u.coord, u.combat_strength.unwrap_or(0))
+        };
+        let dist = city_coord.distance(&def_coord);
+        if dist > 2 || dist == 0 {
+            return Err(RulesError::NotInRange);
+        }
+
+        // 3. Damage formula (same exponential; no terrain bonus for city offense).
+        let rng = 0.75 + state.id_gen.next_f32() * 0.5;
+        let damage = (30.0_f32
+            * f32::exp((city_cs as f32 - def_cs as f32) / 25.0)
+            * rng) as u32;
+
+        // 4. Apply damage to target; no counter-damage to city.
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::UnitAttacked {
+            attacker:        UnitId::nil(),
+            defender:        target,
+            attack_type:     AttackType::CityBombard,
+            attacker_damage: 0,
+            defender_damage: damage,
+        });
+        if let Some(u) = state.unit_mut(target) {
+            u.health = u.health.saturating_sub(damage);
+            if u.health == 0 {
+                diff.push(StateDelta::UnitDestroyed { unit: target });
+            }
+        }
+        state.units.retain(|u| u.health > 0);
+
+        // 5. Mark city as having attacked this turn.
+        state.cities[city_idx].has_attacked_this_turn = true;
+
         Ok(diff)
     }
 }
@@ -2667,6 +2849,7 @@ mod tests {
             vision_range: 2,
             can_found_city: false,
             resource_cost: None,
+            siege_bonus: 0,
         });
 
         let effect = OneShotEffect::FreeUnit { unit_type: "Warrior", city: None };
