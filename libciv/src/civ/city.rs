@@ -87,6 +87,11 @@ pub struct City {
     /// Whether this city has already performed its ranged bombardment this turn.
     /// Reset to false at the start of each `advance_turn`.
     pub has_attacked_this_turn: bool,
+    /// Per-city loyalty score. Range 0–100. Cities at 0 loyalty revolt and
+    /// may flip to the civilization exerting the most loyalty pressure, or
+    /// become a Free City (independent). Starts at 100 for normally founded
+    /// cities; Occupied cities start at 50.
+    pub loyalty: i32,
 }
 
 impl City {
@@ -114,6 +119,7 @@ impl City {
             territory: HashSet::new(),
             culture_border: 0,
             has_attacked_this_turn: false,
+            loyalty: 100,
         }
     }
 

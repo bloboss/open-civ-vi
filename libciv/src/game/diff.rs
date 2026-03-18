@@ -103,6 +103,20 @@ pub enum StateDelta {
     /// City walls were destroyed (HP reached 0); walls breached.
     WallDestroyed { city: CityId, previous_level: WallLevel },
 
+    // ── Tourism (PHASE3-8.6) ──────────────────────────────────────────────────
+    /// Emitted each turn when a civ generates tourism. Records total tourism
+    /// output and how much lifetime culture was accumulated this turn.
+    TourismGenerated { civ: CivId, tourism: u32, lifetime_culture: u32 },
+    // ── Loyalty system (PHASE3-8.6) ──────────────────────────────────────────
+    /// A city's loyalty score changed during the turn. `delta` is the net
+    /// change (positive = towards owner, negative = away); `new_value` is
+    /// the clamped result in 0–100.
+    LoyaltyChanged { city: CityId, delta: i32, new_value: i32 },
+    /// A city revolted due to loyalty reaching 0. If `new_owner` is `Some`,
+    /// the city flipped to the civilization exerting the highest loyalty
+    /// pressure. If `None`, the city became a Free City (independent).
+    CityRevolted { city: CityId, new_owner: Option<CivId>, old_owner: CivId },
+
     // ── TODO(PHASE3-8.8): Era advancement ────────────────────────────────────
     // EraAdvanced { civ: CivId, new_era: crate::AgeType },
 

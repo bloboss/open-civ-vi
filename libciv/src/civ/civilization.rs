@@ -97,6 +97,15 @@ pub struct Civilization {
     /// Improvement types unlocked for builders of this civ.
     pub unlocked_improvements: Vec<&'static str>,
 
+    // ── Tourism & culture tracking ──────────────────────────────────────────
+    /// Total culture accumulated over the lifetime of this civilization.
+    /// Used to compute domestic tourists (defense against culture victory).
+    pub lifetime_culture: u32,
+    /// Per-target-civ accumulated tourism. Key = target civ, value = total
+    /// tourism pressure applied so far. Culture victory is achieved when
+    /// `tourism_accumulated[B] >= B.lifetime_culture` for every other civ B.
+    pub tourism_accumulated: HashMap<CivId, u32>,
+
     // ── Fog of war ────────────────────────────────────────────────────────────
     /// Tiles currently within this civ's vision this turn.
     /// Cleared and rebuilt by `recalculate_visibility` after every unit move
@@ -133,6 +142,8 @@ impl Civilization {
             unlocked_units: Vec::new(),
             unlocked_buildings: Vec::new(),
             unlocked_improvements: Vec::new(),
+            lifetime_culture: 0,
+            tourism_accumulated: HashMap::new(),
             visible_tiles:  HashSet::new(),
             explored_tiles: HashSet::new(),
         }
