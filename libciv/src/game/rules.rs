@@ -189,6 +189,18 @@ pub trait RulesEngine: std::fmt::Debug {
         target: UnitId,
     ) -> Result<GameStateDiff, RulesError>;
 
+    /// Retire (consume) a great person, applying its one-time ability.
+    ///
+    /// The great person must exist, not already be retired, and be owned by a civ.
+    /// On success the great person is marked retired, its corresponding unit is
+    /// removed, and the retire effect is applied (combat modifier, production
+    /// burst, or gold grant).
+    fn retire_great_person(
+        &self,
+        state: &mut GameState,
+        great_person_id: crate::GreatPersonId,
+    ) -> Result<GameStateDiff, RulesError>;
+
     // TODO(PHASE3-BORDERS): fn purchase_tile(&self, state: &mut GameState, city_id: CityId,
     //   coord: HexCoord) -> Result<GameStateDiff, RulesError>;
     //   Spends gold (or culture) from the civilization's treasury to immediately claim a tile
@@ -280,6 +292,12 @@ pub enum RulesError {
     CityCannotAttack,
     /// City has already performed its bombardment this turn.
     CityAlreadyAttacked,
+    /// The great person ID was not found in `state.great_people`.
+    GreatPersonNotFound,
+    /// The great person has already been retired.
+    GreatPersonAlreadyRetired,
+    /// No great person definition found matching this great person's name.
+    GreatPersonDefNotFound,
 }
 
 impl std::fmt::Display for RulesError {
@@ -327,6 +345,9 @@ impl std::fmt::Display for RulesError {
             RulesError::SameCity                      => write!(f, "origin and destination are the same city"),
             RulesError::CityCannotAttack              => write!(f, "city has no walls and cannot bombard"),
             RulesError::CityAlreadyAttacked           => write!(f, "city has already attacked this turn"),
+            RulesError::GreatPersonNotFound            => write!(f, "great person not found"),
+            RulesError::GreatPersonAlreadyRetired      => write!(f, "great person already retired"),
+            RulesError::GreatPersonDefNotFound         => write!(f, "great person definition not found"),
         }
     }
 }
@@ -2157,6 +2178,14 @@ impl RulesEngine for DefaultRulesEngine {
         state.cities[city_idx].has_attacked_this_turn = true;
 
         Ok(diff)
+    }
+
+    fn retire_great_person(
+        &self,
+        state: &mut GameState,
+        great_person_id: crate::GreatPersonId,
+    ) -> Result<GameStateDiff, RulesError> {
+        todo!("retire_great_person: implement great person retirement logic")
     }
 }
 
