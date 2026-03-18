@@ -103,6 +103,11 @@ pub enum StateDelta {
     /// City walls were destroyed (HP reached 0); walls breached.
     WallDestroyed { city: CityId, previous_level: WallLevel },
 
+    // ── Tourism (PHASE3-8.6) ──────────────────────────────────────────────────
+    /// Emitted each turn when a civ generates tourism. Records total tourism
+    /// output and how much lifetime culture was accumulated this turn.
+    TourismGenerated { civ: CivId, tourism: u32, lifetime_culture: u32 },
+
     // ── TODO(PHASE3-8.8): Era advancement ────────────────────────────────────
     // EraAdvanced { civ: CivId, new_era: crate::AgeType },
 

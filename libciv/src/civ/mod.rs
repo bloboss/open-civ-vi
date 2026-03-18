@@ -8,6 +8,7 @@ pub mod governor;
 pub mod great_people;
 pub mod grievance;
 pub mod religion;
+pub mod tourism;
 pub mod trade;
 pub mod unit;
 
@@ -24,5 +25,6 @@ pub use era::{Era, EraTrigger};
 pub use governor::{Governor, GovernorDef, GovernorPromotion};
 pub use great_people::{GreatPerson, GreatPersonAbility};
 pub use religion::{Belief, BeliefContext, Religion};
+pub use tourism::{WonderTourism, compute_tourism, domestic_tourists, has_cultural_dominance};
 pub use trade::TradeRoute;
 pub use unit::{BasicUnit, Unit};
