@@ -1331,6 +1331,53 @@ impl RulesEngine for DefaultRulesEngine {
             }
         }
 
+        // --- city capture on melee kill ───────────────────────────────────────
+        // When a melee attacker kills a unit on an enemy city tile the city is
+        // captured immediately.  Any other old-owner units still on the tile
+        // (garrisoned units that cannot escape) are also destroyed.
+        // If the attacked unit survived (no kill) no capture occurs.
+        let defender_was_killed = !state.units.iter().any(|u| u.id() == defender_id);
+        if attack_type == AttackType::Melee
+            && defender_was_killed
+            && let Some(city_idx) = state.cities.iter().position(|c| c.coord == def_coord)
+        {
+            let old_owner = state.cities[city_idx].owner;
+            if old_owner != atk_owner {
+                    // Destroy any old-owner units still garrisoned on the tile.
+                    let garrison: Vec<UnitId> = state.units.iter()
+                        .filter(|u| u.owner == old_owner && u.coord == def_coord)
+                        .map(|u| u.id())
+                        .collect();
+                    for uid in &garrison {
+                        diff.push(StateDelta::UnitDestroyed { unit: *uid });
+                    }
+                    state.units.retain(|u| !(u.owner == old_owner && u.coord == def_coord));
+
+                    // Transfer city ownership.
+                    let city = &mut state.cities[city_idx];
+                    city.owner     = atk_owner;
+                    city.ownership = crate::civ::city::CityOwnership::Occupied;
+                    let city_id    = city.id;
+                    diff.push(StateDelta::CityCaptured {
+                        city:      city_id,
+                        new_owner: atk_owner,
+                        old_owner,
+                    });
+
+                    // Update civilization city lists.
+                    if let Some(old_civ) = state.civilizations.iter_mut()
+                        .find(|c| c.id == old_owner)
+                    {
+                        old_civ.cities.retain(|&id| id != city_id);
+                    }
+                    if let Some(new_civ) = state.civilizations.iter_mut()
+                        .find(|c| c.id == atk_owner)
+                    {
+                        new_civ.cities.push(city_id);
+                    }
+                }
+        }
+
         if let Some(u) = state.unit_mut(attacker_id) {
             u.movement_left = 0;
         }

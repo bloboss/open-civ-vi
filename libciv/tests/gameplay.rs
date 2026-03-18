@@ -1616,3 +1616,328 @@ fn siege_bonus_not_applied_in_open_field() {
         "siege bonus should not apply in open field: without={damage_no_siege}, with={damage_with_siege}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// City capture
+// ---------------------------------------------------------------------------
+
+/// When a melee attacker kills the last defender on an enemy city tile, the
+/// city is captured: ownership transfers, CityCaptured is emitted, and the
+/// city's ownership flag is set to Occupied.
+#[test]
+fn city_capture_transfers_ownership_on_last_defender_killed() {
+    use libciv::civ::CityOwnership;
+
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Place a single Babylon defender on Babylon's city tile (10, 5).
+    let defender_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: defender_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        coord: HexCoord::from_qr(10, 5),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    // Rome attacker adjacent; strong enough to one-shot the defender.
+    let attacker_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: attacker_id, unit_type: s.warrior_type, owner: s.rome_id,
+        coord: HexCoord::from_qr(11, 5),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(60), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    let diff = rules.attack(&mut s.state, attacker_id, defender_id)
+        .expect("attack should succeed");
+
+    // CityCaptured delta must be present.
+    let captured = diff.deltas.iter().find_map(|d| {
+        if let StateDelta::CityCaptured { city, new_owner, old_owner } = d {
+            Some((*city, *new_owner, *old_owner))
+        } else {
+            None
+        }
+    });
+    assert!(captured.is_some(), "CityCaptured delta expected after killing last defender");
+    let (city_id, new_owner, old_owner) = captured.unwrap();
+    assert_eq!(city_id, s.babylon_city);
+    assert_eq!(new_owner, s.rome_id);
+    assert_eq!(old_owner, s.babylon_id);
+
+    // City state must reflect the new owner and Occupied status.
+    let city = s.state.cities.iter().find(|c| c.id == s.babylon_city).unwrap();
+    assert_eq!(city.owner, s.rome_id, "city.owner should be Rome");
+    assert_eq!(city.ownership, CityOwnership::Occupied, "captured city should be Occupied");
+
+    // Civilization city lists must be updated.
+    let rome_cities = &s.state.civilizations.iter()
+        .find(|c| c.id == s.rome_id).unwrap().cities;
+    let babylon_cities = &s.state.civilizations.iter()
+        .find(|c| c.id == s.babylon_id).unwrap().cities;
+    assert!(rome_cities.contains(&s.babylon_city), "Rome's city list should include captured city");
+    assert!(!babylon_cities.contains(&s.babylon_city), "Babylon's city list should no longer include the city");
+}
+
+/// When a city is captured, any units still belonging to the old owner that
+/// are standing on the city tile are destroyed as part of the capture.
+#[test]
+fn city_capture_destroys_garrisoned_units_on_tile() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Two Babylon units on the city tile.  The attacker targets the first; when
+    // the last defender falls the second should also be destroyed.
+    let defender1_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: defender1_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        coord: HexCoord::from_qr(10, 5),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 1,   // one HP so it dies immediately
+        range: 0, vision_range: 2,
+    });
+    let garrison_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: garrison_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        coord: HexCoord::from_qr(10, 5),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100,
+        range: 0, vision_range: 2,
+    });
+
+    // Rome attacker adjacent.
+    let attacker_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: attacker_id, unit_type: s.warrior_type, owner: s.rome_id,
+        coord: HexCoord::from_qr(11, 5),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    let diff = rules.attack(&mut s.state, attacker_id, defender1_id)
+        .expect("attack should succeed");
+
+    // The garrison unit should be destroyed as part of the capture.
+    let garrison_destroyed = diff.deltas.iter().any(|d| {
+        matches!(d, StateDelta::UnitDestroyed { unit } if *unit == garrison_id)
+    });
+    assert!(garrison_destroyed, "garrisoned unit should be destroyed when city is captured");
+
+    // The garrison should not exist in the live unit list.
+    assert!(
+        s.state.unit(garrison_id).is_none(),
+        "garrison unit should be removed from state after capture"
+    );
+
+    // The city must be captured.
+    let captured = diff.deltas.iter().any(|d| matches!(d, StateDelta::CityCaptured { .. }));
+    assert!(captured, "CityCaptured delta expected");
+}
+
+/// A non-melee (ranged) kill on a city tile does NOT capture the city.
+#[test]
+fn ranged_kill_on_city_tile_does_not_capture() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Weak defender (1 HP) on Babylon's city tile.
+    let defender_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: defender_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        coord: HexCoord::from_qr(10, 5),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 1, range: 0, vision_range: 2,
+    });
+
+    // Ranged attacker within range 2.
+    let attacker_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: attacker_id, unit_type: s.warrior_type, owner: s.rome_id,
+        coord: HexCoord::from_qr(12, 5),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 2, vision_range: 2,
+    });
+
+    let diff = rules.attack(&mut s.state, attacker_id, defender_id)
+        .expect("attack should succeed");
+
+    // No CityCaptured delta for ranged kills.
+    let captured = diff.deltas.iter().any(|d| matches!(d, StateDelta::CityCaptured { .. }));
+    assert!(!captured, "ranged kills should not capture a city");
+
+    // City still belongs to Babylon.
+    let city = s.state.cities.iter().find(|c| c.id == s.babylon_city).unwrap();
+    assert_eq!(city.owner, s.babylon_id, "city owner should not change after a ranged kill");
+}
+
+/// If any old-owner units are still alive on the city tile after the attack,
+/// no capture occurs yet.
+#[test]
+fn no_capture_while_defenders_remain() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Two Babylon warriors on the city tile; first one has lots of HP.
+    let defender1_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: defender1_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        coord: HexCoord::from_qr(10, 5),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+    let _defender2_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: _defender2_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        coord: HexCoord::from_qr(10, 5),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    // Weak attacker that deals very little damage (won't kill the defender).
+    let attacker_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: attacker_id, unit_type: s.warrior_type, owner: s.rome_id,
+        coord: HexCoord::from_qr(11, 5),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(1), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    let diff = rules.attack(&mut s.state, attacker_id, defender1_id)
+        .expect("attack should succeed");
+
+    // No capture while a second Babylon unit remains on the tile.
+    let captured = diff.deltas.iter().any(|d| matches!(d, StateDelta::CityCaptured { .. }));
+    assert!(!captured, "city should not be captured while defenders still remain on the tile");
+    let city = s.state.cities.iter().find(|c| c.id == s.babylon_city).unwrap();
+    assert_eq!(city.owner, s.babylon_id, "city should still belong to Babylon");
+}
+
+// ---------------------------------------------------------------------------
+// City bombardment without walls
+// ---------------------------------------------------------------------------
+
+/// A city whose walls have been breached (WallLevel::None, wall_hp == 0)
+/// can no longer perform a bombardment.  This exercises the post-destruction
+/// path: walls existed, were zeroed out, and bombardment must now fail.
+#[test]
+fn city_bombard_fails_after_walls_are_destroyed() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Start with Ancient walls, then simulate a breach by clearing them.
+    {
+        let city = s.state.cities.iter_mut()
+            .find(|c| c.id == s.rome_city).unwrap();
+        city.walls    = WallLevel::None; // walls were destroyed (breach)
+        city.wall_hp  = 0;
+    }
+
+    // Enemy unit within range 2 of Rome's city (3,3) -> (4,3) is adjacent.
+    let enemy_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: enemy_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        coord: HexCoord::from_qr(4, 3),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    let result = rules.city_bombard(&mut s.state, s.rome_city, enemy_id);
+    assert!(
+        matches!(result, Err(RulesError::CityCannotAttack)),
+        "city with no walls should not be able to bombard, got: {result:?}"
+    );
+}
+
+/// Wall breach via combat (wall_hp driven to 0) causes subsequent
+/// city bombardment to fail.
+#[test]
+fn city_bombard_fails_after_walls_breached_by_combat() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Rome's city gets Ancient walls at 1 HP.
+    {
+        let city = s.state.cities.iter_mut()
+            .find(|c| c.id == s.rome_city).unwrap();
+        city.walls   = WallLevel::Ancient;
+        city.wall_hp = 1;
+    }
+
+    // Place a Babylon defender ON Rome's city tile (3,3) so the melee attack
+    // triggers wall damage (def_coord == city.coord).
+    let def_on_city = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: def_on_city, unit_type: s.warrior_type, owner: s.babylon_id,
+        coord: HexCoord::from_qr(3, 3),   // Rome's city tile
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    // Strong Rome attacker at (4,3) -- adjacent to (3,3) -- attacks the
+    // Babylon unit that has occupied Rome's city tile.
+    let attacker_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: attacker_id, unit_type: s.warrior_type, owner: s.rome_id,
+        coord: HexCoord::from_qr(4, 3),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(60), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    // Attack the unit on Rome's city tile; wall_damage = def_damage/2 >= 1,
+    // so the 1-HP wall is breached and a WallDestroyed delta is emitted.
+    let diff = rules.attack(&mut s.state, attacker_id, def_on_city)
+        .expect("attack should succeed");
+
+    let wall_destroyed = diff.deltas.iter().any(|d| {
+        matches!(d, StateDelta::WallDestroyed { city, .. } if *city == s.rome_city)
+    });
+    assert!(wall_destroyed, "WallDestroyed expected after combat reduced wall_hp to 0");
+
+    // City walls should now be None.
+    let city = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap();
+    assert_eq!(city.walls, WallLevel::None, "walls should be None after breach");
+
+    // Bombardment should now fail.
+    let new_enemy_id = s.state.id_gen.next_unit_id();
+    s.state.units.push(BasicUnit {
+        id: new_enemy_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        coord: HexCoord::from_qr(4, 3),
+        domain: UnitDomain::Land, category: UnitCategory::Combat,
+        movement_left: 200, max_movement: 200,
+        combat_strength: Some(20), promotions: Vec::new(),
+        health: 100, range: 0, vision_range: 2,
+    });
+
+    let result = rules.city_bombard(&mut s.state, s.rome_city, new_enemy_id);
+    assert!(
+        matches!(result, Err(RulesError::CityCannotAttack)),
+        "city with breached walls should not be able to bombard, got: {result:?}"
+    );
+}
