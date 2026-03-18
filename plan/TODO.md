@@ -16,8 +16,8 @@ Legend: ✅ Done · 🔶 Partial · ❌ Missing
 | 8.5 | Religion System | ❌ Stub only |
 | 8.6 | Culture Borders | ✅ Done |
 | 8.6 | Loyalty & Tourism | ❌ Missing |
-| 8.8 | Road Placement | ❌ Stub only |
-| 8.9 | Builder Charges | ❌ Missing |
+| 8.8 | Road Placement | ✅ Done |
+| 8.9 | Builder Charges | ✅ Done |
 | 8.10 | Great People System | ❌ Stub only |
 | 8.11 | Era Score & Age System | ❌ Stub only |
 | 8.12 | Governor System | 🔶 Partial |
@@ -380,42 +380,21 @@ Cultural border expansion is done. Two subsystems remain.
 
 ---
 
-## §8.8 — Road Placement ❌
+## §8.8 — Road Placement ✅
 
-Data types and Dijkstra cost override exist. No placement action.
-
-### Remaining tasks
-
-1. **`RulesEngine::place_road(state, unit_id, coord, road: BuiltinRoad) -> Result<GameStateDiff, RulesError>`**
-   - Validate builder unit at `coord`, tech requirement per road tier
-   - Set `WorldTile::road`, emit `StateDelta::RoadPlaced { coord, road }`
-
-2. **Road upgrade path enforcement**
-   - `place_road()` rejects downgrades; validates tech gates:
-     - `AncientRoad` — no tech required
-     - `MedievalRoad` — requires "Engineering" civic/tech
-     - `IndustrialRoad` — requires "Steam Power"
-     - `Railroad` — requires "Railroads"
-
-3. **Road maintenance in `advance_turn`**
-   - New phase: sum `BuiltinRoad::maintenance()` across all road tiles owned by each civ; deduct from `civ.gold`
-   - Emit `StateDelta::GoldChanged` per civ
+Implemented. `RulesEngine::place_road()` validates builder unit, tech requirements,
+ownership, land-only, and upgrade path (no downgrades). Road maintenance is deducted
+in `advance_turn()` Phase 2c. `StateDelta::RoadPlaced` emitted on success.
 
 ---
 
-## §8.9 — Builder Charges ❌
+## §8.9 — Builder Charges ✅
 
-### Remaining tasks
-
-1. **Add `charges: u8` field to `BasicUnit`** (default 3 for Builder)
-
-2. **Decrement in `place_improvement()`**
-   - After successful placement, call `unit.charges -= 1`
-   - If `charges == 0`, remove unit and emit `StateDelta::UnitDestroyed`
-
-3. **Decrement in `place_road()`** (same pattern, once §8.8 is implemented)
-
-4. **Optional: `StateDelta::ChargesChanged { unit, remaining }`** for UI/replay
+Implemented. `BasicUnit.charges: Option<u8>` tracks remaining charges.
+`UnitTypeDef.max_charges: u8` controls initial charge count (3 for builders, 0 for others).
+Both `place_improvement()` and `place_road()` decrement charges and destroy the builder
+at zero via `decrement_builder_charges()`. `StateDelta::ChargesChanged` and
+`StateDelta::UnitDestroyed` emitted as appropriate.
 
 ---
 
@@ -578,9 +557,9 @@ Dependencies drive ordering. Items with no incomplete dependencies first:
 | Priority | Task | Blocks |
 |----------|------|--------|
 | 1 | §8.15 TurnEngine consolidation | All future testing |
-| 2 | §8.9 Builder charges | §8.8 road placement |
+| 2 | ~~§8.9 Builder charges~~ ✅ | ~~§8.8 road placement~~ |
 | 3 | §8.3 Wall defense bonus in combat | §8.3 city ranged attack |
-| 4 | §8.8 Road placement action | — |
+| 4 | ~~§8.8 Road placement action~~ ✅ | — |
 | 5 | §8.3 City ranged attack | — |
 | 6 | §8.12 Governor system | §8.6 loyalty |
 | 7 | §8.14 Natural wonder discovery | — |

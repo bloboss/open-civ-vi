@@ -144,23 +144,23 @@ pub fn build_session(config: &GameConfig) -> Session {
         UnitTypeDef { id: warrior_type_id, name: "warrior", production_cost: 40,
                       max_movement: 200, combat_strength: Some(20),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0 },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, },
         UnitTypeDef { id: settler_type_id, name: "settler", production_cost: 80,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: true, resource_cost: None, siege_bonus: 0 },
+                      range: 0, vision_range: 2, can_found_city: true, resource_cost: None, siege_bonus: 0, max_charges: 0, },
         UnitTypeDef { id: builder_type_id, name: "builder", production_cost: 50,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0 },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, },
         UnitTypeDef { id: slinger_type_id, name: "slinger", production_cost: 35,
                       max_movement: 200, combat_strength: Some(10),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 2, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0 },
+                      range: 2, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, },
         UnitTypeDef { id: trader_type_id, name: "trader", production_cost: 40,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Trader,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0 },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, },
     ]);
 
     // ── Starting units ────────────────────────────────────────────────────
@@ -169,7 +169,7 @@ pub fn build_session(config: &GameConfig) -> Session {
         id: unit_id, unit_type: warrior_type_id, owner: civ_id,
         coord: city_coord, domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200, combat_strength: Some(20),
-        promotions: Vec::new(), health: 100, range: 0, vision_range: 2,
+        promotions: Vec::new(), health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     let builder_id = state.id_gen.next_unit_id();
@@ -177,7 +177,7 @@ pub fn build_session(config: &GameConfig) -> Session {
         id: builder_id, unit_type: builder_type_id, owner: civ_id,
         coord: city_coord, domain: UnitDomain::Land, category: UnitCategory::Civilian,
         movement_left: 200, max_movement: 200, combat_strength: None,
-        promotions: Vec::new(), health: 100, range: 0, vision_range: 2,
+        promotions: Vec::new(), health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     let trader_id = state.id_gen.next_unit_id();
@@ -185,7 +185,7 @@ pub fn build_session(config: &GameConfig) -> Session {
         id: trader_id, unit_type: trader_type_id, owner: civ_id,
         coord: city_coord, domain: UnitDomain::Land, category: UnitCategory::Trader,
         movement_left: 200, max_movement: 200, combat_strength: None,
-        promotions: Vec::new(), health: 100, range: 0, vision_range: 2,
+        promotions: Vec::new(), health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     recalculate_visibility(&mut state, civ_id);
@@ -229,7 +229,7 @@ pub fn build_session(config: &GameConfig) -> Session {
             id: bab_warrior, unit_type: warrior_type_id, owner: babylon_id,
             coord: babylon_city_coord, domain: UnitDomain::Land, category: UnitCategory::Combat,
             movement_left: 200, max_movement: 200, combat_strength: Some(20),
-            promotions: Vec::new(), health: 100, range: 0, vision_range: 2,
+            promotions: Vec::new(), health: 100, range: 0, vision_range: 2, charges: None,
         });
 
         recalculate_visibility(&mut state, babylon_id);

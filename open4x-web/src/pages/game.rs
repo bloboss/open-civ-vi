@@ -793,7 +793,7 @@ fn UnitInfo(
                                                     session.update_value(|s| {
                                                         let rules = DefaultRulesEngine;
                                                         match rules.place_improvement(
-                                                            &mut s.state, civ_id, unit_coord, imp
+                                                            &mut s.state, civ_id, unit_coord, imp, None
                                                         ) {
                                                             Ok(_)  => { ok = true; }
                                                             Err(e) => { err = format!("{e}"); }

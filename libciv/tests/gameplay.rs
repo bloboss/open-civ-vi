@@ -178,6 +178,7 @@ fn melee_attack_emits_damage_and_reduces_health() {
         health:          100,
         range:           0,
         vision_range:    2,
+        charges: None,
     });
 
     let diff = rules.attack(&mut s.state, s.rome_warrior, enemy_id)
@@ -236,6 +237,7 @@ fn attacking_unit_at_one_hp_destroys_it() {
         health:          1,      // barely alive
         range:           0,
         vision_range:    2,
+        charges: None,
     });
 
     let diff = rules.attack(&mut s.state, s.rome_warrior, enemy_id)
@@ -283,6 +285,7 @@ fn settler_founds_city_and_is_consumed() {
         health:          100,
         range:           0,
         vision_range:    2,
+        charges: None,
     });
 
     let unit_count_before = s.state.units.len();
@@ -348,6 +351,7 @@ fn founder_too_close_to_existing_city_is_rejected() {
         health:          100,
         range:           0,
         vision_range:    2,
+        charges: None,
     });
 
     let result = rules.found_city(&mut s.state, settler_id, "Too Close".to_string());
@@ -512,6 +516,7 @@ fn spawn_slinger(s: &mut common::Scenario, coord: HexCoord) -> libciv::UnitId {
         can_found_city:  false,
         resource_cost:   None,
         siege_bonus:     0,
+        max_charges:     0,
     });
     let unit_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
@@ -528,6 +533,7 @@ fn spawn_slinger(s: &mut common::Scenario, coord: HexCoord) -> libciv::UnitId {
         health:          100,
         range:           2,
         vision_range:    2,
+        charges: None,
     });
     unit_id
 }
@@ -560,6 +566,7 @@ fn ranged_unit_attacks_from_two_tiles_away() {
         health:          100,
         range:           0,
         vision_range:    2,
+        charges: None,
     });
 
     // Distance is exactly 2 — within range, but not adjacent.
@@ -606,6 +613,7 @@ fn ranged_attack_beyond_range_is_rejected() {
         health:          100,
         range:           0,
         vision_range:    2,
+        charges: None,
     });
 
     assert_eq!(HexCoord::from_qr(5, 3).distance(&HexCoord::from_qr(8, 3)), 3);
@@ -642,6 +650,7 @@ fn ranged_attack_succeeds_without_adjacency() {
         health:          100,
         range:           0,
         vision_range:    2,
+        charges: None,
     });
 
     // Verify the distance is exactly 2 (not adjacent).
@@ -681,6 +690,7 @@ fn two_friendly_units_cannot_stack() {
         health:          100,
         range:           0,
         vision_range:    2,
+        charges: None,
     });
 
     // Rome's warrior (at (5,3)) tries to move onto (6,3) — occupied by a friendly.
@@ -721,6 +731,7 @@ fn cannot_found_city_near_enemy_capital() {
         health:          100,
         range:           0,
         vision_range:    2,
+        charges: None,
     });
 
     let result = rules.found_city(&mut s.state, settler_id, "Too Close".to_string());
@@ -757,6 +768,7 @@ fn civilian_blocked_from_moving_onto_enemy_unit() {
         health:          100,
         range:           0,
         vision_range:    2,
+        charges: None,
     });
     let enemy_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
@@ -773,6 +785,7 @@ fn civilian_blocked_from_moving_onto_enemy_unit() {
         health:          100,
         range:           0,
         vision_range:    2,
+        charges: None,
     });
 
     // Settler tries to walk onto the enemy tile.
@@ -805,6 +818,7 @@ fn civilian_blocked_from_stacking_with_friendly_unit() {
         health:          100,
         range:           0,
         vision_range:    2,
+        charges: None,
     });
 
     // Try to move settler onto (5, 3) where Rome's warrior stands.
@@ -838,6 +852,7 @@ fn combat_unit_cannot_walk_into_enemy_tile() {
         health:          100,
         range:           0,
         vision_range:    2,
+        charges: None,
     });
 
     // Rome's warrior (at (5,3)) tries to move onto (6,3) — an enemy tile.
@@ -930,6 +945,7 @@ fn unit_production_blocked_without_resource() {
         can_found_city:  false,
         resource_cost:   Some((BuiltinResource::Iron, 1)),
         siege_bonus:     0,
+        max_charges:     0,
     });
 
     s.state.cities.iter_mut()
@@ -980,6 +996,7 @@ fn unit_production_consumes_strategic_resource() {
         can_found_city:  false,
         resource_cost:   Some((BuiltinResource::Iron, 1)),
         siege_bonus:     0,
+        max_charges:     0,
     });
 
     // Grant Rome 3 Iron.
@@ -1119,6 +1136,7 @@ fn wall_defense_bonus_reduces_damage_to_defender() {
             health:          100,
             range:           0,
             vision_range:    2,
+        charges: None,
         });
 
         // Place an attacker adjacent to the city.
@@ -1138,6 +1156,7 @@ fn wall_defense_bonus_reduces_damage_to_defender() {
             health:          100,
             range:           0,
             vision_range:    2,
+        charges: None,
         });
 
         let diff = rules.attack(&mut s.state, attacker_id, defender_id)
@@ -1189,7 +1208,7 @@ fn melee_attack_damages_city_walls() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     // Place a melee attacker adjacent.
@@ -1200,7 +1219,7 @@ fn melee_attack_damages_city_walls() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     let diff = rules.attack(&mut s.state, attacker_id, defender_id)
@@ -1246,7 +1265,7 @@ fn wall_destruction_when_hp_reaches_zero() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     // Strong attacker to ensure enough damage for wall_damage = def_damage/2 >= 1.
@@ -1257,7 +1276,7 @@ fn wall_destruction_when_hp_reaches_zero() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(40), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     let diff = rules.attack(&mut s.state, attacker_id, defender_id)
@@ -1303,7 +1322,7 @@ fn ranged_attack_does_not_damage_walls() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     // Ranged attacker within range 2.
@@ -1314,7 +1333,7 @@ fn ranged_attack_does_not_damage_walls() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(25), promotions: Vec::new(),
-        health: 100, range: 2, vision_range: 2,
+        health: 100, range: 2, vision_range: 2, charges: None,
     });
 
     let diff = rules.attack(&mut s.state, attacker_id, defender_id)
@@ -1355,7 +1374,7 @@ fn city_bombard_deals_damage_no_counter() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     let diff = rules.city_bombard(&mut s.state, s.rome_city, target_id)
@@ -1392,7 +1411,7 @@ fn city_bombard_requires_walls() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     let result = rules.city_bombard(&mut s.state, s.rome_city, target_id);
@@ -1419,7 +1438,7 @@ fn city_bombard_range_check() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     let result = rules.city_bombard(&mut s.state, s.rome_city, target_id);
@@ -1447,7 +1466,7 @@ fn city_bombard_once_per_turn_resets_after_advance() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
     let target2 = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
@@ -1456,7 +1475,7 @@ fn city_bombard_once_per_turn_resets_after_advance() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     // First bombardment succeeds.
@@ -1502,7 +1521,7 @@ fn siege_unit_bonus_applies_on_city_tile() {
             vision_range:    2,
             can_found_city:  false,
             resource_cost:   None,
-            siege_bonus,
+            siege_bonus, max_charges: 0,
         });
 
         // Defender on Babylon's city tile (10, 5).
@@ -1513,7 +1532,7 @@ fn siege_unit_bonus_applies_on_city_tile() {
             domain: UnitDomain::Land, category: UnitCategory::Combat,
             movement_left: 200, max_movement: 200,
             combat_strength: Some(20), promotions: Vec::new(),
-            health: 100, range: 0, vision_range: 2,
+            health: 100, range: 0, vision_range: 2, charges: None,
         });
 
         // Attacker within range 2 of the city.
@@ -1524,7 +1543,7 @@ fn siege_unit_bonus_applies_on_city_tile() {
             domain: UnitDomain::Land, category: UnitCategory::Combat,
             movement_left: 200, max_movement: 200,
             combat_strength: Some(20), promotions: Vec::new(),
-            health: 100, range: 2, vision_range: 2,
+            health: 100, range: 2, vision_range: 2, charges: None,
         });
 
         let diff = rules.attack(&mut s.state, attacker_id, defender_id)
@@ -1570,7 +1589,7 @@ fn siege_bonus_not_applied_in_open_field() {
             vision_range:    2,
             can_found_city:  false,
             resource_cost:   None,
-            siege_bonus,
+            siege_bonus, max_charges: 0,
         });
 
         // Defender in open field (not on a city tile).
@@ -1581,7 +1600,7 @@ fn siege_bonus_not_applied_in_open_field() {
             domain: UnitDomain::Land, category: UnitCategory::Combat,
             movement_left: 200, max_movement: 200,
             combat_strength: Some(20), promotions: Vec::new(),
-            health: 100, range: 0, vision_range: 2,
+            health: 100, range: 0, vision_range: 2, charges: None,
         });
 
         // Ranged attacker within range 2.
@@ -1592,7 +1611,7 @@ fn siege_bonus_not_applied_in_open_field() {
             domain: UnitDomain::Land, category: UnitCategory::Combat,
             movement_left: 200, max_movement: 200,
             combat_strength: Some(20), promotions: Vec::new(),
-            health: 100, range: 2, vision_range: 2,
+            health: 100, range: 2, vision_range: 2, charges: None,
         });
 
         let diff = rules.attack(&mut s.state, attacker_id, defender_id)
@@ -1639,7 +1658,7 @@ fn city_capture_transfers_ownership_on_last_defender_killed() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     // Rome attacker adjacent; strong enough to one-shot the defender.
@@ -1650,7 +1669,7 @@ fn city_capture_transfers_ownership_on_last_defender_killed() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(60), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     let diff = rules.attack(&mut s.state, attacker_id, defender_id)
@@ -1701,7 +1720,7 @@ fn city_capture_destroys_garrisoned_units_on_tile() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         health: 1,   // one HP so it dies immediately
-        range: 0, vision_range: 2,
+        range: 0, vision_range: 2, charges: None,
     });
     let garrison_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
@@ -1711,7 +1730,7 @@ fn city_capture_destroys_garrisoned_units_on_tile() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         health: 100,
-        range: 0, vision_range: 2,
+        range: 0, vision_range: 2, charges: None,
     });
 
     // Rome attacker adjacent.
@@ -1722,7 +1741,7 @@ fn city_capture_destroys_garrisoned_units_on_tile() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     let diff = rules.attack(&mut s.state, attacker_id, defender1_id)
@@ -1759,7 +1778,7 @@ fn ranged_kill_on_city_tile_does_not_capture() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 1, range: 0, vision_range: 2,
+        health: 1, range: 0, vision_range: 2, charges: None,
     });
 
     // Ranged attacker within range 2.
@@ -1770,7 +1789,7 @@ fn ranged_kill_on_city_tile_does_not_capture() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 2, vision_range: 2,
+        health: 100, range: 2, vision_range: 2, charges: None,
     });
 
     let diff = rules.attack(&mut s.state, attacker_id, defender_id)
@@ -1800,7 +1819,7 @@ fn no_capture_while_defenders_remain() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
     let _defender2_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
@@ -1809,7 +1828,7 @@ fn no_capture_while_defenders_remain() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     // Weak attacker that deals very little damage (won't kill the defender).
@@ -1820,7 +1839,7 @@ fn no_capture_while_defenders_remain() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(1), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     let diff = rules.attack(&mut s.state, attacker_id, defender1_id)
@@ -1861,7 +1880,7 @@ fn city_bombard_fails_after_walls_are_destroyed() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     let result = rules.city_bombard(&mut s.state, s.rome_city, enemy_id);
@@ -1895,7 +1914,7 @@ fn city_bombard_fails_after_walls_breached_by_combat() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     // Strong Rome attacker at (4,3) -- adjacent to (3,3) -- attacks the
@@ -1907,7 +1926,7 @@ fn city_bombard_fails_after_walls_breached_by_combat() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(60), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     // Attack the unit on Rome's city tile; wall_damage = def_damage/2 >= 1,
@@ -1932,7 +1951,7 @@ fn city_bombard_fails_after_walls_breached_by_combat() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     let result = rules.city_bombard(&mut s.state, s.rome_city, new_enemy_id);

@@ -98,6 +98,10 @@ pub struct Civilization {
     /// Improvement types unlocked for builders of this civ.
     pub unlocked_improvements: Vec<&'static str>,
 
+    // ── Great person modifiers ──────────────────────────────────────────────
+    /// Permanent modifiers granted by retired great persons.
+    pub great_person_modifiers: Vec<Modifier>,
+
     // ── Tourism & culture tracking ──────────────────────────────────────────
     /// Total culture accumulated over the lifetime of this civilization.
     /// Used to compute domestic tourists (defense against culture victory).
@@ -153,6 +157,7 @@ impl Civilization {
             unlocked_units: Vec::new(),
             unlocked_buildings: Vec::new(),
             unlocked_improvements: Vec::new(),
+            great_person_modifiers: Vec::new(),
             lifetime_culture: 0,
             tourism_accumulated: HashMap::new(),
             era_score: 0,
