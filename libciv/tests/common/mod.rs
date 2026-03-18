@@ -4,7 +4,7 @@
 ///   * Rome  — capital "Roma"   at (3, 3), Warrior at (5, 3)
 ///   * Babylon — capital "Babylon" at (10, 5), Warrior at (8, 5)
 ///
-/// Both civs share the same unit-type registry (warrior + settler).
+/// Both civs share the same unit-type registry (warrior + settler + builder).
 /// Visibility is calculated for both civs at the end of setup.
 ///
 /// `advance_turn()` processes one full game turn: TurnEngine, movement
@@ -65,6 +65,7 @@ pub struct Scenario {
     /// Shared unit-type IDs (same registry for both civs).
     pub warrior_type:     UnitTypeId,
     pub settler_type:     UnitTypeId,
+    pub builder_type:     UnitTypeId,
 }
 
 /// Build a deterministic two-civ scenario on a 14×8 board.
@@ -74,18 +75,25 @@ pub fn build_scenario() -> Scenario {
     // ── Shared unit-type registry ─────────────────────────────────────────
     let warrior_type = UnitTypeId::from_ulid(state.id_gen.next_ulid());
     let settler_type = UnitTypeId::from_ulid(state.id_gen.next_ulid());
+    let builder_type = UnitTypeId::from_ulid(state.id_gen.next_ulid());
     state.unit_type_defs.extend([
         UnitTypeDef {
             id: warrior_type, name: "warrior", production_cost: 40,
             max_movement: 200, combat_strength: Some(20),
             domain: UnitDomain::Land, category: UnitCategory::Combat,
-            range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0,
+            range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0,
         },
         UnitTypeDef {
             id: settler_type, name: "settler", production_cost: 80,
             max_movement: 200, combat_strength: None,
             domain: UnitDomain::Land, category: UnitCategory::Civilian,
-            range: 0, vision_range: 2, can_found_city: true, resource_cost: None, siege_bonus: 0,
+            range: 0, vision_range: 2, can_found_city: true, resource_cost: None, siege_bonus: 0, max_charges: 0,
+        },
+        UnitTypeDef {
+            id: builder_type, name: "builder", production_cost: 50,
+            max_movement: 200, combat_strength: None,
+            domain: UnitDomain::Land, category: UnitCategory::Civilian,
+            range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 3,
         },
     ]);
 
@@ -110,7 +118,7 @@ pub fn build_scenario() -> Scenario {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     // ── Babylon ───────────────────────────────────────────────────────────
@@ -134,7 +142,7 @@ pub fn build_scenario() -> Scenario {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100, range: 0, vision_range: 2,
+        health: 100, range: 0, vision_range: 2, charges: None,
     });
 
     // ── Initial visibility for both civs ──────────────────────────────────
@@ -145,7 +153,7 @@ pub fn build_scenario() -> Scenario {
         state,
         rome_id, rome_city, rome_warrior,
         babylon_id, babylon_city, babylon_warrior,
-        warrior_type, settler_type,
+        warrior_type, settler_type, builder_type,
     }
 }
 

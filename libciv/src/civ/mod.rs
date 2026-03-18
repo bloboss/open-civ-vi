@@ -21,9 +21,10 @@ pub use diplomacy::{
 };
 pub use grievance::{CapturedCityGrievance, DeclaredWarGrievance, PillageGrievance};
 pub use district::{AdjacencyContext, BuildingDef, BuiltinDistrict, DistrictDef, DistrictRequirements, PlacedDistrict};
-pub use era::{Era, EraTrigger};
+pub use era::{Era, EraAge, EraDedication, EraTrigger, HistoricMoment, HistoricMomentDef, HistoricMomentKind};
+pub mod historic_moments;
 pub use governor::{Governor, GovernorDef, GovernorPromotion};
-pub use great_people::{GreatPerson, GreatPersonAbility};
+pub use great_people::{GreatPerson, GreatPersonAbility, GreatPersonDef, RetireEffect, builtin_great_person_defs, spawn_great_person};
 pub use religion::{Belief, BeliefContext, Religion};
 pub use tourism::{WonderTourism, compute_tourism, domestic_tourists, has_cultural_dominance};
 pub use trade::TradeRoute;

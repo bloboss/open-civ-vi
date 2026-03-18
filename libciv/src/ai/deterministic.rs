@@ -265,7 +265,7 @@ mod tests {
             id: warrior_type, name: "warrior", production_cost: 40,
             domain: UnitDomain::Land, category: UnitCategory::Combat,
             max_movement: 200, combat_strength: Some(20),
-            range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0,
+            range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0,
         });
 
         let civ_id = state.id_gen.next_civ_id();
@@ -280,7 +280,7 @@ mod tests {
             domain: UnitDomain::Land, category: UnitCategory::Combat,
             movement_left: 200, max_movement: 200,
             combat_strength: Some(20), promotions: Vec::new(),
-            health: 100, range: 0, vision_range: 2,
+            health: 100, range: 0, vision_range: 2, charges: None,
         });
 
         (state, civ_id, unit_id, warrior_type)
@@ -383,7 +383,7 @@ mod tests {
             id: legion_type, name: "legionary", production_cost: 80,
             domain: UnitDomain::Land, category: UnitCategory::Combat,
             max_movement: 200, combat_strength: Some(35),
-            range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0,
+            range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0,
         });
         let _ = warrior_type; // lower cost; should not be chosen
 
@@ -488,7 +488,7 @@ mod tests {
                 id: warrior_type, name: "warrior", production_cost: 40,
                 domain: UnitDomain::Land, category: UnitCategory::Combat,
                 max_movement: 200, combat_strength: Some(20),
-                range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0,
+                range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0,
             });
 
             let civ_id = state.id_gen.next_civ_id();
@@ -512,7 +512,7 @@ mod tests {
                 domain: UnitDomain::Land, category: UnitCategory::Combat,
                 movement_left: 200, max_movement: 200,
                 combat_strength: Some(20), promotions: Vec::new(),
-                health: 100, range: 0, vision_range: 2,
+                health: 100, range: 0, vision_range: 2, charges: None,
             });
 
             (state, civ_id)

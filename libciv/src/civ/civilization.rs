@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use crate::{
     AgeType, CivId, CivicId, GovernmentId, PolicyId, TechId, YieldType,
 };
+use super::era::{EraAge, HistoricMoment};
 use crate::rules::effect::OneShotEffect;
 use crate::rules::modifier::{EffectType, Modifier, ModifierSource, StackingRule, TargetSelector};
 use crate::rules::policy::{Government, Policy};
@@ -97,6 +98,10 @@ pub struct Civilization {
     /// Improvement types unlocked for builders of this civ.
     pub unlocked_improvements: Vec<&'static str>,
 
+    // ── Great person modifiers ──────────────────────────────────────────────
+    /// Permanent modifiers granted by retired great persons.
+    pub great_person_modifiers: Vec<Modifier>,
+
     // ── Tourism & culture tracking ──────────────────────────────────────────
     /// Total culture accumulated over the lifetime of this civilization.
     /// Used to compute domestic tourists (defense against culture victory).
@@ -105,6 +110,16 @@ pub struct Civilization {
     /// tourism pressure applied so far. Culture victory is achieved when
     /// `tourism_accumulated[B] >= B.lifetime_culture` for every other civ B.
     pub tourism_accumulated: HashMap<CivId, u32>,
+
+    // ── Era score tracking ──────────────────────────────────────────────────
+    /// Accumulated era score for the current era; resets when the global era advances.
+    pub era_score: u32,
+    /// The civ's current era age (Dark/Normal/Golden/Heroic).
+    pub era_age: EraAge,
+    /// All historic moments earned by this civ across all eras.
+    pub historic_moments: Vec<HistoricMoment>,
+    /// Names of unique historic moments already earned this era (uniqueness guard).
+    pub earned_moments: HashSet<&'static str>,
 
     // ── Fog of war ────────────────────────────────────────────────────────────
     /// Tiles currently within this civ's vision this turn.
@@ -142,8 +157,13 @@ impl Civilization {
             unlocked_units: Vec::new(),
             unlocked_buildings: Vec::new(),
             unlocked_improvements: Vec::new(),
+            great_person_modifiers: Vec::new(),
             lifetime_culture: 0,
             tourism_accumulated: HashMap::new(),
+            era_score: 0,
+            era_age: EraAge::Normal,
+            historic_moments: Vec::new(),
+            earned_moments: HashSet::new(),
             visible_tiles:  HashSet::new(),
             explored_tiles: HashSet::new(),
         }

@@ -1,9 +1,13 @@
-use crate::{CivId, CityId, PolicyId, TradeRouteId, UnitId};
+use crate::{
+  AgeType, CivId, CityId, GreatPersonId, PolicyId, 
+  TradeRouteId, UnitId};
 use crate::civ::DiplomaticStatus;
 use crate::civ::city::WallLevel;
 use crate::civ::district::BuiltinDistrict;
+use crate::civ::era::EraAge;
 use crate::world::improvement::BuiltinImprovement;
 use crate::world::resource::BuiltinResource;
+use crate::world::road::BuiltinRoad;
 use libhexgrid::coord::HexCoord;
 
 /// Distinguishes how a combat event was initiated.
@@ -77,6 +81,12 @@ pub enum StateDelta {
     /// An improvement was placed on a tile.
     ImprovementPlaced { coord: HexCoord, improvement: BuiltinImprovement },
 
+    /// A road was placed on a tile.
+    RoadPlaced { coord: HexCoord, road: BuiltinRoad },
+
+    /// A builder unit's remaining charges changed (after placing an improvement or road).
+    ChargesChanged { unit: UnitId, remaining: u8 },
+
     /// A civilization's strategic resource stockpile changed (positive = gained, negative = consumed).
     StrategicResourceChanged { civ: CivId, resource: BuiltinResource, delta: i32 },
 
@@ -116,6 +126,17 @@ pub enum StateDelta {
     /// the city flipped to the civilization exerting the highest loyalty
     /// pressure. If `None`, the city became a Free City (independent).
     CityRevolted { city: CityId, new_owner: Option<CivId>, old_owner: CivId },
+
+    // ── Era score (PHASE3-8.8) ─────────────────────────────────────────────
+    /// A civilization earned a historic moment, gaining era score.
+    HistoricMomentEarned { civ: CivId, moment: &'static str, era_score: u32 },
+    /// A civilization transitioned to a new era with a determined age.
+    EraAdvanced { civ: CivId, new_era: AgeType, era_age: EraAge },
+    // ── Great persons (PHASE3-8.6) ─────────────────────────────────────────
+    /// A great person was retired (consumed) by its owner.
+    GreatPersonRetired { great_person: GreatPersonId, owner: CivId },
+    /// A one-time production burst was applied to a city (e.g. Great Engineer).
+    ProductionBurst { city: CityId, amount: u32 },
 
     // ── TODO(PHASE3-8.8): Era advancement ────────────────────────────────────
     // EraAdvanced { civ: CivId, new_era: crate::AgeType },
