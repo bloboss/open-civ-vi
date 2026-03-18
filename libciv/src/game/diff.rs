@@ -1,7 +1,8 @@
-use crate::{CivId, CityId, PolicyId, TradeRouteId, UnitId};
+use crate::{AgeType, CivId, CityId, PolicyId, TradeRouteId, UnitId};
 use crate::civ::DiplomaticStatus;
 use crate::civ::city::WallLevel;
 use crate::civ::district::BuiltinDistrict;
+use crate::civ::era::EraAge;
 use crate::world::improvement::BuiltinImprovement;
 use crate::world::resource::BuiltinResource;
 use libhexgrid::coord::HexCoord;
@@ -117,8 +118,11 @@ pub enum StateDelta {
     /// pressure. If `None`, the city became a Free City (independent).
     CityRevolted { city: CityId, new_owner: Option<CivId>, old_owner: CivId },
 
-    // ── TODO(PHASE3-8.8): Era advancement ────────────────────────────────────
-    // EraAdvanced { civ: CivId, new_era: crate::AgeType },
+    // ── Era score (PHASE3-8.8) ─────────────────────────────────────────────
+    /// A civilization earned a historic moment, gaining era score.
+    HistoricMomentEarned { civ: CivId, moment: &'static str, era_score: u32 },
+    /// A civilization transitioned to a new era with a determined age.
+    EraAdvanced { civ: CivId, new_era: AgeType, era_age: EraAge },
 
     // ── Victory condition (PHASE3-8.9) ────────────────────────────────────────
     /// Emitted when a civ wins the game. After this delta `GameState::game_over` is set.

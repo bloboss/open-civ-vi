@@ -5,8 +5,9 @@ use crate::{
 use super::victory::VictoryCondition;
 use crate::civ::{
     BasicUnit, Civilization, City, CityKind, DiplomaticRelation, GreatPerson, Governor,
-    GreatPerson, PlacedDistrict, Religion, TradeRoute, WonderTourism,
+    PlacedDistrict, Religion, TradeRoute, WonderTourism,
 };
+use crate::civ::era::Era;
 use crate::rules::{TechTree, CivicTree, Government, Policy, OneShotEffect};
 use crate::rules::tech::{build_tech_tree, build_civic_tree};
 use rand::SeedableRng;
@@ -152,7 +153,10 @@ pub struct GameState {
     /// Governors owned by civilizations. Loyalty computation checks for
     /// established governors assigned to cities.
     pub governors: Vec<Governor>,
-    // TODO(PHASE3-8.8): Add era_triggers: Vec<Box<dyn EraTrigger>> (or on Era struct).
+    /// Ordered list of era definitions. Index 0 = Ancient, 1 = Classical, etc.
+    pub eras: Vec<Era>,
+    /// Index into `eras` for the current global era.
+    pub current_era_index: usize,
     /// Active victory conditions evaluated each turn by `advance_turn`.
     /// Register before the game loop. Can be empty (no win condition).
     pub victory_conditions: Vec<Box<dyn VictoryCondition>>,
@@ -196,6 +200,8 @@ impl GameState {
             policies: Vec::new(),
             current_era: era_id,
             governors: Vec::new(),
+            eras: Vec::new(),
+            current_era_index: 0,
             unit_type_defs: Vec::new(),
             building_defs: Vec::new(),
             victory_conditions: Vec::new(),

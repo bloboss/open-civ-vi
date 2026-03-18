@@ -20,3 +20,4 @@ pub use game::{
     CultureVictory, DefaultRulesEngine, GameOver, GameState, GameStateDiff, RulesEngine,
     ScoreVictory, TurnEngine, VictoryCondition, VictoryKind,
 };
+pub use civ::era::EraAge;
