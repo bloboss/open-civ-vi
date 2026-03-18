@@ -4,6 +4,7 @@ use crate::civ::city::WallLevel;
 use crate::civ::district::BuiltinDistrict;
 use crate::world::improvement::BuiltinImprovement;
 use crate::world::resource::BuiltinResource;
+use crate::world::road::BuiltinRoad;
 use libhexgrid::coord::HexCoord;
 
 /// Distinguishes how a combat event was initiated.
@@ -76,6 +77,12 @@ pub enum StateDelta {
 
     /// An improvement was placed on a tile.
     ImprovementPlaced { coord: HexCoord, improvement: BuiltinImprovement },
+
+    /// A road was placed on a tile.
+    RoadPlaced { coord: HexCoord, road: BuiltinRoad },
+
+    /// A builder unit's remaining charges changed (after placing an improvement or road).
+    ChargesChanged { unit: UnitId, remaining: u8 },
 
     /// A civilization's strategic resource stockpile changed (positive = gained, negative = consumed).
     StrategicResourceChanged { civ: CivId, resource: BuiltinResource, delta: i32 },

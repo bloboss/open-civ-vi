@@ -47,6 +47,7 @@ fn farm_on_grassland_succeeds() {
         s.rome_id,
         coord,
         BuiltinImprovement::Farm,
+        None,
     );
 
     assert!(result.is_ok(), "Farm on Grassland should succeed: {result:?}");
@@ -86,6 +87,7 @@ fn farm_on_ocean_fails() {
         s.rome_id,
         coord,
         BuiltinImprovement::Farm,
+        None,
     );
 
     assert!(
@@ -112,6 +114,7 @@ fn lumbermill_without_forest_fails_and_with_forest_also_fails_tech() {
         s.rome_id,
         coord,
         BuiltinImprovement::LumberMill,
+        None,
     );
     assert!(
         matches!(result_no_forest, Err(libciv::game::RulesError::InvalidImprovement)),
@@ -128,6 +131,7 @@ fn lumbermill_without_forest_fails_and_with_forest_also_fails_tech() {
         s.rome_id,
         coord,
         BuiltinImprovement::LumberMill,
+        None,
     );
     assert!(
         matches!(result_with_forest, Err(libciv::game::RulesError::TechRequired)),
@@ -157,6 +161,7 @@ fn farm_blocked_without_pottery() {
         s.rome_id,
         coord,
         BuiltinImprovement::Farm,
+        None,
     );
 
     assert!(
@@ -184,6 +189,7 @@ fn farm_succeeds_after_pottery_researched() {
         s.rome_id,
         coord,
         BuiltinImprovement::Farm,
+        None,
     );
 
     assert!(result.is_ok(), "Farm after Pottery should succeed: {result:?}");
@@ -211,6 +217,7 @@ fn mine_blocked_without_mining() {
         s.rome_id,
         coord,
         BuiltinImprovement::Mine,
+        None,
     );
 
     assert!(
@@ -236,6 +243,7 @@ fn lumbermill_blocked_by_unreachable_tech() {
         s.rome_id,
         coord,
         BuiltinImprovement::LumberMill,
+        None,
     );
 
     assert!(

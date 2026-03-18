@@ -35,6 +35,10 @@ pub struct BasicUnit {
     pub range: u8,
     /// How many hexes this unit can see. Typically 2 for land units.
     pub vision_range: u8,
+    /// Remaining build charges for builder-type units. `None` for units
+    /// without charges (warriors, settlers, etc.). When this reaches
+    /// `Some(0)` the unit should be destroyed.
+    pub charges: Option<u8>,
 }
 
 impl Unit for BasicUnit {
