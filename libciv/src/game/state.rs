@@ -4,8 +4,8 @@ use crate::{
 };
 use super::victory::VictoryCondition;
 use crate::civ::{
-    BasicUnit, Civilization, City, CityKind, DiplomaticRelation, GreatPerson, Governor,
-    GreatPerson, PlacedDistrict, Religion, TradeRoute, WonderTourism,
+    BasicUnit, Civilization, City, CityKind, DiplomaticRelation, GreatPerson, GreatPersonDef,
+    Governor, PlacedDistrict, Religion, TradeRoute, WonderTourism,
 };
 use crate::rules::{TechTree, CivicTree, Government, Policy, OneShotEffect};
 use crate::rules::tech::{build_tech_tree, build_civic_tree};
@@ -109,6 +109,10 @@ impl IdGenerator {
         crate::TradeRouteId::from_ulid(self.next_ulid())
     }
 
+    pub fn next_great_person_id(&mut self) -> crate::GreatPersonId {
+        crate::GreatPersonId::from_ulid(self.next_ulid())
+    }
+
     pub fn next_victory_id(&mut self) -> VictoryId {
         VictoryId::from_ulid(self.next_ulid())
     }
@@ -136,6 +140,8 @@ pub struct GameState {
     pub religions: Vec<Religion>,
     pub trade_routes: Vec<TradeRoute>,
     pub great_people: Vec<GreatPerson>,
+    /// Registry of great person definitions. Populated before the game loop.
+    pub great_person_defs: Vec<GreatPersonDef>,
     pub tech_tree: TechTree,
     pub tech_refs: TechRefs,
     pub civic_tree: CivicTree,
@@ -188,6 +194,7 @@ impl GameState {
             religions: Vec::new(),
             trade_routes: Vec::new(),
             great_people: Vec::new(),
+            great_person_defs: Vec::new(),
             tech_tree,
             tech_refs,
             civic_tree,
@@ -227,5 +234,13 @@ impl GameState {
         self.cities.iter().find(|c| {
             matches!(c.kind, CityKind::CityState(_)) && c.owner == civ_id
         })
+    }
+
+    pub fn great_person(&self, id: crate::GreatPersonId) -> Option<&GreatPerson> {
+        self.great_people.iter().find(|gp| gp.id == id)
+    }
+
+    pub fn great_person_mut(&mut self, id: crate::GreatPersonId) -> Option<&mut GreatPerson> {
+        self.great_people.iter_mut().find(|gp| gp.id == id)
     }
 }

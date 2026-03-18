@@ -189,6 +189,18 @@ pub trait RulesEngine: std::fmt::Debug {
         target: UnitId,
     ) -> Result<GameStateDiff, RulesError>;
 
+    /// Retire (consume) a great person, applying its one-time ability.
+    ///
+    /// The great person must exist, not already be retired, and be owned by a civ.
+    /// On success the great person is marked retired, its corresponding unit is
+    /// removed, and the retire effect is applied (combat modifier, production
+    /// burst, or gold grant).
+    fn retire_great_person(
+        &self,
+        state: &mut GameState,
+        great_person_id: crate::GreatPersonId,
+    ) -> Result<GameStateDiff, RulesError>;
+
     // TODO(PHASE3-BORDERS): fn purchase_tile(&self, state: &mut GameState, city_id: CityId,
     //   coord: HexCoord) -> Result<GameStateDiff, RulesError>;
     //   Spends gold (or culture) from the civilization's treasury to immediately claim a tile
@@ -280,6 +292,12 @@ pub enum RulesError {
     CityCannotAttack,
     /// City has already performed its bombardment this turn.
     CityAlreadyAttacked,
+    /// The great person ID was not found in `state.great_people`.
+    GreatPersonNotFound,
+    /// The great person has already been retired.
+    GreatPersonAlreadyRetired,
+    /// No great person definition found matching this great person's name.
+    GreatPersonDefNotFound,
 }
 
 impl std::fmt::Display for RulesError {
@@ -327,6 +345,9 @@ impl std::fmt::Display for RulesError {
             RulesError::SameCity                      => write!(f, "origin and destination are the same city"),
             RulesError::CityCannotAttack              => write!(f, "city has no walls and cannot bombard"),
             RulesError::CityAlreadyAttacked           => write!(f, "city has already attacked this turn"),
+            RulesError::GreatPersonNotFound            => write!(f, "great person not found"),
+            RulesError::GreatPersonAlreadyRetired      => write!(f, "great person already retired"),
+            RulesError::GreatPersonDefNotFound         => write!(f, "great person definition not found"),
         }
     }
 }
@@ -1501,15 +1522,15 @@ impl RulesEngine for DefaultRulesEngine {
         defender_id: UnitId,
     ) -> Result<GameStateDiff, RulesError> {
         // --- validation -------------------------------------------------------
-        let (atk_coord, atk_range, atk_cs, atk_owner, atk_unit_type) = {
+        let (atk_coord, atk_range, atk_cs, atk_owner, atk_unit_type, atk_domain) = {
             let u = state.unit(attacker_id).ok_or(RulesError::UnitNotFound)?;
-            (u.coord, u.range, u.combat_strength, u.owner, u.unit_type)
+            (u.coord, u.range, u.combat_strength, u.owner, u.unit_type, u.domain)
         };
         let atk_cs = atk_cs.ok_or(RulesError::UnitCannotAttack)?;
 
-        let (def_coord, def_cs, _def_owner) = {
+        let (def_coord, def_cs, _def_owner, def_domain) = {
             let u = state.unit(defender_id).ok_or(RulesError::UnitNotFound)?;
-            (u.coord, u.combat_strength.unwrap_or(0), u.owner)
+            (u.coord, u.combat_strength.unwrap_or(0), u.owner, u.domain)
         };
 
         if atk_owner == state.unit(defender_id).unwrap().owner {
@@ -1539,8 +1560,6 @@ impl RulesEngine for DefaultRulesEngine {
             .find(|c| c.coord == def_coord)
             .map(|c| c.walls.defense_bonus())
             .unwrap_or(0);
-        let effective_def_cs = (def_cs as i32 + terrain_def_bonus + wall_def_bonus).max(1) as u32;
-
         // Siege bonus: extra attack strength when attacking a unit on a city tile.
         let is_city_tile = state.cities.iter().any(|c| c.coord == def_coord);
         let siege_bonus = if is_city_tile {
@@ -1551,7 +1570,14 @@ impl RulesEngine for DefaultRulesEngine {
         } else {
             0
         };
-        let effective_atk_cs = atk_cs + siege_bonus;
+
+        // Great person modifiers: retired great persons grant permanent CS bonuses
+        // filtered by unit domain.
+        let atk_gp_bonus = great_person_cs_bonus(state, atk_owner, atk_domain);
+        let def_gp_bonus = great_person_cs_bonus(state, _def_owner, def_domain);
+
+        let effective_atk_cs = atk_cs + siege_bonus + atk_gp_bonus;
+        let effective_def_cs = (def_cs as i32 + terrain_def_bonus + wall_def_bonus + def_gp_bonus as i32).max(1) as u32;
 
         // Formula: 30 * exp((cs_atk - cs_def_effective) / 25) * rng[0.75, 1.25]
         let rng_a = 0.75 + state.id_gen.next_f32() * 0.5;
@@ -2158,6 +2184,121 @@ impl RulesEngine for DefaultRulesEngine {
 
         Ok(diff)
     }
+
+    fn retire_great_person(
+        &self,
+        state: &mut GameState,
+        great_person_id: crate::GreatPersonId,
+    ) -> Result<GameStateDiff, RulesError> {
+        use crate::civ::great_people::RetireEffect;
+        use crate::rules::modifier::{Modifier, ModifierSource, TargetSelector};
+
+        // 1. Find the great person.
+        let gp_idx = state.great_people.iter().position(|gp| gp.id == great_person_id)
+            .ok_or(RulesError::GreatPersonNotFound)?;
+
+        if state.great_people[gp_idx].is_retired {
+            return Err(RulesError::GreatPersonAlreadyRetired);
+        }
+
+        let gp_name = state.great_people[gp_idx].name;
+        let gp_owner = state.great_people[gp_idx].owner
+            .ok_or(RulesError::GreatPersonNotFound)?;
+        let gp_coord = state.great_people[gp_idx].coord
+            .ok_or(RulesError::GreatPersonNotFound)?;
+
+        // 2. Look up the matching definition.
+        let retire_effect = state.great_person_defs.iter()
+            .find(|d| d.name == gp_name)
+            .ok_or(RulesError::GreatPersonDefNotFound)?
+            .retire_effect.clone();
+
+        let mut diff = GameStateDiff::new();
+
+        // 3. Apply the retire effect.
+        match retire_effect {
+            RetireEffect::CombatStrengthBonus { domain, bonus } => {
+                let modifier = Modifier::new(
+                    ModifierSource::Custom(gp_name),
+                    TargetSelector::UnitDomain(domain),
+                    EffectType::CombatStrengthFlat(bonus),
+                    crate::rules::modifier::StackingRule::Additive,
+                );
+                let civ = state.civilizations.iter_mut()
+                    .find(|c| c.id == gp_owner)
+                    .ok_or(RulesError::CivNotFound)?;
+                civ.great_person_modifiers.push(modifier);
+            }
+            RetireEffect::ProductionBurst { amount } => {
+                // Find nearest owned city.
+                let nearest_city_idx = state.cities.iter()
+                    .enumerate()
+                    .filter(|(_, c)| c.owner == gp_owner)
+                    .min_by_key(|(_, c)| gp_coord.distance(&c.coord))
+                    .map(|(i, _)| i)
+                    .ok_or(RulesError::CityNotFound)?;
+
+                state.cities[nearest_city_idx].production_stored += amount;
+                diff.push(StateDelta::ProductionBurst {
+                    city: state.cities[nearest_city_idx].id,
+                    amount,
+                });
+            }
+            RetireEffect::GoldGrant { amount } => {
+                let civ = state.civilizations.iter_mut()
+                    .find(|c| c.id == gp_owner)
+                    .ok_or(RulesError::CivNotFound)?;
+                civ.gold += amount as i32;
+                diff.push(StateDelta::GoldChanged {
+                    civ: gp_owner,
+                    delta: amount as i32,
+                });
+            }
+        }
+
+        // 4. Mark retired.
+        state.great_people[gp_idx].is_retired = true;
+
+        // 5. Remove the corresponding great person unit.
+        state.units.retain(|u| {
+            !(u.owner == gp_owner
+                && u.category == crate::UnitCategory::GreatPerson
+                && u.coord == gp_coord)
+        });
+
+        diff.push(StateDelta::GreatPersonRetired {
+            great_person: great_person_id,
+            owner: gp_owner,
+        });
+
+        Ok(diff)
+    }
+}
+
+// ── great person helpers ──────────────────────────────────────────────────────
+
+/// Sum combat strength bonuses from retired great persons for a given civ and
+/// unit domain. Returns the total flat CS bonus.
+fn great_person_cs_bonus(state: &GameState, civ_id: CivId, domain: crate::UnitDomain) -> u32 {
+    let civ = match state.civ(civ_id) {
+        Some(c) => c,
+        None => return 0,
+    };
+    let mut total = 0i32;
+    for m in &civ.great_person_modifiers {
+        let domain_matches = match &m.target {
+            crate::rules::modifier::TargetSelector::UnitDomain(d) => *d == domain,
+            crate::rules::modifier::TargetSelector::AllUnits => true,
+            crate::rules::modifier::TargetSelector::Global => true,
+            _ => false,
+        };
+        if domain_matches
+            && let EffectType::CombatStrengthFlat(v) = m.effect
+        {
+            total += v;
+        }
+    }
+    total.max(0) as u32
 }
 
 // ── apply_effect ──────────────────────────────────────────────────────────────

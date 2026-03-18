@@ -1,4 +1,4 @@
-use crate::{CivId, CityId, PolicyId, TradeRouteId, UnitId};
+use crate::{CivId, CityId, GreatPersonId, PolicyId, TradeRouteId, UnitId};
 use crate::civ::DiplomaticStatus;
 use crate::civ::city::WallLevel;
 use crate::civ::district::BuiltinDistrict;
@@ -116,6 +116,12 @@ pub enum StateDelta {
     /// the city flipped to the civilization exerting the highest loyalty
     /// pressure. If `None`, the city became a Free City (independent).
     CityRevolted { city: CityId, new_owner: Option<CivId>, old_owner: CivId },
+
+    // ── Great persons (PHASE3-8.6) ─────────────────────────────────────────
+    /// A great person was retired (consumed) by its owner.
+    GreatPersonRetired { great_person: GreatPersonId, owner: CivId },
+    /// A one-time production burst was applied to a city (e.g. Great Engineer).
+    ProductionBurst { city: CityId, amount: u32 },
 
     // ── TODO(PHASE3-8.8): Era advancement ────────────────────────────────────
     // EraAdvanced { civ: CivId, new_era: crate::AgeType },
