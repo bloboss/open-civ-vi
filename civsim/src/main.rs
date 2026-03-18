@@ -2,8 +2,8 @@ use std::io::{self, BufRead, Write};
 
 use clap::{Parser, Subcommand};
 use libciv::{
-    CityId, CivId, GameState, GameStateDiff, DefaultRulesEngine, RulesEngine, TurnEngine,
-    UnitCategory, UnitDomain, UnitId, UnitTypeId,
+    all_scores, CityId, CivId, GameState, GameStateDiff, DefaultRulesEngine, RulesEngine,
+    ScoreVictory, TurnEngine, UnitCategory, UnitDomain, UnitId, UnitTypeId,
 };
 use libciv::ai::{Agent, HeuristicAgent};
 use libciv::civ::{Agenda, BasicUnit, City, Civilization, Leader, ProductionItem, TechProgress, Unit};
@@ -427,6 +427,11 @@ fn build_ai_demo(seed: u64) -> AiDemo {
         health: 100, range: 0, vision_range: 2,
     });
 
+    // ── Victory conditions ────────────────────────────────────────────────
+    // Default: score victory at turn 500.
+    let score_vc_id = state.id_gen.next_victory_id();
+    state.victory_conditions.push(Box::new(ScoreVictory { id: score_vc_id, turn_limit: 500 }));
+
     // ── Initial visibility ────────────────────────────────────────────────
     recalculate_visibility(&mut state, rome_id);
     recalculate_visibility(&mut state, babylon_id);
@@ -620,6 +625,28 @@ fn run_ai_demo(turns: u32, seed: u64, board_every: u32) {
     println!("{}", civ_summary_line(&demo, demo.rome_id));
     println!("{}", civ_summary_line(&demo, demo.babylon_id));
     println!();
+
+    // Score leaderboard.
+    {
+        let scores = all_scores(&demo.state);
+        println!("  Score leaderboard:");
+        for (rank, (civ_id, score)) in scores.iter().enumerate() {
+            let name = demo.state.civilizations.iter()
+                .find(|c| c.id == *civ_id)
+                .map(|c| c.name)
+                .unwrap_or("?");
+            println!("    {}. {:20}  {}", rank + 1, name, score);
+        }
+        if let Some(ref go) = demo.state.game_over {
+            let winner_name = demo.state.civilizations.iter()
+                .find(|c| c.id == go.winner)
+                .map(|c| c.name)
+                .unwrap_or("?");
+            println!();
+            println!("  Winner: {} ({})", winner_name, go.condition);
+        }
+        println!();
+    }
 
     // Explored percentage.
     let total_tiles = (demo.state.board.width * demo.state.board.height) as usize;
@@ -912,6 +939,8 @@ fn run_play() {
 
                 Cmd::Routes => cmd_routes(&session),
 
+                Cmd::Scores => cmd_scores(&session),
+
                 Cmd::EndTurn => break,
 
                 Cmd::Quit => {
@@ -933,6 +962,19 @@ fn run_play() {
         let diff = rules.advance_turn(&mut session.state);
         reset_movement(&mut session.state);
         print_turn_events(&diff);
+
+        // ── Game-over check ───────────────────────────────────────────────────
+        if let Some(ref go) = session.state.game_over {
+            let winner_name = session.state.civilizations.iter()
+                .find(|c| c.id == go.winner)
+                .map(|c| c.name)
+                .unwrap_or("Unknown");
+            println!();
+            banner(&format!("GAME OVER — {winner_name} wins ({})!", go.condition));
+            println!();
+            cmd_scores(&session);
+            return;
+        }
 
         // ── AI adversary turn ─────────────────────────────────────────────────
         if let Some(ref agent) = ai_agent {
@@ -974,6 +1016,7 @@ enum Cmd {
     Research(String),
     Trade(i32, i32),
     Routes,
+    Scores,
     Unknown(String),
 }
 
@@ -1030,6 +1073,7 @@ fn parse_cmd(raw: &str) -> Cmd {
             parse_coord(q, r).map(|(q, r)| Cmd::Trade(q, r)).unwrap_or(Cmd::Unknown(s.to_string()))
         }
         ["routes" | "rt"] => Cmd::Routes,
+        ["scores" | "sc"] => Cmd::Scores,
         _ => Cmd::Unknown(s.to_string()),
     }
 }
@@ -1061,6 +1105,7 @@ fn print_help() {
     println!("    switch <n>         -- switch active city to index n (1-based)");
     println!("    trade <q> <r>      -- establish trade route to city at (q,r)  alias:  tr");
     println!("    routes             -- list active trade routes                 alias:  rt");
+    println!("    scores             -- show score leaderboard                   alias:  sc");
     println!("    end                -- end turn                         aliases: e, next, n");
     println!("    quit               -- exit                             alias:  exit");
     println!("    help               -- this message                     aliases: h, ?");
@@ -1520,6 +1565,28 @@ fn cmd_select(session: &mut Session, q: i32, r: i32) {
     }
 }
 
+/// Print the score leaderboard for all civilizations.
+fn cmd_scores(session: &Session) {
+    let scores = all_scores(&session.state);
+    if scores.is_empty() {
+        println!("  No civilizations to score.");
+        return;
+    }
+    println!();
+    hline("Scores");
+    println!("  {:>3}  {:<20}  {:>6}", "#", "Civilization", "Score");
+    println!("  {}  {}  {}", "-".repeat(3), "-".repeat(20), "-".repeat(6));
+    for (rank, (civ_id, score)) in scores.iter().enumerate() {
+        let name = session.state.civilizations.iter()
+            .find(|c| c.id == *civ_id)
+            .map(|c| c.name)
+            .unwrap_or("?");
+        let marker = if *civ_id == session.civ_id { " <" } else { "" };
+        println!("  {:>3}  {:<20}  {:>6}{}", rank + 1, name, score, marker);
+    }
+    hline_end();
+}
+
 // ── Turn header ───────────────────────────────────────────────────────────────
 
 fn print_turn_header(session: &Session, rules: &DefaultRulesEngine) {
@@ -1539,12 +1606,13 @@ fn print_turn_header(session: &Session, rules: &DefaultRulesEngine) {
             format!("{}/--", city.production_stored),
     };
 
+    let score = libciv::compute_score(state, civ_id);
     let line1 = format!("Turn {}  |  {}", state.turn, civ.name);
     let line2 = format!(
-        "  {} (pop {})  food={}/{}  prod={}  gold={:+}  sci={:+}",
+        "  {} (pop {})  food={}/{}  prod={}  gold={:+}  sci={:+}  score={}",
         city.name, city.population,
         city.food_stored, city.food_to_grow,
-        prod_str, y.gold, y.science,
+        prod_str, y.gold, y.science, score,
     );
     let line3 = match session.selected_unit.and_then(|uid| state.unit(uid)) {
         Some(unit) => format!(

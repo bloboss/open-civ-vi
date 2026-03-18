@@ -99,8 +99,9 @@ pub enum StateDelta {
     // ── TODO(PHASE3-8.8): Era advancement ────────────────────────────────────
     // EraAdvanced { civ: CivId, new_era: crate::AgeType },
 
-    // ── TODO(PHASE3-8.9): Victory condition ──────────────────────────────────
-    // VictoryAchieved { civ: CivId, condition: &'static str },
+    // ── Victory condition (PHASE3-8.9) ────────────────────────────────────────
+    /// Emitted when a civ wins the game. After this delta `GameState::game_over` is set.
+    VictoryAchieved { civ: CivId, condition: &'static str },
 }
 
 /// A batch of deltas representing a complete state transition.

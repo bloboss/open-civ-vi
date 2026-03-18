@@ -955,7 +955,48 @@ impl RulesEngine for DefaultRulesEngine {
         // TODO(PHASE3-8.6): Accumulate great_person_points yield into per-type counters.
         // TODO(PHASE3-8.7): Decrement turns_to_establish for assigned governors.
         // TODO(PHASE3-8.8): Evaluate EraTrigger conditions; emit EraAdvanced.
-        // TODO(PHASE3-8.9): Evaluate VictoryCondition for each civ; set game_over on win.
+
+        // ── Phase 5b: Victory condition evaluation ────────────────────────────
+        if state.game_over.is_none() {
+            use super::victory::{GameOver, VictoryKind};
+            use super::score::all_scores;
+
+            let civ_ids: Vec<CivId> = state.civilizations.iter().map(|c| c.id).collect();
+
+            // Check ImmediateWin conditions every turn; first match wins.
+            'immediate: for vc_idx in 0..state.victory_conditions.len() {
+                if matches!(state.victory_conditions[vc_idx].kind(), VictoryKind::ImmediateWin) {
+                    for &civ_id in &civ_ids {
+                        let progress = state.victory_conditions[vc_idx].check_progress(civ_id, state);
+                        if progress.is_won() {
+                            let name = state.victory_conditions[vc_idx].name();
+                            state.game_over = Some(GameOver { winner: civ_id, condition: name, turn: state.turn });
+                            diff.push(StateDelta::VictoryAchieved { civ: civ_id, condition: name });
+                            break 'immediate;
+                        }
+                    }
+                }
+            }
+
+            // Check TurnLimit conditions when the turn limit is reached.
+            // Compare `state.turn + 1` because Phase 5b runs before the turn counter
+            // is incremented; `turn + 1` is the turn that will be completed.
+            if state.game_over.is_none() {
+                for vc_idx in 0..state.victory_conditions.len() {
+                    if let VictoryKind::TurnLimit { turn_limit } = state.victory_conditions[vc_idx].kind()
+                        && state.turn + 1 >= turn_limit
+                    {
+                        let name = state.victory_conditions[vc_idx].name();
+                        let completed_turn = state.turn + 1;
+                        if let Some((winner, _)) = all_scores(state).into_iter().next() {
+                            state.game_over = Some(GameOver { winner, condition: name, turn: completed_turn });
+                            diff.push(StateDelta::VictoryAchieved { civ: winner, condition: name });
+                        }
+                        break;
+                    }
+                }
+            }
+        }
 
         // ── Advance turn counter ──────────────────────────────────────────────
         let prev = state.turn;

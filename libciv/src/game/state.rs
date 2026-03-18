@@ -1,7 +1,8 @@
 use std::collections::VecDeque;
 use crate::{
-    BuildingId, CivId, CivicRefs, CityId, GrievanceId, TechRefs, UnitCategory, UnitDomain, UnitId, UnitTypeId, EraId, YieldBundle,
+    BuildingId, CivId, CivicRefs, CityId, GrievanceId, TechRefs, UnitCategory, UnitDomain, UnitId, UnitTypeId, EraId, VictoryId, YieldBundle,
 };
+use super::victory::VictoryCondition;
 use crate::civ::{
     BasicUnit, Civilization, City, CityKind, DiplomaticRelation, GreatPerson, PlacedDistrict,
     Religion, TradeRoute,
@@ -105,6 +106,10 @@ impl IdGenerator {
         crate::TradeRouteId::from_ulid(self.next_ulid())
     }
 
+    pub fn next_victory_id(&mut self) -> VictoryId {
+        VictoryId::from_ulid(self.next_ulid())
+    }
+
     /// Returns a pseudo-random f32 in [0.0, 1.0) drawn from the seeded RNG.
     /// Used for combat randomisation; does not affect the ULID sequence.
     pub fn next_f32(&mut self) -> f32 {
@@ -142,7 +147,12 @@ pub struct GameState {
     /// `apply_effect(FreeBuilding)` looks up entries by name to place real buildings.
     pub building_defs: Vec<BuildingDef>,
     // TODO(PHASE3-8.8): Add era_triggers: Vec<Box<dyn EraTrigger>> (or on Era struct).
-    // TODO(PHASE3-8.9): Add victory_conditions: Vec<Box<dyn VictoryCondition>> and game_over: bool.
+    /// Active victory conditions evaluated each turn by `advance_turn`.
+    /// Register before the game loop. Can be empty (no win condition).
+    pub victory_conditions: Vec<Box<dyn VictoryCondition>>,
+    /// Set when a civilization has won the game. `advance_turn` no longer
+    /// evaluates victory conditions once this is `Some`.
+    pub game_over: Option<super::victory::GameOver>,
     /// Pending one-shot effects to be drained at the end of each turn's
     /// completion sweep (Phase 4 of `advance_turn`).
     pub effect_queue: VecDeque<(CivId, OneShotEffect)>,
@@ -178,6 +188,8 @@ impl GameState {
             current_era: era_id,
             unit_type_defs: Vec::new(),
             building_defs: Vec::new(),
+            victory_conditions: Vec::new(),
+            game_over: None,
             effect_queue: VecDeque::new(),
         }
     }
