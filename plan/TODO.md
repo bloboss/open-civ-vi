@@ -39,26 +39,271 @@ Tests in `libciv/tests/mapgen.rs`.
 
 ## §8.3 — City Defenses and Ranged Attacks 🔶
 
-### Done
-- `WallLevel` enum with `defense_bonus()` and `max_hp()` (`civ/city.rs`)
-- `city.wall_hp` field
+### What exists today
 
-### Remaining tasks (dependency order)
+| Component | File | Lines | Notes |
+|-----------|------|-------|-------|
+| `WallLevel` enum | `civ/city.rs` | 34–40 | None / Ancient / Medieval / Renaissance |
+| `WallLevel::defense_bonus()` | `civ/city.rs` | 128–137 | Returns 0 / 3 / 5 / 8 |
+| `WallLevel::max_hp()` | `civ/city.rs` | 139–147 | Returns 0 / 50 / 100 / 200 |
+| `City.walls` + `City.wall_hp` | `civ/city.rs` | 67–68 | Initialized to `None` / 0 |
+| `attack()` | `game/rules.rs` | 1181–1268 | Unit-vs-unit only; no wall awareness |
+| `AttackType::CityAssault` | `game/diff.rs` | 14 | TODO stub (commented) |
+| `terrain_defense_bonus()` | `world/tile.rs` | 50–78 | Hills +3, Forest +3, Marsh −2 |
+| Damage formula | `game/rules.rs` | 1222–1236 | `30 · exp((cs_atk − cs_def) / 25) · rng` |
 
-1. **Integrate wall defense bonus into combat formula**
-   - `game/rules.rs` `attack()` — add `WallLevel::defense_bonus()` to defender's effective strength when defending a city tile
-   - Emit `StateDelta` when wall HP is reduced (new variant `WallDamaged { city, hp_remaining }` or reuse existing)
+### What's missing
 
-2. **Wall destruction event**
-   - When `wall_hp` drops to 0, downgrade `WallLevel` and emit a delta
+The wall defense bonus is defined but **never read** — `attack()` only applies `terrain_defense_bonus()` to the defender's tile. There is no concept of "attacking a city" vs attacking a unit in the open. No city-initiated ranged fire exists. No siege bonus exists.
 
-3. **City ranged attack action**
-   - Add `RulesEngine::city_ranged_attack(state, city_id, target_unit_id) -> Result<GameStateDiff, RulesError>`
-   - Wire into `advance_turn` phase (after movement, before diplomacy): each city with walls fires at nearest enemy unit in range
+### Implementation plan — 4 tasks
 
-4. **Siege unit type**
-   - Add `Catapult`/`Trebuchet` etc. to `UnitTypeDef` registry with `siege_bonus_vs_cities: u32`
-   - Apply bonus in `attack()` when attacker is siege and defender is in a city
+---
+
+#### Task 1: Wall defense bonus in unit-vs-unit combat
+
+**Goal:** When a defending unit is standing on a city tile that has walls, the wall's `defense_bonus()` is added to the defender's effective combat strength.
+
+**Files:** `game/rules.rs`
+
+**Modification in `attack()` (around line 1216–1220):**
+
+```rust
+// Current code:
+let terrain_def_bonus = state.board
+    .tile(def_coord)
+    .map(|t| t.terrain_defense_bonus())
+    .unwrap_or(0);
+let effective_def_cs = (def_cs as i32 + terrain_def_bonus).max(1) as u32;
+
+// New code:
+let terrain_def_bonus = state.board
+    .tile(def_coord)
+    .map(|t| t.terrain_defense_bonus())
+    .unwrap_or(0);
+let wall_def_bonus = state.cities.iter()
+    .find(|c| c.coord == def_coord)
+    .map(|c| c.walls.defense_bonus())
+    .unwrap_or(0);
+let effective_def_cs = (def_cs as i32 + terrain_def_bonus + wall_def_bonus).max(1) as u32;
+```
+
+No new types, no new `StateDelta` variants. Pure additive change inside the existing damage formula.
+
+**Tests (`libciv/tests/gameplay.rs`):**
+- `wall_defense_bonus_increases_effective_strength` — place a defender on a city tile with `Ancient` walls, attack with equal-strength unit, assert defender takes less damage than without walls.
+
+---
+
+#### Task 2: Wall HP damage and destruction (melee attacks on cities)
+
+**Goal:** When a melee unit attacks a unit standing on a walled city, a portion of the damage also applies to `city.wall_hp`. When wall HP reaches 0, the wall tier downgrades.
+
+**Files:** `game/diff.rs`, `game/rules.rs`
+
+**New `StateDelta` variants (`game/diff.rs`):**
+```rust
+/// City walls took damage from an attack.
+WallDamaged { city: CityId, damage: u32, hp_remaining: u32 },
+/// City walls were destroyed (HP reached 0); tier downgraded.
+WallDestroyed { city: CityId, previous_level: WallLevel },
+```
+
+**Modification in `attack()` (after defender damage applied, ~line 1248–1253):**
+
+When `attack_type == Melee` and the defender's coord matches a city with walls:
+1. Compute wall damage = `def_damage / 2` (walls absorb splash from melee)
+2. Apply `city.wall_hp = city.wall_hp.saturating_sub(wall_damage)`
+3. Emit `WallDamaged { city, damage, hp_remaining }`
+4. If `city.wall_hp == 0` and `city.walls != WallLevel::None`:
+   - Save `previous_level = city.walls`
+   - Set `city.walls = WallLevel::None` (walls breached)
+   - Set `city.wall_hp = 0`
+   - Emit `WallDestroyed { city, previous_level }`
+
+**Design choice:** Walls don't downgrade tier-by-tier (Ancient → None). Once breached, they're gone. This matches Civ VI where walls are either up or destroyed, not gradually reduced through tiers. Rebuilding requires a new production item.
+
+**Tests:**
+- `melee_attack_damages_city_walls` — attack a unit on a walled city, assert `WallDamaged` delta emitted and `wall_hp` decreased.
+- `wall_destruction_when_hp_reaches_zero` — set `wall_hp = 1`, attack, assert `WallDestroyed` emitted and `city.walls == WallLevel::None`.
+
+---
+
+#### Task 3: City ranged attack
+
+**Goal:** Cities with walls can fire a ranged attack at one enemy unit per turn. This is a player/AI-triggered action (not automatic in `advance_turn`).
+
+**Files:** `game/rules.rs` (trait + impl), `game/diff.rs`
+
+**New `AttackType` variant (`game/diff.rs:14`):**
+```rust
+// Uncomment and activate the existing stub:
+CityBombard,   // was: CityAssault
+```
+
+**New `RulesError` variant:**
+```rust
+/// City has no walls and cannot perform a ranged attack.
+CityCannotAttack,
+/// City has already attacked this turn.
+CityAlreadyAttacked,
+```
+
+**New field on `City` (`civ/city.rs`):**
+```rust
+pub has_attacked_this_turn: bool,   // reset to false at start of advance_turn
+```
+
+**New trait method (`game/rules.rs` RulesEngine trait):**
+```rust
+/// City with walls fires a ranged attack at an enemy unit within range 2.
+/// Requires walls (WallLevel != None). Each city may fire once per turn.
+/// City ranged attacks deal damage but never take counter-damage.
+fn city_bombard(
+    &self,
+    state: &mut GameState,
+    city_id: CityId,
+    target: UnitId,
+) -> Result<GameStateDiff, RulesError>;
+```
+
+**Implementation (`DefaultRulesEngine`):**
+
+```rust
+fn city_bombard(&self, state: &mut GameState, city_id: CityId, target: UnitId)
+    -> Result<GameStateDiff, RulesError>
+{
+    // 1. Validate city exists and has walls
+    let city_idx = state.cities.iter().position(|c| c.id == city_id)
+        .ok_or(RulesError::CityNotFound)?;
+    let city = &state.cities[city_idx];
+    if city.walls == WallLevel::None {
+        return Err(RulesError::CityCannotAttack);
+    }
+    if city.has_attacked_this_turn {
+        return Err(RulesError::CityAlreadyAttacked);
+    }
+    let city_coord = city.coord;
+    let city_owner = city.owner;
+
+    // 2. City ranged strength = 15 + wall_defense_bonus (Ancient=18, Med=20, Ren=23)
+    let city_cs = 15_u32 + city.walls.defense_bonus() as u32;
+
+    // 3. Validate target unit exists, is enemy, and within range 2
+    let (def_coord, def_cs) = {
+        let u = state.unit(target).ok_or(RulesError::UnitNotFound)?;
+        if u.owner == city_owner { return Err(RulesError::SameCivilization); }
+        (u.coord, u.combat_strength.unwrap_or(0))
+    };
+    let dist = city_coord.distance(&def_coord);
+    if dist > 2 { return Err(RulesError::NotInRange); }
+
+    // 4. Damage formula (same exponential, no terrain bonus for city offense)
+    let rng = 0.75 + state.id_gen.next_f32() * 0.5;
+    let damage = (30.0_f32
+        * f32::exp((city_cs as f32 - def_cs as f32) / 25.0)
+        * rng) as u32;
+
+    // 5. Apply damage to target (no counter-damage to city)
+    let mut diff = GameStateDiff::new();
+    diff.push(StateDelta::UnitAttacked {
+        attacker: UnitId::nil(),   // sentinel: city, not a unit
+        defender: target,
+        attack_type: AttackType::CityBombard,
+        attacker_damage: 0,
+        defender_damage: damage,
+    });
+    if let Some(u) = state.unit_mut(target) {
+        u.health = u.health.saturating_sub(damage);
+        if u.health == 0 {
+            diff.push(StateDelta::UnitDestroyed { unit: target });
+        }
+    }
+    state.units.retain(|u| u.health > 0);
+
+    // 6. Mark city as having attacked
+    state.cities[city_idx].has_attacked_this_turn = true;
+
+    Ok(diff)
+}
+```
+
+**Reset in `advance_turn` (beginning of the method):**
+```rust
+for city in &mut state.cities {
+    city.has_attacked_this_turn = false;
+}
+```
+
+**Note on `UnitId::nil()` as attacker:** The `UnitAttacked` delta currently requires a `UnitId` for the attacker. Since the attacker is a city, not a unit, we use `UnitId::nil()` as a sentinel. An alternative is to add a new `StateDelta::CityBombarded { city, target, damage }` variant — this is cleaner but adds more delta variants. Either approach works; the sentinel is simpler for now.
+
+**Tests:**
+- `city_bombard_deals_damage_no_counter` — city with Ancient walls fires at adjacent enemy, assert damage dealt and 0 attacker damage.
+- `city_bombard_requires_walls` — city with `WallLevel::None` returns `CityCannotAttack`.
+- `city_bombard_range_check` — target at distance 3 returns `NotInRange`.
+- `city_bombard_once_per_turn` — second bombard same turn returns `CityAlreadyAttacked`; after `advance_turn`, can fire again.
+
+---
+
+#### Task 4: Siege unit bonus vs cities
+
+**Goal:** Siege units (Catapult, Bombard) get a combat strength bonus when attacking units garrisoned in cities.
+
+**Files:** `game/state.rs` (UnitTypeDef), `game/rules.rs` (attack)
+
+**New field on `UnitTypeDef` (`game/state.rs`):**
+```rust
+/// Bonus combat strength when attacking a unit on a city tile. 0 for non-siege units.
+pub siege_bonus: u32,
+```
+
+**Register siege unit types (wherever unit types are built, likely `civsim` or `game/state.rs`):**
+```rust
+UnitTypeDef {
+    name: "Catapult",
+    combat_strength: Some(23),
+    range: 2,
+    siege_bonus: 10,
+    ..
+}
+```
+
+**Modification in `attack()` (around line 1222, before damage formula):**
+```rust
+// Look up the attacker's UnitTypeDef to check for siege bonus
+let siege_bonus = state.unit_type_defs.iter()
+    .find(|d| d.id == state.unit(attacker_id).map(|u| u.unit_type).unwrap_or_default())
+    .map(|d| d.siege_bonus)
+    .unwrap_or(0);
+let is_city_tile = state.cities.iter().any(|c| c.coord == def_coord);
+let effective_atk_cs = if is_city_tile { atk_cs + siege_bonus } else { atk_cs };
+
+// Then use effective_atk_cs in the damage formula instead of atk_cs
+```
+
+**Tests:**
+- `siege_unit_bonus_applies_on_city_tile` — Catapult attacks a unit on a city, assert more damage than a non-siege ranged unit with same base strength.
+- `siege_bonus_not_applied_in_open_field` — Catapult attacks a unit NOT on a city, assert same damage as equivalent non-siege unit.
+
+---
+
+### Summary — modification surface
+
+| File | Changes |
+|------|---------|
+| `libciv/src/game/diff.rs` | Add `WallDamaged`, `WallDestroyed` deltas; uncomment `CityBombard` attack type |
+| `libciv/src/game/rules.rs` | Modify `attack()` for wall bonus + wall damage; add `city_bombard()` trait method + impl; reset `has_attacked_this_turn` in `advance_turn` |
+| `libciv/src/civ/city.rs` | Add `has_attacked_this_turn: bool` field to `City`; initialize in `City::new()` |
+| `libciv/src/game/state.rs` | Add `siege_bonus: u32` field to `UnitTypeDef` |
+| `libciv/tests/gameplay.rs` | ~8 new tests covering all four tasks |
+
+### Dependencies
+
+- Task 1 (wall defense bonus) has no dependencies — can be done first.
+- Task 2 (wall HP damage) depends on Task 1 conceptually but not in code.
+- Task 3 (city bombard) depends on Task 2 only for `WallDamaged`/`WallDestroyed` deltas; otherwise independent.
+- Task 4 (siege bonus) is fully independent of Tasks 2–3.
+- Tasks 1 and 4 can be done in parallel. Tasks 2 and 3 can be done in parallel after delta types are defined.
 
 ---
 
