@@ -59,6 +59,8 @@ pub enum StateDelta {
     DistrictBuilt        { city: CityId, district: BuiltinDistrict, coord: HexCoord },
     /// A wonder has been completed globally.
     WonderBuilt          { civ: CivId, wonder: &'static str, city: CityId },
+    /// A space race project has been completed by a civ.
+    ProjectCompleted     { civ: CivId, city: CityId, project: &'static str },
     /// A new production item has moved to the front of the queue.
     ProductionStarted    { city: CityId, item: &'static str },
     // ── Citizen assignment (PHASE3-4.1) ──────────────────────────────────────

@@ -725,6 +725,15 @@ impl RulesEngine for DefaultRulesEngine {
         total.science += city_count as i32;
         total.culture += city_count as i32;
 
+        // Building yields: sum yields from all completed buildings in each city.
+        for city in state.cities.iter().filter(|c| c.owner == civ_id) {
+            for building_id in &city.buildings {
+                if let Some(def) = state.building_defs.iter().find(|b| b.id == *building_id) {
+                    total += def.yields.clone();
+                }
+            }
+        }
+
         // ── Trade route yields ────────────────────────────────────────────────
         // Origin side: routes owned by this civ deliver origin_yields.
         for route in &state.trade_routes {
@@ -957,7 +966,151 @@ impl RulesEngine for DefaultRulesEngine {
                 charges,
             });
             diff.push(StateDelta::UnitCreated { unit: unit_id, coord: uc.coord, owner: uc.civ_id });
-            // TODO(PHASE3-4.3): Building, District, Wonder completion.
+        }
+
+        // Complete building production for cities whose stored production meets the cost.
+        {
+            use crate::civ::city::ProductionItem;
+            struct BuildingCompletion {
+                city_idx:        usize,
+                building_id:     crate::BuildingId,
+                building_name:   &'static str,
+                production_cost: u32,
+            }
+
+            let building_completions: Vec<BuildingCompletion> = city_turn_data.iter().filter_map(|d| {
+                let city = &state.cities[d.city_idx];
+                if let Some(ProductionItem::Building(bid)) = city.production_queue.front() {
+                    let def = state.building_defs.iter().find(|b| b.id == *bid)?;
+                    if city.production_stored >= def.cost {
+                        // Check district requirement
+                        if let Some(dist_name) = def.requires_district
+                            && !city.districts.iter().any(|d| d.name() == dist_name)
+                        {
+                            return None;
+                        }
+                        // Check tech requirement
+                        if let Some(tech_id) = def.required_tech {
+                            let civ = state.civilizations.iter().find(|c| c.id == d.civ_id)?;
+                            if !civ.has_tech(tech_id) {
+                                return None;
+                            }
+                        }
+                        // No duplicates
+                        if city.buildings.contains(bid) {
+                            return None;
+                        }
+                        Some(BuildingCompletion {
+                            city_idx:        d.city_idx,
+                            building_id:     *bid,
+                            building_name:   def.name,
+                            production_cost: def.cost,
+                        })
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }).collect();
+
+            for bc in building_completions {
+                state.cities[bc.city_idx].production_stored -= bc.production_cost;
+                state.cities[bc.city_idx].production_queue.pop_front();
+                state.cities[bc.city_idx].buildings.push(bc.building_id);
+                diff.push(StateDelta::BuildingCompleted { city: state.cities[bc.city_idx].id, building: bc.building_name });
+            }
+        }
+
+        // Complete space project production for cities with a Spaceport.
+        {
+            use crate::civ::city::ProductionItem;
+            use crate::civ::district::BuiltinDistrict;
+
+            struct ProjectCompletion {
+                city_idx:        usize,
+                civ_id:          CivId,
+                project:         &'static str,
+                production_cost: u32,
+            }
+
+            fn space_project_cost(name: &str) -> Option<u32> {
+                match name {
+                    "Launch Satellite"         => Some(1500),
+                    "Moon Colony"              => Some(2000),
+                    "Mars Colony"              => Some(2500),
+                    "Interstellar Colony Ship" => Some(3000),
+                    _ => None,
+                }
+            }
+
+            fn space_project_required_tech(name: &str, tech_refs: &crate::TechRefs) -> Option<crate::TechId> {
+                match name {
+                    "Launch Satellite"         => Some(tech_refs.satellites),
+                    "Moon Colony"              => Some(tech_refs.robotics),
+                    "Mars Colony"              => Some(tech_refs.nuclear_fusion),
+                    "Interstellar Colony Ship" => Some(tech_refs.nanotechnology),
+                    _ => None,
+                }
+            }
+
+            fn space_project_prerequisite(name: &str) -> Option<&'static str> {
+                match name {
+                    "Moon Colony"              => Some("Launch Satellite"),
+                    "Mars Colony"              => Some("Moon Colony"),
+                    "Interstellar Colony Ship" => Some("Mars Colony"),
+                    _ => None,
+                }
+            }
+
+            let project_completions: Vec<ProjectCompletion> = city_turn_data.iter().filter_map(|d| {
+                let city = &state.cities[d.city_idx];
+                if let Some(ProductionItem::Project(name)) = city.production_queue.front() {
+                    let cost = space_project_cost(name)?;
+                    if city.production_stored < cost {
+                        return None;
+                    }
+                    // Requires Spaceport district
+                    if !city.districts.contains(&BuiltinDistrict::Spaceport) {
+                        return None;
+                    }
+                    let civ = state.civilizations.iter().find(|c| c.id == d.civ_id)?;
+                    // Requires tech
+                    if let Some(tech_id) = space_project_required_tech(name, &state.tech_refs)
+                        && !civ.has_tech(tech_id)
+                    {
+                        return None;
+                    }
+                    // Requires prerequisite project
+                    if let Some(prereq) = space_project_prerequisite(name)
+                        && !civ.completed_projects.contains(&prereq)
+                    {
+                        return None;
+                    }
+                    // No double-build
+                    if civ.completed_projects.contains(name) {
+                        return None;
+                    }
+                    Some(ProjectCompletion {
+                        city_idx: d.city_idx,
+                        civ_id:   d.civ_id,
+                        project:  name,
+                        production_cost: cost,
+                    })
+                } else {
+                    None
+                }
+            }).collect();
+
+            for pc in project_completions {
+                state.cities[pc.city_idx].production_stored -= pc.production_cost;
+                state.cities[pc.city_idx].production_queue.pop_front();
+                let city_id = state.cities[pc.city_idx].id;
+                if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == pc.civ_id) {
+                    civ.completed_projects.push(pc.project);
+                }
+                diff.push(StateDelta::ProjectCompleted { civ: pc.civ_id, city: city_id, project: pc.project });
+            }
         }
 
         // ── Phase 2b: Trade route countdown ──────────────────────────────────

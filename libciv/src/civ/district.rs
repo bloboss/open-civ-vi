@@ -41,6 +41,8 @@ pub enum BuiltinDistrict {
     EntertainmentComplex,
     /// Coastal amenities district — built on coast; provides amenities.
     WaterPark,
+    /// Space district — required to build space race projects for Science Victory.
+    Spaceport,
 }
 
 impl BuiltinDistrict {
@@ -55,6 +57,7 @@ impl BuiltinDistrict {
             BuiltinDistrict::IndustrialZone       => "Industrial Zone",
             BuiltinDistrict::EntertainmentComplex => "Entertainment Complex",
             BuiltinDistrict::WaterPark            => "Water Park",
+            BuiltinDistrict::Spaceport            => "Spaceport",
         }
     }
 
@@ -69,6 +72,7 @@ impl BuiltinDistrict {
             BuiltinDistrict::IndustrialZone       => 54,
             BuiltinDistrict::EntertainmentComplex => 54,
             BuiltinDistrict::WaterPark            => 54,
+            BuiltinDistrict::Spaceport            => 135,
         }
     }
 
@@ -92,8 +96,7 @@ impl BuiltinDistrict {
                 requires_land:      true,
                 requires_water:     false,
                 forbidden_terrains: &[BuiltinTerrain::Mountain],
-                // "Currency" is not yet in the tech tree — use unreachable sentinel.
-                required_tech:      Some(tech_refs.unreachable),
+                required_tech:      Some(tech_refs.currency),
                 required_civic:     None,
             },
             BuiltinDistrict::Harbor => DistrictRequirements {
@@ -121,8 +124,7 @@ impl BuiltinDistrict {
                 requires_land:      true,
                 requires_water:     false,
                 forbidden_terrains: &[BuiltinTerrain::Mountain],
-                // "Apprenticeship" is not yet in the tech tree — use unreachable sentinel.
-                required_tech:      Some(tech_refs.unreachable),
+                required_tech:      Some(tech_refs.apprenticeship),
                 required_civic:     None,
             },
             BuiltinDistrict::EntertainmentComplex => DistrictRequirements {
@@ -139,6 +141,13 @@ impl BuiltinDistrict {
                 required_tech:      None,
                 // "Natural History" is not yet in the civic tree — use unreachable sentinel.
                 required_civic:     Some(civic_refs.unreachable),
+            },
+            BuiltinDistrict::Spaceport => DistrictRequirements {
+                requires_land:      true,
+                requires_water:     false,
+                forbidden_terrains: &[BuiltinTerrain::Mountain],
+                required_tech:      Some(tech_refs.rocketry),
+                required_civic:     None,
             },
         }
     }

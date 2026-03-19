@@ -98,6 +98,10 @@ pub struct Civilization {
     /// Improvement types unlocked for builders of this civ.
     pub unlocked_improvements: Vec<&'static str>,
 
+    // ── Science victory tracking ─────────────────────────────────────────────
+    /// Space race projects completed by this civ (e.g. "Launch Satellite").
+    pub completed_projects: Vec<&'static str>,
+
     // ── Great person modifiers ──────────────────────────────────────────────
     /// Permanent modifiers granted by retired great persons.
     pub great_person_modifiers: Vec<Modifier>,
@@ -157,6 +161,7 @@ impl Civilization {
             unlocked_units: Vec::new(),
             unlocked_buildings: Vec::new(),
             unlocked_improvements: Vec::new(),
+            completed_projects: Vec::new(),
             great_person_modifiers: Vec::new(),
             lifetime_culture: 0,
             tourism_accumulated: HashMap::new(),

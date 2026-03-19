@@ -1716,6 +1716,7 @@ fn queue_front_info(session: &Session) -> (Option<&'static str>, Option<u32>) {
         Some(ProductionItem::Building(_))  => (Some("building"), None),
         Some(ProductionItem::District(_))  => (Some("district"), None),
         Some(ProductionItem::Wonder(_))    => (Some("wonder"), None),
+        Some(ProductionItem::Project(name)) => (Some(name), None),
     }
 }
 
@@ -1731,6 +1732,7 @@ fn queue_item_display(session: &Session, item: &ProductionItem) -> (String, Stri
         ProductionItem::Building(_) => ("building".to_string(), "(? prod)".to_string()),
         ProductionItem::District(_) => ("district".to_string(), "(? prod)".to_string()),
         ProductionItem::Wonder(_)   => ("wonder".to_string(),   "(? prod)".to_string()),
+        ProductionItem::Project(name) => (name.to_string(), "(project)".to_string()),
     }
 }
 
@@ -1741,6 +1743,7 @@ fn item_name_str(item: ProductionItem) -> String {
         ProductionItem::Building(_) => "building".to_string(),
         ProductionItem::District(_) => "district".to_string(),
         ProductionItem::Wonder(_)   => "wonder".to_string(),
+        ProductionItem::Project(name) => name.to_string(),
     }
 }
 

@@ -13,5 +13,5 @@ pub use rules::{DefaultRulesEngine, RulesEngine, RulesError};
 pub use score::{all_scores, compute_score};
 pub use state::{GameState, IdGenerator};
 pub use turn::TurnEngine;
-pub use victory::{CultureVictory, GameOver, ScoreVictory, VictoryCondition, VictoryKind};
+pub use victory::{CultureVictory, GameOver, ScienceVictory, ScoreVictory, VictoryCondition, VictoryKind};
 pub use visibility::recalculate_visibility;

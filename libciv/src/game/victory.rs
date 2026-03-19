@@ -107,6 +107,50 @@ impl VictoryCondition for CultureVictory {
     }
 }
 
+// ── Science Victory ──────────────────────────────────────────────────────────
+
+/// Science victory: a civ wins when it completes all four space race projects:
+/// Launch Satellite, Moon Colony, Mars Colony, and Interstellar Colony Ship.
+///
+/// Evaluated every turn as an `ImmediateWin` condition.
+#[derive(Debug)]
+pub struct ScienceVictory {
+    pub id: VictoryId,
+}
+
+impl ScienceVictory {
+    pub const PROJECTS: [&'static str; 4] = [
+        "Launch Satellite",
+        "Moon Colony",
+        "Mars Colony",
+        "Interstellar Colony Ship",
+    ];
+}
+
+impl VictoryCondition for ScienceVictory {
+    fn id(&self) -> VictoryId { self.id }
+    fn name(&self) -> &'static str { "Science Victory" }
+    fn description(&self) -> &'static str {
+        "Complete all four space race projects: Launch Satellite, Moon Colony, \
+         Mars Colony, and Interstellar Colony Ship."
+    }
+    fn kind(&self) -> VictoryKind { VictoryKind::ImmediateWin }
+    fn check_progress(&self, civ_id: CivId, state: &GameState) -> VictoryProgress {
+        let completed = state.civ(civ_id)
+            .map(|civ| Self::PROJECTS.iter()
+                .filter(|p| civ.completed_projects.contains(p))
+                .count() as u32)
+            .unwrap_or(0);
+
+        VictoryProgress {
+            victory_id: self.id,
+            civ_id,
+            current: completed,
+            target: 4,
+        }
+    }
+}
+
 impl VictoryCondition for ScoreVictory {
     fn id(&self) -> VictoryId { self.id }
     fn name(&self) -> &'static str { "Score Victory" }

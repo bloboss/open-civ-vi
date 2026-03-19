@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use crate::{
-    BuildingId, CivId, CivicRefs, CityId, GrievanceId, TechRefs, UnitCategory, UnitDomain, UnitId, UnitTypeId, EraId, VictoryId, YieldBundle,
+    BuildingId, CivId, CivicRefs, CityId, GrievanceId, TechId, TechRefs, UnitCategory, UnitDomain, UnitId, UnitTypeId, EraId, VictoryId, YieldBundle,
 };
 use super::victory::VictoryCondition;
 use crate::civ::{
@@ -57,6 +57,7 @@ pub struct BuildingDef {
     pub maintenance:         u32,
     pub yields:              YieldBundle,
     pub requires_district:   Option<&'static str>,
+    pub required_tech:       Option<TechId>,
 }
 
 /// Deterministic ID generator backed by a seeded RNG.

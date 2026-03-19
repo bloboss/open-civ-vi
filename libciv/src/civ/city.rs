@@ -45,6 +45,7 @@ pub enum ProductionItem {
     Building(BuildingId),
     District(BuiltinDistrict),
     Wonder(WonderId),
+    Project(&'static str),
 }
 
 #[derive(Debug)]

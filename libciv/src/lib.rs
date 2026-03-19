@@ -18,6 +18,6 @@ pub use yields::*;
 pub use game::{
     all_scores, compute_score,
     CultureVictory, DefaultRulesEngine, GameOver, GameState, GameStateDiff, RulesEngine,
-    ScoreVictory, TurnEngine, VictoryCondition, VictoryKind,
+    ScienceVictory, ScoreVictory, TurnEngine, VictoryCondition, VictoryKind,
 };
 pub use civ::era::EraAge;
