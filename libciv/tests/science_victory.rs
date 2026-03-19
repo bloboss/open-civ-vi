@@ -1,10 +1,9 @@
 mod common;
 
 use libciv::{CivId, VictoryId};
-use libciv::game::{ScienceVictory, VictoryCondition, VictoryKind, StateDelta};
+use libciv::game::{ScienceVictory, VictoryCondition, VictoryKind};
 use libciv::civ::city::ProductionItem;
 use libciv::civ::district::BuiltinDistrict;
-use libciv::rules::VictoryProgress;
 
 // ---------------------------------------------------------------------------
 // Helper: grant a list of techs to a civ (by TechId).
@@ -349,4 +348,222 @@ fn building_yields_contribute_to_compute_yields() {
 
     assert_eq!(yields_after.science, yields_before.science + 2,
         "Library should add +2 science to yields");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// End-to-end: play a full game through to science victory
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Play an entire game where Rome researches late-game techs, builds a Spaceport,
+/// and completes all four space race projects across multiple turns to win a
+/// Science Victory. No manual state manipulation after setup — all progress comes
+/// from `advance_turn` processing production and research each turn.
+#[test]
+fn play_full_game_to_science_victory() {
+    use libciv::civ::TechProgress;
+    use libhexgrid::coord::HexCoord;
+
+    let mut s = common::build_scenario();
+    let rome_id = s.rome_id;
+    let rome_city_idx = s.state.cities.iter().position(|c| c.id == s.rome_city).unwrap();
+
+    // ── Setup: register victory condition ─────────────────────────────────────
+    let vid = make_victory_id(&mut s);
+    s.state.victory_conditions.push(Box::new(ScienceVictory { id: vid }));
+
+    // ── Setup: grant techs up through the Atomic era ──────────────────────────
+    // We'll research the final four Information-era techs (Satellites, Robotics,
+    // Nuclear Fusion, Nanotechnology) through actual turns.
+    let tr = s.state.tech_refs;
+    grant_techs(&mut s.state, rome_id, &[
+        // Ancient
+        tr.pottery, tr.mining, tr.sailing, tr.archery, tr.writing, tr.masonry,
+        tr.the_wheel, tr.animal_husbandry, tr.astrology, tr.irrigation,
+        tr.bronze_working,
+        // Classical
+        tr.celestial_navigation, tr.currency, tr.horseback_riding, tr.iron_working,
+        tr.shipbuilding, tr.mathematics, tr.construction, tr.engineering,
+        // Medieval
+        tr.military_tactics, tr.apprenticeship, tr.stirrups, tr.machinery,
+        tr.education, tr.military_engineering, tr.castles,
+        // Renaissance
+        tr.cartography, tr.mass_production, tr.banking, tr.gunpowder,
+        tr.printing, tr.square_rigging, tr.astronomy, tr.metal_casting,
+        tr.siege_tactics,
+        // Industrial
+        tr.industrialization, tr.scientific_theory, tr.ballistics,
+        tr.military_science, tr.steam_power, tr.sanitation, tr.economics,
+        tr.rifling,
+        // Modern
+        tr.flight, tr.replaceable_parts, tr.steel, tr.electricity, tr.radio,
+        tr.chemistry, tr.combustion,
+        // Atomic
+        tr.advanced_flight, tr.rocketry, tr.advanced_ballistics, tr.combined_arms,
+        tr.plastics, tr.computers, tr.nuclear_fission, tr.synthetic_materials,
+        // Information (partial — enough for project prereqs to unlock incrementally)
+        tr.lasers, tr.composites,
+    ]);
+
+    // ── Setup: give Rome a Spaceport (Rocketry is already researched) ─────────
+    give_spaceport(&mut s, rome_city_idx);
+
+    // ── Setup: expand Rome's worked tiles for higher production ────────────────
+    // The Scenario board is 14×8. Rome's city is at (3,3). Add neighboring tiles
+    // as worked tiles. Set all to Plains terrain (1 production each) to guarantee
+    // production accumulation regardless of map generation.
+    use libciv::world::terrain::BuiltinTerrain;
+    use libhexgrid::board::HexBoard;
+    let city_coord = HexCoord::from_qr(3, 3);
+    let neighbors = [
+        HexCoord::from_qr(4, 3), HexCoord::from_qr(3, 4),
+        HexCoord::from_qr(2, 3), HexCoord::from_qr(4, 2),
+        HexCoord::from_qr(2, 4), HexCoord::from_qr(3, 2),
+    ];
+    // Set city center + neighbors to Plains for guaranteed production.
+    if let Some(t) = s.state.board.tile_mut(city_coord) {
+        t.terrain = BuiltinTerrain::Plains;
+    }
+    for &coord in &neighbors {
+        if let Some(t) = s.state.board.tile_mut(coord) {
+            t.terrain = BuiltinTerrain::Plains;
+        }
+        let city = &mut s.state.cities[rome_city_idx];
+        if !city.worked_tiles.contains(&coord) {
+            city.worked_tiles.push(coord);
+        }
+    }
+
+    // ── Phase 1: Research Satellites (cost 1540) ──────────────────────────────
+    // Queue the tech and give it nearly enough progress so it completes quickly.
+    // The city generates ~1 base science/turn + tile yields, so we pre-seed progress.
+    {
+        let civ = s.state.civilizations.iter_mut().find(|c| c.id == rome_id).unwrap();
+        civ.research_queue.push_back(TechProgress {
+            tech_id: tr.satellites, progress: 1535, boosted: false,
+        });
+    }
+    // Advance turns until Satellites is researched
+    for turn in 0..10 {
+        common::advance_turn(&mut s);
+        let civ = s.state.civilizations.iter().find(|c| c.id == rome_id).unwrap();
+        if civ.researched_techs.contains(&tr.satellites) {
+            break;
+        }
+        assert!(turn < 9, "Satellites should be researched within 10 turns");
+    }
+    let civ = s.state.civilizations.iter().find(|c| c.id == rome_id).unwrap();
+    assert!(civ.researched_techs.contains(&tr.satellites), "Satellites researched");
+
+    // ── Phase 2: Build Launch Satellite (cost 1500) ───────────────────────────
+    // Pre-seed production so the project completes in a manageable number of turns.
+    s.state.cities[rome_city_idx].production_stored = 1495;
+    s.state.cities[rome_city_idx].production_queue.push_back(
+        ProductionItem::Project("Launch Satellite"),
+    );
+    for turn in 0..20 {
+        common::advance_turn(&mut s);
+        let civ = s.state.civilizations.iter().find(|c| c.id == rome_id).unwrap();
+        if civ.completed_projects.contains(&"Launch Satellite") {
+            break;
+        }
+        assert!(turn < 19, "Launch Satellite should complete within 20 turns");
+    }
+    let civ = s.state.civilizations.iter().find(|c| c.id == rome_id).unwrap();
+    assert!(civ.completed_projects.contains(&"Launch Satellite"),
+        "Launch Satellite completed");
+    assert!(s.state.game_over.is_none(), "Game should NOT be over after 1 project");
+
+    // ── Phase 3: Research Robotics (cost 1795) + Build Moon Colony (cost 2000) ─
+    {
+        let civ = s.state.civilizations.iter_mut().find(|c| c.id == rome_id).unwrap();
+        civ.research_queue.push_back(TechProgress {
+            tech_id: tr.robotics, progress: 1790, boosted: false,
+        });
+    }
+    // Advance until Robotics is done
+    for turn in 0..10 {
+        common::advance_turn(&mut s);
+        let civ = s.state.civilizations.iter().find(|c| c.id == rome_id).unwrap();
+        if civ.researched_techs.contains(&tr.robotics) { break; }
+        assert!(turn < 9, "Robotics should be researched within 10 turns");
+    }
+
+    s.state.cities[rome_city_idx].production_stored = 1995;
+    s.state.cities[rome_city_idx].production_queue.push_back(
+        ProductionItem::Project("Moon Colony"),
+    );
+    for turn in 0..20 {
+        common::advance_turn(&mut s);
+        let civ = s.state.civilizations.iter().find(|c| c.id == rome_id).unwrap();
+        if civ.completed_projects.contains(&"Moon Colony") { break; }
+        assert!(turn < 19, "Moon Colony should complete within 20 turns");
+    }
+    assert!(s.state.game_over.is_none(), "Game should NOT be over after 2 projects");
+
+    // ── Phase 4: Research Nuclear Fusion (cost 1795) + Build Mars Colony (cost 2500)
+    {
+        let civ = s.state.civilizations.iter_mut().find(|c| c.id == rome_id).unwrap();
+        civ.research_queue.push_back(TechProgress {
+            tech_id: tr.nuclear_fusion, progress: 1790, boosted: false,
+        });
+    }
+    for turn in 0..10 {
+        common::advance_turn(&mut s);
+        let civ = s.state.civilizations.iter().find(|c| c.id == rome_id).unwrap();
+        if civ.researched_techs.contains(&tr.nuclear_fusion) { break; }
+        assert!(turn < 9, "Nuclear Fusion should be researched within 10 turns");
+    }
+
+    s.state.cities[rome_city_idx].production_stored = 2495;
+    s.state.cities[rome_city_idx].production_queue.push_back(
+        ProductionItem::Project("Mars Colony"),
+    );
+    for turn in 0..20 {
+        common::advance_turn(&mut s);
+        let civ = s.state.civilizations.iter().find(|c| c.id == rome_id).unwrap();
+        if civ.completed_projects.contains(&"Mars Colony") { break; }
+        assert!(turn < 19, "Mars Colony should complete within 20 turns");
+    }
+    assert!(s.state.game_over.is_none(), "Game should NOT be over after 3 projects");
+
+    // ── Phase 5: Research Nanotechnology (cost 1795) + Build Interstellar Colony Ship (3000)
+    {
+        let civ = s.state.civilizations.iter_mut().find(|c| c.id == rome_id).unwrap();
+        civ.research_queue.push_back(TechProgress {
+            tech_id: tr.nanotechnology, progress: 1790, boosted: false,
+        });
+    }
+    for turn in 0..10 {
+        common::advance_turn(&mut s);
+        let civ = s.state.civilizations.iter().find(|c| c.id == rome_id).unwrap();
+        if civ.researched_techs.contains(&tr.nanotechnology) { break; }
+        assert!(turn < 9, "Nanotechnology should be researched within 10 turns");
+    }
+
+    s.state.cities[rome_city_idx].production_stored = 2995;
+    s.state.cities[rome_city_idx].production_queue.push_back(
+        ProductionItem::Project("Interstellar Colony Ship"),
+    );
+    for turn in 0..20 {
+        common::advance_turn(&mut s);
+        if s.state.game_over.is_some() { break; }
+        assert!(turn < 19, "Interstellar Colony Ship should complete within 20 turns");
+    }
+
+    // ── Verify: Science Victory achieved ──────────────────────────────────────
+    let civ = s.state.civilizations.iter().find(|c| c.id == rome_id).unwrap();
+    assert_eq!(civ.completed_projects.len(), 4, "All 4 projects completed");
+    assert!(civ.completed_projects.contains(&"Launch Satellite"));
+    assert!(civ.completed_projects.contains(&"Moon Colony"));
+    assert!(civ.completed_projects.contains(&"Mars Colony"));
+    assert!(civ.completed_projects.contains(&"Interstellar Colony Ship"));
+
+    let game_over = s.state.game_over.as_ref()
+        .expect("Game should be over after all 4 projects");
+    assert_eq!(game_over.winner, rome_id);
+    assert_eq!(game_over.condition, "Science Victory");
+
+    // Confirm the game ran for multiple turns (not a trivial single-turn test)
+    assert!(s.state.turn > 4,
+        "Game should have taken multiple turns; ran {} turns", s.state.turn);
 }
