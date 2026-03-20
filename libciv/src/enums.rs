@@ -1,4 +1,5 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ResourceCategory {
     Bonus,
     Luxury,
@@ -6,6 +7,7 @@ pub enum ResourceCategory {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum UnitDomain {
     Land,
     Sea,
@@ -13,6 +15,7 @@ pub enum UnitDomain {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum UnitCategory {
     Civilian,
     Combat,
@@ -23,6 +26,7 @@ pub enum UnitCategory {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum GreatPersonType {
     General,
     Admiral,
@@ -36,6 +40,7 @@ pub enum GreatPersonType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum AgeType {
     Ancient,
     Classical,
@@ -49,6 +54,7 @@ pub enum AgeType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum PolicyType {
     Military,
     Economic,

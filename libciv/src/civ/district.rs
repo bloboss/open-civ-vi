@@ -22,6 +22,7 @@ pub struct DistrictRequirements {
 
 /// All built-in district types, following Civilization VI's district system.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BuiltinDistrict {
     /// Science district — produces Great Scientists and science.
     Campus,
@@ -41,6 +42,12 @@ pub enum BuiltinDistrict {
     EntertainmentComplex,
     /// Coastal amenities district — built on coast; provides amenities.
     WaterPark,
+    /// Infrastructure district — provides housing and water.
+    Aqueduct,
+    /// Water infrastructure — built on rivers; provides flood protection.
+    Dam,
+    /// Maritime passage — connects water bodies through land.
+    Canal,
 }
 
 impl BuiltinDistrict {
@@ -55,6 +62,9 @@ impl BuiltinDistrict {
             BuiltinDistrict::IndustrialZone       => "Industrial Zone",
             BuiltinDistrict::EntertainmentComplex => "Entertainment Complex",
             BuiltinDistrict::WaterPark            => "Water Park",
+            BuiltinDistrict::Aqueduct             => "Aqueduct",
+            BuiltinDistrict::Dam                  => "Dam",
+            BuiltinDistrict::Canal                => "Canal",
         }
     }
 
@@ -69,6 +79,9 @@ impl BuiltinDistrict {
             BuiltinDistrict::IndustrialZone       => 54,
             BuiltinDistrict::EntertainmentComplex => 54,
             BuiltinDistrict::WaterPark            => 54,
+            BuiltinDistrict::Aqueduct             => 36,
+            BuiltinDistrict::Dam                  => 54,
+            BuiltinDistrict::Canal                => 54,
         }
     }
 
@@ -137,8 +150,28 @@ impl BuiltinDistrict {
                 requires_water:     true,
                 forbidden_terrains: &[],
                 required_tech:      None,
-                // "Natural History" is not yet in the civic tree — use unreachable sentinel.
                 required_civic:     Some(civic_refs.unreachable),
+            },
+            BuiltinDistrict::Aqueduct => DistrictRequirements {
+                requires_land:      true,
+                requires_water:     false,
+                forbidden_terrains: &[BuiltinTerrain::Mountain],
+                required_tech:      Some(tech_refs.masonry),
+                required_civic:     None,
+            },
+            BuiltinDistrict::Dam => DistrictRequirements {
+                requires_land:      true,
+                requires_water:     false,
+                forbidden_terrains: &[BuiltinTerrain::Mountain],
+                required_tech:      Some(tech_refs.unreachable),
+                required_civic:     None,
+            },
+            BuiltinDistrict::Canal => DistrictRequirements {
+                requires_land:      true,
+                requires_water:     false,
+                forbidden_terrains: &[BuiltinTerrain::Mountain],
+                required_tech:      Some(tech_refs.unreachable),
+                required_civic:     None,
             },
         }
     }
@@ -188,6 +221,8 @@ pub struct PlacedDistrict {
     pub coord: HexCoord,
     pub buildings: Vec<BuildingId>,
     pub is_pillaged: bool,
+    /// If this is a unique district variant (e.g., Hansa for Germany), the civ it belongs to.
+    pub unique_variant: Option<super::civ_identity::BuiltinCiv>,
 }
 
 impl PlacedDistrict {
@@ -198,6 +233,7 @@ impl PlacedDistrict {
             coord,
             buildings: Vec::new(),
             is_pillaged: false,
+            unique_variant: None,
         }
     }
 }

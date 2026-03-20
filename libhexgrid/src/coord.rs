@@ -1,6 +1,7 @@
 use std::ops::{Add, Mul, Neg, Sub};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct HexCoord {
     pub q: i32,
     pub r: i32,
@@ -110,6 +111,7 @@ impl Mul<i32> for HexCoord {
 
 /// Six cardinal directions in a flat-top hex grid.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum HexDir {
     /// +q, -s
     E,

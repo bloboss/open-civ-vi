@@ -1,0 +1,24 @@
+services:
+  open4x:
+    build: .
+    ports:
+      - "3001:3001"
+    volumes:
+      # Persist game state across container restarts.
+      - open4x-data:/app/data
+    environment:
+      - PORT=3001
+      - OPEN4X_STATIC_DIR=/app/static
+      - OPEN4X_DATA_DIR=/app/data
+      - RUST_LOG=info
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  open4x-data:
+    driver: local

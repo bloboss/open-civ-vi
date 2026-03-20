@@ -1,6 +1,8 @@
+mod auth;
 mod pages;
-mod session;
+pub mod session;
 mod hexmap;
+mod ws;
 
 use leptos::prelude::*;
 use pages::{HomePage, SettingsPage, PlayersPage, MapConfigPage};

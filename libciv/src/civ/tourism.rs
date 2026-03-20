@@ -36,6 +36,17 @@ pub fn compute_tourism(state: &GameState, civ_id: CivId) -> u32 {
         }
     }
 
+    // Tourism from great works slotted in owned cities.
+    for city in state.cities.iter().filter(|c| c.owner == civ_id) {
+        for slot in &city.great_work_slots {
+            if let Some(work_id) = slot.work
+                && let Some(work) = state.great_works.iter().find(|w| w.id == work_id)
+            {
+                tourism += work.tourism;
+            }
+        }
+    }
+
     tourism
 }
 

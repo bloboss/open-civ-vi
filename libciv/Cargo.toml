@@ -7,3 +7,8 @@ edition = "2024"
 libhexgrid = { path = "../libhexgrid" }
 ulid = { workspace = true }
 rand = { workspace = true }
+serde = { workspace = true, optional = true }
+
+[features]
+default = []
+serde = ["dep:serde", "libhexgrid/serde"]

@@ -5,6 +5,7 @@ use super::state::GameState;
 
 /// Determines how and when a victory condition is evaluated.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum VictoryKind {
     /// The first civ to satisfy the condition wins immediately (e.g. Domination, Science).
     /// Evaluated every turn.
@@ -50,6 +51,24 @@ pub struct ScoreVictory {
     pub id: VictoryId,
     /// The game ends on this turn (inclusive).
     pub turn_limit: u32,
+}
+
+impl VictoryCondition for ScoreVictory {
+    fn id(&self) -> VictoryId { self.id }
+    fn name(&self) -> &'static str { "Score Victory" }
+    fn description(&self) -> &'static str {
+        "The civilization with the highest score when the turn limit is reached wins."
+    }
+    fn kind(&self) -> VictoryKind { VictoryKind::TurnLimit { turn_limit: self.turn_limit } }
+    fn check_progress(&self, civ_id: CivId, state: &GameState) -> VictoryProgress {
+        VictoryProgress {
+            victory_id: self.id,
+            civ_id,
+            // `current` carries the score; `target` is the turn limit for display.
+            current: compute_score(state, civ_id),
+            target: self.turn_limit,
+        }
+    }
 }
 
 // ── Culture Victory ──────────────────────────────────────────────────────────
@@ -107,20 +126,45 @@ impl VictoryCondition for CultureVictory {
     }
 }
 
-impl VictoryCondition for ScoreVictory {
+// ── Domination Victory ───────────────────────────────────────────────────────
+
+/// Domination victory: a civilization wins when it controls every other
+/// civilization's original capital city.
+///
+/// "Original capital" = the first city a civ founded (`is_capital == true` at
+/// founding). Captured capitals retain `founded_by` pointing to the original
+/// owner. A civ "controls" a capital when `city.owner == civ_id`.
+///
+/// A civ always controls its own capital, so the check only considers capitals
+/// whose `founded_by != civ_id`.
+#[derive(Debug)]
+pub struct DominationVictory {
+    pub id: VictoryId,
+}
+
+impl VictoryCondition for DominationVictory {
     fn id(&self) -> VictoryId { self.id }
-    fn name(&self) -> &'static str { "Score Victory" }
+    fn name(&self) -> &'static str { "Domination Victory" }
     fn description(&self) -> &'static str {
-        "The civilization with the highest score when the turn limit is reached wins."
+        "Win by capturing every other civilization's original capital city."
     }
-    fn kind(&self) -> VictoryKind { VictoryKind::TurnLimit { turn_limit: self.turn_limit } }
+    fn kind(&self) -> VictoryKind { VictoryKind::ImmediateWin }
     fn check_progress(&self, civ_id: CivId, state: &GameState) -> VictoryProgress {
+        // Find all original capitals (is_capital == true) not founded by civ_id.
+        let foreign_capitals: Vec<&crate::civ::City> = state.cities.iter()
+            .filter(|c| c.is_capital && c.founded_by != civ_id)
+            .collect();
+
+        let total = foreign_capitals.len() as u32;
+        let controlled = foreign_capitals.iter()
+            .filter(|c| c.owner == civ_id)
+            .count() as u32;
+
         VictoryProgress {
             victory_id: self.id,
             civ_id,
-            // `current` carries the score; `target` is the turn limit for display.
-            current: compute_score(state, civ_id),
-            target: self.turn_limit,
+            current: controlled,
+            target: if total == 0 { 1 } else { total },
         }
     }
 }

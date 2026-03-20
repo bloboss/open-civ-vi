@@ -2,6 +2,7 @@ use crate::{CityId, CivId, TradeRouteId, YieldBundle, YieldType};
 use crate::civ::City;
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TradeRoute {
     pub id: TradeRouteId,
     pub origin: CityId,

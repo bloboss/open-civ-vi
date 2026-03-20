@@ -54,6 +54,7 @@ pub struct ImprovementRequirements {
 
 /// All built-in tile improvements.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BuiltinImprovement {
     Farm,
     Mine,
@@ -62,6 +63,10 @@ pub enum BuiltinImprovement {
     Fort,
     Airstrip,
     MissileSilo,
+    /// Egyptian unique improvement.
+    Sphinx,
+    /// Indian unique improvement.
+    Stepwell,
 }
 
 impl BuiltinImprovement {
@@ -74,18 +79,23 @@ impl BuiltinImprovement {
             BuiltinImprovement::Fort        => "Fort",
             BuiltinImprovement::Airstrip    => "Airstrip",
             BuiltinImprovement::MissileSilo => "Missile Silo",
+            BuiltinImprovement::Sphinx      => "Sphinx",
+            BuiltinImprovement::Stepwell    => "Stepwell",
         }
     }
 
     pub fn yield_bonus(self) -> YieldBundle {
+        use crate::YieldType;
         match self {
-            BuiltinImprovement::Farm        => YieldBundle::new().with(crate::YieldType::Food, 1),
-            BuiltinImprovement::Mine        => YieldBundle::new().with(crate::YieldType::Production, 1),
-            BuiltinImprovement::LumberMill  => YieldBundle::new().with(crate::YieldType::Production, 2),
-            BuiltinImprovement::TradingPost => YieldBundle::new().with(crate::YieldType::Gold, 1),
+            BuiltinImprovement::Farm        => YieldBundle::new().with(YieldType::Food, 1),
+            BuiltinImprovement::Mine        => YieldBundle::new().with(YieldType::Production, 1),
+            BuiltinImprovement::LumberMill  => YieldBundle::new().with(YieldType::Production, 2),
+            BuiltinImprovement::TradingPost => YieldBundle::new().with(YieldType::Gold, 1),
             BuiltinImprovement::Fort        => YieldBundle::new(),
             BuiltinImprovement::Airstrip    => YieldBundle::new(),
             BuiltinImprovement::MissileSilo => YieldBundle::new(),
+            BuiltinImprovement::Sphinx      => YieldBundle::new().with(YieldType::Culture, 1).with(YieldType::Faith, 1),
+            BuiltinImprovement::Stepwell    => YieldBundle::new().with(YieldType::Food, 1).with(YieldType::Housing, 1),
         }
     }
 
@@ -98,6 +108,8 @@ impl BuiltinImprovement {
             BuiltinImprovement::Fort        => 10,
             BuiltinImprovement::Airstrip    => 10,
             BuiltinImprovement::MissileSilo => 15,
+            BuiltinImprovement::Sphinx      => 5,
+            BuiltinImprovement::Stepwell    => 5,
         }
     }
 
@@ -187,6 +199,30 @@ impl BuiltinImprovement {
                 conditional_features: &[],
                 required_resource:    None,
                 required_tech:        Some(tech_refs.unreachable),
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::Sphinx => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::Any,
+                blocked_terrains:     &[BuiltinTerrain::Snow, BuiltinTerrain::Coast, BuiltinTerrain::Ocean, BuiltinTerrain::Mountain],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        None,
+                required_civic:       Some(_civic_refs.craftsmanship),
+                proximity:            None,
+            },
+            BuiltinImprovement::Stepwell => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::Any,
+                blocked_terrains:     &[BuiltinTerrain::Snow, BuiltinTerrain::Coast, BuiltinTerrain::Ocean, BuiltinTerrain::Mountain],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        None,
                 required_civic:       None,
                 proximity:            None,
             },

@@ -9,6 +9,7 @@ pub trait RoadDef: std::fmt::Debug {
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AncientRoad;
 impl RoadDef for AncientRoad {
     fn name(&self) -> &'static str { "Ancient Road" }
@@ -17,6 +18,7 @@ impl RoadDef for AncientRoad {
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MedievalRoad;
 impl RoadDef for MedievalRoad {
     fn name(&self) -> &'static str { "Medieval Road" }
@@ -25,6 +27,7 @@ impl RoadDef for MedievalRoad {
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct IndustrialRoad;
 impl RoadDef for IndustrialRoad {
     fn name(&self) -> &'static str { "Industrial Road" }
@@ -33,6 +36,7 @@ impl RoadDef for IndustrialRoad {
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Railroad;
 impl RoadDef for Railroad {
     fn name(&self) -> &'static str { "Railroad" }
@@ -42,6 +46,7 @@ impl RoadDef for Railroad {
 
 /// Enum wrapping all built-in road types (Clone-friendly).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BuiltinRoad {
     Ancient(AncientRoad),
     Medieval(MedievalRoad),

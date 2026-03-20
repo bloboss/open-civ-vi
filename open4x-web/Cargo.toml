@@ -14,13 +14,17 @@ js-sys   = "0.3"
 web-sys  = { version = "0.3", features = [
     "Blob", "BlobPropertyBag", "Document",
     "HtmlAnchorElement", "HtmlInputElement", "Url", "Window",
+    "WebSocket", "MessageEvent", "CloseEvent", "ErrorEvent",
+    "Storage",
 ] }
 
-# Game logic — compiled to WASM for now.
-# FIXME: In a client-server split these should live server-side only; the
-#        frontend would call a REST/WebSocket API instead of importing libciv.
-libciv      = { path = "../libciv" }
-libhexgrid  = { path = "../libhexgrid" }
+# Shared API types (serializable wire protocol).
+open4x-api  = { path = "../open4x-api" }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+
+# Ed25519 for client-side key generation and challenge signing.
+ed25519-dalek = { workspace = true }
 rand        = { workspace = true }
 # getrandom must be pinned with wasm_js feature so all transitive paths through
 # rand agree on the WASM backend.  The rustflag in .cargo/config.toml sets the

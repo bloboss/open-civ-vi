@@ -31,6 +31,7 @@ pub trait Agenda: std::fmt::Debug + Send + Sync {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TechProgress {
     pub tech_id: TechId,
     pub progress: u32,
@@ -38,6 +39,7 @@ pub struct TechProgress {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CivicProgress {
     pub civic_id: CivicId,
     pub progress: u32,
@@ -56,6 +58,10 @@ pub struct Leader {
 pub struct Civilization {
     pub id: CivId,
     pub name: &'static str,
+    /// Which built-in civilization this is, for gating unique components.
+    pub civ_identity: Option<super::civ_identity::BuiltinCiv>,
+    /// Which built-in leader this is.
+    pub leader_identity: Option<super::civ_identity::BuiltinLeader>,
     /// Used for flavor text in unique unit unlock descriptions
     /// (e.g., "Roman unit" -> "Legionary"). Not yet queried by the rules engine.
     pub adjective: &'static str,
@@ -121,6 +127,12 @@ pub struct Civilization {
     /// Names of unique historic moments already earned this era (uniqueness guard).
     pub earned_moments: HashSet<&'static str>,
 
+    // ── Tourism / cultural victory ──────────────────────────────────────────
+    /// Total tourism generated per turn (recomputed in advance_turn Phase 3c).
+    pub tourism_output: u32,
+    /// Accumulated lifetime culture. Serves as the "domestic culture" defense
+    /// against other civs' tourism for the cultural victory condition.
+    pub domestic_culture: u32,
     // ── Fog of war ────────────────────────────────────────────────────────────
     /// Tiles currently within this civ's vision this turn.
     /// Cleared and rebuilt by `recalculate_visibility` after every unit move
@@ -136,6 +148,8 @@ impl Civilization {
         Self {
             id,
             name,
+            civ_identity: None,
+            leader_identity: None,
             adjective,
             leader,
             cities: Vec::new(),
@@ -164,6 +178,8 @@ impl Civilization {
             era_age: EraAge::Normal,
             historic_moments: Vec::new(),
             earned_moments: HashSet::new(),
+            tourism_output: 0,
+            domestic_culture: 0,
             visible_tiles:  HashSet::new(),
             explored_tiles: HashSet::new(),
         }

@@ -517,6 +517,8 @@ fn spawn_slinger(s: &mut common::Scenario, coord: HexCoord) -> libciv::UnitId {
         resource_cost:   None,
         siege_bonus:     0,
         max_charges:     0,
+        exclusive_to:    None,
+        replaces:        None,
     });
     let unit_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
@@ -946,6 +948,8 @@ fn unit_production_blocked_without_resource() {
         resource_cost:   Some((BuiltinResource::Iron, 1)),
         siege_bonus:     0,
         max_charges:     0,
+        exclusive_to:    None,
+        replaces:        None,
     });
 
     s.state.cities.iter_mut()
@@ -997,6 +1001,8 @@ fn unit_production_consumes_strategic_resource() {
         resource_cost:   Some((BuiltinResource::Iron, 1)),
         siege_bonus:     0,
         max_charges:     0,
+        exclusive_to:    None,
+        replaces:        None,
     });
 
     // Grant Rome 3 Iron.
@@ -1522,6 +1528,8 @@ fn siege_unit_bonus_applies_on_city_tile() {
             can_found_city:  false,
             resource_cost:   None,
             siege_bonus, max_charges: 0,
+            exclusive_to:    None,
+            replaces:        None,
         });
 
         // Defender on Babylon's city tile (10, 5).
@@ -1590,6 +1598,8 @@ fn siege_bonus_not_applied_in_open_field() {
             can_found_city:  false,
             resource_cost:   None,
             siege_bonus, max_charges: 0,
+            exclusive_to:    None,
+            replaces:        None,
         });
 
         // Defender in open field (not on a city tile).
@@ -1703,15 +1713,15 @@ fn city_capture_transfers_ownership_on_last_defender_killed() {
     assert!(!babylon_cities.contains(&s.babylon_city), "Babylon's city list should no longer include the city");
 }
 
-/// When a city is captured, any units still belonging to the old owner that
-/// are standing on the city tile are destroyed as part of the capture.
+/// City is only captured when the LAST defender on the tile is killed.
+/// With two defenders, killing only one should NOT trigger a capture.
+/// After both are dead, the city should be captured.
 #[test]
 fn city_capture_destroys_garrisoned_units_on_tile() {
     let mut s = common::build_scenario();
     let rules = DefaultRulesEngine;
 
-    // Two Babylon units on the city tile.  The attacker targets the first; when
-    // the last defender falls the second should also be destroyed.
+    // Two Babylon units on the city tile (both weak so we can kill them in sequence).
     let defender1_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
         id: defender1_id, unit_type: s.warrior_type, owner: s.babylon_id,
@@ -1729,7 +1739,7 @@ fn city_capture_destroys_garrisoned_units_on_tile() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
-        health: 100,
+        health: 1,   // also one HP
         range: 0, vision_range: 2, charges: None,
     });
 
@@ -1744,14 +1754,20 @@ fn city_capture_destroys_garrisoned_units_on_tile() {
         health: 100, range: 0, vision_range: 2, charges: None,
     });
 
-    let diff = rules.attack(&mut s.state, attacker_id, defender1_id)
+    // Kill defender1.  Garrison still alive → no capture yet.
+    let diff1 = rules.attack(&mut s.state, attacker_id, defender1_id)
         .expect("attack should succeed");
+    let captured1 = diff1.deltas.iter().any(|d| matches!(d, StateDelta::CityCaptured { .. }));
+    assert!(!captured1, "should not capture city while garrison remains");
 
-    // The garrison unit should be destroyed as part of the capture.
-    let garrison_destroyed = diff.deltas.iter().any(|d| {
-        matches!(d, StateDelta::UnitDestroyed { unit } if *unit == garrison_id)
-    });
-    assert!(garrison_destroyed, "garrisoned unit should be destroyed when city is captured");
+    // Reset movement for the attacker so it can attack again.
+    if let Some(u) = s.state.unit_mut(attacker_id) { u.movement_left = 200; }
+
+    // Kill garrison (the last defender) → city should now be captured.
+    let diff2 = rules.attack(&mut s.state, attacker_id, garrison_id)
+        .expect("attack should succeed");
+    let captured2 = diff2.deltas.iter().any(|d| matches!(d, StateDelta::CityCaptured { .. }));
+    assert!(captured2, "city should be captured when last defender falls");
 
     // The garrison should not exist in the live unit list.
     assert!(
@@ -1759,9 +1775,6 @@ fn city_capture_destroys_garrisoned_units_on_tile() {
         "garrison unit should be removed from state after capture"
     );
 
-    // The city must be captured.
-    let captured = diff.deltas.iter().any(|d| matches!(d, StateDelta::CityCaptured { .. }));
-    assert!(captured, "CityCaptured delta expected");
 }
 
 /// A non-melee (ranged) kill on a city tile does NOT capture the city.

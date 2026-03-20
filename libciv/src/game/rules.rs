@@ -1,11 +1,15 @@
 use std::collections::HashSet;
-use crate::{AgreementId, CityId, CivId, PolicyId, PolicyType, TechId, UnitId, UnitTypeId, YieldBundle};
+use crate::{AgreementId, CityId, CivId, GreatPersonId, GreatPersonType, PolicyId, PolicyType, TechId, UnitId, UnitTypeId, YieldBundle};
 use crate::civ::unit::Unit;
 use crate::civ::{BasicUnit, DiplomaticRelation, DiplomaticStatus, GrievanceRecord};
 use crate::civ::grievance::DeclaredWarGrievance;
 use crate::civ::diplomacy::GrievanceTrigger;
+use crate::civ::civ_ability::{CivAbilityBundle, RuleOverride};
+use crate::civ::civ_identity::BuiltinCiv;
+use crate::rules::civ_registry;
 use crate::rules::effect::OneShotEffect;
-use crate::rules::modifier::{EffectType, resolve_modifiers};
+use crate::rules::modifier::{ConditionContext, EffectType, resolve_modifiers};
+use crate::rules::unique::UniqueUnitAbility;
 use crate::world::tile::WorldTile;
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::{HexCoord, HexDir};
@@ -15,6 +19,29 @@ use libhexgrid::{HexEdge, HexTile};
 use super::board::WorldBoard;
 use super::diff::{AttackType, GameStateDiff, StateDelta};
 use super::state::GameState;
+
+/// Look up a civ's ability bundle by identity. Returns None for custom civs.
+fn lookup_bundle(civ_identity: Option<BuiltinCiv>) -> Option<CivAbilityBundle> {
+    let civ = civ_identity?;
+    Some(match civ {
+        BuiltinCiv::Rome    => civ_registry::rome(),
+        BuiltinCiv::Greece  => civ_registry::greece(),
+        BuiltinCiv::Egypt   => civ_registry::egypt(),
+        BuiltinCiv::Babylon => civ_registry::babylon(),
+        BuiltinCiv::Germany => civ_registry::germany(),
+        BuiltinCiv::Japan   => civ_registry::japan(),
+        BuiltinCiv::India   => civ_registry::india(),
+        BuiltinCiv::Arabia  => civ_registry::arabia(),
+    })
+}
+
+/// Check if a civ has a specific rule override.
+fn has_rule_override(state: &GameState, civ_id: CivId, check: &dyn Fn(&RuleOverride) -> bool) -> bool {
+    state.civilizations.iter()
+        .find(|c| c.id == civ_id)
+        .and_then(|c| lookup_bundle(c.civ_identity))
+        .is_some_and(|b| b.rule_overrides.iter().any(check))
+}
 
 /// Core rules evaluation interface.
 pub trait RulesEngine: std::fmt::Debug {
@@ -219,6 +246,15 @@ pub trait RulesEngine: std::fmt::Debug {
         great_person_id: crate::GreatPersonId,
     ) -> Result<GameStateDiff, RulesError>;
 
+    /// Create a great work from a great person (Writer/Artist/Musician).
+    /// The great person must be owned by a civ, not retired, and of the right type.
+    /// The work is auto-slotted in the first available matching slot in an owned city.
+    fn create_great_work(
+        &self,
+        state: &mut GameState,
+        great_person_id: GreatPersonId,
+    ) -> Result<GameStateDiff, RulesError>;
+
     // TODO(PHASE3-BORDERS): fn purchase_tile(&self, state: &mut GameState, city_id: CityId,
     //   coord: HexCoord) -> Result<GameStateDiff, RulesError>;
     //   Spends gold (or culture) from the civilization's treasury to immediately claim a tile
@@ -322,6 +358,8 @@ pub enum RulesError {
     GreatPersonAlreadyRetired,
     /// No great person definition found matching this great person's name.
     GreatPersonDefNotFound,
+    InvalidGreatPersonType,
+    NoGreatWorkSlot,
 }
 
 impl std::fmt::Display for RulesError {
@@ -375,6 +413,8 @@ impl std::fmt::Display for RulesError {
             RulesError::GreatPersonNotFound            => write!(f, "great person not found"),
             RulesError::GreatPersonAlreadyRetired      => write!(f, "great person already retired"),
             RulesError::GreatPersonDefNotFound         => write!(f, "great person definition not found"),
+            RulesError::InvalidGreatPersonType         => write!(f, "great person type cannot create great works"),
+            RulesError::NoGreatWorkSlot                => write!(f, "no matching great work slot available in any owned city"),
         }
     }
 }
@@ -743,7 +783,8 @@ impl RulesEngine for DefaultRulesEngine {
             }
         }
 
-        // Collect modifiers: base sources (leader/policies/govt/war) + tech/civic tree grants.
+        // Collect modifiers: base sources (leader/policies/govt/war) + tech/civic tree grants
+        // + civ ability modifiers.
         let modifiers = state.civ(civ_id)
             .map(|civ| {
                 let mut mods = civ.get_modifiers(
@@ -752,11 +793,17 @@ impl RulesEngine for DefaultRulesEngine {
                     &state.diplomatic_relations,
                 );
                 mods.extend(civ.get_tree_modifiers(&state.tech_tree, &state.civic_tree));
+                // Add civ-specific modifiers from the ability bundle.
+                if let Some(bundle) = lookup_bundle(civ.civ_identity) {
+                    mods.extend(bundle.civ_modifiers);
+                    mods.extend(bundle.leader_modifiers);
+                }
                 mods
             })
             .unwrap_or_default();
 
-        let effects = resolve_modifiers(&modifiers);
+        let ctx = ConditionContext::for_civ(civ_id, state);
+        let effects = resolve_modifiers(&modifiers, Some(&ctx));
         apply_effects(&effects, total)
     }
 
@@ -1007,8 +1054,26 @@ impl RulesEngine for DefaultRulesEngine {
         let civ_ids: Vec<CivId> = state.civilizations.iter().map(|c| c.id).collect();
 
         // Collect yields while state is immutably borrowed.
+        // Apply civ-specific yield multipliers (e.g., Babylon's -50% science).
         let civ_yields: Vec<(CivId, YieldBundle)> = civ_ids.iter()
-            .map(|&id| (id, self.compute_yields(state, id)))
+            .map(|&id| {
+                let mut y = self.compute_yields(state, id);
+                // Babylon: -50% science per turn.
+                if has_rule_override(state, id, &|o| matches!(o, RuleOverride::SciencePerTurnMultiplier(_))) {
+                    let civ_identity = state.civilizations.iter()
+                        .find(|c| c.id == id).and_then(|c| c.civ_identity);
+                    if let Some(bundle) = lookup_bundle(civ_identity) {
+                        for ovr in &bundle.rule_overrides {
+                            if let RuleOverride::SciencePerTurnMultiplier(pct) = ovr {
+                                // pct is -50, meaning 50% of normal.
+                                let multiplier = (100 + pct).max(0) as f32 / 100.0;
+                                y.science = (y.science as f32 * multiplier) as i32;
+                            }
+                        }
+                    }
+                }
+                (id, y)
+            })
             .collect();
 
         // Apply gold.
@@ -1305,6 +1370,37 @@ impl RulesEngine for DefaultRulesEngine {
             }
         }
 
+        // ── Phase 3c: Tourism computation + domestic culture accumulation ─────
+        for (civ_id, yields) in &civ_yields {
+            // Domestic culture defense: lifetime accumulation of culture output.
+            if yields.culture > 0
+                && let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == *civ_id)
+            {
+                civ.domestic_culture += yields.culture as u32;
+            }
+
+            // Tourism output: sum of great work tourism + building base tourism.
+            let mut tourism: u32 = 0;
+
+            // Great works slotted in owned cities.
+            for city in state.cities.iter().filter(|c| c.owner == *civ_id) {
+                for slot in &city.great_work_slots {
+                    if let Some(work_id) = slot.work
+                        && let Some(work) = state.great_works.iter().find(|w| w.id == work_id)
+                    {
+                        tourism += work.tourism;
+                    }
+                }
+            }
+
+            // Base tourism yields from buildings (e.g. Broadcast Center).
+            tourism += yields.tourism.max(0) as u32;
+
+            if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == *civ_id) {
+                civ.tourism_output = tourism;
+            }
+        }
+
         // ── Phase 4: Drain effect queue ───────────────────────────────────────
         // Take the queue out of state so apply_effect can borrow state mutably.
         // apply_effect returns () and never re-enqueues, so the loop terminates.
@@ -1320,6 +1416,26 @@ impl RulesEngine for DefaultRulesEngine {
         }
         // Any effects pushed during apply_effect (none expected) would stay in
         // state.effect_queue for the next turn. pending is dropped here.
+
+        // ── Phase 4b: Unique unit abilities — end-of-turn healing (Mamluk) ────
+        for unit in &mut state.units {
+            let civ_identity = state.civilizations.iter()
+                .find(|c| c.id == unit.owner)
+                .and_then(|c| c.civ_identity);
+            if let Some(bundle) = lookup_bundle(civ_identity)
+                && let Some(uu) = &bundle.unique_unit
+            {
+                let unit_type_name = state.unit_type_defs.iter()
+                    .find(|d| d.id == unit.unit_type)
+                    .map(|d| d.name);
+                if unit_type_name == Some(uu.name)
+                    && uu.abilities.contains(&UniqueUnitAbility::HealEveryTurn)
+                    && unit.health < 100
+                {
+                    unit.health = (unit.health + 10).min(100);
+                }
+            }
+        }
 
         // ── Phase 5: Diplomacy — grievance decay and status recomputation ─────
         // Decay each grievance by 1 per turn; drop records that reach zero.
@@ -1673,6 +1789,72 @@ impl RulesEngine for DefaultRulesEngine {
             return Err(RulesError::NotInRange);
         }
 
+        // --- unique unit ability adjustments -----------------------------------
+        let mut atk_cs_bonus: i32 = 0;
+        let mut def_cs_bonus: i32 = 0;
+
+        // Look up unique unit abilities for the attacker.
+        if let Some(atk_unit) = state.unit(attacker_id) {
+            let atk_civ_identity = state.civilizations.iter()
+                .find(|c| c.id == atk_owner)
+                .and_then(|c| c.civ_identity);
+            if let Some(bundle) = lookup_bundle(atk_civ_identity)
+                && let Some(uu) = &bundle.unique_unit
+            {
+                let atk_type_name = state.unit_type_defs.iter()
+                    .find(|d| d.id == atk_unit.unit_type)
+                    .map(|d| d.name);
+                if atk_type_name == Some(uu.name) {
+                    for ability in &uu.abilities {
+                        match ability {
+                            UniqueUnitAbility::BonusAdjacentSameType(bonus) => {
+                                // Hoplite: +10 CS when adjacent to another Hoplite.
+                                let adj_same = state.units.iter()
+                                    .filter(|u| u.id != atk_unit.id
+                                        && u.owner == atk_unit.owner
+                                        && u.unit_type == atk_unit.unit_type
+                                        && u.coord.distance(&atk_unit.coord) == 1)
+                                    .count();
+                                if adj_same > 0 {
+                                    atk_cs_bonus += bonus;
+                                }
+                            }
+                            UniqueUnitAbility::DebuffAdjacentEnemies(debuff) => {
+                                // Varu: -5 CS to adjacent enemies.
+                                if atk_unit.coord.distance(&def_coord) == 1 {
+                                    def_cs_bonus -= debuff;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+
+        // Look up unique unit abilities for the defender (e.g., Varu debuffs adjacent attackers).
+        if let Some(def_unit) = state.unit(defender_id) {
+            let def_civ_identity = state.civilizations.iter()
+                .find(|c| c.id == def_unit.owner)
+                .and_then(|c| c.civ_identity);
+            if let Some(bundle) = lookup_bundle(def_civ_identity)
+                && let Some(uu) = &bundle.unique_unit
+            {
+                let def_type_name = state.unit_type_defs.iter()
+                    .find(|d| d.id == def_unit.unit_type)
+                    .map(|d| d.name);
+                if def_type_name == Some(uu.name) {
+                    for ability in &uu.abilities {
+                        if let UniqueUnitAbility::DebuffAdjacentEnemies(debuff) = ability
+                            && def_unit.coord.distance(&atk_coord) == 1
+                        {
+                            atk_cs_bonus -= debuff;
+                        }
+                    }
+                }
+            }
+        }
+
         // --- damage calculation -----------------------------------------------
         // Terrain defense bonus applies to the defender's tile.
         let terrain_def_bonus = state.board
@@ -1701,8 +1883,8 @@ impl RulesEngine for DefaultRulesEngine {
         let atk_gp_bonus = great_person_cs_bonus(state, atk_owner, atk_domain);
         let def_gp_bonus = great_person_cs_bonus(state, _def_owner, def_domain);
 
-        let effective_atk_cs = atk_cs + siege_bonus + atk_gp_bonus;
-        let effective_def_cs = (def_cs as i32 + terrain_def_bonus + wall_def_bonus + def_gp_bonus as i32).max(1) as u32;
+        let effective_atk_cs = (atk_cs as i32 + atk_cs_bonus + siege_bonus as i32 + atk_gp_bonus as i32).max(1) as u32;
+        let effective_def_cs = (def_cs as i32 + terrain_def_bonus + wall_def_bonus + def_cs_bonus + def_gp_bonus as i32).max(1) as u32;
 
         // Formula: 30 * exp((cs_atk - cs_def_effective) / 25) * rng[0.75, 1.25]
         let rng_a = 0.75 + state.id_gen.next_f32() * 0.5;
@@ -1780,21 +1962,17 @@ impl RulesEngine for DefaultRulesEngine {
         // (garrisoned units that cannot escape) are also destroyed.
         // If the attacked unit survived (no kill) no capture occurs.
         let defender_was_killed = !state.units.iter().any(|u| u.id() == defender_id);
+        let attacker_alive = state.unit(attacker_id).is_some();
         if attack_type == AttackType::Melee
             && defender_was_killed
+            && attacker_alive
             && let Some(city_idx) = state.cities.iter().position(|c| c.coord == def_coord)
         {
             let old_owner = state.cities[city_idx].owner;
-            if old_owner != atk_owner {
-                    // Destroy any old-owner units still garrisoned on the tile.
-                    let garrison: Vec<UnitId> = state.units.iter()
-                        .filter(|u| u.owner == old_owner && u.coord == def_coord)
-                        .map(|u| u.id())
-                        .collect();
-                    for uid in &garrison {
-                        diff.push(StateDelta::UnitDestroyed { unit: *uid });
-                    }
-                    state.units.retain(|u| !(u.owner == old_owner && u.coord == def_coord));
+            // Only capture if no remaining defenders on the tile.
+            let defenders_left = state.units.iter()
+                .any(|u| u.coord == def_coord && u.owner == old_owner);
+            if old_owner != atk_owner && !defenders_left {
 
                     // Transfer city ownership.
                     let city = &mut state.cities[city_idx];
@@ -1817,6 +1995,22 @@ impl RulesEngine for DefaultRulesEngine {
                         .find(|c| c.id == atk_owner)
                     {
                         new_civ.cities.push(city_id);
+                    }
+
+                    // Transfer tile ownership for the city's territory.
+                    let territory: Vec<HexCoord> = state.cities.iter()
+                        .find(|c| c.id == city_id)
+                        .map(|c| c.territory.iter().copied().collect())
+                        .unwrap_or_default();
+                    for coord in &territory {
+                        if let Some(tile) = state.board.tile_mut(*coord) {
+                            tile.owner = Some(atk_owner);
+                        }
+                    }
+
+                    // Move the attacker onto the city tile.
+                    if let Some(u) = state.unit_mut(attacker_id) {
+                        u.coord = def_coord;
                     }
                 }
         }
@@ -1879,6 +2073,49 @@ impl RulesEngine for DefaultRulesEngine {
         try_claim_tile(state, civ_id, city_id, coord, &mut diff);
         for nb in state.board.neighbors(coord) {
             try_claim_tile(state, civ_id, city_id, nb, &mut diff);
+        }
+
+        // ── Civ ability: on_city_founded hooks ──────────────────────────────
+        let civ_identity = state.civilizations.iter()
+            .find(|c| c.id == civ_id)
+            .and_then(|c| c.civ_identity);
+        if let Some(bundle) = lookup_bundle(civ_identity) {
+            use crate::civ::civ_ability::CityFoundedHook;
+            for hook in &bundle.on_city_founded {
+                match hook {
+                    CityFoundedHook::FreeBuilding(building_name) => {
+                        // Find the building def and add it to the city.
+                        if let Some(bdef) = state.building_defs.iter()
+                            .find(|d| d.name == *building_name)
+                            && let Some(city) = state.cities.iter_mut().find(|c| c.id == city_id)
+                            && !city.buildings.contains(&bdef.id)
+                        {
+                            let bid = bdef.id;
+                            city.buildings.push(bid);
+                            diff.push(StateDelta::BuildingCompleted {
+                                city: city_id, building: building_name,
+                            });
+                        }
+                    }
+                    CityFoundedHook::FreeTradingPost => {
+                        if let Some(tile) = state.board.tile_mut(coord)
+                            && tile.improvement.is_none()
+                        {
+                            tile.improvement = Some(
+                                crate::world::improvement::BuiltinImprovement::TradingPost,
+                            );
+                            diff.push(StateDelta::ImprovementPlaced {
+                                coord,
+                                improvement: crate::world::improvement::BuiltinImprovement::TradingPost,
+                            });
+                        }
+                    }
+                    CityFoundedHook::RoadToCapital => {
+                        // Stub: road building requires pathfinding infrastructure.
+                        // TODO: build road along shortest path to capital.
+                    }
+                }
+            }
         }
 
         Ok(diff)
@@ -2486,6 +2723,78 @@ impl RulesEngine for DefaultRulesEngine {
 
         Ok(diff)
     }
+
+    fn create_great_work(
+        &self,
+        state: &mut GameState,
+        great_person_id: GreatPersonId,
+    ) -> Result<GameStateDiff, RulesError> {
+        use crate::civ::great_works::{GreatWork, GreatWorkType};
+
+        // Find the great person.
+        let gp = state.great_people.iter()
+            .find(|gp| gp.id == great_person_id)
+            .ok_or(RulesError::GreatPersonNotFound)?;
+        if gp.is_retired || gp.owner.is_none() {
+            return Err(RulesError::GreatPersonNotFound);
+        }
+        let civ_id = gp.owner.unwrap();
+
+        // Determine work type from great person type.
+        let work_type = match gp.person_type {
+            GreatPersonType::Writer  => GreatWorkType::Writing,
+            GreatPersonType::Artist  => GreatWorkType::Art,
+            GreatPersonType::Musician => GreatWorkType::Music,
+            _ => return Err(RulesError::InvalidGreatPersonType),
+        };
+
+        let gp_name = gp.name;
+
+        // Base tourism/culture values by type.
+        let (tourism, culture) = match work_type {
+            GreatWorkType::Writing  => (2, 2),
+            GreatWorkType::Art      => (3, 3),
+            GreatWorkType::Music    => (4, 4),
+            GreatWorkType::Relic    => (8, 4),
+            GreatWorkType::Artifact => (3, 0),
+        };
+
+        // Find first available matching slot in an owned city.
+        let slot_city = state.cities.iter()
+            .filter(|c| c.owner == civ_id)
+            .find(|c| c.great_work_slots.iter().any(|s| s.is_empty() && s.slot_type.accepts(work_type)))
+            .map(|c| c.id);
+
+        let city_id = slot_city.ok_or(RulesError::NoGreatWorkSlot)?;
+
+        // Create the great work.
+        let work_id = state.id_gen.next_great_work_id();
+        state.great_works.push(GreatWork {
+            id: work_id,
+            name: gp_name,
+            work_type,
+            creator: Some(civ_id),
+            tourism,
+            culture,
+        });
+
+        // Slot it.
+        if let Some(city) = state.cities.iter_mut().find(|c| c.id == city_id)
+            && let Some(slot) = city.great_work_slots.iter_mut()
+                .find(|s| s.is_empty() && s.slot_type.accepts(work_type))
+        {
+            slot.work = Some(work_id);
+        }
+
+        // Retire the great person.
+        if let Some(gp) = state.great_people.iter_mut().find(|gp| gp.id == great_person_id) {
+            gp.is_retired = true;
+        }
+
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::GreatWorkCreated { civ: civ_id, work_name: gp_name, city: city_id });
+        Ok(diff)
+    }
 }
 
 // ── great person helpers ──────────────────────────────────────────────────────
@@ -2553,17 +2862,39 @@ fn apply_effect(
         }
 
         OneShotEffect::TriggerEureka { tech } => {
-            // Check if the front of the research queue matches this tech.
-            let in_progress_id = state.civilizations[civ_idx]
-                .research_queue.front().map(|tp| tp.tech_id);
-            let matches_current = in_progress_id.map(|id| id == *tech).unwrap_or(false);
+            let civ_identity = state.civilizations[civ_idx].civ_identity;
+            let babylon_full_tech = lookup_bundle(civ_identity)
+                .is_some_and(|b| b.rule_overrides.iter()
+                    .any(|o| matches!(o, RuleOverride::EurekaGivesFullTech)));
 
-            state.civilizations[civ_idx].eureka_triggered.insert(*tech);
-            if matches_current
-                && let Some(tp) = state.civilizations[civ_idx].research_queue.front_mut()
-            {
-                tp.boosted = true;
+            if babylon_full_tech {
+                // Babylon: eureka instantly completes the tech.
+                if !state.civilizations[civ_idx].researched_techs.contains(tech) {
+                    state.civilizations[civ_idx].researched_techs.push(*tech);
+                    // Remove from queue if present.
+                    state.civilizations[civ_idx].research_queue
+                        .retain(|tp| tp.tech_id != *tech);
+                    let tech_name = state.tech_tree.get(*tech).map(|n| n.name).unwrap_or("?");
+                    diff.push(StateDelta::TechResearched { civ: civ_id, tech: tech_name });
+                    // Fire completion effects.
+                    if let Some(effects) = state.tech_tree.get(*tech).map(|n| n.effects.clone()) {
+                        for effect in effects {
+                            state.effect_queue.push_back((civ_id, effect));
+                        }
+                    }
+                }
+            } else {
+                // Normal: mark as boosted (halves remaining cost).
+                let in_progress_id = state.civilizations[civ_idx]
+                    .research_queue.front().map(|tp| tp.tech_id);
+                let matches_current = in_progress_id.map(|id| id == *tech).unwrap_or(false);
+                if matches_current
+                    && let Some(tp) = state.civilizations[civ_idx].research_queue.front_mut()
+                {
+                    tp.boosted = true;
+                }
             }
+            state.civilizations[civ_idx].eureka_triggered.insert(*tech);
             let tech_name = state.tech_tree.get(*tech).map(|n| n.name).unwrap_or("?");
             diff.push(StateDelta::EurekaTriggered { civ: civ_id, tech: tech_name });
         }
@@ -3498,6 +3829,7 @@ mod tests {
             can_found_city: false,
             resource_cost: None,
             siege_bonus: 0, max_charges: 0,
+            exclusive_to: None, replaces: None,
         });
 
         let effect = OneShotEffect::FreeUnit { unit_type: "Warrior", city: None };

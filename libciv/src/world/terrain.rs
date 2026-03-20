@@ -4,6 +4,7 @@ use libhexgrid::types::{Elevation, MovementCost};
 /// All built-in terrain types as a plain enum.
 /// Deriving PartialEq/Eq/Hash allows direct comparison without string matching.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BuiltinTerrain {
     #[default]
     Grassland,

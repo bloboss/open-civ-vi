@@ -4,6 +4,7 @@ use libhexgrid::types::MovementCost;
 /// All built-in tile features as a plain enum.
 /// Deriving PartialEq/Eq/Hash allows direct comparison without string matching.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BuiltinFeature {
     Forest,
     Rainforest,

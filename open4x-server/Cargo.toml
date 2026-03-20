@@ -1,0 +1,22 @@
+[package]
+name = "open4x-server"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "open4x-server"
+path = "src/main.rs"
+
+[dependencies]
+open4x-api  = { path = "../open4x-api" }
+libciv      = { path = "../libciv" }
+libhexgrid  = { path = "../libhexgrid" }
+axum        = { version = "0.8", features = ["ws"] }
+tokio       = { workspace = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+ed25519-dalek = { workspace = true }
+rand        = { workspace = true }
+ulid        = { workspace = true }
+dashmap     = "6"
+tower-http  = { version = "0.6", features = ["cors", "fs"] }

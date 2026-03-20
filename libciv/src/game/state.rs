@@ -45,6 +45,10 @@ pub struct UnitTypeDef {
     /// When a unit is spawned, `BasicUnit.charges` is set to `Some(max_charges)`
     /// if `max_charges > 0`, or `None` otherwise.
     pub max_charges:     u8,
+    /// If set, this unit is exclusive to the given civilization.
+    pub exclusive_to:    Option<crate::civ::civ_identity::BuiltinCiv>,
+    /// If set, this unit replaces the named base unit for its civilization.
+    pub replaces:        Option<&'static str>,
 }
 
 /// Static descriptor for a building type; stored in `GameState.building_defs`.
@@ -57,6 +61,12 @@ pub struct BuildingDef {
     pub maintenance:         u32,
     pub yields:              YieldBundle,
     pub requires_district:   Option<&'static str>,
+    /// Great work slots provided when this building is constructed in a city.
+    pub great_work_slots:    Vec<crate::civ::great_works::GreatWorkSlotType>,
+    /// If set, this building is exclusive to the given civilization.
+    pub exclusive_to:        Option<crate::civ::civ_identity::BuiltinCiv>,
+    /// If set, this building replaces the named base building for its civilization.
+    pub replaces:            Option<&'static str>,
 }
 
 /// Deterministic ID generator backed by a seeded RNG.
@@ -122,6 +132,10 @@ impl IdGenerator {
         VictoryId::from_ulid(self.next_ulid())
     }
 
+    pub fn next_great_work_id(&mut self) -> crate::GreatWorkId {
+        crate::GreatWorkId::from_ulid(self.next_ulid())
+    }
+
     /// Returns a pseudo-random f32 in [0.0, 1.0) drawn from the seeded RNG.
     /// Used for combat randomisation; does not affect the ULID sequence.
     pub fn next_f32(&mut self) -> f32 {
@@ -147,6 +161,7 @@ pub struct GameState {
     pub great_people: Vec<GreatPerson>,
     /// Registry of great person definitions. Populated before the game loop.
     pub great_person_defs: Vec<GreatPersonDef>,
+    pub great_works: Vec<crate::civ::great_works::GreatWork>,
     pub tech_tree: TechTree,
     pub tech_refs: TechRefs,
     pub civic_tree: CivicTree,
@@ -203,6 +218,7 @@ impl GameState {
             trade_routes: Vec::new(),
             great_people: Vec::new(),
             great_person_defs: Vec::new(),
+            great_works: Vec::new(),
             tech_tree,
             tech_refs,
             civic_tree,

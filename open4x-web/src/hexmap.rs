@@ -1,18 +1,8 @@
-/// SVG hex-grid renderer.
+/// SVG hex-grid renderer backed by `GameView` from open4x-api.
 ///
-/// Renders the WorldBoard as pointy-top hexagons.  Each hex is a `<polygon>`
-/// coloured by terrain type.  Fog of war is applied as a dark overlay:
-///   - Unexplored tiles: nearly-opaque black overlay, no markers.
-///   - Explored-but-foggy: semi-transparent overlay, city outline still shown.
-///   - Fully visible: no overlay, all markers shown.
-///
-/// Territory is rendered on top of the fog overlay so it is always legible:
-///   - A semi-transparent tinted polygon fills each owned tile.
-///   - Thick coloured lines are drawn along every edge that separates an
-///     owned tile from an unowned (or off-map) tile, forming the civ border.
-///     Each civilization gets a deterministic colour from a fixed palette.
-///
-/// Clicking a hex fires `on_hex_click(coord)`.
+/// Renders the board as pointy-top hexagons coloured by terrain type.
+/// Fog of war is applied via TileVisibility on each TileView.
+/// Territory borders are derived from tile ownership.
 ///
 /// Coordinate system: axial (q, r) → pixel using pointy-top layout:
 ///   px = size * sqrt(3) * (q + r / 2)
@@ -20,12 +10,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use leptos::prelude::*;
-use libciv::world::terrain::BuiltinTerrain;
-use libciv::UnitId;
-use libhexgrid::board::HexBoard;
-use libhexgrid::coord::HexCoord;
-
-use crate::session::Session;
+use open4x_api::enums::{BuiltinTerrain, TileVisibility};
+use open4x_api::ids::{CivId, UnitId};
+use open4x_api::coord::HexCoord;
+use open4x_api::view::GameView;
 
 // ---------------------------------------------------------------------------
 // Geometry helpers
@@ -50,7 +38,6 @@ fn hex_corners(cx: f64, cy: f64) -> [(f64, f64); 6] {
     })
 }
 
-/// Format corner points as an SVG `points` attribute string.
 fn corners_to_points(corners: &[(f64, f64); 6]) -> String {
     corners.iter()
         .map(|(x, y)| format!("{x:.1},{y:.1}"))
@@ -58,7 +45,6 @@ fn corners_to_points(corners: &[(f64, f64); 6]) -> String {
         .join(" ")
 }
 
-/// Compute the total SVG canvas size needed for a board of given width/height.
 pub fn svg_dimensions(board_w: u32, board_h: u32) -> (f64, f64) {
     let (max_x, max_y) = axial_to_pixel(board_w as i32 - 1, board_h as i32 - 1);
     (max_x + HEX_SIZE * 2.0, max_y + HEX_SIZE * 2.0)
@@ -68,42 +54,22 @@ pub fn svg_dimensions(board_w: u32, board_h: u32) -> (f64, f64) {
 // Territory rendering helpers
 // ---------------------------------------------------------------------------
 
-/// Axial offsets to the 6 hex neighbours, indexed 0-5:
-///   0=East, 1=NE, 2=NW, 3=West, 4=SW, 5=SE
 const NEIGHBOR_OFFSETS: [(i32, i32); 6] = [
-    ( 1,  0),  // East
-    ( 1, -1),  // NE
-    ( 0, -1),  // NW
-    (-1,  0),  // West
-    (-1,  1),  // SW
-    ( 0,  1),  // SE
+    ( 1,  0), ( 1, -1), ( 0, -1), (-1,  0), (-1,  1), ( 0,  1),
 ];
 
-/// For each neighbour direction (same indexing as NEIGHBOR_OFFSETS), the pair
-/// of `hex_corners` indices that form the shared edge with that neighbour.
-/// Corners are numbered 0-5 clockwise from the upper-right vertex:
-///   0=upper-right, 1=lower-right, 2=bottom, 3=lower-left, 4=upper-left, 5=top
 const BORDER_CORNER_PAIRS: [(usize, usize); 6] = [
-    (0, 1),  // East  — right edge
-    (5, 0),  // NE    — upper-right edge
-    (4, 5),  // NW    — upper-left edge
-    (3, 4),  // West  — left edge
-    (2, 3),  // SW    — lower-left edge
-    (1, 2),  // SE    — lower-right edge
+    (0, 1), (5, 0), (4, 5), (3, 4), (2, 3), (1, 2),
 ];
 
-/// Deterministic territory colour for a civilization by its index in the
-/// `state.civilizations` vec.  The palette is chosen to be visually distinct
-/// from the terrain colours and legible over the fog overlay.
 fn civ_territory_color(civ_index: usize) -> (&'static str, &'static str) {
-    // (fill colour, border/stroke colour)
     const PALETTE: &[(&str, &str)] = &[
-        ("#4e7df4", "#3a6de0"),  // blue   (index 0 — player default)
-        ("#e05050", "#c83030"),  // red
-        ("#d4a800", "#b88e00"),  // gold
-        ("#40b840", "#289028"),  // green
-        ("#b040c0", "#8c28a0"),  // purple
-        ("#e07030", "#c05010"),  // orange
+        ("#4e7df4", "#3a6de0"),
+        ("#e05050", "#c83030"),
+        ("#d4a800", "#b88e00"),
+        ("#40b840", "#289028"),
+        ("#b040c0", "#8c28a0"),
+        ("#e07030", "#c05010"),
     ];
     PALETTE[civ_index % PALETTE.len()]
 }
@@ -144,256 +110,245 @@ fn terrain_label(t: BuiltinTerrain) -> &'static str {
 
 #[component]
 pub fn HexMap(
-    /// Tick signal — increment after every state mutation to redraw the map.
-    tick: ReadSignal<u32>,
-    /// Shared game session (non-Clone; accessed via StoredValue).
-    session: StoredValue<Session>,
-    /// Currently selected hex tile.
+    game_view: ReadSignal<Option<GameView>>,
     selected_tile: RwSignal<Option<HexCoord>>,
-    /// Currently selected unit.
     selected_unit: RwSignal<Option<UnitId>>,
-    /// Called when the user clicks a hex (before selection is updated).
     on_hex_click: impl Fn(HexCoord) + Send + Sync + 'static,
 ) -> impl IntoView {
-    // Board dimensions are fixed for the lifetime of the session.
-    let (board_w, board_h, svg_w, svg_h) = session.with_value(|s| {
-        let w = s.state.board.width();
-        let h = s.state.board.height();
-        let (sw, sh) = svg_dimensions(w, h);
-        (w, h, sw, sh)
-    });
-
-    // Arc allows cloning the callback into each per-hex click handler.
     let on_hex_click: Arc<dyn Fn(HexCoord) + Send + Sync> = Arc::new(on_hex_click);
 
-    // Build one <g> per tile.  Re-derived on every tick.
     let hexes = move || {
-        tick.get(); // reactive dependency
-
         let on_hex_click = on_hex_click.clone();
-        session.with_value(|s| {
-            let civ_id = s.civ_id;
+        let Some(gv) = game_view.get() else {
+            return Vec::new();
+        };
 
-            // Snapshot visibility sets for the rendering pass.
-            let (visible, explored) = s.state.civilizations.iter()
-                .find(|c| c.id == civ_id)
-                .map(|c| (c.visible_tiles.clone(), c.explored_tiles.clone()))
-                .unwrap_or_default();
+        let board_w = gv.board.width;
+        let board_h = gv.board.height;
+        let my_civ = gv.my_civ_id;
 
-            // Build territory mask from city.territory (the authoritative source).
-            // Maps each claimed coord → the owning civ's palette index, so that
-            // adjacent cities within the same civilization share a colour and do
-            // not draw a border between each other.
-            let territory_mask: HashMap<HexCoord, usize> = {
-                let mut map = HashMap::new();
-                for city in &s.state.cities {
-                    let civ_idx = s.state.civilizations.iter()
-                        .position(|c| c.id == city.owner)
-                        .unwrap_or(0);
-                    for &coord in &city.territory {
-                        map.insert(coord, civ_idx);
-                    }
-                }
-                map
-            };
+        // Build a tile lookup by coord for fast access.
+        let tile_map: HashMap<(i32, i32), &open4x_api::view::TileView> = gv.board.tiles.iter()
+            .map(|t| ((t.coord.q, t.coord.r), t))
+            .collect();
 
-            let mut elems: Vec<_> = Vec::new();
-
-            for r in 0..board_h as i32 {
-                for q in 0..board_w as i32 {
-                    let coord = HexCoord::from_qr(q, r);
-                    let Some(tile) = s.state.board.tile(coord) else { continue };
-
-                    let (cx, cy) = axial_to_pixel(q, r);
-                    let corners  = hex_corners(cx, cy);
-                    let points   = corners_to_points(&corners);
-                    let fill     = terrain_fill(tile.terrain);
-                    let label    = terrain_label(tile.terrain);
-
-                    let is_visible  = visible.contains(&coord);
-                    let is_explored = explored.contains(&coord);
-
-                    let is_selected = selected_tile.get_untracked() == Some(coord);
-                    let stroke      = if is_selected { "#ffffff" } else { "#000000" };
-                    let stroke_w    = if is_selected { "2.5" } else { "0.8" };
-
-                    // Unit on this tile (only shown when visible).
-                    // Tuple: (UnitId, is_friendly) — drives dot colour.
-                    let unit_here: Option<(UnitId, bool)> = if is_visible {
-                        s.state.units.iter()
-                            .find(|u| u.coord == coord)
-                            .map(|u| (u.id, u.owner == civ_id))
-                    } else {
-                        None
-                    };
-
-                    // City on this tile (shown when explored or visible).
-                    // Some(true) = player-owned, Some(false) = enemy, None = no city.
-                    let city_here: Option<bool> = if is_explored {
-                        s.state.cities.iter()
-                            .find(|c| c.coord == coord)
-                            .map(|c| c.owner == civ_id)
-                    } else {
-                        None
-                    };
-
-                    let sel_unit = selected_unit;
-                    let click_fn = on_hex_click.clone();
-
-                    // Fog overlay opacity: none when visible, semi when explored, solid when unknown.
-                    let fog_opacity: Option<&'static str> = if is_visible {
-                        None
-                    } else if is_explored {
-                        Some("0.50")
-                    } else {
-                        Some("0.88")
-                    };
-
-                    // ── Territory tint + border lines ─────────────────────────────────
-                    // Derived from city.territory (the authoritative per-city coord set),
-                    // not from tile.owner.  Rendered after the fog overlay so borders
-                    // are always legible regardless of exploration state.
-                    let territory_civ_idx: Option<usize> = territory_mask.get(&coord).copied();
-                    let territory_colors: Option<(&'static str, &'static str)> =
-                        territory_civ_idx.map(civ_territory_color);
-
-                    // For each of the 6 neighbour directions, draw a border segment when
-                    // the neighbour does not belong to the same civilization's territory
-                    // (including off-map neighbours, which always trigger a border).
-                    let border_line_views = match territory_civ_idx {
-                        None => Vec::new(),
-                        Some(own_idx) => {
-                            let (_, stroke_color) = territory_colors.unwrap();
-                            (0..6usize).filter_map(|d| {
-                                let (dq, dr) = NEIGHBOR_OFFSETS[d];
-                                let nb_idx = s.state.board
-                                    .normalize(HexCoord::from_qr(q + dq, r + dr))
-                                    .and_then(|nc| territory_mask.get(&nc).copied());
-                                if nb_idx != Some(own_idx) {
-                                    let (ci, cj) = BORDER_CORNER_PAIRS[d];
-                                    let (ax, ay) = corners[ci];
-                                    let (bx, by) = corners[cj];
-                                    Some(view! {
-                                        <line
-                                            x1=ax y1=ay x2=bx y2=by
-                                            stroke=stroke_color
-                                            stroke-width="2.5"
-                                            stroke-linecap="round"
-                                            pointer-events="none"
-                                        />
-                                    })
-                                } else {
-                                    None
-                                }
-                            }).collect::<Vec<_>>()
-                        }
-                    };
-
-                    elems.push(view! {
-                        <g>
-                            <polygon
-                                class="hex-cell"
-                                points=points.clone()
-                                fill=fill
-                                stroke=stroke
-                                stroke-width=stroke_w
-                                on:click=move |_| {
-                                    click_fn(coord);
-                                }
-                            />
-
-                            // Terrain letter (only on visible tiles).
-                            {is_visible.then(|| view! {
-                                <text
-                                    x=cx y={cy + HEX_SIZE * 0.58}
-                                    text-anchor="middle"
-                                    font-size="9"
-                                    fill="rgba(0,0,0,0.45)"
-                                    pointer-events="none"
-                                >
-                                    {label}
-                                </text>
-                            })}
-
-                            // City marker: diamond outline (white=friendly, red=enemy).
-                            {city_here.map(|is_friendly| {
-                                let city_stroke = if is_friendly { "#ffffff" } else { "#e05050" };
-                                view! {
-                                    <polygon
-                                        class="city-marker"
-                                        points=format!(
-                                            "{cx},{top} {rx},{cy} {cx},{bot} {lx},{cy}",
-                                            cx=cx, cy=cy,
-                                            top=cy - 10.0, bot=cy + 10.0,
-                                            lx=cx - 10.0, rx=cx + 10.0,
-                                        )
-                                        fill="none"
-                                        stroke=city_stroke
-                                        stroke-width="1.5"
-                                        pointer-events="none"
-                                    />
-                                }
-                            })}
-
-                            // Unit dot (only when tile is fully visible).
-                            // yellow=selected  blue=friendly  red=enemy
-                            {unit_here.map(|(uid, is_friendly)| {
-                                let is_sel = sel_unit.get_untracked() == Some(uid);
-                                let dot_fill = if is_sel {
-                                    "#ffe066"
-                                } else if is_friendly {
-                                    "#4e7df4"
-                                } else {
-                                    "#e05050"
-                                };
-                                view! {
-                                    <circle
-                                        class="unit-dot"
-                                        cx=cx cy=cy r="7"
-                                        fill=dot_fill
-                                        stroke="#fff"
-                                        stroke-width="1.2"
-                                        pointer-events="none"
-                                    />
-                                }
-                            })}
-
-                            // Fog of war overlay.
-                            {fog_opacity.map(|opacity| view! {
-                                <polygon
-                                    points=points.clone()
-                                    fill="#060810"
-                                    fill-opacity=opacity
-                                    stroke="none"
-                                    pointer-events="none"
-                                />
-                            })}
-
-                            // Territory tint (semi-transparent fill over the fog).
-                            {territory_colors.map(|(fill_color, _)| view! {
-                                <polygon
-                                    points=points.clone()
-                                    fill=fill_color
-                                    fill-opacity="0.20"
-                                    stroke="none"
-                                    pointer-events="none"
-                                />
-                            })}
-
-                            // Territory border lines (drawn last to stay on top).
-                            {border_line_views}
-                        </g>
-                    });
-                }
+        // Build civ-index map from cities for territory rendering.
+        // Collect all unique civ owners, assign index by order of appearance.
+        let mut civ_indices: HashMap<CivId, usize> = HashMap::new();
+        civ_indices.insert(my_civ, 0);
+        let mut next_idx = 1usize;
+        for city in &gv.cities {
+            if let std::collections::hash_map::Entry::Vacant(e) = civ_indices.entry(city.owner) {
+                e.insert(next_idx);
+                next_idx += 1;
             }
-            elems
-        })
+        }
+
+        // Territory mask from city territories.
+        let mut territory_mask: HashMap<(i32, i32), usize> = HashMap::new();
+        for city in &gv.cities {
+            let idx = *civ_indices.get(&city.owner).unwrap_or(&0);
+            for coord in &city.territory {
+                territory_mask.insert((coord.q, coord.r), idx);
+            }
+        }
+
+        // Unit lookup by coord.
+        let unit_map: HashMap<(i32, i32), &open4x_api::view::UnitView> = gv.units.iter()
+            .map(|u| ((u.coord.q, u.coord.r), u))
+            .collect();
+
+        // City lookup by coord.
+        let city_map: HashMap<(i32, i32), &open4x_api::view::CityView> = gv.cities.iter()
+            .map(|c| ((c.coord.q, c.coord.r), c))
+            .collect();
+
+        let (svg_w, svg_h) = svg_dimensions(board_w, board_h);
+        let _ = (svg_w, svg_h); // used by parent
+
+        let mut elems = Vec::new();
+
+        for r in 0..board_h as i32 {
+            for q in 0..board_w as i32 {
+                let coord = HexCoord::from_qr(q, r);
+                let (cx, cy) = axial_to_pixel(q, r);
+                let corners = hex_corners(cx, cy);
+                let points = corners_to_points(&corners);
+
+                // Check if tile is in the view (explored).
+                let tile_opt = tile_map.get(&(q, r)).copied();
+
+                let (fill, label, is_visible) = if let Some(tile) = tile_opt {
+                    let vis = matches!(tile.visibility, TileVisibility::Visible);
+                    (terrain_fill(tile.terrain), terrain_label(tile.terrain), vis)
+                } else {
+                    // Unexplored tile — dark.
+                    ("#0a0a14", "", false)
+                };
+
+                let is_explored = tile_opt.is_some();
+                let is_selected = selected_tile.get_untracked() == Some(coord);
+                let stroke = if is_selected { "#ffffff" } else { "#000000" };
+                let stroke_w = if is_selected { "2.5" } else { "0.8" };
+
+                let unit_here = if is_visible {
+                    unit_map.get(&(q, r)).map(|u| (u.id, u.is_own))
+                } else {
+                    None
+                };
+
+                let city_here = if is_explored {
+                    city_map.get(&(q, r)).map(|c| c.is_own)
+                } else {
+                    None
+                };
+
+                let sel_unit = selected_unit;
+                let click_fn = on_hex_click.clone();
+
+                let fog_opacity: Option<&'static str> = if is_visible {
+                    None
+                } else if is_explored {
+                    Some("0.50")
+                } else {
+                    Some("0.88")
+                };
+
+                let territory_civ_idx = territory_mask.get(&(q, r)).copied();
+                let territory_colors = territory_civ_idx.map(civ_territory_color);
+
+                let border_line_views = match territory_civ_idx {
+                    None => Vec::new(),
+                    Some(own_idx) => {
+                        let (_, stroke_color) = territory_colors.unwrap();
+                        (0..6usize).filter_map(|d| {
+                            let (dq, dr) = NEIGHBOR_OFFSETS[d];
+                            let nb_key = (q + dq, r + dr);
+                            let nb_idx = territory_mask.get(&nb_key).copied();
+                            if nb_idx != Some(own_idx) {
+                                let (ci, cj) = BORDER_CORNER_PAIRS[d];
+                                let (ax, ay) = corners[ci];
+                                let (bx, by) = corners[cj];
+                                Some(view! {
+                                    <line
+                                        x1=ax y1=ay x2=bx y2=by
+                                        stroke=stroke_color
+                                        stroke-width="2.5"
+                                        stroke-linecap="round"
+                                        pointer-events="none"
+                                    />
+                                })
+                            } else {
+                                None
+                            }
+                        }).collect::<Vec<_>>()
+                    }
+                };
+
+                elems.push(view! {
+                    <g>
+                        <polygon
+                            class="hex-cell"
+                            points=points.clone()
+                            fill=fill
+                            stroke=stroke
+                            stroke-width=stroke_w
+                            on:click=move |_| {
+                                click_fn(coord);
+                            }
+                        />
+
+                        {is_visible.then(|| view! {
+                            <text
+                                x=cx y={cy + HEX_SIZE * 0.58}
+                                text-anchor="middle"
+                                font-size="9"
+                                fill="rgba(0,0,0,0.45)"
+                                pointer-events="none"
+                            >
+                                {label}
+                            </text>
+                        })}
+
+                        {city_here.map(|is_friendly| {
+                            let city_stroke = if is_friendly { "#ffffff" } else { "#e05050" };
+                            view! {
+                                <polygon
+                                    class="city-marker"
+                                    points=format!(
+                                        "{cx},{top} {rx},{cy} {cx},{bot} {lx},{cy}",
+                                        cx=cx, cy=cy,
+                                        top=cy - 10.0, bot=cy + 10.0,
+                                        lx=cx - 10.0, rx=cx + 10.0,
+                                    )
+                                    fill="none"
+                                    stroke=city_stroke
+                                    stroke-width="1.5"
+                                    pointer-events="none"
+                                />
+                            }
+                        })}
+
+                        {unit_here.map(|(uid, is_friendly)| {
+                            let is_sel = sel_unit.get_untracked() == Some(uid);
+                            let dot_fill = if is_sel {
+                                "#ffe066"
+                            } else if is_friendly {
+                                "#4e7df4"
+                            } else {
+                                "#e05050"
+                            };
+                            view! {
+                                <circle
+                                    class="unit-dot"
+                                    cx=cx cy=cy r="7"
+                                    fill=dot_fill
+                                    stroke="#fff"
+                                    stroke-width="1.2"
+                                    pointer-events="none"
+                                />
+                            }
+                        })}
+
+                        {fog_opacity.map(|opacity| view! {
+                            <polygon
+                                points=points.clone()
+                                fill="#060810"
+                                fill-opacity=opacity
+                                stroke="none"
+                                pointer-events="none"
+                            />
+                        })}
+
+                        {territory_colors.map(|(fill_color, _)| view! {
+                            <polygon
+                                points=points.clone()
+                                fill=fill_color
+                                fill-opacity="0.20"
+                                stroke="none"
+                                pointer-events="none"
+                            />
+                        })}
+
+                        {border_line_views}
+                    </g>
+                });
+            }
+        }
+        elems
+    };
+
+    // We need the dimensions for the SVG; read from the game view.
+    let dims = move || {
+        game_view.get().map(|gv| svg_dimensions(gv.board.width, gv.board.height))
+            .unwrap_or((800.0, 600.0))
     };
 
     view! {
         <svg
-            width=svg_w height=svg_h
-            viewBox=format!("0 0 {:.0} {:.0}", svg_w, svg_h)
+            width=move || dims().0
+            height=move || dims().1
+            viewBox=move || format!("0 0 {:.0} {:.0}", dims().0, dims().1)
             xmlns="http://www.w3.org/2000/svg"
         >
             {hexes}

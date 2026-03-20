@@ -1,6 +1,7 @@
 use std::ops::{Add, AddAssign};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum YieldType {
     Food,
     Production,
@@ -15,6 +16,7 @@ pub enum YieldType {
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct YieldBundle {
     pub food: i32,
     pub production: i32,

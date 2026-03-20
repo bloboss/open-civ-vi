@@ -18,6 +18,7 @@ pub enum CityKind {
 /// Transient conditions (Starving, LowHousing, UnderSiege) are computed each
 /// turn by the rules engine — they are not stored here.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum CityOwnership {
     /// Owned and fully managed by the current civilization.
     Normal,
@@ -32,6 +33,7 @@ pub enum CityOwnership {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum WallLevel {
     None,
     Ancient,
@@ -40,6 +42,7 @@ pub enum WallLevel {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ProductionItem {
     Unit(UnitTypeId),
     Building(BuildingId),
@@ -92,6 +95,8 @@ pub struct City {
     /// become a Free City (independent). Starts at 100 for normally founded
     /// cities; Occupied cities start at 50.
     pub loyalty: i32,
+    /// Great work slots provided by buildings in this city.
+    pub great_work_slots: Vec<super::great_works::GreatWorkSlot>,
 }
 
 impl City {
@@ -120,6 +125,7 @@ impl City {
             culture_border: 0,
             has_attacked_this_turn: false,
             loyalty: 100,
+            great_work_slots: Vec::new(),
         }
     }
 

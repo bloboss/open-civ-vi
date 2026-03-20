@@ -12,6 +12,7 @@ use libhexgrid::coord::HexCoord;
 
 /// Distinguishes how a combat event was initiated.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum AttackType {
     Melee,
     Ranged,
@@ -140,6 +141,10 @@ pub enum StateDelta {
 
     // ── TODO(PHASE3-8.8): Era advancement ────────────────────────────────────
     // EraAdvanced { civ: CivId, new_era: crate::AgeType },
+
+    // ── Great works / tourism (cultural victory) ──────────────────────────────
+    /// A great person created a great work and it was slotted into a city.
+    GreatWorkCreated { civ: CivId, work_name: &'static str, city: CityId },
 
     // ── Victory condition (PHASE3-8.9) ────────────────────────────────────────
     /// Emitted when a civ wins the game. After this delta `GameState::game_over` is set.

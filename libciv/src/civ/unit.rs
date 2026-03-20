@@ -19,6 +19,7 @@ pub trait Unit: std::fmt::Debug {
 
 /// A concrete simple unit implementation.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BasicUnit {
     pub id: UnitId,
     pub unit_type: UnitTypeId,

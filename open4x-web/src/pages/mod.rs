@@ -42,9 +42,9 @@ pub fn MapConfigPage(
     on_start: impl Fn(GameConfig) + 'static,
     on_back:  impl Fn() + 'static,
 ) -> impl IntoView {
-    let size    = RwSignal::new("medium");   // "small" | "medium" | "large"
+    let size    = RwSignal::new("medium");
     let seed_str = RwSignal::new("42".to_string());
-    let num_ai  = RwSignal::new(1u32);       // 0 = solo, 1 = vs Babylon
+    let num_ai  = RwSignal::new(1u32);
 
     let start = move || {
         let (w, h) = match size.get() {
@@ -64,7 +64,6 @@ pub fn MapConfigPage(
             </div>
             <div class="panel-body" style="overflow-y:auto">
                 <div class="config-card">
-                    // ── Map size ──────────────────────────────────────────
                     <p class="config-label">"Map Size"</p>
                     <div class="preset-row">
                         {["small", "medium", "large"].map(|preset| {
@@ -85,7 +84,6 @@ pub fn MapConfigPage(
                         })}
                     </div>
 
-                    // ── Seed ─────────────────────────────────────────────
                     <p class="config-label" style="margin-top:1.2rem">"Map Seed"</p>
                     <input
                         class="config-input"
@@ -102,10 +100,9 @@ pub fn MapConfigPage(
                         }
                     />
 
-                    // ── AI opponents ──────────────────────────────────────
                     <p class="config-label" style="margin-top:1.2rem">"AI Opponents"</p>
                     <div class="preset-row">
-                        {[(0u32, "None (solo)"), (1, "1 AI (Babylon)")].map(|(n, label)| {
+                        {[(0u32, "None (solo)"), (1, "1 AI"), (2, "2 AI"), (3, "3 AI")].map(|(n, label)| {
                             view! {
                                 <button
                                     class="btn btn-ghost preset-btn"
@@ -144,7 +141,8 @@ pub fn SettingsPage(on_back: impl Fn() + 'static) -> impl IntoView {
                 <h2>"Settings"</h2>
             </div>
             <div class="panel-body">
-                <p class="empty-note">"No settings available yet."</p>
+                <p class="empty-note">"Server: ws://127.0.0.1:3001/ws"</p>
+                <p class="empty-note">"Auth: Ed25519 keypair (auto-generated, stored in localStorage)"</p>
             </div>
         </div>
     }
@@ -154,44 +152,17 @@ pub fn SettingsPage(on_back: impl Fn() + 'static) -> impl IntoView {
 // Players page
 // ---------------------------------------------------------------------------
 
-/// A single player entry.
-struct PlayerConfig {
-    name:     &'static str,
-    civ_name: &'static str,
-    is_human: bool,
-}
-
-// FIXME: Player list should come from the server lobby/game-config endpoint.
-const PLAYERS: &[PlayerConfig] = &[
-    PlayerConfig { name: "Player 1", civ_name: "Rome (Caesar)", is_human: true },
-];
-
 #[component]
 pub fn PlayersPage(on_back: impl Fn() + 'static) -> impl IntoView {
-    let rows = PLAYERS.iter().map(|p| {
-        let initial = &p.name[..1];
-        let name    = p.name;
-        let civ     = p.civ_name;
-        let tag     = if p.is_human { "Human" } else { "AI" };
-        view! {
-            <div class="player-row">
-                <div class="player-avatar">{initial}</div>
-                <div class="player-info">
-                    <div class="player-name">{name}</div>
-                    <div class="player-civ">{civ}" · "{tag}</div>
-                </div>
-            </div>
-        }
-    }).collect_view();
-
     view! {
         <div style="height:100vh; display:flex; flex-direction:column;">
             <div class="page-header">
                 <button class="btn-back" on:click=move |_| on_back()>"← Back"</button>
-                <h2>"Players"</h2>
+                <h2>"Profile"</h2>
             </div>
             <div class="panel-body">
-                {rows}
+                <p class="empty-note">"Profile management coming soon."</p>
+                <p class="empty-note">"Your identity is an Ed25519 keypair stored in your browser."</p>
             </div>
         </div>
     }

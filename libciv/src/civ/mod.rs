@@ -1,3 +1,5 @@
+pub mod civ_ability;
+pub mod civ_identity;
 pub mod city;
 pub mod city_state;
 pub mod civilization;
@@ -6,6 +8,7 @@ pub mod district;
 pub mod era;
 pub mod governor;
 pub mod great_people;
+pub mod great_works;
 pub mod grievance;
 pub mod religion;
 pub mod tourism;
@@ -25,7 +28,10 @@ pub use era::{Era, EraAge, EraDedication, EraTrigger, HistoricMoment, HistoricMo
 pub mod historic_moments;
 pub use governor::{Governor, GovernorDef, GovernorPromotion};
 pub use great_people::{GreatPerson, GreatPersonAbility, GreatPersonDef, RetireEffect, builtin_great_person_defs, spawn_great_person};
+pub use great_works::{GreatWork, GreatWorkSlot, GreatWorkSlotType, GreatWorkType};
 pub use religion::{Belief, BeliefContext, Religion};
 pub use tourism::{WonderTourism, compute_tourism, domestic_tourists, has_cultural_dominance};
 pub use trade::TradeRoute;
 pub use unit::{BasicUnit, Unit};
+pub use civ_identity::{BuiltinCiv, BuiltinLeader};
+pub use civ_ability::{CivAbilityBundle, CityFoundedHook, RuleOverride};

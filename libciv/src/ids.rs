@@ -3,6 +3,7 @@ use ulid::Ulid;
 macro_rules! define_id {
     ($name:ident) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         pub struct $name(pub(crate) Ulid);
 
         impl $name {
@@ -57,6 +58,7 @@ define_id!(TerrainId);
 define_id!(FeatureId);
 define_id!(EdgeFeatureId);
 define_id!(NaturalWonderId);
+define_id!(GreatWorkId);
 
 /// Named handles to every built-in tech ID, produced alongside the TechTree.
 #[derive(Debug, Clone, Copy)]

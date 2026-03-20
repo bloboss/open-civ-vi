@@ -9,6 +9,7 @@ pub trait EdgeFeatureDef: std::fmt::Debug {
 }
 
 #[derive(Debug, Clone, Copy, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct River;
 impl EdgeFeatureDef for River {
     fn name(&self) -> &'static str { "River" }
@@ -16,6 +17,7 @@ impl EdgeFeatureDef for River {
 }
 
 #[derive(Debug, Clone, Copy, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Canal;
 impl EdgeFeatureDef for Canal {
     fn name(&self) -> &'static str { "Canal" }
@@ -23,6 +25,7 @@ impl EdgeFeatureDef for Canal {
 }
 
 #[derive(Debug, Clone, Copy, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MountainPass;
 impl EdgeFeatureDef for MountainPass {
     fn name(&self) -> &'static str { "Mountain Pass" }
@@ -31,6 +34,7 @@ impl EdgeFeatureDef for MountainPass {
 
 /// Enum of built-in edge features.
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BuiltinEdgeFeature {
     River(River),
     Canal(Canal),
