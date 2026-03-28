@@ -44,7 +44,7 @@ fn spawn_trader(s: &mut common::Scenario, owner: CivId, coord: HexCoord) -> Unit
         health: 100,
         range: 0,
         vision_range: 2,
-        charges: None,
+        charges: None, trade_origin: None, trade_destination: None,
     });
     unit_id
 }
@@ -181,4 +181,125 @@ fn establish_route_fails_if_not_trader() {
     // rome_warrior is a combat unit.
     let result = rules.establish_trade_route(&mut s.state, s.rome_warrior, babylon_city);
     assert!(matches!(result, Err(RulesError::NotATrader)));
+}
+
+// ── Autonomous trader movement tests ─────────────────────────────────────
+
+/// assign_trade_route sets the trader's origin and destination fields and
+/// emits a TradeRouteAssigned delta.
+#[test]
+fn assign_trade_route_sets_destination() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    let rome_id = s.rome_id;
+    let babylon_city = s.babylon_city;
+    let rome_coord = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap().coord;
+    let trader = spawn_trader(&mut s, rome_id, rome_coord);
+
+    let diff = rules.assign_trade_route(&mut s.state, trader, babylon_city).unwrap();
+
+    // Check unit fields were set.
+    let unit = s.state.units.iter().find(|u| u.id == trader).unwrap();
+    assert_eq!(unit.trade_origin, Some(s.rome_city));
+    assert_eq!(unit.trade_destination, Some(babylon_city));
+
+    // Check diff contains TradeRouteAssigned.
+    assert!(diff.deltas.iter().any(|d| matches!(d,
+        StateDelta::TradeRouteAssigned { unit: u, destination: d, .. }
+        if *u == trader && *d == babylon_city
+    )));
+}
+
+/// assign_trade_route fails with NotATrader for non-trader units.
+#[test]
+fn assign_trade_route_fails_if_not_trader() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    let result = rules.assign_trade_route(&mut s.state, s.rome_warrior, s.babylon_city);
+    assert!(matches!(result, Err(RulesError::NotATrader)));
+}
+
+/// assign_trade_route fails when the trader is not at a city owned by its civ.
+#[test]
+fn assign_trade_route_fails_if_not_at_origin_city() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Spawn trader at an arbitrary location, not on a city.
+    let rome_id = s.rome_id;
+    let babylon_city = s.babylon_city;
+    let trader = spawn_trader(&mut s, rome_id, HexCoord::from_qr(5, 5));
+    let result = rules.assign_trade_route(&mut s.state, trader, babylon_city);
+    assert!(matches!(result, Err(RulesError::NoOriginCity)));
+}
+
+/// A trader with an assigned destination moves toward the destination city
+/// each turn during advance_turn.
+#[test]
+fn trader_moves_autonomously_toward_destination() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    let rome_id = s.rome_id;
+    let rome_coord = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap().coord;
+    let trader = spawn_trader(&mut s, rome_id, rome_coord);
+
+    // Remove warriors to avoid occupancy conflicts during trader movement.
+    s.state.units.retain(|u| u.category == UnitCategory::Trader);
+
+    rules.assign_trade_route(&mut s.state, trader, s.babylon_city).unwrap();
+
+    let start_coord = s.state.units.iter().find(|u| u.id == trader).unwrap().coord;
+
+    // After one advance_turn, the trader should have moved from its starting position.
+    rules.advance_turn(&mut s.state);
+
+    // The trader may still exist (hasn't arrived yet) — check it moved.
+    if let Some(unit) = s.state.units.iter().find(|u| u.id == trader) {
+        assert_ne!(unit.coord, start_coord, "trader should have moved from start position");
+    }
+    // Or it may have already arrived and been consumed (on very small maps).
+}
+
+/// After enough turns, the trader arrives and the trade route is established
+/// automatically.
+#[test]
+fn trader_auto_establishes_route_on_arrival() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    let rome_id = s.rome_id;
+    let rome_coord = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap().coord;
+    let trader = spawn_trader(&mut s, rome_id, rome_coord);
+
+    // Remove warriors to avoid occupancy conflicts.
+    s.state.units.retain(|u| u.category == UnitCategory::Trader);
+
+    rules.assign_trade_route(&mut s.state, trader, s.babylon_city).unwrap();
+
+    assert!(s.state.trade_routes.is_empty(), "no trade route yet");
+
+    // Run enough turns for the trader to reach Babylon at (10, 5) from Roma at (3, 3).
+    // Distance is ~8 hexes; movement = 200 (2 hexes/turn), so ~4 turns should suffice.
+    for _ in 0..20 {
+        rules.advance_turn(&mut s.state);
+        if !s.state.trade_routes.is_empty() {
+            break;
+        }
+    }
+
+    // Trade route should have been established.
+    assert_eq!(s.state.trade_routes.len(), 1, "trade route should be established on arrival");
+
+    // Trader should have been consumed.
+    assert!(!s.state.units.iter().any(|u| u.id == trader),
+        "trader should be consumed after establishing route");
+
+    // Route should have correct origin and destination.
+    let route = &s.state.trade_routes[0];
+    assert_eq!(route.origin, s.rome_city);
+    assert_eq!(route.destination, s.babylon_city);
+    assert_eq!(route.owner, rome_id);
 }

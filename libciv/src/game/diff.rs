@@ -98,6 +98,13 @@ pub enum StateDelta {
     TileReassigned { civ: CivId, from_city: CityId, to_city: CityId, coord: HexCoord },
 
     // ── Trade routes (PHASE3-8.4) ─────────────────────────────────────────────
+    /// A trader unit was assigned a trade route destination and will move
+    /// autonomously toward the destination city each turn.
+    TradeRouteAssigned {
+        unit:        UnitId,
+        origin:      CityId,
+        destination: CityId,
+    },
     /// A trade route was established by a trader unit (which is consumed).
     TradeRouteEstablished {
         route:       TradeRouteId,

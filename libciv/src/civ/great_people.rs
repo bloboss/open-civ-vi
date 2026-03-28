@@ -143,7 +143,7 @@ pub fn spawn_great_person(
         health: 100,
         range: 0,
         vision_range: 2,
-        charges: None,
+        charges: None, trade_origin: None, trade_destination: None,
     });
 
     gp_id

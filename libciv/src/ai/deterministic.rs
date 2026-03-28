@@ -155,9 +155,12 @@ impl HeuristicAgent {
         let mut diff = GameStateDiff::new();
 
         // Collect units owned by this civ that still have movement, sorted for determinism.
+        // Skip traders with assigned trade destinations — they move autonomously
+        // during advance_turn.
         let unit_ids: Vec<UnitId> = {
             let mut ids: Vec<UnitId> = state.units.iter()
-                .filter(|u| u.owner == self.civ_id && u.movement_left > 0)
+                .filter(|u| u.owner == self.civ_id && u.movement_left > 0
+                    && u.trade_destination.is_none())
                 .map(|u| u.id)
                 .collect();
             ids.sort();
@@ -280,7 +283,7 @@ mod tests {
             domain: UnitDomain::Land, category: UnitCategory::Combat,
             movement_left: 200, max_movement: 200,
             combat_strength: Some(20), promotions: Vec::new(),
-            health: 100, range: 0, vision_range: 2, charges: None,
+            health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None,
         });
 
         (state, civ_id, unit_id, warrior_type)
@@ -512,7 +515,7 @@ mod tests {
                 domain: UnitDomain::Land, category: UnitCategory::Combat,
                 movement_left: 200, max_movement: 200,
                 combat_strength: Some(20), promotions: Vec::new(),
-                health: 100, range: 0, vision_range: 2, charges: None,
+                health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None,
             });
 
             (state, civ_id)
