@@ -1,4 +1,5 @@
 pub mod game;
+pub mod replay;
 
 use leptos::prelude::*;
 use crate::session::GameConfig;
@@ -12,6 +13,7 @@ pub fn HomePage(
     on_new_game: impl Fn() + 'static,
     on_settings: impl Fn() + 'static,
     on_players:  impl Fn() + 'static,
+    on_demo:     impl Fn() + 'static,
 ) -> impl IntoView {
     view! {
         <div class="page-center">
@@ -27,6 +29,9 @@ pub fn HomePage(
                 </button>
                 <button class="btn btn-ghost" on:click=move |_| on_settings()>
                     "Settings"
+                </button>
+                <button class="btn btn-ghost" on:click=move |_| on_demo()>
+                    "Watch AI Demo"
                 </button>
             </div>
         </div>

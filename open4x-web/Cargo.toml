@@ -11,12 +11,15 @@ leptos      = { version = "0.7", features = ["csr"] }
 wasm-bindgen = "0.2"
 console_error_panic_hook = "0.1"
 js-sys   = "0.3"
+wasm-bindgen-futures = "0.4"
 web-sys  = { version = "0.3", features = [
     "Blob", "BlobPropertyBag", "Document",
     "HtmlAnchorElement", "HtmlInputElement", "Url", "Window",
     "WebSocket", "MessageEvent", "CloseEvent", "ErrorEvent",
     "Storage",
+    "Response", "Headers", "RequestInit", "Request",
 ] }
+serde-wasm-bindgen = "0.6"
 
 # Shared API types (serializable wire protocol).
 open4x-api  = { path = "../open4x-api" }

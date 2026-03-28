@@ -7,6 +7,7 @@ mod ws;
 use leptos::prelude::*;
 use pages::{HomePage, SettingsPage, PlayersPage, MapConfigPage};
 use crate::pages::game::GamePage;
+use crate::pages::replay::ReplayPage;
 use crate::session::GameConfig;
 
 /// Top-level page discriminant.
@@ -17,6 +18,7 @@ pub enum Page {
     Players,
     MapConfig,
     Game,
+    Replay,
 }
 
 /// Root application component.
@@ -31,6 +33,7 @@ pub fn App() -> impl IntoView {
                 on_new_game=move || page.set(Page::MapConfig)
                 on_settings=move || page.set(Page::Settings)
                 on_players=move || page.set(Page::Players)
+                on_demo=move || page.set(Page::Replay)
             />
         </Show>
         <Show when=move || page.get() == Page::Settings>
@@ -50,6 +53,9 @@ pub fn App() -> impl IntoView {
                 game_config=game_config
                 on_quit=move || page.set(Page::Home)
             />
+        </Show>
+        <Show when=move || page.get() == Page::Replay>
+            <ReplayPage on_back=move || page.set(Page::Home) />
         </Show>
     }
 }
