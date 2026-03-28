@@ -407,7 +407,7 @@ fn found_city_emits_tile_claimed_deltas() {
         health: 100,
         range: 0,
         vision_range: 2,
-        charges: None,
+        charges: None, trade_origin: None, trade_destination: None,
     });
 
     let diff = rules.found_city(&mut s.state, settler_id, "Antium".into()).unwrap();
