@@ -1,0 +1,14 @@
+[book]
+title = "Open Civ VI"
+description = "A Rust implementation of a Civilization VI-style 4X strategy game engine"
+authors = ["Open Civ VI Contributors"]
+language = "en"
+src = "src"
+
+[build]
+build-dir = "book"
+
+[output.html]
+default-theme = "navy"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/bloboss/open-civ-vi"

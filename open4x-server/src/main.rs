@@ -53,6 +53,7 @@ async fn demo_game_handler(
         params.width.unwrap_or(20),
         params.height.unwrap_or(14),
         params.turns.unwrap_or(100),
+        params.players.unwrap_or(2),
     );
     axum::Json(result)
 }
@@ -63,4 +64,5 @@ struct DemoParams {
     width: Option<u32>,
     height: Option<u32>,
     turns: Option<u32>,
+    players: Option<u32>,
 }
