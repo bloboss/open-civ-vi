@@ -2,7 +2,7 @@ pub mod game;
 pub mod replay;
 
 use leptos::prelude::*;
-use crate::session::GameConfig;
+use crate::session::{GameConfig, DemoConfig};
 
 // ---------------------------------------------------------------------------
 // Home page
@@ -168,6 +168,107 @@ pub fn PlayersPage(on_back: impl Fn() + 'static) -> impl IntoView {
             <div class="panel-body">
                 <p class="empty-note">"Profile management coming soon."</p>
                 <p class="empty-note">"Your identity is an Ed25519 keypair stored in your browser."</p>
+            </div>
+        </div>
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Demo config page  (configure AI-vs-AI game before watching)
+// ---------------------------------------------------------------------------
+
+#[component]
+pub fn DemoConfigPage(
+    on_start: impl Fn(DemoConfig) + 'static,
+    on_back:  impl Fn() + 'static,
+) -> impl IntoView {
+    let size      = RwSignal::new("small");
+    let seed_str  = RwSignal::new("42".to_string());
+    let turns_str = RwSignal::new("100".to_string());
+
+    let start = move || {
+        let (w, h) = match size.get() {
+            "medium" => (40u32, 24u32),
+            "large"  => (60u32, 36u32),
+            _        => (20u32, 14u32),
+        };
+        let seed: u64 = seed_str.get().parse().unwrap_or(42);
+        let num_turns: u32 = turns_str.get().parse().unwrap_or(100);
+        on_start(DemoConfig { width: w, height: h, seed, num_turns });
+    };
+
+    view! {
+        <div style="height:100vh; display:flex; flex-direction:column;">
+            <div class="page-header">
+                <button class="btn-back" on:click=move |_| on_back()>"← Back"</button>
+                <h2>"AI Demo Setup"</h2>
+            </div>
+            <div class="panel-body" style="overflow-y:auto">
+                <div class="config-card">
+                    <p class="config-label">"Map Size"</p>
+                    <div class="preset-row">
+                        {["small", "medium", "large"].map(|preset| {
+                            let label = match preset {
+                                "medium" => "Medium (40 × 24)",
+                                "large"  => "Large  (60 × 36)",
+                                _        => "Small  (20 × 14)",
+                            };
+                            view! {
+                                <button
+                                    class="btn btn-ghost preset-btn"
+                                    class:preset-active=move || size.get() == preset
+                                    on:click=move |_| size.set(preset)
+                                >
+                                    {label}
+                                </button>
+                            }
+                        })}
+                    </div>
+
+                    <p class="config-label" style="margin-top:1.2rem">"Map Seed"</p>
+                    <input
+                        class="config-input"
+                        type="number"
+                        min="0"
+                        prop:value=move || seed_str.get()
+                        on:input=move |ev| {
+                            use wasm_bindgen::JsCast as _;
+                            if let Some(el) = ev.target()
+                                .and_then(|t| t.dyn_into::<web_sys::HtmlInputElement>().ok())
+                            {
+                                seed_str.set(el.value());
+                            }
+                        }
+                    />
+
+                    <p class="config-label" style="margin-top:1.2rem">"Number of Turns"</p>
+                    <div class="preset-row">
+                        {[("50", "50"), ("100", "100"), ("200", "200"), ("300", "300")].map(|(val, label)| {
+                            view! {
+                                <button
+                                    class="btn btn-ghost preset-btn"
+                                    class:preset-active=move || turns_str.get() == val
+                                    on:click=move |_| turns_str.set(val.to_string())
+                                >
+                                    {label}
+                                </button>
+                            }
+                        })}
+                    </div>
+
+                    <div style="margin-top:1.2rem; padding:0.8rem; background:#0f1117; border-radius:6px; border:1px solid #2e3248;">
+                        <p style="font-size:0.85rem; color:#7a7f99; margin-bottom:0.4rem;">"Match: Rome vs Babylon"</p>
+                        <p style="font-size:0.8rem; color:#555;">"Two deterministic AI agents (HeuristicAgent) will play a full game. You can watch the replay turn-by-turn."</p>
+                    </div>
+
+                    <button
+                        class="btn btn-primary"
+                        style="margin-top:2rem;width:100%;font-size:1rem;padding:0.7rem"
+                        on:click=move |_| start()
+                    >
+                        "Run & Watch"
+                    </button>
+                </div>
             </div>
         </div>
     }

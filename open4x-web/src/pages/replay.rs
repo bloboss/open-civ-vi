@@ -12,6 +12,7 @@ use open4x_api::coord::HexCoord;
 use open4x_api::ids::UnitId;
 
 use crate::hexmap::{HexMap, svg_dimensions};
+use crate::session::DemoConfig;
 
 // ── Types matching server DemoGameResult ─────────────────────────────────────
 
@@ -32,6 +33,7 @@ struct DemoTurnSnapshot {
 
 #[component]
 pub fn ReplayPage(
+    demo_config: RwSignal<DemoConfig>,
     on_back: impl Fn() + Send + Sync + 'static,
 ) -> impl IntoView {
     let on_back = std::sync::Arc::new(on_back);
@@ -50,8 +52,9 @@ pub fn ReplayPage(
 
     // Fetch the demo game on mount.
     {
+        let cfg = demo_config.get_untracked();
         wasm_bindgen_futures::spawn_local(async move {
-            match fetch_demo_game().await {
+            match fetch_demo_game(&cfg).await {
                 Ok(data) => {
                     demo_data.set(Some(data));
                     loading.set(false);
@@ -175,7 +178,13 @@ pub fn ReplayPage(
                 <div class="page-center">
                     <div class="card">
                         <div class="title">"Running AI Demo Game..."</div>
-                        <div class="subtitle">"Simulating 100 turns between Rome and Babylon"</div>
+                        <div class="subtitle">
+                            {move || {
+                                let cfg = demo_config.get();
+                                format!("Simulating {} turns on {}×{} map (seed {})",
+                                    cfg.num_turns, cfg.width, cfg.height, cfg.seed)
+                            }}
+                        </div>
                     </div>
                 </div>
             </Show>
@@ -311,11 +320,14 @@ pub fn ReplayPage(
 
 // ── Fetch helper ────────────────────────────────────────────────────────────
 
-async fn fetch_demo_game() -> Result<DemoGameResult, String> {
+async fn fetch_demo_game(cfg: &DemoConfig) -> Result<DemoGameResult, String> {
     let base = web_sys::window()
         .and_then(|w| w.location().origin().ok())
         .unwrap_or_else(|| "http://127.0.0.1:3001".to_string());
-    let url = format!("{base}/api/demo-game?seed=42&width=20&height=14&turns=100");
+    let url = format!(
+        "{base}/api/demo-game?seed={}&width={}&height={}&turns={}",
+        cfg.seed, cfg.width, cfg.height, cfg.num_turns,
+    );
 
     let resp_value = wasm_bindgen_futures::JsFuture::from(
         web_sys::window().unwrap().fetch_with_str(&url),
