@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 mod auth;
+mod demo;
 mod game_room;
 mod persist;
 mod projection;
@@ -28,6 +29,7 @@ async fn main() {
     let app = Router::new()
         .route("/ws", get(ws::ws_handler))
         .route("/health", get(|| async { "ok" }))
+        .route("/api/demo-game", get(demo_game_handler))
         .fallback_service(ServeDir::new(&static_dir))
         .layer(CorsLayer::permissive())
         .with_state(state);
@@ -40,4 +42,27 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind(&addr).await
         .expect("failed to bind");
     axum::serve(listener, app).await.expect("server error");
+}
+
+/// GET /api/demo-game?seed=42&width=20&height=14&turns=100
+async fn demo_game_handler(
+    params: axum::extract::Query<DemoParams>,
+) -> axum::Json<demo::DemoGameResult> {
+    let result = demo::run_demo_game(
+        params.seed.unwrap_or(42),
+        params.width.unwrap_or(20),
+        params.height.unwrap_or(14),
+        params.turns.unwrap_or(100),
+        params.players.unwrap_or(2),
+    );
+    axum::Json(result)
+}
+
+#[derive(serde::Deserialize)]
+struct DemoParams {
+    seed: Option<u64>,
+    width: Option<u32>,
+    height: Option<u32>,
+    turns: Option<u32>,
+    players: Option<u32>,
 }

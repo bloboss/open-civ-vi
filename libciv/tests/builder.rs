@@ -37,6 +37,8 @@ fn spawn_builder(
         range: 0,
         vision_range: 2,
         charges: Some(3),
+        trade_origin: None,
+        trade_destination: None,
     });
     id
 }

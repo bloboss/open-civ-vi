@@ -5,9 +5,10 @@ mod hexmap;
 mod ws;
 
 use leptos::prelude::*;
-use pages::{HomePage, SettingsPage, PlayersPage, MapConfigPage};
+use pages::{HomePage, SettingsPage, PlayersPage, MapConfigPage, DemoConfigPage};
 use crate::pages::game::GamePage;
-use crate::session::GameConfig;
+use crate::pages::replay::ReplayPage;
+use crate::session::{GameConfig, DemoConfig};
 
 /// Top-level page discriminant.
 #[derive(Clone, PartialEq, Debug)]
@@ -17,6 +18,8 @@ pub enum Page {
     Players,
     MapConfig,
     Game,
+    DemoConfig,
+    Replay,
 }
 
 /// Root application component.
@@ -24,6 +27,7 @@ pub enum Page {
 pub fn App() -> impl IntoView {
     let page        = RwSignal::new(Page::Home);
     let game_config = RwSignal::new(GameConfig::default());
+    let demo_config = RwSignal::new(DemoConfig::default());
 
     view! {
         <Show when=move || page.get() == Page::Home>
@@ -31,6 +35,7 @@ pub fn App() -> impl IntoView {
                 on_new_game=move || page.set(Page::MapConfig)
                 on_settings=move || page.set(Page::Settings)
                 on_players=move || page.set(Page::Players)
+                on_demo=move || page.set(Page::DemoConfig)
             />
         </Show>
         <Show when=move || page.get() == Page::Settings>
@@ -49,6 +54,18 @@ pub fn App() -> impl IntoView {
             <GamePage
                 game_config=game_config
                 on_quit=move || page.set(Page::Home)
+            />
+        </Show>
+        <Show when=move || page.get() == Page::DemoConfig>
+            <DemoConfigPage
+                on_start=move |cfg| { demo_config.set(cfg); page.set(Page::Replay); }
+                on_back=move || page.set(Page::Home)
+            />
+        </Show>
+        <Show when=move || page.get() == Page::Replay>
+            <ReplayPage
+                demo_config=demo_config
+                on_back=move || page.set(Page::Home)
             />
         </Show>
     }

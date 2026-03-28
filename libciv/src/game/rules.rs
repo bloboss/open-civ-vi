@@ -210,9 +210,23 @@ pub trait RulesEngine: std::fmt::Debug {
         coord: HexCoord,
     ) -> Result<GameStateDiff, RulesError>;
 
-    /// Consume a trader unit and establish a trade route to `destination`.
+    /// Assign a trade route destination to a trader unit.
     ///
     /// The trader must be located at a city tile owned by its civilization (origin city).
+    /// Once assigned, the trader will move autonomously toward the destination city
+    /// each turn during `advance_turn`. When it arrives, the trade route is
+    /// automatically established and the trader is consumed.
+    fn assign_trade_route(
+        &self,
+        state: &mut GameState,
+        trader_unit: UnitId,
+        destination: CityId,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// Consume a trader unit and establish a trade route to `destination`.
+    ///
+    /// The trader must be located at a city tile owned by its civilization (origin city)
+    /// **or** have a pre-assigned `trade_origin` (set by `assign_trade_route`).
     /// The route lasts 30 turns; yields are delivered each turn via `compute_yields`.
     fn establish_trade_route(
         &self,
@@ -1002,6 +1016,8 @@ impl RulesEngine for DefaultRulesEngine {
                 range:           uc.range,
                 vision_range:    uc.vision_range,
                 charges,
+                trade_origin: None,
+                trade_destination: None,
             });
             diff.push(StateDelta::UnitCreated { unit: unit_id, coord: uc.coord, owner: uc.civ_id });
             // TODO(PHASE3-4.3): Building, District, Wonder completion.
@@ -1023,6 +1039,78 @@ impl RulesEngine for DefaultRulesEngine {
             for route in state.trade_routes.iter_mut() {
                 if let Some(ref mut t) = route.turns_remaining {
                     *t = t.saturating_sub(1);
+                }
+            }
+        }
+
+        // ── Phase 2b-2: Autonomous trader movement ─────────────────────────────
+        // Traders with an assigned destination move toward the destination city
+        // each turn. When a trader arrives at the destination city tile, the trade
+        // route is automatically established and the trader is consumed.
+        {
+            // Collect traders with assigned destinations (sorted for determinism).
+            let mut trader_ids: Vec<UnitId> = state.units.iter()
+                .filter(|u| u.category == crate::UnitCategory::Trader && u.trade_destination.is_some())
+                .map(|u| u.id)
+                .collect();
+            trader_ids.sort();
+
+            for trader_id in trader_ids {
+                // Re-read each iteration since state is mutated.
+                let info = state.units.iter()
+                    .find(|u| u.id == trader_id)
+                    .map(|u| (u.trade_origin, u.trade_destination, u.max_movement));
+                let Some((Some(_origin), Some(dest_city_id), max_movement)) = info else {
+                    continue;
+                };
+
+                // Reset movement for this turn.
+                if let Some(u) = state.units.iter_mut().find(|u| u.id == trader_id) {
+                    u.movement_left = max_movement;
+                }
+
+                // Find the destination city's coord.
+                let dest_coord = state.cities.iter()
+                    .find(|c| c.id == dest_city_id)
+                    .map(|c| c.coord);
+                let Some(dest_coord) = dest_coord else { continue };
+
+                // Move the trader toward the destination using Dijkstra pathfinding.
+                let move_deltas = match self.move_unit(state, trader_id, dest_coord) {
+                    Ok(move_diff) => move_diff.deltas,
+                    Err(RulesError::InsufficientMovement(partial)) => partial.deltas,
+                    Err(_) => Vec::new(),
+                };
+                for delta in &move_deltas {
+                    if let StateDelta::UnitMoved { unit, to, cost, .. } = delta
+                        && let Some(u) = state.units.iter_mut().find(|u| u.id == *unit)
+                    {
+                        u.coord = *to;
+                        u.movement_left = u.movement_left.saturating_sub(*cost);
+                    }
+                }
+                diff.deltas.extend(move_deltas);
+
+                // Check if the trader has arrived at the destination city tile.
+                let arrived = state.units.iter()
+                    .find(|u| u.id == trader_id)
+                    .map(|u| u.coord == dest_coord)
+                    .unwrap_or(false);
+
+                if arrived {
+                    // Auto-establish the trade route.
+                    match self.establish_trade_route(state, trader_id, dest_city_id) {
+                        Ok(route_diff) => {
+                            diff.deltas.extend(route_diff.deltas);
+                        }
+                        Err(_) => {
+                            // Establishment failed; clear assignment so it doesn't loop.
+                            if let Some(u) = state.units.iter_mut().find(|u| u.id == trader_id) {
+                                u.trade_origin = None;
+                                u.trade_destination = None;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -2504,14 +2592,13 @@ impl RulesEngine for DefaultRulesEngine {
         Ok(diff)
     }
 
-    fn establish_trade_route(
+    fn assign_trade_route(
         &self,
         state: &mut GameState,
         trader_unit: UnitId,
         destination: CityId,
     ) -> Result<GameStateDiff, RulesError> {
         use crate::UnitCategory;
-        use crate::civ::trade::compute_route_yields;
 
         // 1. Unit must exist.
         let (unit_owner, unit_coord, unit_category) = state.units.iter()
@@ -2529,6 +2616,63 @@ impl RulesEngine for DefaultRulesEngine {
             .find(|c| c.owner == unit_owner && c.coord == unit_coord)
             .map(|c| c.id)
             .ok_or(RulesError::NoOriginCity)?;
+
+        // 4. Destination city must exist.
+        if !state.cities.iter().any(|c| c.id == destination) {
+            return Err(RulesError::CityNotFound);
+        }
+
+        // 5. Origin and destination must differ.
+        if origin_id == destination {
+            return Err(RulesError::SameCity);
+        }
+
+        // Set the trader's origin and destination.
+        let unit = state.units.iter_mut()
+            .find(|u| u.id == trader_unit)
+            .ok_or(RulesError::UnitNotFound)?;
+        unit.trade_origin = Some(origin_id);
+        unit.trade_destination = Some(destination);
+
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::TradeRouteAssigned {
+            unit: trader_unit,
+            origin: origin_id,
+            destination,
+        });
+        Ok(diff)
+    }
+
+    fn establish_trade_route(
+        &self,
+        state: &mut GameState,
+        trader_unit: UnitId,
+        destination: CityId,
+    ) -> Result<GameStateDiff, RulesError> {
+        use crate::UnitCategory;
+        use crate::civ::trade::compute_route_yields;
+
+        // 1. Unit must exist.
+        let (unit_owner, unit_coord, unit_category, stored_origin) = state.units.iter()
+            .find(|u| u.id() == trader_unit)
+            .map(|u| (u.owner(), u.coord(), u.category(), u.trade_origin))
+            .ok_or(RulesError::UnitNotFound)?;
+
+        // 2. Must be a trader.
+        if unit_category != UnitCategory::Trader {
+            return Err(RulesError::NotATrader);
+        }
+
+        // 3. Determine origin: use stored trade_origin if set (autonomous arrival),
+        //    otherwise trader must be at a city owned by its civ.
+        let origin_id = if let Some(origin) = stored_origin {
+            origin
+        } else {
+            state.cities.iter()
+                .find(|c| c.owner == unit_owner && c.coord == unit_coord)
+                .map(|c| c.id)
+                .ok_or(RulesError::NoOriginCity)?
+        };
 
         // 4. Destination city must exist.
         if !state.cities.iter().any(|c| c.id == destination) {
@@ -2943,6 +3087,8 @@ fn apply_effect(
                     range:           0,
                     vision_range:    2,
                     charges:         if def.max_charges > 0 { Some(def.max_charges) } else { None },
+                    trade_origin: None,
+                    trade_destination: None,
                 });
                 diff.push(StateDelta::UnitCreated { unit: unit_id, coord, owner: civ_id });
             } else {
@@ -3229,6 +3375,8 @@ mod tests {
             range:          0,
             vision_range:   2,
             charges:        None,
+            trade_origin:   None,
+            trade_destination: None,
         });
         unit_id
     }

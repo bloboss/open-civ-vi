@@ -1,4 +1,4 @@
-use crate::{CivId, PromotionId, UnitCategory, UnitDomain, UnitId, UnitTypeId};
+use crate::{CityId, CivId, PromotionId, UnitCategory, UnitDomain, UnitId, UnitTypeId};
 use libhexgrid::coord::HexCoord;
 
 pub trait Unit: std::fmt::Debug {
@@ -40,6 +40,12 @@ pub struct BasicUnit {
     /// without charges (warriors, settlers, etc.). When this reaches
     /// `Some(0)` the unit should be destroyed.
     pub charges: Option<u8>,
+    /// For trader units: the origin city from which the trade route starts.
+    /// Set by `assign_trade_route`; cleared when the route is established.
+    pub trade_origin: Option<CityId>,
+    /// For trader units: the destination city the trader is moving toward.
+    /// Set by `assign_trade_route`; cleared when the route is established.
+    pub trade_destination: Option<CityId>,
 }
 
 impl Unit for BasicUnit {
