@@ -182,9 +182,10 @@ pub fn DemoConfigPage(
     on_start: impl Fn(DemoConfig) + 'static,
     on_back:  impl Fn() + 'static,
 ) -> impl IntoView {
-    let size      = RwSignal::new("small");
-    let seed_str  = RwSignal::new("42".to_string());
-    let turns_str = RwSignal::new("100".to_string());
+    let size        = RwSignal::new("small");
+    let seed_str    = RwSignal::new("42".to_string());
+    let turns_str   = RwSignal::new("100".to_string());
+    let num_players = RwSignal::new(2u32);
 
     let start = move || {
         let (w, h) = match size.get() {
@@ -194,7 +195,7 @@ pub fn DemoConfigPage(
         };
         let seed: u64 = seed_str.get().parse().unwrap_or(42);
         let num_turns: u32 = turns_str.get().parse().unwrap_or(100);
-        on_start(DemoConfig { width: w, height: h, seed, num_turns });
+        on_start(DemoConfig { width: w, height: h, seed, num_turns, num_players: num_players.get() });
     };
 
     view! {
@@ -256,9 +257,31 @@ pub fn DemoConfigPage(
                         })}
                     </div>
 
+                    <p class="config-label" style="margin-top:1.2rem">"Number of AI Players"</p>
+                    <div class="preset-row">
+                        {[(2u32, "2"), (3, "3"), (4, "4"), (6, "6"), (8, "8")].map(|(n, label)| {
+                            view! {
+                                <button
+                                    class="btn btn-ghost preset-btn"
+                                    class:preset-active=move || num_players.get() == n
+                                    on:click=move |_| num_players.set(n)
+                                >
+                                    {label}
+                                </button>
+                            }
+                        })}
+                    </div>
+
                     <div style="margin-top:1.2rem; padding:0.8rem; background:#0f1117; border-radius:6px; border:1px solid #2e3248;">
-                        <p style="font-size:0.85rem; color:#7a7f99; margin-bottom:0.4rem;">"Match: Rome vs Babylon"</p>
-                        <p style="font-size:0.8rem; color:#555;">"Two deterministic AI agents (HeuristicAgent) will play a full game. You can watch the replay turn-by-turn."</p>
+                        <p style="font-size:0.85rem; color:#7a7f99; margin-bottom:0.4rem;">
+                            {move || {
+                                let civs: Vec<&str> = ["Rome", "Babylon", "Greece", "Egypt",
+                                    "Germany", "Japan", "India", "Arabia"]
+                                    .into_iter().take(num_players.get() as usize).collect();
+                                format!("Match: {}", civs.join(" vs "))
+                            }}
+                        </p>
+                        <p style="font-size:0.8rem; color:#555;">"Deterministic AI agents (HeuristicAgent) will play a full game. You can watch the replay turn-by-turn from any civ's perspective or as a spectator."</p>
                     </div>
 
                     <button

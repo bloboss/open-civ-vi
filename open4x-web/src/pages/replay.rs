@@ -181,8 +181,8 @@ pub fn ReplayPage(
                         <div class="subtitle">
                             {move || {
                                 let cfg = demo_config.get();
-                                format!("Simulating {} turns on {}×{} map (seed {})",
-                                    cfg.num_turns, cfg.width, cfg.height, cfg.seed)
+                                format!("Simulating {} turns, {} players on {}×{} map (seed {})",
+                                    cfg.num_turns, cfg.num_players, cfg.width, cfg.height, cfg.seed)
                             }}
                         </div>
                     </div>
@@ -325,8 +325,8 @@ async fn fetch_demo_game(cfg: &DemoConfig) -> Result<DemoGameResult, String> {
         .and_then(|w| w.location().origin().ok())
         .unwrap_or_else(|| "http://127.0.0.1:3001".to_string());
     let url = format!(
-        "{base}/api/demo-game?seed={}&width={}&height={}&turns={}",
-        cfg.seed, cfg.width, cfg.height, cfg.num_turns,
+        "{base}/api/demo-game?seed={}&width={}&height={}&turns={}&players={}",
+        cfg.seed, cfg.width, cfg.height, cfg.num_turns, cfg.num_players,
     );
 
     let resp_value = wasm_bindgen_futures::JsFuture::from(

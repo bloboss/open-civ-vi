@@ -17,14 +17,15 @@ impl Default for GameConfig {
 /// Configuration for an AI-vs-AI demo game.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DemoConfig {
-    pub width:     u32,
-    pub height:    u32,
-    pub seed:      u64,
-    pub num_turns: u32,
+    pub width:       u32,
+    pub height:      u32,
+    pub seed:        u64,
+    pub num_turns:   u32,
+    pub num_players: u32,
 }
 
 impl Default for DemoConfig {
     fn default() -> Self {
-        Self { width: 20, height: 14, seed: 42, num_turns: 100 }
+        Self { width: 20, height: 14, seed: 42, num_turns: 100, num_players: 2 }
     }
 }
