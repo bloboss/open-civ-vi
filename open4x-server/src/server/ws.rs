@@ -7,11 +7,11 @@ use axum::extract::State;
 use axum::response::IntoResponse;
 use tokio::sync::broadcast;
 
-use open4x_api::messages::{ClientMessage, GameStatus, ServerMessage};
+use crate::types::messages::{ClientMessage, GameStatus, ServerMessage};
 
-use crate::auth::{self, AuthChallenge};
-use crate::projection::project_game_view;
-use crate::state::{AppState, GameRoom, GameRoomConfig};
+use crate::server::auth::{self, AuthChallenge};
+use crate::server::projection::project_game_view;
+use crate::server::state::{AppState, GameRoom, GameRoomConfig};
 
 /// HTTP handler for WebSocket upgrade.
 pub async fn ws_handler(
@@ -43,13 +43,13 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
                     Ok(key) => {
                         // Look up or create player record.
                         let profile = state.players.entry(key)
-                            .or_insert_with(|| crate::state::PlayerRecord {
+                            .or_insert_with(|| crate::server::state::PlayerRecord {
                                 pubkey: key,
                                 display_name: format!("Player_{}", hex::encode(&key[..4])),
                                 selected_template: state.templates[0].id,
                                 games_played: 0,
                             });
-                        let profile_view = open4x_api::profile::ProfileView {
+                        let profile_view = crate::types::profile::ProfileView {
                             pubkey: key.to_vec(),
                             display_name: profile.display_name.clone(),
                             selected_template: profile.selected_template,
@@ -80,7 +80,7 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
     };
 
     // ── Phase 2: Message loop ────────────────────────────────────────────
-    let mut current_game: Option<open4x_api::ids::GameId> = None;
+    let mut current_game: Option<crate::types::ids::GameId> = None;
     let mut _rx: Option<broadcast::Receiver<ServerMessage>> = None;
 
     loop {
@@ -100,7 +100,7 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
             ClientMessage::ListGames => {
                 let entries: Vec<_> = state.games.iter().map(|entry| {
                     let room = entry.value();
-                    open4x_api::messages::GameListEntry {
+                    crate::types::messages::GameListEntry {
                         game_id: room.game_id,
                         name: room.name.clone(),
                         players_joined: room.players.len() as u32,
@@ -112,14 +112,14 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
                 let _ = send_msg(&mut socket, &ServerMessage::GamesList(entries)).await;
             }
             ClientMessage::CreateGame(req) => {
-                let game_id = open4x_api::ids::GameId::from_ulid(
+                let game_id = crate::types::ids::GameId::from_ulid(
                     ulid::Ulid::new()
                 );
                 let (tx, rx) = broadcast::channel(64);
                 _rx = Some(rx);
 
                 // Build game state using the session builder pattern from civsim.
-                let session = crate::session::build_server_session(&req, &pubkey, &state, game_id);
+                let session = crate::server::session::build_server_session(&req, &pubkey, &state, game_id);
 
                 let room = GameRoom {
                     game_id,
@@ -226,7 +226,7 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
                         let mut snapshots = Vec::new();
                         for slot in &room.players {
                             let view = project_game_view(&room.state, slot.civ_id);
-                            let civ_api_id = open4x_api::ids::CivId::from_ulid(slot.civ_id.as_ulid());
+                            let civ_api_id = crate::types::ids::CivId::from_ulid(slot.civ_id.as_ulid());
                             snapshots.push((civ_api_id, view.clone()));
                             let _ = room.tx.send(ServerMessage::TurnResolved {
                                 new_turn, view,
@@ -234,14 +234,14 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
                         }
 
                         // Persist game state to disk.
-                        crate::persist::save_game_snapshot(game_id, new_turn, &snapshots);
+                        crate::server::persist::save_game_snapshot(game_id, new_turn, &snapshots);
                     }
                 } else {
                     // Notify others that this player ended their turn.
                     if let Some(room) = state.games.get(&game_id)
                         && let Some(slot) = room.players.iter().find(|s| s.pubkey == pubkey)
                     {
-                        let civ_id = open4x_api::ids::CivId::from_ulid(slot.civ_id.as_ulid());
+                        let civ_id = crate::types::ids::CivId::from_ulid(slot.civ_id.as_ulid());
                         let _ = room.tx.send(ServerMessage::PlayerEndedTurn { civ_id });
                     }
                 }
@@ -251,7 +251,7 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
                     record.display_name = update.display_name.clone();
                     record.selected_template = update.selected_template;
                 }
-                let profile = open4x_api::profile::ProfileView {
+                let profile = crate::types::profile::ProfileView {
                     pubkey: pubkey.to_vec(),
                     display_name: update.display_name,
                     selected_template: update.selected_template,

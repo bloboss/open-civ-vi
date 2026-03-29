@@ -1,35 +1,35 @@
 #![allow(dead_code)]
 
-mod auth;
-mod demo;
-mod game_room;
-mod persist;
-mod projection;
-mod session;
-mod state;
-mod templates;
-mod ws;
-
 use axum::Router;
 use axum::routing::get;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
-use state::AppState;
+use open4x_server::server;
 
 #[tokio::main]
 async fn main() {
-    let state = AppState::new();
+    let state = server::state::AppState::new();
 
     // Static file directory for the trunk-built frontend.
-    // In Docker this is /app/static; locally fall back to open4x-web/dist.
     let static_dir = std::env::var("OPEN4X_STATIC_DIR")
         .unwrap_or_else(|_| "./open4x-web/dist".to_string());
 
     let app = Router::new()
-        .route("/ws", get(ws::ws_handler))
+        .route("/ws", get(server::ws::ws_handler))
         .route("/health", get(|| async { "ok" }))
         .route("/api/demo-game", get(demo_game_handler))
+        // REST API endpoints
+        .route("/api/game/view", get(server::api::game_view))
+        .route("/api/game/cities", get(server::api::cities))
+        .route("/api/game/city/{id}", get(server::api::city_detail))
+        .route("/api/game/resources", get(server::api::resources))
+        .route("/api/game/units", get(server::api::units))
+        .route("/api/game/map-stats", get(server::api::map_stats))
+        .route("/api/game/players", get(server::api::players))
+        .route("/api/game/science", get(server::api::science))
+        .route("/api/game/culture", get(server::api::culture))
+        .route("/api/game/turn", get(server::api::turn_status))
         .fallback_service(ServeDir::new(&static_dir))
         .layer(CorsLayer::permissive())
         .with_state(state);
@@ -47,8 +47,8 @@ async fn main() {
 /// GET /api/demo-game?seed=42&width=20&height=14&turns=100
 async fn demo_game_handler(
     params: axum::extract::Query<DemoParams>,
-) -> axum::Json<demo::DemoGameResult> {
-    let result = demo::run_demo_game(
+) -> axum::Json<server::demo::DemoGameResult> {
+    let result = server::demo::run_demo_game(
         params.seed.unwrap_or(42),
         params.width.unwrap_or(20),
         params.height.unwrap_or(14),

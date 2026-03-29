@@ -1,7 +1,7 @@
 //! Predefined civilization templates.
 
-use open4x_api::ids::CivTemplateId;
-use open4x_api::profile::CivTemplate;
+use crate::types::ids::CivTemplateId;
+use crate::types::profile::CivTemplate;
 use ulid::Ulid;
 
 /// Return the list of built-in civ templates.

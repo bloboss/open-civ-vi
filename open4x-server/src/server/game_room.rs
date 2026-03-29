@@ -4,9 +4,9 @@ use libciv::civ::ProductionItem;
 use libciv::game::recalculate_visibility;
 use libciv::{CivId, RulesEngine, TurnEngine};
 
-use open4x_api::messages::GameAction;
+use crate::types::messages::GameAction;
 
-use crate::state::GameRoom;
+use crate::server::state::GameRoom;
 
 impl GameRoom {
     /// Apply a player action, validating ownership.
@@ -189,37 +189,37 @@ impl GameRoom {
 
 // ── ID conversion helpers (API -> libciv) ────────────────────────────────────
 
-fn to_libciv_coord(c: open4x_api::coord::HexCoord) -> libhexgrid::coord::HexCoord {
+fn to_libciv_coord(c: crate::types::coord::HexCoord) -> libhexgrid::coord::HexCoord {
     libhexgrid::coord::HexCoord::from_qr(c.q, c.r)
 }
 
-fn to_libciv_unit_id(id: open4x_api::ids::UnitId) -> libciv::UnitId {
+fn to_libciv_unit_id(id: crate::types::ids::UnitId) -> libciv::UnitId {
     libciv::UnitId::from_ulid(id.as_ulid())
 }
 
-fn to_libciv_city_id(id: open4x_api::ids::CityId) -> libciv::CityId {
+fn to_libciv_city_id(id: crate::types::ids::CityId) -> libciv::CityId {
     libciv::CityId::from_ulid(id.as_ulid())
 }
 
-fn to_libciv_civ_id(id: open4x_api::ids::CivId) -> libciv::CivId {
+fn to_libciv_civ_id(id: crate::types::ids::CivId) -> libciv::CivId {
     libciv::CivId::from_ulid(id.as_ulid())
 }
 
-fn to_libciv_tech_id(id: open4x_api::ids::TechId) -> libciv::TechId {
+fn to_libciv_tech_id(id: crate::types::ids::TechId) -> libciv::TechId {
     libciv::TechId::from_ulid(id.as_ulid())
 }
 
-fn to_libciv_civic_id(id: open4x_api::ids::CivicId) -> libciv::CivicId {
+fn to_libciv_civic_id(id: crate::types::ids::CivicId) -> libciv::CivicId {
     libciv::CivicId::from_ulid(id.as_ulid())
 }
 
-fn to_libciv_policy_id(id: open4x_api::ids::PolicyId) -> libciv::PolicyId {
+fn to_libciv_policy_id(id: crate::types::ids::PolicyId) -> libciv::PolicyId {
     libciv::PolicyId::from_ulid(id.as_ulid())
 }
 
-fn to_libciv_improvement(i: open4x_api::enums::BuiltinImprovement) -> libciv::world::improvement::BuiltinImprovement {
+fn to_libciv_improvement(i: crate::types::enums::BuiltinImprovement) -> libciv::world::improvement::BuiltinImprovement {
     use libciv::world::improvement::BuiltinImprovement as I;
-    use open4x_api::enums::BuiltinImprovement as A;
+    use crate::types::enums::BuiltinImprovement as A;
     match i {
         A::Farm => I::Farm, A::Mine => I::Mine, A::LumberMill => I::LumberMill,
         A::TradingPost => I::TradingPost, A::Fort => I::Fort, A::Airstrip => I::Airstrip,
@@ -228,8 +228,8 @@ fn to_libciv_improvement(i: open4x_api::enums::BuiltinImprovement) -> libciv::wo
     }
 }
 
-fn to_libciv_production_item(item: &open4x_api::enums::ProductionItemView) -> ProductionItem {
-    use open4x_api::enums::ProductionItemView as P;
+fn to_libciv_production_item(item: &crate::types::enums::ProductionItemView) -> ProductionItem {
+    use crate::types::enums::ProductionItemView as P;
     match item {
         P::Unit(id) => ProductionItem::Unit(libciv::UnitTypeId::from_ulid(id.as_ulid())),
         P::Building(id) => ProductionItem::Building(libciv::BuildingId::from_ulid(id.as_ulid())),
@@ -238,9 +238,9 @@ fn to_libciv_production_item(item: &open4x_api::enums::ProductionItemView) -> Pr
     }
 }
 
-fn to_libciv_district(d: open4x_api::enums::BuiltinDistrict) -> libciv::civ::district::BuiltinDistrict {
+fn to_libciv_district(d: crate::types::enums::BuiltinDistrict) -> libciv::civ::district::BuiltinDistrict {
     use libciv::civ::district::BuiltinDistrict as D;
-    use open4x_api::enums::BuiltinDistrict as A;
+    use crate::types::enums::BuiltinDistrict as A;
     match d {
         A::Campus => D::Campus, A::TheaterSquare => D::TheaterSquare,
         A::CommercialHub => D::CommercialHub, A::Harbor => D::Harbor,

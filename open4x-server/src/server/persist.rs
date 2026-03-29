@@ -5,8 +5,8 @@
 
 use std::path::PathBuf;
 
-use open4x_api::ids::GameId;
-use open4x_api::view::GameView;
+use crate::types::ids::GameId;
+use crate::types::view::GameView;
 
 /// Directory where game snapshots are stored.
 fn data_dir() -> PathBuf {
@@ -16,7 +16,7 @@ fn data_dir() -> PathBuf {
 }
 
 /// Save a game snapshot (the GameView for each player) after turn resolution.
-pub fn save_game_snapshot(game_id: GameId, turn: u32, views: &[(open4x_api::ids::CivId, GameView)]) {
+pub fn save_game_snapshot(game_id: GameId, turn: u32, views: &[(crate::types::ids::CivId, GameView)]) {
     let dir = data_dir().join("games").join(game_id.to_string());
     if let Err(e) = std::fs::create_dir_all(&dir) {
         eprintln!("persist: failed to create dir {}: {e}", dir.display());
