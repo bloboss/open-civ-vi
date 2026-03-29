@@ -47,4 +47,5 @@
 
 # Roadmap
 
-- [Implementation Status & Roadmap](./roadmap.md)
+- [Implementation Status](./roadmap/status.md)
+- [TurnEngine Diff Consolidation](./roadmap/diff-consolidation.md)
