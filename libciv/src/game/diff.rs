@@ -1,6 +1,7 @@
 use crate::{
-  AgeType, CivId, CityId, GreatPersonId, GreatPersonType, PolicyId,
-  TradeRouteId, UnitId};
+  AgeType, CivId, CityId, GovernorId, GreatPersonId, GreatPersonType, 
+  PolicyId, TradeRouteId, UnitId
+};
 use crate::civ::DiplomaticStatus;
 use crate::civ::city::WallLevel;
 use crate::civ::district::BuiltinDistrict;
@@ -158,6 +159,16 @@ pub enum StateDelta {
     // ── Great works / tourism (cultural victory) ──────────────────────────────
     /// A great person created a great work and it was slotted into a city.
     GreatWorkCreated { civ: CivId, work_name: &'static str, city: CityId },
+
+    // ── Governors (PHASE3-8.7) ──────────────────────────────────────────────
+    /// A governor was assigned (or reassigned) to a city.
+    GovernorAssigned  { governor: GovernorId, city: CityId, owner: CivId },
+    /// A governor finished its establishment countdown and is now active.
+    GovernorEstablished { governor: GovernorId, city: CityId },
+    /// A governor promotion was unlocked.
+    GovernorPromoted  { governor: GovernorId, promotion: &'static str },
+    /// A civilization earned a governor title (from completing a civic, etc.).
+    GovernorTitleEarned { civ: CivId },
 
     // ── Victory condition (PHASE3-8.9) ────────────────────────────────────────
     /// Emitted when a civ wins the game. After this delta `GameState::game_over` is set.

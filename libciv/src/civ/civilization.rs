@@ -137,6 +137,11 @@ pub struct Civilization {
     /// Accumulated lifetime culture. Serves as the "domestic culture" defense
     /// against other civs' tourism for the cultural victory condition.
     pub domestic_culture: u32,
+    // ── Governor titles ─────────────────────────────────────────────────────────
+    /// Number of unspent governor titles. Titles are earned from civics and spent
+    /// to appoint new governors or promote existing ones.
+    pub governor_titles: u32,
+
     // ── Fog of war ────────────────────────────────────────────────────────────
     /// Tiles currently within this civ's vision this turn.
     /// Cleared and rebuilt by `recalculate_visibility` after every unit move
@@ -185,6 +190,7 @@ impl Civilization {
             earned_moments: HashSet::new(),
             tourism_output: 0,
             domestic_culture: 0,
+            governor_titles: 0,
             visible_tiles:  HashSet::new(),
             explored_tiles: HashSet::new(),
         }
