@@ -1,6 +1,6 @@
 # Web Client
 
-The `open4x-web` crate is a browser-based game client built with Leptos and compiled to WebAssembly.
+The `open4x-server` crate (with the `csr` feature) provides a browser-based game client built with Leptos and compiled to WebAssembly.
 
 ## Technology Stack
 
@@ -67,7 +67,7 @@ Leptos signals drive the UI:
 ## Build
 
 ```bash
-cd open4x-web
+cd open4x-server
 trunk serve          # dev server with hot reload
 trunk build --release  # production build to dist/
 ```

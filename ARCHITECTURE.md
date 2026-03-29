@@ -16,10 +16,10 @@
 ## Library Structure
 
 ```
-libhexgrid  (no deps)       — pure hex geometry: coords, traits, topology
-libciv      (→ libhexgrid)  — all game state: ids, yields, enums, world, civ, rules, game, ai
-civsim      (→ libciv)      — CLI binary (`new`, `run`, `demo`, `ai-demo`, `play`)
-open4x-web  (→ libciv)      — Leptos/WASM frontend
+libhexgrid    (no deps)       — pure hex geometry: coords, traits, topology
+libciv        (→ libhexgrid)  — all game state: ids, yields, enums, world, civ, rules, game, ai
+civsim        (→ libciv)      — CLI binary (`new`, `run`, `demo`, `ai-demo`, `play`)
+open4x-server (→ libciv)      — merged server + frontend (`ssr` for Axum, `csr` for Leptos/WASM)
 ```
 
 ---

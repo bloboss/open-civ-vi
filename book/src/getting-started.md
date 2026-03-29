@@ -68,7 +68,7 @@ The server serves the WASM frontend as static files and exposes a WebSocket endp
 cargo install trunk
 
 # Build and serve the frontend (hot-reloading)
-cd open4x-web
+cd open4x-server
 trunk serve
 ```
 
@@ -104,9 +104,7 @@ open-civ-vi/
 |   |   +-- world/       # Terrain, features, improvements, mapgen
 |   +-- tests/           # Integration tests (20+ test files)
 +-- civsim/              # CLI binary
-+-- open4x-api/          # Shared wire-protocol types
-+-- open4x-server/       # Axum multiplayer server
-+-- open4x-web/          # Leptos/WASM browser client
++-- open4x-server/       # Merged server + frontend (ssr/csr features)
 +-- book/                # This documentation (mdBook)
 +-- ARCHITECTURE.md      # Detailed system architecture spec
 ```

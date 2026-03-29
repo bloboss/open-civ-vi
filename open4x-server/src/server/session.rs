@@ -1,6 +1,6 @@
 //! Server-side game session builder.
 //!
-//! Mirrors the logic from `open4x-web/src/session.rs` and `civsim/src/main.rs`,
+//! Mirrors the logic from `civsim/src/main.rs`,
 //! adapted for multiplayer: creates civs from player profiles + templates.
 
 use std::sync::Arc;

@@ -103,7 +103,7 @@ When a victory condition is met during turn resolution:
 ## Projection Layer
 
 The `projection` module converts internal game state to player-visible views:
-- Converts `libciv` types to `open4x-api` types
+- Converts `libciv` types to wire-protocol types
 - Applies fog-of-war filtering per player
 - Computes effective yields with all modifiers applied
 - Handles coordinate system conversion
@@ -124,7 +124,7 @@ FROM debian:bookworm-slim         # runtime image
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | 3001 | HTTP listen port |
-| `OPEN4X_STATIC_DIR` | `./open4x-web/dist` | Path to frontend static files |
+| `OPEN4X_STATIC_DIR` | `./open4x-server/dist` | Path to frontend static files |
 | `OPEN4X_DATA_DIR` | `./data` | Persistent data directory |
 
 ### Docker Compose

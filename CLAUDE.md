@@ -38,10 +38,10 @@ cargo run -p open4x -- play
 ### Workspace crates (dependency order)
 
 ```
-libhexgrid  — pure hex geometry, no game knowledge
-libciv      — all game state and rules (world, civ, rules, game, ai modules)
-civsim      — CLI binary (clap: `new` and `run` subcommands)
-open4x-web  — Leptos/WASM frontend (imports libciv compiled to wasm32)
+libhexgrid    — pure hex geometry, no game knowledge
+libciv        — all game state and rules (world, civ, rules, game, ai modules)
+civsim        — CLI binary (clap: `new` and `run` subcommands)
+open4x-server — merged server + frontend (feature flags: `ssr` for Axum server, `csr` for Leptos/WASM)
 ```
 
 `libhexgrid` must remain zero-knowledge of game concepts. `libciv` contains everything else: world map, civilizations, rules engine, AI, and game orchestration.
@@ -85,4 +85,4 @@ Use **jj** (Jujutsu), not git. Commit style: conventional commits — `infra:`, 
 
 ### WASM frontend
 
-`open4x-web` uses Leptos (`csr` feature) compiled to `wasm32-unknown-unknown`. The `.cargo/config.toml` sets `rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]` for all wasm targets — required for `getrandom 0.3` transitive deps to agree on the WASM backend.
+`open4x-server` with the `csr` feature compiles to `wasm32-unknown-unknown` via Leptos. The `.cargo/config.toml` sets `rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]` for all wasm targets — required for `getrandom 0.3` transitive deps to agree on the WASM backend. The `ssr` feature builds the native Axum server binary.

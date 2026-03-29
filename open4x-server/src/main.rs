@@ -13,7 +13,7 @@ async fn main() {
 
     // Static file directory for the trunk-built frontend.
     let static_dir = std::env::var("OPEN4X_STATIC_DIR")
-        .unwrap_or_else(|_| "./open4x-web/dist".to_string());
+        .unwrap_or_else(|_| "./open4x-server/dist".to_string());
 
     let app = Router::new()
         .route("/ws", get(server::ws::ws_handler))

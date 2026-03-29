@@ -60,7 +60,7 @@ The generator uses seeded RNG to ensure deterministic ID generation across runs 
 
 ## Wire Protocol IDs
 
-The `open4x-api` crate mirrors all ID types with its own `define_api_id!` macro. API IDs are serializable (`Serialize`/`Deserialize`) and use the same ULID representation, allowing zero-cost conversion between internal and wire formats.
+The `types` module in `open4x-server` mirrors all ID types with its own `define_api_id!` macro. API IDs are serializable (`Serialize`/`Deserialize`) and use the same ULID representation, allowing zero-cost conversion between internal and wire formats.
 
 ## Design Rationale
 

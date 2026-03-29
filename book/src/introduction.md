@@ -20,9 +20,7 @@ The engine is under active development. Core systems -- hex grid, terrain, citie
 | `libhexgrid` | Pure hex geometry -- coordinates, pathfinding, line of sight |
 | `libciv` | All game state and rules -- world, civilizations, rules engine, AI |
 | `open4x` (civsim) | CLI binary for local simulation and interactive play |
-| `open4x-api` | Serializable wire-protocol types shared by server and client |
-| `open4x-server` | Axum WebSocket multiplayer server |
-| `open4x-web` | Leptos/WASM browser frontend |
+| `open4x-server` | Merged server + frontend (`ssr` for Axum server, `csr` for Leptos/WASM client) |
 
 ## License & Contributing
 
