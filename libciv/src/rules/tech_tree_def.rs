@@ -15,6 +15,7 @@ let irrigation_id     = TechId::from_ulid(ids.next_ulid());
 let bronze_working_id = TechId::from_ulid(ids.next_ulid());
 let the_wheel_id      = TechId::from_ulid(ids.next_ulid());
 let masonry_id        = TechId::from_ulid(ids.next_ulid());
+let theology_id       = TechId::from_ulid(ids.next_ulid());
 let unreachable_id    = TechId::from_ulid(ids.next_ulid());
 
 // ── Node definitions ──────────────────────────────────────────────────────────
@@ -129,6 +130,16 @@ let masonry = TechNode {
     eureka_effects:     vec![],
 };
 
+let theology = TechNode {
+    id:                 theology_id,
+    name:               "Theology",
+    cost:               120,
+    prerequisites:      vec![astrology_id],
+    effects:            vec![UnlockUnit("Missionary"), UnlockUnit("Apostle")],
+    eureka_description: "Found a religion.",
+    eureka_effects:     vec![],
+};
+
 // Sentinel tech: self-referential prerequisite means prerequisites_met() is always false.
 // Used by improvements not yet tied to a real tech (required_tech: Some(tech_refs.unreachable)).
 let unreachable = TechNode {
@@ -154,6 +165,7 @@ tree.add_node(irrigation);
 tree.add_node(bronze_working);
 tree.add_node(the_wheel);
 tree.add_node(masonry);
+tree.add_node(theology);
 tree.add_node(unreachable);
 
 // ── Return named ID handles ───────────────────────────────────────────────────
@@ -170,6 +182,7 @@ TechRefs {
     bronze_working:   bronze_working_id,
     the_wheel:        the_wheel_id,
     masonry:          masonry_id,
+    theology:         theology_id,
     unreachable:      unreachable_id,
 }
 }

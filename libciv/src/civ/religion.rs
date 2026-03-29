@@ -1,20 +1,45 @@
-use crate::{BeliefId, CivId, ReligionId, YieldBundle};
+use crate::{BeliefId, CivId, ReligionId};
+use crate::rules::modifier::Modifier;
+use super::city::City;
 
-// TODO: Also need a modifier
-pub trait Belief: std::fmt::Debug {
-    fn id(&self) -> BeliefId;
-    fn name(&self) -> &'static str;
-    fn description(&self) -> &'static str;
+// ── Belief categories ────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum BeliefCategory {
+    /// Bonus to the founding civilization only.
+    Founder,
+    /// Bonus to all cities where this religion is the majority.
+    Follower,
+    /// Unlocks a worship building purchasable with faith.
+    Worship,
+    /// Bonus to religious spread and defense.
+    Enhancer,
+}
+
+// ── Built-in belief definition ───────────────────────────────────────────────
+
+#[derive(Debug, Clone)]
+pub struct BuiltinBelief {
+    pub id: BeliefId,
+    pub name: &'static str,
+    pub description: &'static str,
+    pub category: BeliefCategory,
+    pub modifiers: Vec<Modifier>,
 }
 
 /// Context for evaluating belief effects.
 #[derive(Debug, Clone, Default)]
 pub struct BeliefContext {
     pub followers: u32,
-    // TODO(PHASE3-8.5): Rename to majority_religion_city_count (counts cities where this religion is majority).
-    pub holy_cities: u32,
+    /// Number of cities where this religion is the majority.
+    pub majority_religion_city_count: u32,
 }
 
+// ── Religion ─────────────────────────────────────────────────────────────────
+
+/// A founded religion. Follower counts live on `City.religious_followers`;
+/// `Religion` provides query methods that take `&[City]` to derive totals.
 #[derive(Debug, Clone)]
 pub struct Religion {
     pub id: ReligionId,
@@ -22,7 +47,6 @@ pub struct Religion {
     pub founded_by: CivId,
     pub holy_city: crate::CityId,
     pub beliefs: Vec<BeliefId>,
-    pub followers: std::collections::HashMap<crate::CityId, u32>,
 }
 
 impl Religion {
@@ -33,18 +57,75 @@ impl Religion {
             founded_by: founder,
             holy_city,
             beliefs: Vec::new(),
-            followers: std::collections::HashMap::new(),
         }
     }
 
-    pub fn total_followers(&self) -> u32 {
-        self.followers.values().sum()
+    /// Compute total followers by querying all cities (source of truth is City).
+    pub fn total_followers(&self, cities: &[City]) -> u32 {
+        cities.iter()
+            .filter_map(|c| c.religious_followers.get(&self.id))
+            .sum()
+    }
+
+    /// Check enhancement status by querying belief definitions.
+    pub fn is_enhanced(&self, belief_defs: &[BuiltinBelief]) -> bool {
+        self.beliefs.iter().any(|bid| {
+            belief_defs.iter().any(|def| def.id == *bid && def.category == BeliefCategory::Enhancer)
+        })
+    }
+
+    /// Collect all cities where this religion is the majority.
+    pub fn majority_cities(&self, cities: &[City]) -> Vec<crate::CityId> {
+        cities.iter()
+            .filter(|c| c.majority_religion() == Some(self.id))
+            .map(|c| c.id)
+            .collect()
+    }
+
+    /// Get followers in a specific city.
+    pub fn followers_in_city(&self, city: &City) -> u32 {
+        city.religious_followers.get(&self.id).copied().unwrap_or(0)
     }
 }
 
-// TODO(PHASE3-8.5): Compute yields from Religion.beliefs (BeliefId → Belief → modifiers);
-//   integrate delivery into advance_turn Phase 5 religion spread loop.
-//   Consider moving into RulesEngine::compute_yields rather than a free function.
-pub fn religion_founder_yields(_religion: &Religion) -> YieldBundle {
-    YieldBundle::default()
+// ── Belief registry builder ──────────────────────────────────────────────────
+
+/// Build the built-in belief definitions with deterministic IDs.
+/// Returns (beliefs_vec, named_refs) — same pattern as `build_tech_tree`.
+pub fn build_beliefs(ids: &mut crate::game::state::IdGenerator) -> (Vec<BuiltinBelief>, BeliefRefs) {
+    use crate::rules::modifier::*;
+    use crate::YieldType;
+
+    let mut beliefs: Vec<BuiltinBelief> = Vec::new();
+
+    let refs: BeliefRefs = include!("belief_defs.rs");
+
+    (beliefs, refs)
+}
+
+/// Named handles to every built-in belief ID.
+#[derive(Debug, Clone, Copy)]
+pub struct BeliefRefs {
+    // ── Founder beliefs ──
+    pub church_property: BeliefId,
+    pub tithe: BeliefId,
+    pub papal_primacy: BeliefId,
+    pub religious_unity: BeliefId,
+    // ── Follower beliefs ──
+    pub divine_inspiration: BeliefId,
+    pub choral_music: BeliefId,
+    pub religious_community: BeliefId,
+    pub feed_the_world: BeliefId,
+    // ── Worship beliefs ──
+    pub cathedral: BeliefId,
+    pub gurdwara: BeliefId,
+    pub mosque: BeliefId,
+    pub pagoda: BeliefId,
+    pub synagogue: BeliefId,
+    pub wat: BeliefId,
+    // ── Enhancer beliefs ──
+    pub missionary_zeal: BeliefId,
+    pub holy_order: BeliefId,
+    pub itinerant_preachers: BeliefId,
+    pub scripture: BeliefId,
 }

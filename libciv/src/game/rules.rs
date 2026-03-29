@@ -279,7 +279,7 @@ pub trait RulesEngine: std::fmt::Debug {
         civ_id: CivId,
         person_type: GreatPersonType,
     ) -> Result<GameStateDiff, RulesError>;
-  
+
     /// Assign (or reassign) a governor to a city.
     ///
     /// Validation: governor must exist and be owned by the city's owner.
@@ -302,11 +302,71 @@ pub trait RulesEngine: std::fmt::Debug {
         promotion_name: &'static str,
     ) -> Result<GameStateDiff, RulesError>;
 
+    /// Found a pantheon for `civ`. Requires 25 accumulated faith and no
+    /// existing pantheon. The selected belief must be a Follower-category belief
+    /// that has not been taken by any other civ's pantheon.
+    fn found_pantheon(
+        &self,
+        state: &mut GameState,
+        civ: CivId,
+        belief: crate::BeliefId,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// Found a religion using a Great Prophet at a Holy Site.
+    ///
+    /// Validation: unit must be a Great Prophet at a tile with the civ's Holy Site;
+    /// civ must not have already founded a religion; name must not be taken.
+    /// On success: creates Religion, assigns initial beliefs (founder + follower),
+    /// sets holy city followers, consumes the prophet.
+    fn found_religion(
+        &self,
+        state: &mut GameState,
+        prophet: UnitId,
+        name: String,
+        beliefs: Vec<crate::BeliefId>,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// Spread religion from a Missionary or Apostle to the city at the unit's
+    /// current location. Decrements spread charges; destroys unit when charges
+    /// reach zero.
+    fn spread_religion(
+        &self,
+        state: &mut GameState,
+        unit: UnitId,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// Theological combat between two religious units (Apostle vs Apostle/Missionary).
+    /// Both must be `UnitCategory::Religious`, attacker must have `religious_strength`.
+    fn theological_combat(
+        &self,
+        state: &mut GameState,
+        attacker: UnitId,
+        defender: UnitId,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// Purchase a unit or building with faith.
+    fn purchase_with_faith(
+        &self,
+        state: &mut GameState,
+        civ: CivId,
+        city: CityId,
+        item: FaithPurchaseItem,
+    ) -> Result<GameStateDiff, RulesError>;
+
     // TODO(PHASE3-BORDERS): fn purchase_tile(&self, state: &mut GameState, city_id: CityId,
     //   coord: HexCoord) -> Result<GameStateDiff, RulesError>;
     //   Spends gold (or culture) from the civilization's treasury to immediately claim a tile
     //   within radius 3 of the city. Cost scales with tile distance. Distinct from automatic
     //   cultural expansion: this is a player action and debits the main treasury.
+}
+
+/// What can be purchased with faith.
+#[derive(Debug, Clone)]
+pub enum FaithPurchaseItem {
+    /// Purchase a unit by its type name (e.g. "Missionary", "Apostle").
+    Unit(&'static str),
+    /// Purchase a worship building by its belief name (e.g. "Cathedral").
+    WorshipBuilding(&'static str),
 }
 
 /// Errors returned by rules engine operations.
@@ -423,6 +483,28 @@ pub enum RulesError {
     PromotionAlreadyUnlocked,
     /// The governor is already assigned to this city.
     GovernorAlreadyInCity,
+    /// The civilization has already founded a pantheon.
+    PantheonAlreadyFounded,
+    /// The civilization has already founded a religion.
+    ReligionAlreadyFounded,
+    /// The unit is not a Great Prophet.
+    NotAGreatProphet,
+    /// The unit is not on a tile with a Holy Site district.
+    NoHolySite,
+    /// The religion name is already taken by another civilization.
+    ReligionNameTaken,
+    /// The selected belief is not valid (wrong category or already taken).
+    InvalidBelief,
+    /// The unit has no remaining spread charges.
+    NoSpreadCharges,
+    /// The unit is not a religious unit (Missionary/Apostle).
+    NotAReligiousUnit,
+    /// The unit has no religious combat strength.
+    NoReligiousStrength,
+    /// Not enough faith to make the purchase.
+    InsufficientFaith,
+    /// The city does not have the required building/district for this purchase.
+    MissingPrerequisite,
 }
 
 impl std::fmt::Display for RulesError {
@@ -486,6 +568,17 @@ impl std::fmt::Display for RulesError {
             RulesError::PromotionPrerequisiteNotMet    => write!(f, "prerequisite promotion not yet unlocked"),
             RulesError::PromotionAlreadyUnlocked       => write!(f, "promotion already unlocked"),
             RulesError::GovernorAlreadyInCity           => write!(f, "governor is already assigned to this city"),
+            RulesError::PantheonAlreadyFounded         => write!(f, "pantheon already founded"),
+            RulesError::ReligionAlreadyFounded         => write!(f, "religion already founded"),
+            RulesError::NotAGreatProphet               => write!(f, "unit is not a Great Prophet"),
+            RulesError::NoHolySite                     => write!(f, "no Holy Site district at unit location"),
+            RulesError::ReligionNameTaken              => write!(f, "religion name already taken"),
+            RulesError::InvalidBelief                  => write!(f, "invalid belief selection"),
+            RulesError::NoSpreadCharges                => write!(f, "no spread charges remaining"),
+            RulesError::NotAReligiousUnit              => write!(f, "unit is not a religious unit"),
+            RulesError::NoReligiousStrength            => write!(f, "unit has no religious combat strength"),
+            RulesError::InsufficientFaith              => write!(f, "insufficient faith"),
+            RulesError::MissingPrerequisite            => write!(f, "missing prerequisite building or district"),
         }
     }
 }
@@ -565,6 +658,7 @@ fn city_culture_output(board: &WorldBoard, city: &crate::civ::City) -> u32 {
 
 /// Maximum distance (hex tiles) at which a foreign city exerts loyalty pressure.
 const LOYALTY_PRESSURE_RADIUS: u32 = 9;
+const RELIGIOUS_PRESSURE_RADIUS: u32 = 10;
 
 /// Base loyalty pressure exerted by a single city at distance `d`.
 /// Falls off as `10 / d` so closer cities exert dramatically more pressure.
@@ -1083,7 +1177,7 @@ impl RulesEngine for DefaultRulesEngine {
                 vision_range:    uc.vision_range,
                 charges,
                 trade_origin: None,
-                trade_destination: None,
+                trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
             });
             diff.push(StateDelta::UnitCreated { unit: unit_id, coord: uc.coord, owner: uc.civ_id });
             // TODO(PHASE3-4.3): Building, District, Wonder completion.
@@ -1526,6 +1620,100 @@ impl RulesEngine for DefaultRulesEngine {
                     new_owner,
                     old_owner,
                 });
+            }
+        }
+
+        // ── Phase 3d: Religious pressure ──────────────────────────────────────
+        // For each city, compute passive religious pressure from nearby cities.
+        // Cities with followers of a religion exert pressure on neighbors,
+        // spreading that religion's followers over time.
+        {
+            // Collect pressure deltas: (city_idx, religion_id, delta).
+            let num_cities = state.cities.len();
+            let mut pressure_deltas: Vec<(usize, crate::ReligionId, i32)> = Vec::new();
+
+            for target_idx in 0..num_cities {
+                let target = &state.cities[target_idx];
+                if matches!(target.kind, crate::civ::city::CityKind::CityState(_)) {
+                    continue;
+                }
+                let target_coord = target.coord;
+                let target_pop = target.population;
+
+                // Collect pressure from all other cities with religion followers.
+                let mut religion_pressure: std::collections::HashMap<crate::ReligionId, i32> =
+                    std::collections::HashMap::new();
+
+                for source_idx in 0..num_cities {
+                    if source_idx == target_idx { continue; }
+                    let source = &state.cities[source_idx];
+                    let dist = source.coord.distance(&target_coord);
+                    if dist == 0 || dist > RELIGIOUS_PRESSURE_RADIUS { continue; }
+
+                    for (&rid, &followers) in &source.religious_followers {
+                        if followers == 0 { continue; }
+                        let mut pressure = (followers as i32 * 10) / dist as i32;
+
+                        // Holy city bonus.
+                        if state.religions.iter().any(|r| r.id == rid && r.holy_city == source.id) {
+                            pressure += 4;
+                        }
+
+                        *religion_pressure.entry(rid).or_insert(0) += pressure;
+                    }
+                }
+
+                // Convert pressure to follower change (scaled down).
+                for (rid, pressure) in religion_pressure {
+                    if pressure <= 0 { continue; }
+                    // 1 follower per 50 pressure, minimum 1 if any pressure.
+                    let delta = (pressure / 50).max(1).min(target_pop as i32);
+                    pressure_deltas.push((target_idx, rid, delta));
+                }
+            }
+
+            // Apply follower changes.
+            for &(city_idx, religion_id, delta) in &pressure_deltas {
+                let city = &mut state.cities[city_idx];
+                let old_majority = city.majority_religion();
+                *city.religious_followers.entry(religion_id).or_insert(0) += delta as u32;
+
+                // Cap total followers at population.
+                let total: u32 = city.religious_followers.values().sum();
+                if total > city.population {
+                    let scale = city.population as f64 / total as f64;
+                    for v in city.religious_followers.values_mut() {
+                        *v = (*v as f64 * scale).floor() as u32;
+                    }
+                }
+
+                diff.push(StateDelta::ReligiousPressureApplied {
+                    city: city.id,
+                    religion: religion_id,
+                    delta,
+                });
+
+                let new_majority = city.majority_religion();
+                if new_majority != old_majority
+                    && let Some(new_rid) = new_majority
+                {
+                    diff.push(StateDelta::CityConvertedReligion {
+                        city: city.id,
+                        old_religion: old_majority,
+                        new_religion: new_rid,
+                    });
+                }
+            }
+        }
+
+        // ── Phase 3e: Faith yield accumulation ───────────────────────────────
+        // Add faith from civ yields (building yields etc.) to civ's faith pool.
+        for (civ_id, yields) in &civ_yields {
+            if yields.faith > 0
+                && let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == *civ_id)
+            {
+                civ.faith += yields.faith as u32;
+                diff.push(StateDelta::FaithChanged { civ: *civ_id, delta: yields.faith });
             }
         }
 
@@ -3176,7 +3364,7 @@ impl RulesEngine for DefaultRulesEngine {
         });
         Ok(diff)
     }
-  
+
     fn assign_governor(
         &self,
         state: &mut GameState,
@@ -3273,6 +3461,457 @@ impl RulesEngine for DefaultRulesEngine {
         let mut diff = GameStateDiff::new();
         diff.push(StateDelta::GovernorPromoted { governor: governor_id, promotion: promotion_name });
         Ok(diff)
+    }
+
+    // ── Religion methods ─────────────────────────────────────────────────────
+
+    fn found_pantheon(
+        &self,
+        state: &mut GameState,
+        civ_id: CivId,
+        belief_id: crate::BeliefId,
+    ) -> Result<GameStateDiff, RulesError> {
+        let civ = state.civilizations.iter()
+            .find(|c| c.id == civ_id)
+            .ok_or(RulesError::CivNotFound)?;
+        if civ.pantheon_belief.is_some() {
+            return Err(RulesError::PantheonAlreadyFounded);
+        }
+        if civ.faith < 25 {
+            return Err(RulesError::InsufficientFaith);
+        }
+        // Validate belief: must exist in defs with Follower category.
+        let valid = state.belief_defs.iter().any(|b| b.id == belief_id
+            && b.category == crate::civ::religion::BeliefCategory::Follower);
+        if !valid {
+            return Err(RulesError::InvalidBelief);
+        }
+        // Ensure not already taken by another civ's pantheon.
+        let taken = state.civilizations.iter()
+            .any(|c| c.pantheon_belief == Some(belief_id));
+        if taken {
+            return Err(RulesError::InvalidBelief);
+        }
+
+        // Apply.
+        let civ = state.civilizations.iter_mut()
+            .find(|c| c.id == civ_id).unwrap();
+        civ.pantheon_belief = Some(belief_id);
+        civ.faith -= 25;
+
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::FaithChanged { civ: civ_id, delta: -25 });
+        diff.push(StateDelta::PantheonFounded { civ: civ_id, belief: belief_id });
+        Ok(diff)
+    }
+
+    fn found_religion(
+        &self,
+        state: &mut GameState,
+        prophet_unit: UnitId,
+        name: String,
+        belief_ids: Vec<crate::BeliefId>,
+    ) -> Result<GameStateDiff, RulesError> {
+        use crate::civ::religion::{BeliefCategory, Religion};
+
+        // Validate prophet unit.
+        let unit = state.units.iter()
+            .find(|u| u.id == prophet_unit)
+            .ok_or(RulesError::UnitNotFound)?;
+        if unit.category != crate::UnitCategory::GreatPerson {
+            return Err(RulesError::NotAGreatProphet);
+        }
+        let civ_id = unit.owner;
+        let unit_coord = unit.coord;
+
+        // Check civ hasn't already founded.
+        let civ = state.civilizations.iter()
+            .find(|c| c.id == civ_id)
+            .ok_or(RulesError::CivNotFound)?;
+        if civ.founded_religion.is_some() {
+            return Err(RulesError::ReligionAlreadyFounded);
+        }
+
+        // Must be at a Holy Site.
+        let holy_site_city = state.placed_districts.iter()
+            .find(|pd| pd.coord == unit_coord
+                && pd.district_type == crate::civ::district::BuiltinDistrict::HolySite);
+        let holy_site = holy_site_city.ok_or(RulesError::NoHolySite)?;
+        let holy_city_id = holy_site.city_id;
+
+        // Name must be unique.
+        if state.religions.iter().any(|r| r.name == name) {
+            return Err(RulesError::ReligionNameTaken);
+        }
+
+        // Validate beliefs: need 1 Founder + 1 Follower, max 2.
+        if belief_ids.len() != 2 {
+            return Err(RulesError::InvalidBelief);
+        }
+        let has_founder = belief_ids.iter().any(|bid|
+            state.belief_defs.iter().any(|b| b.id == *bid && b.category == BeliefCategory::Founder));
+        let has_follower = belief_ids.iter().any(|bid|
+            state.belief_defs.iter().any(|b| b.id == *bid && b.category == BeliefCategory::Follower));
+        if !has_founder || !has_follower {
+            return Err(RulesError::InvalidBelief);
+        }
+        // Ensure beliefs aren't already taken.
+        for bid in &belief_ids {
+            let taken = state.religions.iter().any(|r| r.beliefs.contains(bid));
+            if taken {
+                return Err(RulesError::InvalidBelief);
+            }
+        }
+
+        // Create religion.
+        let religion_id = crate::ReligionId::from_ulid(state.id_gen.next_ulid());
+        let mut religion = Religion::new(religion_id, name.clone(), civ_id, holy_city_id);
+        religion.beliefs = belief_ids.clone();
+        state.religions.push(religion);
+
+        // Set civ's founded religion.
+        let civ = state.civilizations.iter_mut()
+            .find(|c| c.id == civ_id).unwrap();
+        civ.founded_religion = Some(religion_id);
+
+        // Set holy city followers to full population.
+        if let Some(city) = state.cities.iter_mut().find(|c| c.id == holy_city_id) {
+            city.religious_followers.insert(religion_id, city.population);
+        }
+
+        // Consume the prophet unit.
+        state.units.retain(|u| u.id != prophet_unit);
+
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::ReligionFounded { civ: civ_id, religion: religion_id, name });
+        for bid in &belief_ids {
+            diff.push(StateDelta::BeliefSelected { civ: civ_id, religion: religion_id, belief: *bid });
+        }
+        diff.push(StateDelta::UnitDestroyed { unit: prophet_unit });
+        diff.push(StateDelta::HistoricMomentEarned { civ: civ_id, moment: "religion_founded", era_score: 3 });
+        Ok(diff)
+    }
+
+    fn spread_religion(
+        &self,
+        state: &mut GameState,
+        unit_id: UnitId,
+    ) -> Result<GameStateDiff, RulesError> {
+        let unit = state.units.iter()
+            .find(|u| u.id == unit_id)
+            .ok_or(RulesError::UnitNotFound)?;
+        if unit.category != crate::UnitCategory::Religious {
+            return Err(RulesError::NotAReligiousUnit);
+        }
+        let religion_id = unit.religion_id.ok_or(RulesError::NotAReligiousUnit)?;
+        let charges = unit.spread_charges.ok_or(RulesError::NoSpreadCharges)?;
+        if charges == 0 {
+            return Err(RulesError::NoSpreadCharges);
+        }
+        let unit_coord = unit.coord;
+
+        // Must be on a city tile.
+        let city = state.cities.iter()
+            .find(|c| c.coord == unit_coord)
+            .ok_or(RulesError::CityNotFound)?;
+        let city_id = city.id;
+
+        // Add followers (base: 200 pressure → proportional to population).
+        let followers_added = 200u32.min(city.population);
+
+        // Apply.
+        if let Some(city) = state.cities.iter_mut().find(|c| c.id == city_id) {
+            *city.religious_followers.entry(religion_id).or_insert(0) += followers_added;
+            // Cap at population.
+            let total: u32 = city.religious_followers.values().sum();
+            if total > city.population {
+                // Scale down proportionally.
+                let scale = city.population as f64 / total as f64;
+                for v in city.religious_followers.values_mut() {
+                    *v = (*v as f64 * scale).floor() as u32;
+                }
+            }
+        }
+
+        // Decrement charges.
+        let unit = state.units.iter_mut()
+            .find(|u| u.id == unit_id).unwrap();
+        let new_charges = charges - 1;
+        unit.spread_charges = Some(new_charges);
+
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::ReligionSpread { city: city_id, religion: religion_id, followers_added });
+
+        // Check majority change.
+        if let Some(city) = state.cities.iter().find(|c| c.id == city_id) {
+            let new_majority = city.majority_religion();
+            if new_majority == Some(religion_id) {
+                diff.push(StateDelta::CityConvertedReligion {
+                    city: city_id,
+                    old_religion: None,
+                    new_religion: religion_id,
+                });
+            }
+        }
+
+        // Destroy if no charges left.
+        if new_charges == 0 {
+            state.units.retain(|u| u.id != unit_id);
+            diff.push(StateDelta::UnitDestroyed { unit: unit_id });
+        }
+
+        // Consume movement.
+        if let Some(u) = state.units.iter_mut().find(|u| u.id == unit_id) {
+            u.movement_left = 0;
+        }
+
+        Ok(diff)
+    }
+
+    fn theological_combat(
+        &self,
+        state: &mut GameState,
+        attacker_id: UnitId,
+        defender_id: UnitId,
+    ) -> Result<GameStateDiff, RulesError> {
+        // Validate attacker.
+        let attacker = state.units.iter()
+            .find(|u| u.id == attacker_id)
+            .ok_or(RulesError::UnitNotFound)?;
+        if attacker.category != crate::UnitCategory::Religious {
+            return Err(RulesError::NotAReligiousUnit);
+        }
+        let atk_str = attacker.religious_strength.ok_or(RulesError::NoReligiousStrength)?;
+        let atk_religion = attacker.religion_id;
+        let atk_coord = attacker.coord;
+
+        // Validate defender.
+        let defender = state.units.iter()
+            .find(|u| u.id == defender_id)
+            .ok_or(RulesError::UnitNotFound)?;
+        if defender.category != crate::UnitCategory::Religious {
+            return Err(RulesError::NotAReligiousUnit);
+        }
+        let def_str = defender.religious_strength.unwrap_or(100);
+        let def_coord = defender.coord;
+
+        // Must be adjacent.
+        if atk_coord.distance(&def_coord) != 1 {
+            return Err(RulesError::NotInRange);
+        }
+
+        // Can't fight own units.
+        if attacker.owner == defender.owner {
+            return Err(RulesError::SameCivilization);
+        }
+
+        // Attacker must have movement.
+        if attacker.movement_left == 0 {
+            return Err(RulesError::InsufficientMovement(GameStateDiff::new()));
+        }
+
+        // Apply exponential damage formula (same as normal combat).
+        let cs_diff = atk_str as f64 - def_str as f64;
+        let rng_factor = 0.75 + (state.id_gen.next_f32() as f64) * 0.50;
+        let base_damage = 30.0 * (cs_diff / 25.0).exp() * rng_factor;
+        let defender_damage = base_damage.max(1.0) as u32;
+
+        let rng_factor2 = 0.75 + (state.id_gen.next_f32() as f64) * 0.50;
+        let counter_damage = 30.0 * (-cs_diff / 25.0).exp() * rng_factor2;
+        let attacker_damage = counter_damage.max(1.0) as u32;
+
+        // Apply damage to religious strength.
+        let def_new_str = def_str.saturating_sub(defender_damage);
+        let atk_new_str = atk_str.saturating_sub(attacker_damage);
+
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::TheologicalCombat {
+            attacker: attacker_id,
+            defender: defender_id,
+            attacker_damage,
+            defender_damage,
+        });
+
+        // Determine winner — loser is destroyed first.
+        let defender_killed = def_new_str == 0;
+        let attacker_killed = atk_new_str == 0;
+
+        // Update strengths.
+        if let Some(u) = state.units.iter_mut().find(|u| u.id == defender_id) {
+            u.religious_strength = Some(def_new_str);
+        }
+        if let Some(u) = state.units.iter_mut().find(|u| u.id == attacker_id) {
+            u.religious_strength = Some(atk_new_str);
+            u.movement_left = 0;
+        }
+
+        // Destroy killed units.
+        if defender_killed {
+            state.units.retain(|u| u.id != defender_id);
+            diff.push(StateDelta::UnitDestroyed { unit: defender_id });
+
+            // Winner gets +250 pressure in nearby cities.
+            if let Some(rid) = atk_religion {
+                let nearby_cities: Vec<crate::CityId> = state.cities.iter()
+                    .filter(|c| c.coord.distance(&def_coord) <= 10)
+                    .map(|c| c.id)
+                    .collect();
+                for cid in nearby_cities {
+                    if let Some(city) = state.cities.iter_mut().find(|c| c.id == cid) {
+                        let added = 250u32.min(city.population);
+                        *city.religious_followers.entry(rid).or_insert(0) += added;
+                    }
+                }
+            }
+        }
+        if attacker_killed {
+            state.units.retain(|u| u.id != attacker_id);
+            diff.push(StateDelta::UnitDestroyed { unit: attacker_id });
+        }
+
+        Ok(diff)
+    }
+
+    fn purchase_with_faith(
+        &self,
+        state: &mut GameState,
+        civ_id: CivId,
+        city_id: CityId,
+        item: FaithPurchaseItem,
+    ) -> Result<GameStateDiff, RulesError> {
+        let civ = state.civilizations.iter()
+            .find(|c| c.id == civ_id)
+            .ok_or(RulesError::CivNotFound)?;
+        let city = state.cities.iter()
+            .find(|c| c.id == city_id)
+            .ok_or(RulesError::CityNotFound)?;
+
+        match item {
+            FaithPurchaseItem::Unit(name) => {
+                // Look up unit type.
+                let utd = state.unit_type_defs.iter()
+                    .find(|u| u.name == name)
+                    .ok_or(RulesError::UnitNotFound)?;
+
+                // Faith cost: Missionary=100, Apostle=200.
+                let cost = match name {
+                    "Missionary" => 100u32,
+                    "Apostle" => 200u32,
+                    _ => 150u32,
+                };
+
+                if civ.faith < cost {
+                    return Err(RulesError::InsufficientFaith);
+                }
+
+                // Must have Holy Site district.
+                if !city.districts.contains(&crate::civ::district::BuiltinDistrict::HolySite) {
+                    return Err(RulesError::MissingPrerequisite);
+                }
+
+                // Get religion for the unit.
+                let religion_id = civ.founded_religion
+                    .or(civ.pantheon_belief.and_then(|_| {
+                        // If pantheon but no religion, use the first religion in the city.
+                        city.majority_religion()
+                    }));
+
+                // Determine spread charges.
+                let base_charges: u8 = match name {
+                    "Missionary" => 3,
+                    "Apostle" => 3,
+                    _ => 0,
+                };
+                let religious_strength = match name {
+                    "Apostle" => Some(110u32),
+                    _ => None,
+                };
+
+                let unit_id = state.id_gen.next_unit_id();
+                let coord = city.coord;
+                let new_unit = BasicUnit {
+                    id: unit_id,
+                    unit_type: utd.id,
+                    owner: civ_id,
+                    coord,
+                    domain: utd.domain,
+                    category: utd.category,
+                    movement_left: utd.max_movement,
+                    max_movement: utd.max_movement,
+                    combat_strength: utd.combat_strength,
+                    promotions: Vec::new(),
+                    health: 100,
+                    range: utd.range,
+                    vision_range: utd.vision_range,
+                    charges: None,
+                    trade_origin: None,
+                    trade_destination: None,
+                    religion_id,
+                    spread_charges: if base_charges > 0 { Some(base_charges) } else { None },
+                    religious_strength,
+                };
+                state.units.push(new_unit);
+
+                // Deduct faith.
+                let civ = state.civilizations.iter_mut()
+                    .find(|c| c.id == civ_id).unwrap();
+                civ.faith -= cost;
+
+                let mut diff = GameStateDiff::new();
+                diff.push(StateDelta::FaithChanged { civ: civ_id, delta: -(cost as i32) });
+                diff.push(StateDelta::UnitCreated { unit: unit_id, coord, owner: civ_id });
+                Ok(diff)
+            }
+            FaithPurchaseItem::WorshipBuilding(belief_name) => {
+                // Verify civ's religion has this worship belief.
+                let religion = civ.founded_religion.and_then(|rid|
+                    state.religions.iter().find(|r| r.id == rid));
+                let religion = religion.ok_or(RulesError::MissingPrerequisite)?;
+                let has_worship = religion.beliefs.iter().any(|bid|
+                    state.belief_defs.iter().any(|b| b.id == *bid
+                        && b.category == crate::civ::religion::BeliefCategory::Worship
+                        && b.name == belief_name));
+                if !has_worship {
+                    return Err(RulesError::MissingPrerequisite);
+                }
+
+                // Must have Holy Site + Temple.
+                if !city.districts.contains(&crate::civ::district::BuiltinDistrict::HolySite) {
+                    return Err(RulesError::MissingPrerequisite);
+                }
+                let has_temple = city.buildings.iter().any(|bid|
+                    state.building_defs.iter().any(|b| b.id == *bid && b.name == "Temple"));
+                if !has_temple {
+                    return Err(RulesError::MissingPrerequisite);
+                }
+
+                let cost = 200u32;
+                if civ.faith < cost {
+                    return Err(RulesError::InsufficientFaith);
+                }
+
+                // Find or create worship building def.
+                let building_id = state.building_defs.iter()
+                    .find(|b| b.name == belief_name)
+                    .map(|b| b.id)
+                    .unwrap_or_else(|| state.id_gen.next_building_id());
+
+                // Add building to city.
+                if let Some(city) = state.cities.iter_mut().find(|c| c.id == city_id) {
+                    city.buildings.push(building_id);
+                }
+
+                // Deduct faith.
+                let civ = state.civilizations.iter_mut()
+                    .find(|c| c.id == civ_id).unwrap();
+                civ.faith -= cost;
+
+                let mut diff = GameStateDiff::new();
+                diff.push(StateDelta::FaithChanged { civ: civ_id, delta: -(cost as i32) });
+                diff.push(StateDelta::BuildingCompleted { city: city_id, building: belief_name });
+                Ok(diff)
+            }
+        }
     }
 }
 
@@ -3441,7 +4080,7 @@ fn apply_effect(
                     vision_range:    2,
                     charges:         if def.max_charges > 0 { Some(def.max_charges) } else { None },
                     trade_origin: None,
-                    trade_destination: None,
+                    trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
                 });
                 diff.push(StateDelta::UnitCreated { unit: unit_id, coord, owner: civ_id });
             } else {
@@ -3729,7 +4368,7 @@ mod tests {
             vision_range:   2,
             charges:        None,
             trade_origin:   None,
-            trade_destination: None,
+            trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
         });
         unit_id
     }

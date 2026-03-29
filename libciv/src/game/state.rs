@@ -4,10 +4,11 @@ use crate::{
 };
 use super::victory::VictoryCondition;
 use crate::civ::{
-    BasicUnit, Civilization, City, CityKind, DiplomaticRelation, GreatPerson, GreatPersonDef,
-    Governor, PlacedDistrict, Religion, TradeRoute, WonderTourism,
+    BasicUnit, BeliefRefs, BuiltinBelief, Civilization, City, CityKind, DiplomaticRelation,
+    GreatPerson, GreatPersonDef, Governor, PlacedDistrict, Religion, TradeRoute, WonderTourism,
 };
 use crate::civ::era::Era;
+use crate::civ::religion::build_beliefs;
 use crate::rules::{TechTree, CivicTree, Government, Policy, OneShotEffect};
 use crate::rules::tech::{build_tech_tree, build_civic_tree};
 use rand::SeedableRng;
@@ -166,6 +167,10 @@ pub struct GameState {
     pub tech_refs: TechRefs,
     pub civic_tree: CivicTree,
     pub civic_refs: CivicRefs,
+    /// Registry of built-in belief definitions. Populated at init alongside the
+    /// belief refs. Beliefs are the building blocks of religions.
+    pub belief_defs: Vec<BuiltinBelief>,
+    pub belief_refs: BeliefRefs,
     pub governments: Vec<Government>,
     pub policies: Vec<Policy>,
     pub current_era: EraId,
@@ -203,6 +208,7 @@ impl GameState {
         let era_id = EraId::from_ulid(id_gen.next_ulid());
         let (tech_tree, tech_refs)   = build_tech_tree(&mut id_gen);
         let (civic_tree, civic_refs) = build_civic_tree(&mut id_gen);
+        let (belief_defs, belief_refs) = build_beliefs(&mut id_gen);
 
         Self {
             turn: 0,
@@ -223,6 +229,8 @@ impl GameState {
             tech_refs,
             civic_tree,
             civic_refs,
+            belief_defs,
+            belief_refs,
             governments: Vec::new(),
             policies: Vec::new(),
             current_era: era_id,

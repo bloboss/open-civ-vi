@@ -1,5 +1,5 @@
-use std::collections::{HashSet, VecDeque};
-use crate::{BuildingId, CityId, CivId, UnitTypeId, WonderId};
+use std::collections::{HashMap, HashSet, VecDeque};
+use crate::{BuildingId, CityId, CivId, ReligionId, UnitTypeId, WonderId};
 use libhexgrid::coord::HexCoord;
 use super::city_state::CityStateData;
 use super::district::BuiltinDistrict;
@@ -97,6 +97,9 @@ pub struct City {
     pub loyalty: i32,
     /// Great work slots provided by buildings in this city.
     pub great_work_slots: Vec<super::great_works::GreatWorkSlot>,
+    /// Followers of each religion in this city. Source of truth for religion
+    /// follower counts; `Religion` computes totals by querying cities.
+    pub religious_followers: HashMap<ReligionId, u32>,
 }
 
 impl City {
@@ -126,11 +129,22 @@ impl City {
             has_attacked_this_turn: false,
             loyalty: 100,
             great_work_slots: Vec::new(),
+            religious_followers: HashMap::new(),
         }
     }
 
     pub fn is_capital(&self) -> bool {
         self.is_capital
+    }
+
+    /// Returns the majority religion in this city, if any.
+    /// A religion is majority when it has more than 50% of the population as followers.
+    pub fn majority_religion(&self) -> Option<ReligionId> {
+        let threshold = self.population / 2;
+        self.religious_followers.iter()
+            .filter(|&(_, count)| *count > threshold)
+            .max_by_key(|&(_, count)| *count)
+            .map(|(&rid, _)| rid)
     }
 
     pub fn growth_progress(&self) -> f32 {

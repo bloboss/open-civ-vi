@@ -41,7 +41,7 @@ fn test_historic_moment_earned_on_city_founded() {
         health: 100,
         range: 0,
         vision_range: 2,
-        charges: None, trade_origin: None, trade_destination: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
     let found_diff = engine.found_city(&mut s.state, settler_id, "Antium".to_string()).unwrap();
@@ -128,7 +128,7 @@ fn test_unique_moment_not_duplicated() {
             health: 100,
             range: 0,
             vision_range: 2,
-            charges: None, trade_origin: None, trade_destination: None,
+            charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
         });
         let _ = engine.found_city(&mut s.state, settler_id, names[i].to_string());
     }

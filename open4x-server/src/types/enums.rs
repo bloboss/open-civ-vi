@@ -223,6 +223,16 @@ pub enum VictoryKind {
     TurnLimit { turn_limit: u32 },
 }
 
+// ── Religion ────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum BeliefCategory {
+    Founder,
+    Follower,
+    Worship,
+    Enhancer,
+}
+
 // ── Board topology ──────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

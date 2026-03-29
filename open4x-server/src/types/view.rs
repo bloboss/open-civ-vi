@@ -25,6 +25,7 @@ pub struct GameView {
     pub unit_type_defs: Vec<UnitTypeDefView>,
     pub building_defs: Vec<BuildingDefView>,
     pub scores: Vec<(CivId, u32)>,
+    pub religions: Vec<ReligionView>,
     pub game_over: Option<GameOverView>,
 }
 
@@ -77,6 +78,9 @@ pub struct CivView {
     pub unlocked_improvements: Vec<String>,
     pub strategic_resources: HashMap<String, u32>,
     pub yields: YieldBundleView,
+    pub faith: u32,
+    pub pantheon_belief: Option<BeliefId>,
+    pub founded_religion: Option<ReligionId>,
 }
 
 /// Limited information about other civilizations.
@@ -108,6 +112,8 @@ pub struct CityView {
     pub territory: Vec<HexCoord>,
     pub ownership: CityOwnership,
     pub walls: WallLevel,
+    pub religious_followers: HashMap<ReligionId, u32>,
+    pub majority_religion: Option<ReligionId>,
     /// True if this is the player's own city (full detail); false = foreign.
     pub is_own: bool,
 }
@@ -229,6 +235,26 @@ pub struct YieldBundleView {
     pub amenities: i32,
     pub tourism: i32,
     pub great_person_points: i32,
+}
+
+// ── Religion ────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReligionView {
+    pub id: ReligionId,
+    pub name: String,
+    pub founded_by: CivId,
+    pub holy_city: CityId,
+    pub beliefs: Vec<BeliefView>,
+    pub total_followers: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BeliefView {
+    pub id: BeliefId,
+    pub name: String,
+    pub description: String,
+    pub category: BeliefCategory,
 }
 
 // ── Victory ──────────────────────────────────────────────────────────────────

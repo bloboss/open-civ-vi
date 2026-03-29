@@ -69,7 +69,7 @@ fn test_rome_city_founded_gets_monument_and_trading_post() {
         coord: libhexgrid::coord::HexCoord::from_qr(7, 1),
         domain: UnitDomain::Land, category: UnitCategory::Civilian,
         movement_left: 200, max_movement: 200, combat_strength: None,
-        promotions: Vec::new(), health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None,
+        promotions: Vec::new(), health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
     let diff = rules.found_city(&mut s.state, settler_id, "New Roma".to_string()).unwrap();
@@ -216,7 +216,7 @@ fn test_hoplite_adjacency_bonus() {
         coord: libhexgrid::coord::HexCoord::from_qr(9, 4),
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200, combat_strength: Some(28),
-        promotions: Vec::new(), health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None,
+        promotions: Vec::new(), health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
     let h2_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
@@ -224,7 +224,7 @@ fn test_hoplite_adjacency_bonus() {
         coord: libhexgrid::coord::HexCoord::from_qr(10, 4),
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200, combat_strength: Some(28),
-        promotions: Vec::new(), health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None,
+        promotions: Vec::new(), health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
     // Place a Rome warrior adjacent to h1.
@@ -234,7 +234,7 @@ fn test_hoplite_adjacency_bonus() {
         coord: libhexgrid::coord::HexCoord::from_qr(9, 3),
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200, combat_strength: Some(20),
-        promotions: Vec::new(), health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None,
+        promotions: Vec::new(), health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
     // h1 attacks rome_warrior. With the adjacency bonus (+10 from h2),
@@ -299,7 +299,7 @@ fn test_mamluk_heals_every_turn() {
         coord: libhexgrid::coord::HexCoord::from_qr(10, 4),
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 400, max_movement: 400, combat_strength: Some(50),
-        promotions: Vec::new(), health: 60, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None,
+        promotions: Vec::new(), health: 60, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
     // Advance a turn — the Mamluk should heal.

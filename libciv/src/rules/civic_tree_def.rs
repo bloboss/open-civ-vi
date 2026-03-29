@@ -58,7 +58,7 @@ let mysticism = CivicNode {
     name:                    "Mysticism",
     cost:                    50,
     prerequisites:           vec![code_of_laws_id],
-    effects:                 vec![UnlockPolicy("Revelation")],
+    effects:                 vec![UnlockPolicy("Revelation"), UnlockBuilding("Temple")],
     inspiration_description: "Found a pantheon.",
     inspiration_effects:     vec![],
 };

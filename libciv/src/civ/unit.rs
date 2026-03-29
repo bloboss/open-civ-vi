@@ -1,4 +1,4 @@
-use crate::{CityId, CivId, PromotionId, UnitCategory, UnitDomain, UnitId, UnitTypeId};
+use crate::{CityId, CivId, PromotionId, ReligionId, UnitCategory, UnitDomain, UnitId, UnitTypeId};
 use libhexgrid::coord::HexCoord;
 
 pub trait Unit: std::fmt::Debug {
@@ -46,6 +46,12 @@ pub struct BasicUnit {
     /// For trader units: the destination city the trader is moving toward.
     /// Set by `assign_trade_route`; cleared when the route is established.
     pub trade_destination: Option<CityId>,
+    /// Which religion this unit spreads (Missionaries, Apostles).
+    pub religion_id: Option<ReligionId>,
+    /// Remaining religious spread charges. When `Some(0)`, unit should be destroyed.
+    pub spread_charges: Option<u8>,
+    /// Religious combat strength for theological combat (Apostles).
+    pub religious_strength: Option<u32>,
 }
 
 impl Unit for BasicUnit {
