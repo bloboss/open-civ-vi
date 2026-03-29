@@ -88,6 +88,8 @@ pub enum ModifierSource {
     Custom(&'static str),
     /// Source is a civilization's innate ability.
     CivAbility(&'static str),
+    /// Source is a governor promotion or base ability.
+    Governor(&'static str),
 }
 
 // ── Conditions ───────────────────────────────────────────────────────────────

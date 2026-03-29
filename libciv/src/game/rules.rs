@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use crate::{AgreementId, CityId, CivId, GreatPersonId, GreatPersonType, PolicyId, PolicyType, TechId, UnitId, UnitTypeId, YieldBundle};
+use crate::{AgreementId, CityId, CivId, GovernorId, GreatPersonId, GreatPersonType, PolicyId, PolicyType, TechId, UnitId, UnitTypeId, YieldBundle};
 use crate::civ::unit::Unit;
 use crate::civ::{BasicUnit, DiplomaticRelation, DiplomaticStatus, GrievanceRecord};
 use crate::civ::grievance::DeclaredWarGrievance;
@@ -269,6 +269,28 @@ pub trait RulesEngine: std::fmt::Debug {
         great_person_id: GreatPersonId,
     ) -> Result<GameStateDiff, RulesError>;
 
+    /// Assign (or reassign) a governor to a city.
+    ///
+    /// Validation: governor must exist and be owned by the city's owner.
+    /// If the governor is already at that city, returns `GovernorAlreadyInCity`.
+    /// On success, sets `turns_to_establish` to 5 and emits `GovernorAssigned`.
+    fn assign_governor(
+        &self,
+        state: &mut GameState,
+        governor_id: GovernorId,
+        city_id: CityId,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// Unlock a promotion for a governor.
+    ///
+    /// Costs one governor title. Validates prerequisites are met.
+    fn promote_governor(
+        &self,
+        state: &mut GameState,
+        governor_id: GovernorId,
+        promotion_name: &'static str,
+    ) -> Result<GameStateDiff, RulesError>;
+
     // TODO(PHASE3-BORDERS): fn purchase_tile(&self, state: &mut GameState, city_id: CityId,
     //   coord: HexCoord) -> Result<GameStateDiff, RulesError>;
     //   Spends gold (or culture) from the civilization's treasury to immediately claim a tile
@@ -374,6 +396,20 @@ pub enum RulesError {
     GreatPersonDefNotFound,
     InvalidGreatPersonType,
     NoGreatWorkSlot,
+    /// The governor ID was not found in `state.governors`.
+    GovernorNotFound,
+    /// The governor is not owned by the acting civilization.
+    GovernorNotOwned,
+    /// The civilization has no unspent governor titles.
+    InsufficientGovernorTitles,
+    /// The specified promotion does not exist or does not belong to this governor.
+    PromotionNotFound,
+    /// A prerequisite promotion has not been unlocked yet.
+    PromotionPrerequisiteNotMet,
+    /// The governor already has this promotion.
+    PromotionAlreadyUnlocked,
+    /// The governor is already assigned to this city.
+    GovernorAlreadyInCity,
 }
 
 impl std::fmt::Display for RulesError {
@@ -429,6 +465,13 @@ impl std::fmt::Display for RulesError {
             RulesError::GreatPersonDefNotFound         => write!(f, "great person definition not found"),
             RulesError::InvalidGreatPersonType         => write!(f, "great person type cannot create great works"),
             RulesError::NoGreatWorkSlot                => write!(f, "no matching great work slot available in any owned city"),
+            RulesError::GovernorNotFound               => write!(f, "governor not found"),
+            RulesError::GovernorNotOwned               => write!(f, "governor is not owned by the acting civilization"),
+            RulesError::InsufficientGovernorTitles     => write!(f, "no unspent governor titles"),
+            RulesError::PromotionNotFound              => write!(f, "promotion not found for this governor"),
+            RulesError::PromotionPrerequisiteNotMet    => write!(f, "prerequisite promotion not yet unlocked"),
+            RulesError::PromotionAlreadyUnlocked       => write!(f, "promotion already unlocked"),
+            RulesError::GovernorAlreadyInCity           => write!(f, "governor is already assigned to this city"),
         }
     }
 }
@@ -798,23 +841,32 @@ impl RulesEngine for DefaultRulesEngine {
         }
 
         // Collect modifiers: base sources (leader/policies/govt/war) + tech/civic tree grants
-        // + civ ability modifiers.
-        let modifiers = state.civ(civ_id)
-            .map(|civ| {
-                let mut mods = civ.get_modifiers(
-                    &state.policies,
-                    &state.governments,
-                    &state.diplomatic_relations,
-                );
-                mods.extend(civ.get_tree_modifiers(&state.tech_tree, &state.civic_tree));
-                // Add civ-specific modifiers from the ability bundle.
-                if let Some(bundle) = lookup_bundle(civ.civ_identity) {
-                    mods.extend(bundle.civ_modifiers);
-                    mods.extend(bundle.leader_modifiers);
+        // + civ ability modifiers + governor modifiers.
+        let modifiers = {
+            let mut mods = state.civ(civ_id)
+                .map(|civ| {
+                    let mut m = civ.get_modifiers(
+                        &state.policies,
+                        &state.governments,
+                        &state.diplomatic_relations,
+                    );
+                    m.extend(civ.get_tree_modifiers(&state.tech_tree, &state.civic_tree));
+                    // Add civ-specific modifiers from the ability bundle.
+                    if let Some(bundle) = lookup_bundle(civ.civ_identity) {
+                        m.extend(bundle.civ_modifiers);
+                        m.extend(bundle.leader_modifiers);
+                    }
+                    m
+                })
+                .unwrap_or_default();
+            // Governor modifiers for established governors assigned to this civ's cities.
+            for gov in &state.governors {
+                if gov.owner == civ_id && gov.is_established() && gov.assigned_city.is_some() {
+                    mods.extend(crate::civ::governor::get_governor_modifiers(gov));
                 }
-                mods
-            })
-            .unwrap_or_default();
+            }
+            mods
+        };
 
         let ctx = ConditionContext::for_civ(civ_id, state);
         let effects = resolve_modifiers(&modifiers, Some(&ctx));
@@ -1252,6 +1304,11 @@ impl RulesEngine for DefaultRulesEngine {
                     for effect in effects {
                         state.effect_queue.push_back((cc.civ_id, effect));
                     }
+                    // Governor title grant from certain civics.
+                    if civic_grants_governor_title(name) {
+                        state.civilizations[cc.civ_idx].governor_titles += 1;
+                        diff.push(StateDelta::GovernorTitleEarned { civ: cc.civ_id });
+                    }
                 }
             }
         }
@@ -1563,7 +1620,21 @@ impl RulesEngine for DefaultRulesEngine {
         // TODO(PHASE3-8.3): Deliver trade route yields; decrement turns_remaining; expire routes.
         // TODO(PHASE3-8.5): Compute religion spread per city pair; update Religion.followers.
         // TODO(PHASE3-8.6): Accumulate great_person_points yield into per-type counters.
-        // TODO(PHASE3-8.7): Decrement turns_to_establish for assigned governors.
+
+        // ── Phase 5a-2: Governor establishment countdown ─────────────────────
+        for gov in &mut state.governors {
+            if let Some(city) = gov.assigned_city
+                && gov.turns_to_establish > 0
+            {
+                gov.turns_to_establish -= 1;
+                if gov.turns_to_establish == 0 {
+                    diff.push(StateDelta::GovernorEstablished {
+                        governor: gov.id,
+                        city,
+                    });
+                }
+            }
+        }
 
         // ── Phase 5b-1: Era score observer ──────────────────────────────────────
         // Scan deltas produced so far and award era score for matching historic moments.
@@ -2939,12 +3010,128 @@ impl RulesEngine for DefaultRulesEngine {
         diff.push(StateDelta::GreatWorkCreated { civ: civ_id, work_name: gp_name, city: city_id });
         Ok(diff)
     }
+
+    fn assign_governor(
+        &self,
+        state: &mut GameState,
+        governor_id: GovernorId,
+        city_id: CityId,
+    ) -> Result<GameStateDiff, RulesError> {
+        // 1. Validate governor exists.
+        let (owner, current_city) = {
+            let gov = state.governors.iter()
+                .find(|g| g.id == governor_id)
+                .ok_or(RulesError::GovernorNotFound)?;
+            (gov.owner, gov.assigned_city)
+        };
+
+        // 2. Validate city exists and belongs to the governor's owner.
+        let city = state.cities.iter()
+            .find(|c| c.id == city_id)
+            .ok_or(RulesError::CityNotFound)?;
+        if city.owner != owner {
+            return Err(RulesError::GovernorNotOwned);
+        }
+
+        // 3. Already at this city — no-op.
+        if current_city == Some(city_id) {
+            return Err(RulesError::GovernorAlreadyInCity);
+        }
+
+        // 4. Mutate: assign to new city and reset establishment timer.
+        let gov = state.governors.iter_mut()
+            .find(|g| g.id == governor_id)
+            .unwrap();
+        gov.assigned_city = Some(city_id);
+        gov.turns_to_establish = 5;
+
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::GovernorAssigned { governor: governor_id, city: city_id, owner });
+        Ok(diff)
+    }
+
+    fn promote_governor(
+        &self,
+        state: &mut GameState,
+        governor_id: GovernorId,
+        promotion_name: &'static str,
+    ) -> Result<GameStateDiff, RulesError> {
+        use crate::civ::governor::promotion_def;
+
+        // 1. Validate governor exists.
+        let (owner, def_name) = {
+            let gov = state.governors.iter()
+                .find(|g| g.id == governor_id)
+                .ok_or(RulesError::GovernorNotFound)?;
+            (gov.owner, gov.def_name)
+        };
+
+        // 2. Look up the promotion definition; must belong to this governor.
+        let promo = promotion_def(promotion_name)
+            .ok_or(RulesError::PromotionNotFound)?;
+        if promo.governor != def_name {
+            return Err(RulesError::PromotionNotFound);
+        }
+
+        // 3. Check not already unlocked.
+        {
+            let gov = state.governors.iter()
+                .find(|g| g.id == governor_id).unwrap();
+            if gov.has_promotion(promotion_name) {
+                return Err(RulesError::PromotionAlreadyUnlocked);
+            }
+            // 4. Check prerequisites.
+            for &req in promo.requires {
+                if !gov.has_promotion(req) {
+                    return Err(RulesError::PromotionPrerequisiteNotMet);
+                }
+            }
+        }
+
+        // 5. Validate civ has governor titles.
+        let civ = state.civilizations.iter()
+            .find(|c| c.id == owner)
+            .ok_or(RulesError::CivNotFound)?;
+        if civ.governor_titles < 1 {
+            return Err(RulesError::InsufficientGovernorTitles);
+        }
+
+        // 6. Mutate.
+        state.civilizations.iter_mut()
+            .find(|c| c.id == owner).unwrap()
+            .governor_titles -= 1;
+        state.governors.iter_mut()
+            .find(|g| g.id == governor_id).unwrap()
+            .promotions.push(promotion_name);
+
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::GovernorPromoted { governor: governor_id, promotion: promotion_name });
+        Ok(diff)
+    }
 }
 
 // ── great person helpers ──────────────────────────────────────────────────────
 
 /// Sum combat strength bonuses from retired great persons for a given civ and
 /// unit domain. Returns the total flat CS bonus.
+/// Returns true if completing this civic grants a governor title.
+fn civic_grants_governor_title(civic_name: &str) -> bool {
+    matches!(
+        civic_name,
+        "Code of Laws"
+            | "State Workforce"
+            | "Early Empire"
+            | "Diplomatic Service"
+            | "Medieval Faires"
+            | "Guilds"
+            | "Civil Service"
+            | "Nationalism"
+            | "Mass Media"
+            | "Mobilization"
+            | "Globalization"
+    )
+}
+
 fn great_person_cs_bonus(state: &GameState, civ_id: CivId, domain: crate::UnitDomain) -> u32 {
     let civ = match state.civ(civ_id) {
         Some(c) => c,
