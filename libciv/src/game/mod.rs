@@ -1,6 +1,7 @@
 pub mod board;
 pub mod diff;
 pub mod rules;
+pub mod rules_helpers;
 pub mod score;
 pub mod state;
 pub mod turn;
