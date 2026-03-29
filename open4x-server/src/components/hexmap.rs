@@ -1,4 +1,4 @@
-/// SVG hex-grid renderer backed by `GameView` from open4x-api.
+/// SVG hex-grid renderer backed by `GameView`.
 ///
 /// Renders the board as pointy-top hexagons coloured by terrain type.
 /// Fog of war is applied via TileVisibility on each TileView.

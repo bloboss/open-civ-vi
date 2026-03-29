@@ -23,7 +23,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Clippy
-        run: cargo clippy -p libhexgrid -p libciv -p open4x -- -D warnings
+        run: cargo clippy -p libhexgrid -p libciv -p open4x -p open4x-server --features open4x-server/ssr -- -D warnings
 
   test:
     name: Tests

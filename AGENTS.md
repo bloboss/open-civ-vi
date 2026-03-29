@@ -19,10 +19,10 @@ Store memories in a local memories directory, ./memory
 The workspace has 4 crates (3 libraries + 1 binary). Dependency order:
 
 ```
-libhexgrid  ← pure geometry: HexCoord (cube coords), HexBoard/HexTile/HexEdge traits, pathfinding
-libciv      ← all game state and rules: IDs, yields, enums, world, civ, rules, game, ai
-civsim      ← CLI binary: `new`, `run`, `demo`, `ai-demo`, `play` subcommands via clap
-open4x-web  ← Leptos/WASM frontend (imports libciv compiled to wasm32)
+libhexgrid    ← pure geometry: HexCoord (cube coords), HexBoard/HexTile/HexEdge traits, pathfinding
+libciv        ← all game state and rules: IDs, yields, enums, world, civ, rules, game, ai
+civsim        ← CLI binary: `new`, `run`, `demo`, `ai-demo`, `play` subcommands via clap
+open4x-server ← merged server + frontend (feature flags: `ssr` for Axum server, `csr` for Leptos/WASM)
 ```
 
 > **History**: libcommon, libworld, librules, libcivcore, and libgame were all merged into

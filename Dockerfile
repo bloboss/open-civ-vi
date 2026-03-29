@@ -14,7 +14,7 @@ FROM rust:1.86-bookworm AS build-server
 WORKDIR /src
 COPY . .
 
-RUN cargo build --release -p open4x-server
+RUN cargo build --release -p open4x-server --features ssr --no-default-features
 
 # ============================================================================
 # Stage 2: Build the WASM frontend with trunk
@@ -28,8 +28,8 @@ RUN cargo install trunk --locked \
 WORKDIR /src
 COPY . .
 
-# Trunk builds from the index.html in open4x-web/.
-RUN cd open4x-web && trunk build --release index.html
+# Trunk builds from the index.html in open4x-server/.
+RUN cd open4x-server && trunk build --release index.html
 
 # ============================================================================
 # Stage 3: Minimal runtime image
@@ -46,7 +46,7 @@ WORKDIR /app
 COPY --from=build-server /src/target/release/open4x-server /app/open4x-server
 
 # Copy the trunk-built frontend static files.
-COPY --from=build-web /src/open4x-web/dist /app/static
+COPY --from=build-web /src/open4x-server/dist /app/static
 
 # Create the data directory for persistence.
 RUN mkdir -p /app/data

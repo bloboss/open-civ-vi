@@ -1,6 +1,6 @@
 # Wire Protocol
 
-The multiplayer system uses WebSocket frames carrying JSON-encoded messages. The `open4x-api` crate defines all message types, shared between the server and WASM client.
+The multiplayer system uses WebSocket frames carrying JSON-encoded messages. The `types` module in `open4x-server` defines all message types, shared between the server and WASM client.
 
 ## Authentication
 

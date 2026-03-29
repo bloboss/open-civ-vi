@@ -1,8 +1,10 @@
 # Server & Web Client
 
-The multiplayer stack consists of three crates: `open4x-api` (shared types), `open4x-server` (Axum backend), and `open4x-web` (Leptos/WASM frontend).
+The multiplayer stack is a single `open4x-server` crate with feature flags: `ssr` for the native Axum server and `csr` for the Leptos/WASM browser client. Wire-protocol types live in the `types` module, shared by both features.
 
-## open4x-api -- Wire Protocol Types
+> **History**: Previously three crates (`open4x-api`, `open4x-server`, `open4x-web`) were merged to eliminate duplication.
+
+## Wire Protocol Types (`types` module)
 
 Serializable mirror types for the game state, shared between server and client. All types derive `Serialize`/`Deserialize`.
 
@@ -44,7 +46,7 @@ enum GameAction {
 }
 ```
 
-## open4x-server -- Axum Backend
+## Server (`ssr` feature)
 
 ### Architecture
 
@@ -53,7 +55,8 @@ HTTP Server (Axum)
 +-- GET /ws            -> WebSocket upgrade
 +-- GET /health        -> Health check ("ok")
 +-- GET /api/demo-game -> JSON demo game result
-+-- Static files       -> Leptos/trunk frontend
++-- GET /api/game/*    -> REST API (bearer token auth)
++-- Static files       -> Trunk-built frontend
 ```
 
 ### State Management
@@ -62,6 +65,7 @@ HTTP Server (Axum)
 struct AppState {
     games: DashMap<GameId, GameRoom>,       // concurrent map of active games
     players: DashMap<[u8; 32], PlayerRecord>, // persistent player profiles
+    api_tokens: DashMap<String, ApiTokenRecord>, // REST API bearer tokens
     templates: Vec<CivTemplate>,            // built-in civ definitions
 }
 ```
@@ -74,6 +78,23 @@ Each `GameRoom` holds a full `GameState`, `DefaultRulesEngine`, player slots, AI
 2. **Lobby**: `ListGames` -> `GamesList`, `CreateGame` -> `GameCreated`, `JoinGame` -> `GameJoined { view }`
 3. **Gameplay**: `Action(GameAction)` -> `ActionResult { ok, error }`, `EndTurn` -> `TurnResolved { new_turn, view }`
 
+### REST API
+
+Bearer-token authenticated endpoints for programmatic access:
+
+| Endpoint | Description |
+|----------|-------------|
+| `/api/game/view` | Full `GameView` projection (enables custom renderers) |
+| `/api/game/cities` | City report for all own cities |
+| `/api/game/city/{id}` | Detailed report for a specific city |
+| `/api/game/resources` | Resource inventory |
+| `/api/game/units` | Unit roster |
+| `/api/game/map-stats` | Terrain/feature/resource counts |
+| `/api/game/players` | Known civilization info |
+| `/api/game/science` | Tech tree progress |
+| `/api/game/culture` | Civic tree progress |
+| `/api/game/turn` | Turn status (for future webhook support) |
+
 ### Fog-of-War Projection
 
 The `projection` module converts internal `GameState` into per-player `GameView`:
@@ -85,25 +106,29 @@ The `projection` module converts internal `GameState` into per-player `GameView`
 ### Deployment
 
 The server is containerized with a multi-stage Dockerfile:
-1. Build `open4x-server` binary (Rust 1.86)
-2. Build WASM frontend with `trunk`
+1. Build `open4x-server` binary with `--features ssr` (Rust 1.86)
+2. Build WASM frontend with `trunk` from `open4x-server/index.html`
 3. Package into Debian slim runtime image
 
 Exposes port `3001`. Persistent game data stored in a Docker volume at `/app/data`.
 
-## open4x-web -- Leptos/WASM Frontend
+## Frontend (`csr` feature)
 
-### Pages
+### Tab-Based UI
 
-| Page | Description |
-|------|-------------|
-| `Home` | Main menu with buttons for New Game, Settings, Players, Demo |
-| `MapConfig` | Map size and seed configuration -> starts a game |
-| `Game` | Main gameplay view with hex canvas, unit controls, action buttons |
-| `DemoConfig` | AI-vs-AI demo parameters |
-| `Replay` | Animation of demo game results |
-| `Settings` | User preferences (deferred) |
-| `Players` | Player list (deferred) |
+The game interface uses a tab system instead of a sidebar overlay:
+
+| Tab | Description |
+|-----|-------------|
+| Map | Hex viewport with tile/unit info sidebar |
+| Data Reports | Sub-tabs: Cities, Resources, Units, Map Stats |
+| Science | Tech tree grid with status coloring and click-to-research |
+| Culture | Civic tree grid with inspiration tracking |
+| Governors | Governor management (placeholder) |
+| Great People | Great person tracking (placeholder) |
+| Climate | Climate monitoring (placeholder) |
+| Players | Opponent data with diplomacy status |
+| City | Individual city management with production queue |
 
 ### WebSocket Client
 
@@ -117,10 +142,10 @@ The client connects to the server's `/ws` endpoint, performs Ed25519 authenticat
 
 ### Hex Map Renderer
 
-The `hexmap` module renders the game board on an HTML5 canvas:
-- Hex tiles with terrain coloring
+The `hexmap` module renders the game board as SVG:
+- Pointy-top hexagons colored by terrain type
 - Click handlers for tile and unit selection
-- Movement and attack range visualization
+- Movement and attack interactions
 
 ### Build
 

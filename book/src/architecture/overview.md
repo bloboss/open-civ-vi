@@ -1,16 +1,18 @@
 # Architecture Overview
 
-Open Civ VI is structured as a Rust workspace with six crates arranged in a strict dependency hierarchy:
+Open Civ VI is structured as a Rust workspace with four crates arranged in a strict dependency hierarchy:
 
 ```
-libhexgrid          (pure geometry, zero game knowledge)
+libhexgrid      (pure geometry, zero game knowledge)
     |
-libciv              (all game state and rules)
-    |               |
-civsim          open4x-api      (CLI binary / shared wire types)
-                    |       |
-            open4x-server  open4x-web   (multiplayer server / browser client)
+libciv          (all game state and rules)
+    |           |
+civsim      open4x-server   (CLI binary / merged server + frontend)
 ```
+
+> **History**: `open4x-api` (shared wire types) and `open4x-web` (Leptos frontend)
+> were merged into `open4x-server` using feature flags (`ssr` for Axum server,
+> `csr` for Leptos/WASM client).
 
 ## Design Principles
 
