@@ -1362,46 +1362,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "open4x-api"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "ulid",
-]
-
-[[package]]
 name = "open4x-server"
 version = "0.1.0"
 dependencies = [
  "axum",
- "dashmap",
- "ed25519-dalek",
- "libciv",
- "libhexgrid",
- "open4x-api",
- "rand",
- "serde",
- "serde_json",
- "tokio",
- "tower-http",
- "ulid",
-]
-
-[[package]]
-name = "open4x-web"
-version = "0.1.0"
-dependencies = [
  "console_error_panic_hook",
+ "dashmap",
  "ed25519-dalek",
  "getrandom 0.3.4",
  "js-sys",
  "leptos",
- "open4x-api",
+ "libciv",
+ "libhexgrid",
  "rand",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
+ "tokio",
+ "tower-http",
+ "ulid",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

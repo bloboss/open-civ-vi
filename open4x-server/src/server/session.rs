@@ -14,10 +14,10 @@ use libciv::{CivId, UnitCategory, UnitDomain, UnitTypeId};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 
-use open4x_api::ids::GameId;
-use open4x_api::messages::CreateGameRequest;
+use crate::types::ids::GameId;
+use crate::types::messages::CreateGameRequest;
 
-use crate::state::{AppState, PlayerSlot};
+use crate::server::state::{AppState, PlayerSlot};
 
 /// Intermediate result from building a server session.
 pub struct ServerSession {
@@ -162,7 +162,7 @@ pub fn build_server_session(
         PlayerSlot {
             civ_id,
             pubkey: *creator_pubkey,
-            profile: open4x_api::profile::ProfileView {
+            profile: crate::types::profile::ProfileView {
                 pubkey: creator_pubkey.to_vec(),
                 display_name,
                 selected_template: template_id,

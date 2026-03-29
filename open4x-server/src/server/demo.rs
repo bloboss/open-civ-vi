@@ -9,8 +9,8 @@ use libciv::{CivId, DefaultRulesEngine, TurnEngine, UnitCategory, UnitDomain, Un
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 
-use open4x_api::view::GameView;
-use crate::projection::project_game_view;
+use crate::types::view::GameView;
+use crate::server::projection::project_game_view;
 
 /// No-op agenda for AI civs.
 struct NoOpAgenda;

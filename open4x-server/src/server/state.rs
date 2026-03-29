@@ -9,15 +9,16 @@ use libciv::ai::HeuristicAgent;
 use libciv::game::state::GameState;
 use libciv::{CivId, DefaultRulesEngine};
 
-use open4x_api::ids::GameId;
-use open4x_api::messages::{GameStatus, ServerMessage};
-use open4x_api::profile::ProfileView;
+use crate::types::ids::GameId;
+use crate::types::messages::{GameStatus, ServerMessage};
+use crate::types::profile::ProfileView;
 
 /// Global server state shared across all WebSocket connections.
 pub struct AppState {
     pub games: DashMap<GameId, GameRoom>,
     pub players: DashMap<[u8; 32], PlayerRecord>,
-    pub templates: Vec<open4x_api::profile::CivTemplate>,
+    pub templates: Vec<crate::types::profile::CivTemplate>,
+    pub api_tokens: DashMap<String, crate::server::api_token::ApiTokenRecord>,
 }
 
 impl AppState {
@@ -25,7 +26,8 @@ impl AppState {
         Arc::new(Self {
             games: DashMap::new(),
             players: DashMap::new(),
-            templates: crate::templates::builtin_templates(),
+            templates: crate::server::templates::builtin_templates(),
+            api_tokens: DashMap::new(),
         })
     }
 }
@@ -61,6 +63,6 @@ pub struct PlayerSlot {
 pub struct PlayerRecord {
     pub pubkey: [u8; 32],
     pub display_name: String,
-    pub selected_template: open4x_api::ids::CivTemplateId,
+    pub selected_template: crate::types::ids::CivTemplateId,
     pub games_played: u32,
 }

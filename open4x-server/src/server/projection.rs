@@ -5,10 +5,10 @@ use libciv::{CivId, DefaultRulesEngine, RulesEngine};
 use libciv::game::score::{all_scores, compute_score};
 use libhexgrid::board::{HexBoard, HexEdge};
 
-use open4x_api::enums::*;
-use open4x_api::view::*;
-use open4x_api::coord::HexCoord as ApiCoord;
-use open4x_api::ids as api;
+use crate::types::enums::*;
+use crate::types::view::*;
+use crate::types::coord::HexCoord as ApiCoord;
+use crate::types::ids as api;
 
 // ── Coordinate conversion ────────────────────────────────────────────────────
 
@@ -169,6 +169,14 @@ fn conv_ownership(o: libciv::civ::city::CityOwnership) -> CityOwnership {
     }
 }
 
+fn conv_topology(t: libhexgrid::board::BoardTopology) -> BoardTopology {
+    match t {
+        libhexgrid::board::BoardTopology::Flat          => BoardTopology::Flat,
+        libhexgrid::board::BoardTopology::CylindricalEW => BoardTopology::CylindricalEW,
+        libhexgrid::board::BoardTopology::Toroidal      => BoardTopology::Toroidal,
+    }
+}
+
 fn conv_yields(y: &libciv::YieldBundle) -> YieldBundleView {
     YieldBundleView {
         food: y.food, production: y.production, gold: y.gold,
@@ -270,7 +278,8 @@ pub fn project_game_view(state: &GameState, viewer: CivId) -> GameView {
         }
     }
 
-    let board = BoardView { width: board_w, height: board_h, tiles, river_edges };
+    let topology = conv_topology(state.board.topology());
+    let board = BoardView { width: board_w, height: board_h, topology, tiles, river_edges };
 
     // ── Own civilization ──────────────────────────────────────────────────
     let my_civ = CivView {
