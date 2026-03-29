@@ -269,6 +269,17 @@ pub trait RulesEngine: std::fmt::Debug {
         great_person_id: GreatPersonId,
     ) -> Result<GameStateDiff, RulesError>;
 
+    /// Patronize (sponsor) a great person by spending gold. Claims the next
+    /// available candidate of `person_type` for `civ_id`. Gold cost is
+    /// `(threshold - current_points) * GP_PATRONAGE_GOLD_PER_POINT`.
+    /// The great person spawns at the civ's capital.
+    fn recruit_great_person(
+        &self,
+        state: &mut GameState,
+        civ_id: CivId,
+        person_type: GreatPersonType,
+    ) -> Result<GameStateDiff, RulesError>;
+  
     /// Assign (or reassign) a governor to a city.
     ///
     /// Validation: governor must exist and be owned by the city's owner.
@@ -396,6 +407,8 @@ pub enum RulesError {
     GreatPersonDefNotFound,
     InvalidGreatPersonType,
     NoGreatWorkSlot,
+    /// No great person candidate of the requested type is available in the current era.
+    NoGreatPersonAvailable,
     /// The governor ID was not found in `state.governors`.
     GovernorNotFound,
     /// The governor is not owned by the acting civilization.
@@ -465,6 +478,7 @@ impl std::fmt::Display for RulesError {
             RulesError::GreatPersonDefNotFound         => write!(f, "great person definition not found"),
             RulesError::InvalidGreatPersonType         => write!(f, "great person type cannot create great works"),
             RulesError::NoGreatWorkSlot                => write!(f, "no matching great work slot available in any owned city"),
+            RulesError::NoGreatPersonAvailable         => write!(f, "no great person candidate of the requested type is available"),
             RulesError::GovernorNotFound               => write!(f, "governor not found"),
             RulesError::GovernorNotOwned               => write!(f, "governor is not owned by the acting civilization"),
             RulesError::InsufficientGovernorTitles     => write!(f, "no unspent governor titles"),
@@ -1633,6 +1647,99 @@ impl RulesEngine for DefaultRulesEngine {
                         city,
                     });
                 }
+            }
+        }
+
+        // ── Phase 5a: Great person point accumulation ────────────────────────────
+        // Each district generates GP points per turn for its associated type(s).
+        // When accumulated points reach the recruitment threshold, the next
+        // available candidate is automatically recruited.
+        {
+            use crate::civ::great_people::{
+                district_great_person_types, recruitment_threshold, next_candidate_name,
+                spawn_great_person, GP_BASE_POINTS_PER_DISTRICT,
+            };
+
+            // Collect per-civ GP point increments (immutable pass over cities/districts).
+            let mut civ_gp_increments: Vec<(CivId, std::collections::HashMap<crate::GreatPersonType, u32>)> = Vec::new();
+            for civ in &state.civilizations {
+                let mut increments: std::collections::HashMap<crate::GreatPersonType, u32> = std::collections::HashMap::new();
+                for city in state.cities.iter().filter(|c| c.owner == civ.id) {
+                    for district in &city.districts {
+                        for &gp_type in district_great_person_types(*district) {
+                            *increments.entry(gp_type).or_insert(0) += GP_BASE_POINTS_PER_DISTRICT;
+                        }
+                    }
+                }
+                if !increments.is_empty() {
+                    civ_gp_increments.push((civ.id, increments));
+                }
+            }
+
+            // Apply increments (mutable pass).
+            for (civ_id, increments) in &civ_gp_increments {
+                if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == *civ_id) {
+                    for (&gp_type, &points) in increments {
+                        let total = civ.great_person_points.entry(gp_type).or_insert(0);
+                        *total += points;
+                        diff.push(StateDelta::GreatPersonPointsAccumulated {
+                            civ: *civ_id,
+                            person_type: gp_type,
+                            points,
+                            total: *total,
+                        });
+                    }
+                }
+            }
+
+            // Check thresholds and auto-recruit.
+            // Collect recruitment actions first (need immutable state for lookups).
+            struct GpRecruit { civ_id: CivId, gp_type: crate::GreatPersonType, def_name: &'static str, threshold: u32 }
+            let mut recruits: Vec<GpRecruit> = Vec::new();
+
+            for (civ_id, increments) in &civ_gp_increments {
+                for &gp_type in increments.keys() {
+                    let current_points = state.civilizations.iter()
+                        .find(|c| c.id == *civ_id)
+                        .and_then(|c| c.great_person_points.get(&gp_type).copied())
+                        .unwrap_or(0);
+                    let threshold = recruitment_threshold(gp_type, state);
+                    if current_points >= threshold
+                        && let Some(name) = next_candidate_name(gp_type, state)
+                    {
+                        recruits.push(GpRecruit { civ_id: *civ_id, gp_type, def_name: name, threshold });
+                    }
+                }
+            }
+
+            // Execute recruitments (mutable state).
+            for recruit in recruits {
+                // Find the civ's capital coord for spawning.
+                let spawn_coord = state.cities.iter()
+                    .find(|c| c.owner == recruit.civ_id && c.is_capital)
+                    .map(|c| c.coord)
+                    .unwrap_or_else(|| {
+                        // Fallback: first owned city.
+                        state.cities.iter()
+                            .find(|c| c.owner == recruit.civ_id)
+                            .map(|c| c.coord)
+                            .unwrap_or(HexCoord::from_qr(0, 0))
+                    });
+
+                let gp_id = spawn_great_person(state, recruit.civ_id, recruit.def_name, spawn_coord);
+
+                // Subtract threshold from accumulated points.
+                if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == recruit.civ_id)
+                    && let Some(pts) = civ.great_person_points.get_mut(&recruit.gp_type)
+                {
+                    *pts = pts.saturating_sub(recruit.threshold);
+                }
+
+                diff.push(StateDelta::GreatPersonRecruited {
+                    great_person: gp_id,
+                    civ: recruit.civ_id,
+                    person_type: recruit.gp_type,
+                });
             }
         }
 
@@ -3011,6 +3118,65 @@ impl RulesEngine for DefaultRulesEngine {
         Ok(diff)
     }
 
+    fn recruit_great_person(
+        &self,
+        state: &mut GameState,
+        civ_id: CivId,
+        person_type: GreatPersonType,
+    ) -> Result<GameStateDiff, RulesError> {
+        use crate::civ::great_people::{
+            recruitment_threshold, next_candidate_name, spawn_great_person,
+            GP_PATRONAGE_GOLD_PER_POINT,
+        };
+
+        // Validate civ exists.
+        let civ = state.civ(civ_id).ok_or(RulesError::CivNotFound)?;
+
+        // Find next available candidate.
+        let def_name = next_candidate_name(person_type, state)
+            .ok_or(RulesError::NoGreatPersonAvailable)?;
+
+        // Compute gold cost based on remaining points needed.
+        let current_points = civ.great_person_points.get(&person_type).copied().unwrap_or(0);
+        let threshold = recruitment_threshold(person_type, state);
+        let points_needed = threshold.saturating_sub(current_points);
+        let gold_cost = points_needed * GP_PATRONAGE_GOLD_PER_POINT;
+        let gold_cost_signed = gold_cost as i32;
+
+        if civ.gold < gold_cost_signed {
+            return Err(RulesError::InsufficientGold);
+        }
+
+        // Find spawn location (capital or first city).
+        let spawn_coord = state.cities.iter()
+            .find(|c| c.owner == civ_id && c.is_capital)
+            .or_else(|| state.cities.iter().find(|c| c.owner == civ_id))
+            .map(|c| c.coord)
+            .ok_or(RulesError::CityNotFound)?;
+
+        // Deduct gold.
+        let civ = state.civilizations.iter_mut()
+            .find(|c| c.id == civ_id).unwrap();
+        civ.gold -= gold_cost_signed;
+
+        // Reset points for this type.
+        civ.great_person_points.insert(person_type, 0);
+
+        // Spawn the great person.
+        let gp_id = spawn_great_person(state, civ_id, def_name, spawn_coord);
+
+        let mut diff = GameStateDiff::new();
+        if gold_cost > 0 {
+            diff.push(StateDelta::GoldChanged { civ: civ_id, delta: -gold_cost_signed });
+        }
+        diff.push(StateDelta::GreatPersonPatronized {
+            great_person: gp_id,
+            civ: civ_id,
+            gold_spent: gold_cost,
+        });
+        Ok(diff)
+    }
+  
     fn assign_governor(
         &self,
         state: &mut GameState,

@@ -1,23 +1,42 @@
-/// Integration tests for the great persons retirement system.
-///
-/// Each test spawns a dummy great person via `spawn_great_person`, retires it
-/// through `RulesEngine::retire_great_person`, and asserts the expected
-/// side-effects (modifiers, gold, production, error handling).
+/// Integration tests for the great persons system:
+/// - Retirement effects (combat bonus, production burst, gold grant)
+/// - Great person point accumulation from districts
+/// - Auto-recruitment when points reach threshold
+/// - Patronage (gold-based sponsoring)
+/// - Era gating and inter-civ competition
 
 mod common;
 
 use libciv::{
-    DefaultRulesEngine, GameState, GreatPersonType, RulesEngine, UnitCategory, UnitDomain,
+    DefaultRulesEngine, GreatPersonType, RulesEngine, UnitCategory,
 };
-use libciv::civ::{builtin_great_person_defs, spawn_great_person};
+use libciv::civ::{
+    builtin_great_person_defs, spawn_great_person, BuiltinDistrict, PlacedDistrict,
+    GP_BASE_THRESHOLD,
+};
 use libciv::game::StateDelta;
 use libhexgrid::coord::HexCoord;
 
-/// Helper: build a scenario with the four builtin great person defs registered.
+/// Helper: build a scenario with the builtin great person defs registered.
 fn scenario_with_great_person_defs() -> common::Scenario {
     let mut s = common::build_scenario();
     s.state.great_person_defs = builtin_great_person_defs();
     s
+}
+
+/// Helper: directly add a district to a city (bypasses tech/civic prereqs).
+fn add_district(state: &mut libciv::GameState, city_id: libciv::CityId, district: BuiltinDistrict, coord: HexCoord) {
+    if let Some(city) = state.cities.iter_mut().find(|c| c.id == city_id) {
+        city.districts.push(district);
+    }
+    state.placed_districts.push(PlacedDistrict {
+        district_type: district,
+        city_id,
+        coord,
+        buildings: Vec::new(),
+        is_pillaged: false,
+        unique_variant: None,
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -191,4 +210,277 @@ fn test_great_person_combat_modifier_applies_in_battle() {
     // Without the modifier it would be ~30 (30 * exp(0/25) = 30) * rng.
     // We just verify the attack happened; deterministic seed makes this reproducible.
     assert!(defender_damage > 0, "should deal positive damage");
+}
+
+// ===========================================================================
+// Great person points accumulation from districts
+// ===========================================================================
+
+#[test]
+fn test_district_generates_great_person_points() {
+    let mut s = scenario_with_great_person_defs();
+
+    // Give Rome a Campus district.
+    add_district(&mut s.state, s.rome_city, BuiltinDistrict::Campus, HexCoord::from_qr(4, 3));
+
+    // Advance one turn.
+    common::advance_turn(&mut s);
+
+    // Rome should have 1 Scientist point.
+    let civ = s.state.civ(s.rome_id).unwrap();
+    let scientist_pts = civ.great_person_points.get(&GreatPersonType::Scientist).copied().unwrap_or(0);
+    assert_eq!(scientist_pts, 1, "Campus should generate 1 Scientist point per turn");
+
+    // Babylon should have 0 Scientist points (no Campus).
+    let babylon_civ = s.state.civ(s.babylon_id).unwrap();
+    let babylon_pts = babylon_civ.great_person_points.get(&GreatPersonType::Scientist).copied().unwrap_or(0);
+    assert_eq!(babylon_pts, 0, "Babylon has no Campus, should have 0 Scientist points");
+}
+
+#[test]
+fn test_theater_square_generates_three_types() {
+    let mut s = scenario_with_great_person_defs();
+
+    // Give Rome a Theater Square.
+    add_district(&mut s.state, s.rome_city, BuiltinDistrict::TheaterSquare, HexCoord::from_qr(4, 3));
+
+    // Advance one turn.
+    common::advance_turn(&mut s);
+
+    // Theater Square generates points for Writer, Artist, and Musician.
+    let civ = s.state.civ(s.rome_id).unwrap();
+    let writer_pts = civ.great_person_points.get(&GreatPersonType::Writer).copied().unwrap_or(0);
+    let artist_pts = civ.great_person_points.get(&GreatPersonType::Artist).copied().unwrap_or(0);
+    let musician_pts = civ.great_person_points.get(&GreatPersonType::Musician).copied().unwrap_or(0);
+
+    assert_eq!(writer_pts, 1, "Theater Square should generate Writer points");
+    assert_eq!(artist_pts, 1, "Theater Square should generate Artist points");
+    assert_eq!(musician_pts, 1, "Theater Square should generate Musician points");
+}
+
+#[test]
+fn test_multiple_districts_accumulate() {
+    let mut s = scenario_with_great_person_defs();
+
+    // Give Rome two Campuses (different cities would be realistic, but
+    // for testing accumulation we just care about the count).
+    add_district(&mut s.state, s.rome_city, BuiltinDistrict::Campus, HexCoord::from_qr(4, 3));
+
+    // Advance 5 turns -- should accumulate 5 Scientist points.
+    for _ in 0..5 {
+        common::advance_turn(&mut s);
+    }
+
+    let civ = s.state.civ(s.rome_id).unwrap();
+    let pts = civ.great_person_points.get(&GreatPersonType::Scientist).copied().unwrap_or(0);
+    assert_eq!(pts, 5, "5 turns with 1 Campus should yield 5 Scientist points");
+}
+
+// ===========================================================================
+// Auto-recruitment at threshold
+// ===========================================================================
+
+#[test]
+fn test_great_person_auto_recruited_at_threshold() {
+    let mut s = scenario_with_great_person_defs();
+
+    // Give Rome a Campus.
+    add_district(&mut s.state, s.rome_city, BuiltinDistrict::Campus, HexCoord::from_qr(4, 3));
+
+    // Set Rome's Scientist points to threshold - 1 so the next turn triggers recruitment.
+    s.state.civilizations.iter_mut()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .great_person_points.insert(GreatPersonType::Scientist, GP_BASE_THRESHOLD - 1);
+
+    // Count great people before.
+    let gp_count_before = s.state.great_people.len();
+
+    // Advance one turn -- should accumulate 1 point, reaching threshold = 60, recruiting Euclid.
+    common::advance_turn(&mut s);
+
+    // A new great person should have been spawned.
+    let gp_count_after = s.state.great_people.len();
+    assert_eq!(gp_count_after, gp_count_before + 1, "should recruit one great person");
+
+    // The recruited GP should be a Scientist owned by Rome.
+    let recruited_gp = s.state.great_people.last().unwrap();
+    assert_eq!(recruited_gp.person_type, GreatPersonType::Scientist);
+    assert_eq!(recruited_gp.owner, Some(s.rome_id));
+    assert_eq!(recruited_gp.name, "Euclid");
+
+    // Points should have been reset (threshold subtracted: 60 - 60 = 0).
+    let civ = s.state.civ(s.rome_id).unwrap();
+    let pts = civ.great_person_points.get(&GreatPersonType::Scientist).copied().unwrap_or(0);
+    assert_eq!(pts, 0, "points should reset after recruitment");
+}
+
+#[test]
+fn test_points_carry_over_after_recruitment() {
+    let mut s = scenario_with_great_person_defs();
+
+    add_district(&mut s.state, s.rome_city, BuiltinDistrict::Campus, HexCoord::from_qr(4, 3));
+
+    // Set points to threshold + 5 - 1 (so after +1 from turn, total = threshold + 5).
+    s.state.civilizations.iter_mut()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .great_person_points.insert(GreatPersonType::Scientist, GP_BASE_THRESHOLD + 4);
+
+    common::advance_turn(&mut s);
+
+    // Should have recruited and carried over 5 points.
+    let civ = s.state.civ(s.rome_id).unwrap();
+    let pts = civ.great_person_points.get(&GreatPersonType::Scientist).copied().unwrap_or(0);
+    assert_eq!(pts, 5, "excess points above threshold should carry over");
+}
+
+// ===========================================================================
+// Patronage (gold-based sponsoring)
+// ===========================================================================
+
+#[test]
+fn test_great_person_patronage_with_gold() {
+    let mut s = scenario_with_great_person_defs();
+    let rules = DefaultRulesEngine;
+
+    // Give Rome plenty of gold.
+    s.state.civilizations.iter_mut()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .gold = 500;
+
+    // Patronize a Scientist (Euclid). With 0 points, cost = 60 * 3 = 180 gold.
+    let result = rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist);
+    assert!(result.is_ok(), "patronage should succeed with enough gold: {result:?}");
+
+    let diff = result.unwrap();
+
+    // Should have GoldChanged and GreatPersonPatronized deltas.
+    assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::GoldChanged { .. })));
+    assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::GreatPersonPatronized { .. })));
+
+    // Gold should have been deducted.
+    let civ = s.state.civ(s.rome_id).unwrap();
+    assert_eq!(civ.gold, 500 - 180, "should deduct 180 gold (60 points * 3 gold/point)");
+
+    // Great person should exist and be owned by Rome.
+    let gp = s.state.great_people.last().unwrap();
+    assert_eq!(gp.person_type, GreatPersonType::Scientist);
+    assert_eq!(gp.owner, Some(s.rome_id));
+    assert_eq!(gp.name, "Euclid");
+
+    // Points should be reset to 0.
+    assert_eq!(civ.great_person_points.get(&GreatPersonType::Scientist).copied().unwrap_or(0), 0);
+}
+
+#[test]
+fn test_patronage_partial_points_reduces_cost() {
+    let mut s = scenario_with_great_person_defs();
+    let rules = DefaultRulesEngine;
+
+    // Give Rome some accumulated points and gold.
+    let rome_civ = s.state.civilizations.iter_mut()
+        .find(|c| c.id == s.rome_id).unwrap();
+    rome_civ.gold = 200;
+    rome_civ.great_person_points.insert(GreatPersonType::Scientist, 40);
+
+    // Cost should be (60 - 40) * 3 = 60 gold.
+    let result = rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist);
+    assert!(result.is_ok());
+
+    let civ = s.state.civ(s.rome_id).unwrap();
+    assert_eq!(civ.gold, 200 - 60, "cost should be reduced by accumulated points");
+}
+
+#[test]
+fn test_patronage_insufficient_gold_fails() {
+    let mut s = scenario_with_great_person_defs();
+    let rules = DefaultRulesEngine;
+
+    // Give Rome insufficient gold.
+    s.state.civilizations.iter_mut()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .gold = 10;
+
+    let result = rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist);
+    assert!(result.is_err(), "should fail with insufficient gold");
+}
+
+// ===========================================================================
+// Era gating
+// ===========================================================================
+
+#[test]
+fn test_era_gating_filters_candidates() {
+    let mut s = scenario_with_great_person_defs();
+    let rules = DefaultRulesEngine;
+
+    // Give Rome lots of gold.
+    s.state.civilizations.iter_mut()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .gold = 10_000;
+
+    // Recruit the first Ancient Scientist (Euclid).
+    rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist)
+        .expect("first recruit should succeed");
+
+    // The next Scientist (Hypatia) is Classical era. Without era advancement,
+    // it should not be available if we're in Ancient era.
+    // Set up eras so the game knows we're in Ancient.
+    use libciv::civ::era::Era;
+    if s.state.eras.is_empty() {
+        let ancient_era_id = libciv::EraId::from_ulid(s.state.id_gen.next_ulid());
+        s.state.eras.push(Era {
+            id: ancient_era_id,
+            name: "Ancient",
+            age: libciv::AgeType::Ancient,
+            tech_count: 8,
+            civic_count: 4,
+        });
+        s.state.current_era_index = 0;
+    }
+
+    // Try to recruit another Scientist -- Hypatia is Classical, should fail.
+    let result = rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist);
+    assert!(
+        matches!(result, Err(libciv::game::RulesError::NoGreatPersonAvailable)),
+        "Classical-era GP should not be available in Ancient era: {result:?}"
+    );
+}
+
+// ===========================================================================
+// Competition between civs
+// ===========================================================================
+
+#[test]
+fn test_competition_consumed_candidate() {
+    let mut s = scenario_with_great_person_defs();
+    let rules = DefaultRulesEngine;
+
+    // Give both civs gold.
+    for civ in &mut s.state.civilizations {
+        civ.gold = 10_000;
+    }
+
+    // Rome recruits the first Scientist (Euclid).
+    rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist)
+        .expect("Rome should recruit Euclid");
+
+    // Add Classical era so Hypatia becomes available.
+    use libciv::civ::era::Era;
+    let classical_era_id = libciv::EraId::from_ulid(s.state.id_gen.next_ulid());
+    s.state.eras.push(Era {
+        id: classical_era_id,
+        name: "Classical",
+        age: libciv::AgeType::Classical,
+        tech_count: 16,
+        civic_count: 8,
+    });
+    s.state.current_era_index = s.state.eras.len() - 1;
+
+    // Babylon recruits the next Scientist (Hypatia) -- threshold is now 120 (60 + 60).
+    let result = rules.recruit_great_person(&mut s.state, s.babylon_id, GreatPersonType::Scientist);
+    assert!(result.is_ok(), "Babylon should recruit Hypatia: {result:?}");
+
+    let hypatia = s.state.great_people.last().unwrap();
+    assert_eq!(hypatia.name, "Hypatia");
+    assert_eq!(hypatia.owner, Some(s.babylon_id));
 }
