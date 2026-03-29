@@ -26,7 +26,11 @@ pub use grievance::{CapturedCityGrievance, DeclaredWarGrievance, PillageGrievanc
 pub use district::{AdjacencyContext, BuildingDef, BuiltinDistrict, DistrictDef, DistrictRequirements, PlacedDistrict};
 pub use era::{Era, EraAge, EraDedication, EraTrigger, HistoricMoment, HistoricMomentDef, HistoricMomentKind};
 pub mod historic_moments;
-pub use governor::{Governor, GovernorDef, GovernorPromotion};
+pub use governor::{
+    Governor, GovernorDef, GovernorPromotion, GovernorPromotionDef,
+    all_promotion_defs, promotions_for, promotion_def, get_governor_modifiers,
+    GOVERNOR_NAMES,
+};
 pub use great_people::{GreatPerson, GreatPersonAbility, GreatPersonDef, RetireEffect, builtin_great_person_defs, spawn_great_person};
 pub use great_works::{GreatWork, GreatWorkSlot, GreatWorkSlotType, GreatWorkType};
 pub use religion::{Belief, BeliefContext, Religion};
