@@ -9,7 +9,7 @@ pub mod visibility;
 
 pub use board::WorldBoard;
 pub use diff::{AttackType, GameStateDiff, StateDelta};
-pub use rules::{DefaultRulesEngine, RulesEngine, RulesError};
+pub use rules::{DefaultRulesEngine, FaithPurchaseItem, RulesEngine, RulesError};
 pub use score::{all_scores, compute_score};
 pub use state::{GameState, IdGenerator};
 pub use turn::TurnEngine;

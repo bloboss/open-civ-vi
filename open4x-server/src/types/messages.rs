@@ -89,6 +89,25 @@ pub enum GameAction {
     AssignPolicy {
         policy: PolicyId,
     },
+    FoundPantheon {
+        belief: BeliefId,
+    },
+    FoundReligion {
+        prophet: UnitId,
+        name: String,
+        beliefs: Vec<BeliefId>,
+    },
+    SpreadReligion {
+        unit: UnitId,
+    },
+    TheologicalCombat {
+        attacker: UnitId,
+        defender: UnitId,
+    },
+    PurchaseWithFaith {
+        city: CityId,
+        item: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

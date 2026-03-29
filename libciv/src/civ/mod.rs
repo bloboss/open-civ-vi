@@ -40,7 +40,7 @@ pub use governor::{
     GOVERNOR_NAMES,
 };
 pub use great_works::{GreatWork, GreatWorkSlot, GreatWorkSlotType, GreatWorkType};
-pub use religion::{Belief, BeliefContext, Religion};
+pub use religion::{BeliefCategory, BeliefContext, BeliefRefs, BuiltinBelief, Religion};
 pub use tourism::{WonderTourism, compute_tourism, domestic_tourists, has_cultural_dominance};
 pub use trade::TradeRoute;
 pub use unit::{BasicUnit, Unit};

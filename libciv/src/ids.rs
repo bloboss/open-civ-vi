@@ -60,6 +60,8 @@ define_id!(EdgeFeatureId);
 define_id!(NaturalWonderId);
 define_id!(GreatWorkId);
 
+// BeliefRefs is defined in civ::religion (alongside the belief registry builder).
+
 /// Named handles to every built-in tech ID, produced alongside the TechTree.
 #[derive(Debug, Clone, Copy)]
 pub struct TechRefs {
@@ -74,6 +76,7 @@ pub struct TechRefs {
     pub bronze_working:   TechId,
     pub the_wheel:        TechId,
     pub masonry:          TechId,
+    pub theology:         TechId,
     /// Sentinel: self-referential prereq → `prerequisites_met()` always returns false.
     pub unreachable:      TechId,
 }

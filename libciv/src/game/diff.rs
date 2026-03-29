@@ -1,6 +1,6 @@
 use crate::{
-  AgeType, CivId, CityId, GovernorId, GreatPersonId, GreatPersonType, 
-  PolicyId, TradeRouteId, UnitId
+  AgeType, BeliefId, CivId, CityId, GovernorId, GreatPersonId, GreatPersonType,
+  PolicyId, ReligionId, TradeRouteId, UnitId
 };
 use crate::civ::DiplomaticStatus;
 use crate::civ::city::WallLevel;
@@ -173,6 +173,24 @@ pub enum StateDelta {
     // ── Victory condition (PHASE3-8.9) ────────────────────────────────────────
     /// Emitted when a civ wins the game. After this delta `GameState::game_over` is set.
     VictoryAchieved { civ: CivId, condition: &'static str },
+
+    // ── Religion ─────────────────────────────────────────────────────────────
+    /// A civilization founded a new religion.
+    ReligionFounded { civ: CivId, religion: ReligionId, name: String },
+    /// A civilization selected a pantheon belief.
+    PantheonFounded { civ: CivId, belief: BeliefId },
+    /// A belief was added to a religion (founder, follower, worship, or enhancer).
+    BeliefSelected { civ: CivId, religion: ReligionId, belief: BeliefId },
+    /// A religious unit spread religion to a city.
+    ReligionSpread { city: CityId, religion: ReligionId, followers_added: u32 },
+    /// Passive religious pressure changed followers in a city.
+    ReligiousPressureApplied { city: CityId, religion: ReligionId, delta: i32 },
+    /// A city's majority religion changed.
+    CityConvertedReligion { city: CityId, old_religion: Option<ReligionId>, new_religion: ReligionId },
+    /// Theological combat between two religious units.
+    TheologicalCombat { attacker: UnitId, defender: UnitId, attacker_damage: u32, defender_damage: u32 },
+    /// A civilization's faith stockpile changed.
+    FaithChanged { civ: CivId, delta: i32 },
 }
 
 /// A batch of deltas representing a complete state transition.

@@ -48,6 +48,14 @@ fn conv_unit_type_id(id: libciv::UnitTypeId) -> api::UnitTypeId {
     api::UnitTypeId::from_ulid(id.as_ulid())
 }
 
+fn conv_religion_id(id: libciv::ReligionId) -> api::ReligionId {
+    api::ReligionId::from_ulid(id.as_ulid())
+}
+
+fn conv_belief_id(id: libciv::BeliefId) -> api::BeliefId {
+    api::BeliefId::from_ulid(id.as_ulid())
+}
+
 fn conv_trade_route_id(id: libciv::TradeRouteId) -> api::TradeRouteId {
     api::TradeRouteId::from_ulid(id.as_ulid())
 }
@@ -312,6 +320,9 @@ pub fn project_game_view(state: &GameState, viewer: CivId) -> GameView {
             .map(|(r, &qty)| (format!("{r:?}"), qty))
             .collect(),
         yields: civ_yields,
+        faith: civ.faith,
+        pantheon_belief: civ.pantheon_belief.map(conv_belief_id),
+        founded_religion: civ.founded_religion.map(conv_religion_id),
     };
 
     // ── Other civilizations ──────────────────────────────────────────────
@@ -354,6 +365,10 @@ pub fn project_game_view(state: &GameState, viewer: CivId) -> GameView {
                 territory: c.territory.iter().map(|t| conv_coord(*t)).collect(),
                 ownership: conv_ownership(c.ownership),
                 walls: conv_wall_level(c.walls),
+                religious_followers: c.religious_followers.iter()
+                    .map(|(&rid, &count)| (conv_religion_id(rid), count))
+                    .collect(),
+                majority_religion: c.majority_religion().map(conv_religion_id),
                 is_own,
             }
         })
@@ -467,6 +482,30 @@ pub fn project_game_view(state: &GameState, viewer: CivId) -> GameView {
         unit_type_defs,
         building_defs,
         scores,
+        religions: state.religions.iter().map(|r| {
+            ReligionView {
+                id: conv_religion_id(r.id),
+                name: r.name.clone(),
+                founded_by: conv_civ_id(r.founded_by),
+                holy_city: conv_city_id(r.holy_city),
+                beliefs: r.beliefs.iter().filter_map(|bid| {
+                    state.belief_defs.iter().find(|b| b.id == *bid).map(|b| {
+                        BeliefView {
+                            id: conv_belief_id(b.id),
+                            name: b.name.to_string(),
+                            description: b.description.to_string(),
+                            category: match b.category {
+                                libciv::civ::religion::BeliefCategory::Founder => BeliefCategory::Founder,
+                                libciv::civ::religion::BeliefCategory::Follower => BeliefCategory::Follower,
+                                libciv::civ::religion::BeliefCategory::Worship => BeliefCategory::Worship,
+                                libciv::civ::religion::BeliefCategory::Enhancer => BeliefCategory::Enhancer,
+                            },
+                        }
+                    })
+                }).collect(),
+                total_followers: r.total_followers(&state.cities),
+            }
+        }).collect(),
         game_over,
     }
 }

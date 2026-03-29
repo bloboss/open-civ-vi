@@ -150,6 +150,52 @@ impl GameRoom {
                     .map(|_| ())
                     .map_err(|e| format!("{e:?}"))
             }
+            GameAction::FoundPantheon { belief } => {
+                let bid = to_libciv_belief_id(*belief);
+                self.rules.found_pantheon(&mut self.state, civ_id, bid)
+                    .map(|_| ())
+                    .map_err(|e| format!("{e:?}"))
+            }
+            GameAction::FoundReligion { prophet, name, beliefs } => {
+                let pid = to_libciv_unit_id(*prophet);
+                let u = self.state.unit(pid).ok_or("prophet not found")?;
+                if u.owner != civ_id { return Err("not your unit".into()); }
+                let bids: Vec<libciv::BeliefId> = beliefs.iter().map(|b| to_libciv_belief_id(*b)).collect();
+                self.rules.found_religion(&mut self.state, pid, name.clone(), bids)
+                    .map(|_| ())
+                    .map_err(|e| format!("{e:?}"))
+            }
+            GameAction::SpreadReligion { unit } => {
+                let uid = to_libciv_unit_id(*unit);
+                let u = self.state.unit(uid).ok_or("unit not found")?;
+                if u.owner != civ_id { return Err("not your unit".into()); }
+                self.rules.spread_religion(&mut self.state, uid)
+                    .map(|_| ())
+                    .map_err(|e| format!("{e:?}"))
+            }
+            GameAction::TheologicalCombat { attacker, defender } => {
+                let atk = to_libciv_unit_id(*attacker);
+                let def = to_libciv_unit_id(*defender);
+                let u = self.state.unit(atk).ok_or("attacker not found")?;
+                if u.owner != civ_id { return Err("not your unit".into()); }
+                self.rules.theological_combat(&mut self.state, atk, def)
+                    .map(|_| ())
+                    .map_err(|e| format!("{e:?}"))
+            }
+            GameAction::PurchaseWithFaith { city, item } => {
+                let cid = to_libciv_city_id(*city);
+                // Parse item string as faith purchase.
+                let purchase_item = libciv::game::FaithPurchaseItem::Unit(
+                    match item.as_str() {
+                        "Missionary" => "Missionary",
+                        "Apostle" => "Apostle",
+                        _ => return Err(format!("unknown faith purchase: {item}")),
+                    }
+                );
+                self.rules.purchase_with_faith(&mut self.state, civ_id, cid, purchase_item)
+                    .map(|_| ())
+                    .map_err(|e| format!("{e:?}"))
+            }
         }
     }
 
@@ -211,6 +257,10 @@ fn to_libciv_tech_id(id: crate::types::ids::TechId) -> libciv::TechId {
 
 fn to_libciv_civic_id(id: crate::types::ids::CivicId) -> libciv::CivicId {
     libciv::CivicId::from_ulid(id.as_ulid())
+}
+
+fn to_libciv_belief_id(id: crate::types::ids::BeliefId) -> libciv::BeliefId {
+    libciv::BeliefId::from_ulid(id.as_ulid())
 }
 
 fn to_libciv_policy_id(id: crate::types::ids::PolicyId) -> libciv::PolicyId {

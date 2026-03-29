@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use crate::{
-    AgeType, CivId, CivicId, GovernmentId, GreatPersonType, PolicyId, TechId, YieldType,
+    AgeType, BeliefId, CivId, CivicId, GovernmentId, GreatPersonType, PolicyId, ReligionId, TechId, YieldType,
 };
 use super::era::{EraAge, HistoricMoment};
 use crate::rules::effect::OneShotEffect;
@@ -78,6 +78,12 @@ pub struct Civilization {
     pub current_government: Option<GovernmentId>,
     pub active_policies: Vec<PolicyId>,
     pub gold: i32,
+    /// Accumulated faith currency, used to purchase religious units and buildings.
+    pub faith: u32,
+    /// Pantheon belief selected before full religion founding.
+    pub pantheon_belief: Option<BeliefId>,
+    /// The religion this civilization has founded, if any.
+    pub founded_religion: Option<ReligionId>,
     // treasury_per_turn removed (PHASE3-3.4): gold income is computed per turn
     // via compute_yields().gold and goes stale when policies or government change.
     /// Stockpile of consumable strategic resources (e.g. Iron, Horses).
@@ -170,6 +176,9 @@ impl Civilization {
             current_government: None,
             active_policies: Vec::new(),
             gold: 0,
+            faith: 0,
+            pantheon_belief: None,
+            founded_religion: None,
             strategic_resources: HashMap::new(),
             revealed_resources: HashSet::new(),
             eureka_triggered: HashSet::new(),
