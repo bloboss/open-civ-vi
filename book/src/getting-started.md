@@ -106,5 +106,5 @@ open-civ-vi/
 +-- civsim/              # CLI binary
 +-- open4x-server/       # Merged server + frontend (ssr/csr features)
 +-- book/                # This documentation (mdBook)
-+-- ARCHITECTURE.md      # Detailed system architecture spec
++-- CLAUDE.md            # Claude Code configuration
 ```
