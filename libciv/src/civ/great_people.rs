@@ -1,5 +1,95 @@
 use crate::{CivId, GreatPersonId, GreatPersonType, UnitDomain};
+use crate::civ::district::BuiltinDistrict;
 use libhexgrid::coord::HexCoord;
+
+// ── Great person point constants ─────────────────────────────────────────────
+
+/// Points generated per district per turn.
+pub const GP_BASE_POINTS_PER_DISTRICT: u32 = 1;
+
+/// Base recruitment threshold for the first great person of each type.
+pub const GP_BASE_THRESHOLD: u32 = 60;
+
+/// Additional threshold per previously recruited great person of the same type.
+pub const GP_THRESHOLD_INCREMENT: u32 = 60;
+
+/// Gold cost per missing point when patronizing a great person.
+pub const GP_PATRONAGE_GOLD_PER_POINT: u32 = 3;
+
+/// Maps a district to the great person type(s) it generates points for.
+///
+/// TheaterSquare generates points for Writer, Artist, and Musician (the caller
+/// picks one via round-robin). Most other districts map to a single type.
+/// Returns an empty slice for districts that don't generate great person points.
+pub fn district_great_person_types(district: BuiltinDistrict) -> &'static [GreatPersonType] {
+    match district {
+        BuiltinDistrict::Campus          => &[GreatPersonType::Scientist],
+        BuiltinDistrict::TheaterSquare   => &[GreatPersonType::Writer, GreatPersonType::Artist, GreatPersonType::Musician],
+        BuiltinDistrict::CommercialHub   => &[GreatPersonType::Merchant],
+        BuiltinDistrict::Harbor          => &[GreatPersonType::Admiral],
+        BuiltinDistrict::HolySite        => &[GreatPersonType::Prophet],
+        BuiltinDistrict::Encampment      => &[GreatPersonType::General],
+        BuiltinDistrict::IndustrialZone  => &[GreatPersonType::Engineer],
+        _ => &[],
+    }
+}
+
+/// Era ordering for gating great person candidates.
+fn era_order(era: &str) -> u32 {
+    match era {
+        "Ancient"      => 0,
+        "Classical"    => 1,
+        "Medieval"     => 2,
+        "Renaissance"  => 3,
+        "Industrial"   => 4,
+        "Modern"       => 5,
+        "Atomic"       => 6,
+        "Information"  => 7,
+        "Future"       => 8,
+        _              => u32::MAX,
+    }
+}
+
+/// Returns true if `candidate_era` is the same as or earlier than `current_era`.
+pub fn era_is_current_or_earlier(candidate_era: &str, current_era: &str) -> bool {
+    era_order(candidate_era) <= era_order(current_era)
+}
+
+/// Returns the current global era name from the game state's era list.
+pub fn current_era_name(state: &crate::game::state::GameState) -> &'static str {
+    state.eras.get(state.current_era_index)
+        .map(|e| e.name)
+        .unwrap_or("Ancient")
+}
+
+/// Compute the recruitment threshold for a given GP type based on how many
+/// of that type have already been recruited globally.
+pub fn recruitment_threshold(person_type: GreatPersonType, state: &crate::game::state::GameState) -> u32 {
+    let recruited_count = state.great_people.iter()
+        .filter(|gp| gp.person_type == person_type && gp.owner.is_some())
+        .count() as u32;
+    GP_BASE_THRESHOLD + recruited_count * GP_THRESHOLD_INCREMENT
+}
+
+/// Find the name of the next available (unrecruited, era-gated) candidate
+/// of the given type, or `None` if the pool is exhausted.
+pub fn next_candidate_name(
+    person_type: GreatPersonType,
+    state: &crate::game::state::GameState,
+) -> Option<&'static str> {
+    let era_name = current_era_name(state);
+    let recruited_names: std::collections::HashSet<&str> = state.great_people.iter()
+        .filter(|gp| gp.owner.is_some())
+        .map(|gp| gp.name)
+        .collect();
+
+    state.great_person_defs.iter()
+        .filter(|d| d.person_type == person_type)
+        .filter(|d| !recruited_names.contains(d.name))
+        .filter(|d| era_is_current_or_earlier(d.era, era_name))
+        .map(|d| d.name)
+        .next()
+}
 
 pub trait GreatPersonAbility: std::fmt::Debug {
     fn name(&self) -> &'static str;
@@ -28,9 +118,10 @@ pub struct GreatPersonDef {
     pub retire_effect: RetireEffect,
 }
 
-/// Returns the four built-in dummy great person definitions.
+/// Returns the built-in great person definitions across multiple types and eras.
 pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
     vec![
+        // ── Great Generals ──────────────────────────────────────────────────
         GreatPersonDef {
             name: "Sun Tzu",
             person_type: GreatPersonType::General,
@@ -41,6 +132,16 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             },
         },
         GreatPersonDef {
+            name: "Boudica",
+            person_type: GreatPersonType::General,
+            era: "Classical",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 5,
+            },
+        },
+        // ── Great Admirals ──────────────────────────────────────────────────
+        GreatPersonDef {
             name: "Themistocles",
             person_type: GreatPersonType::Admiral,
             era: "Ancient",
@@ -50,16 +151,104 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             },
         },
         GreatPersonDef {
+            name: "Artemisia",
+            person_type: GreatPersonType::Admiral,
+            era: "Classical",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Sea,
+                bonus: 5,
+            },
+        },
+        // ── Great Engineers ─────────────────────────────────────────────────
+        GreatPersonDef {
             name: "Imhotep",
             person_type: GreatPersonType::Engineer,
             era: "Ancient",
             retire_effect: RetireEffect::ProductionBurst { amount: 200 },
         },
         GreatPersonDef {
+            name: "Bi Sheng",
+            person_type: GreatPersonType::Engineer,
+            era: "Classical",
+            retire_effect: RetireEffect::ProductionBurst { amount: 250 },
+        },
+        // ── Great Merchants ─────────────────────────────────────────────────
+        GreatPersonDef {
             name: "Marco Polo",
             person_type: GreatPersonType::Merchant,
             era: "Ancient",
             retire_effect: RetireEffect::GoldGrant { amount: 200 },
+        },
+        GreatPersonDef {
+            name: "Colaeus",
+            person_type: GreatPersonType::Merchant,
+            era: "Classical",
+            retire_effect: RetireEffect::GoldGrant { amount: 250 },
+        },
+        // ── Great Scientists ────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Euclid",
+            person_type: GreatPersonType::Scientist,
+            era: "Ancient",
+            retire_effect: RetireEffect::ProductionBurst { amount: 150 },
+        },
+        GreatPersonDef {
+            name: "Hypatia",
+            person_type: GreatPersonType::Scientist,
+            era: "Classical",
+            retire_effect: RetireEffect::ProductionBurst { amount: 200 },
+        },
+        // ── Great Writers ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Homer",
+            person_type: GreatPersonType::Writer,
+            era: "Ancient",
+            retire_effect: RetireEffect::GoldGrant { amount: 150 },
+        },
+        GreatPersonDef {
+            name: "Ovid",
+            person_type: GreatPersonType::Writer,
+            era: "Classical",
+            retire_effect: RetireEffect::GoldGrant { amount: 200 },
+        },
+        // ── Great Artists ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Phidias",
+            person_type: GreatPersonType::Artist,
+            era: "Ancient",
+            retire_effect: RetireEffect::GoldGrant { amount: 150 },
+        },
+        GreatPersonDef {
+            name: "Andrei Rublev",
+            person_type: GreatPersonType::Artist,
+            era: "Classical",
+            retire_effect: RetireEffect::GoldGrant { amount: 200 },
+        },
+        // ── Great Musicians ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Orpheus",
+            person_type: GreatPersonType::Musician,
+            era: "Ancient",
+            retire_effect: RetireEffect::GoldGrant { amount: 150 },
+        },
+        GreatPersonDef {
+            name: "Pindar",
+            person_type: GreatPersonType::Musician,
+            era: "Classical",
+            retire_effect: RetireEffect::GoldGrant { amount: 200 },
+        },
+        // ── Great Prophets ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Confucius",
+            person_type: GreatPersonType::Prophet,
+            era: "Ancient",
+            retire_effect: RetireEffect::GoldGrant { amount: 200 },
+        },
+        GreatPersonDef {
+            name: "Adi Shankara",
+            person_type: GreatPersonType::Prophet,
+            era: "Classical",
+            retire_effect: RetireEffect::GoldGrant { amount: 250 },
         },
     ]
 }
@@ -78,9 +267,6 @@ pub struct GreatPerson {
     pub is_retired: bool,
 }
 
-// TODO(PHASE3-8.6): Also add great_person_points: HashMap<GreatPersonType, u32> to
-//   Civilization; advance_turn accumulates great_person_points yield; threshold
-//   unlocks GreatPerson in state.great_people for recruitment via RulesEngine.
 impl GreatPerson {
     pub fn new(id: GreatPersonId, name: &'static str, person_type: GreatPersonType, era: &'static str) -> Self {
         Self {

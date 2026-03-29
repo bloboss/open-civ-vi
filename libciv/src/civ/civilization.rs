@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use crate::{
-    AgeType, CivId, CivicId, GovernmentId, PolicyId, TechId, YieldType,
+    AgeType, CivId, CivicId, GovernmentId, GreatPersonType, PolicyId, TechId, YieldType,
 };
 use super::era::{EraAge, HistoricMoment};
 use crate::rules::effect::OneShotEffect;
@@ -104,9 +104,13 @@ pub struct Civilization {
     /// Improvement types unlocked for builders of this civ.
     pub unlocked_improvements: Vec<&'static str>,
 
-    // ── Great person modifiers ──────────────────────────────────────────────
+    // ── Great person tracking ───────────────────────────────────────────────
     /// Permanent modifiers granted by retired great persons.
     pub great_person_modifiers: Vec<Modifier>,
+    /// Accumulated great person points per type. Districts generate points
+    /// each turn; when points reach the recruitment threshold the next
+    /// available candidate of that type is automatically recruited.
+    pub great_person_points: HashMap<GreatPersonType, u32>,
 
     // ── Tourism & culture tracking ──────────────────────────────────────────
     /// Total culture accumulated over the lifetime of this civilization.
@@ -172,6 +176,7 @@ impl Civilization {
             unlocked_buildings: Vec::new(),
             unlocked_improvements: Vec::new(),
             great_person_modifiers: Vec::new(),
+            great_person_points: HashMap::new(),
             lifetime_culture: 0,
             tourism_accumulated: HashMap::new(),
             era_score: 0,

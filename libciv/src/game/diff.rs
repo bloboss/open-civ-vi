@@ -1,5 +1,5 @@
 use crate::{
-  AgeType, CivId, CityId, GreatPersonId, PolicyId, 
+  AgeType, CivId, CityId, GreatPersonId, GreatPersonType, PolicyId,
   TradeRouteId, UnitId};
 use crate::civ::DiplomaticStatus;
 use crate::civ::city::WallLevel;
@@ -145,6 +145,12 @@ pub enum StateDelta {
     GreatPersonRetired { great_person: GreatPersonId, owner: CivId },
     /// A one-time production burst was applied to a city (e.g. Great Engineer).
     ProductionBurst { city: CityId, amount: u32 },
+    /// Great person points were accumulated for a civ during advance_turn.
+    GreatPersonPointsAccumulated { civ: CivId, person_type: GreatPersonType, points: u32, total: u32 },
+    /// A great person was automatically recruited when points reached the threshold.
+    GreatPersonRecruited { great_person: GreatPersonId, civ: CivId, person_type: GreatPersonType },
+    /// A great person was patronized (sponsored) by spending gold.
+    GreatPersonPatronized { great_person: GreatPersonId, civ: CivId, gold_spent: u32 },
 
     // ── TODO(PHASE3-8.8): Era advancement ────────────────────────────────────
     // EraAdvanced { civ: CivId, new_era: crate::AgeType },

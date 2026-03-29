@@ -27,7 +27,14 @@ pub use district::{AdjacencyContext, BuildingDef, BuiltinDistrict, DistrictDef, 
 pub use era::{Era, EraAge, EraDedication, EraTrigger, HistoricMoment, HistoricMomentDef, HistoricMomentKind};
 pub mod historic_moments;
 pub use governor::{Governor, GovernorDef, GovernorPromotion};
-pub use great_people::{GreatPerson, GreatPersonAbility, GreatPersonDef, RetireEffect, builtin_great_person_defs, spawn_great_person};
+pub use great_people::{
+    GreatPerson, GreatPersonAbility, GreatPersonDef, RetireEffect,
+    builtin_great_person_defs, spawn_great_person,
+    district_great_person_types, next_candidate_name, recruitment_threshold,
+    current_era_name, era_is_current_or_earlier,
+    GP_BASE_POINTS_PER_DISTRICT, GP_BASE_THRESHOLD, GP_THRESHOLD_INCREMENT,
+    GP_PATRONAGE_GOLD_PER_POINT,
+};
 pub use great_works::{GreatWork, GreatWorkSlot, GreatWorkSlotType, GreatWorkType};
 pub use religion::{Belief, BeliefContext, Religion};
 pub use tourism::{WonderTourism, compute_tourism, domestic_tourists, has_cultural_dominance};
