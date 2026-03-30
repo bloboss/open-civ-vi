@@ -279,6 +279,16 @@ pub trait RulesEngine: std::fmt::Debug {
         person_type: GreatPersonType,
     ) -> Result<GameStateDiff, RulesError>;
 
+    /// Patronize (sponsor) a Great Prophet by spending faith. Only valid for
+    /// `GreatPersonType::Prophet`. Faith cost is
+    /// `(threshold - current_points) * GP_PATRONAGE_FAITH_PER_POINT`.
+    fn recruit_great_person_with_faith(
+        &self,
+        state: &mut GameState,
+        civ_id: CivId,
+        person_type: GreatPersonType,
+    ) -> Result<GameStateDiff, RulesError>;
+
     /// Assign (or reassign) a governor to a city.
     ///
     /// Validation: governor must exist and be owned by the city's owner.
@@ -668,6 +678,10 @@ impl RulesEngine for DefaultRulesEngine {
 
     fn recruit_great_person(&self, state: &mut GameState, civ_id: CivId, person_type: GreatPersonType) -> Result<GameStateDiff, RulesError> {
         great_people::recruit_great_person(state, civ_id, person_type)
+    }
+
+    fn recruit_great_person_with_faith(&self, state: &mut GameState, civ_id: CivId, person_type: GreatPersonType) -> Result<GameStateDiff, RulesError> {
+        great_people::recruit_great_person_with_faith(state, civ_id, person_type)
     }
 
     fn assign_governor(&self, state: &mut GameState, governor_id: GovernorId, city_id: CityId) -> Result<GameStateDiff, RulesError> {

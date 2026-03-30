@@ -484,3 +484,221 @@ fn test_competition_consumed_candidate() {
     assert_eq!(hypatia.name, "Hypatia");
     assert_eq!(hypatia.owner, Some(s.babylon_id));
 }
+
+// ===========================================================================
+// GP point modifier bonus from policies
+// ===========================================================================
+
+#[test]
+fn test_gp_point_modifier_bonus_accumulates() {
+    use libciv::rules::modifier::{Modifier, ModifierSource, StackingRule, EffectType};
+    use libciv::rules::policy::Policy;
+    use libciv::{PolicyId, PolicyType, YieldType};
+
+    let mut s = scenario_with_great_person_defs();
+
+    // Give Rome a Campus district.
+    add_district(&mut s.state, s.rome_city, BuiltinDistrict::Campus, HexCoord::from_qr(4, 3));
+
+    // Create a policy that grants +2 GreatPersonPoints.
+    let policy_id = PolicyId::from_ulid(s.state.id_gen.next_ulid());
+    s.state.policies.push(Policy {
+        id: policy_id,
+        name: "Inspiration",
+        policy_type: PolicyType::Economic,
+        modifiers: vec![
+            Modifier::new(
+                ModifierSource::Policy("Inspiration"),
+                libciv::rules::modifier::TargetSelector::Global,
+                EffectType::YieldFlat(YieldType::GreatPersonPoints, 2),
+                StackingRule::Additive,
+            ),
+        ],
+        maintenance: 0,
+    });
+
+    // Activate the policy for Rome.
+    s.state.civilizations.iter_mut()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .active_policies.push(policy_id);
+
+    // Advance one turn.
+    common::advance_turn(&mut s);
+
+    // Rome should have 1 (base) + 2 (modifier) = 3 Scientist points.
+    let civ = s.state.civ(s.rome_id).unwrap();
+    let scientist_pts = civ.great_person_points.get(&GreatPersonType::Scientist).copied().unwrap_or(0);
+    assert_eq!(scientist_pts, 3, "Campus base (1) + policy modifier (2) = 3 Scientist points");
+}
+
+#[test]
+fn test_gp_point_modifier_only_applies_to_active_types() {
+    use libciv::rules::modifier::{Modifier, ModifierSource, StackingRule, EffectType};
+    use libciv::rules::policy::Policy;
+    use libciv::{PolicyId, PolicyType, YieldType};
+
+    let mut s = scenario_with_great_person_defs();
+
+    // Give Rome only a Campus (generates Scientist points).
+    add_district(&mut s.state, s.rome_city, BuiltinDistrict::Campus, HexCoord::from_qr(4, 3));
+
+    // Create a policy granting +3 GP points.
+    let policy_id = PolicyId::from_ulid(s.state.id_gen.next_ulid());
+    s.state.policies.push(Policy {
+        id: policy_id,
+        name: "Patronage",
+        policy_type: PolicyType::Economic,
+        modifiers: vec![
+            Modifier::new(
+                ModifierSource::Policy("Patronage"),
+                libciv::rules::modifier::TargetSelector::Global,
+                EffectType::YieldFlat(YieldType::GreatPersonPoints, 3),
+                StackingRule::Additive,
+            ),
+        ],
+        maintenance: 0,
+    });
+
+    s.state.civilizations.iter_mut()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .active_policies.push(policy_id);
+
+    common::advance_turn(&mut s);
+
+    let civ = s.state.civ(s.rome_id).unwrap();
+
+    // Scientist should get the bonus (Campus is active).
+    let scientist_pts = civ.great_person_points.get(&GreatPersonType::Scientist).copied().unwrap_or(0);
+    assert_eq!(scientist_pts, 4, "Campus base (1) + policy (3) = 4");
+
+    // General should NOT get any points (no Encampment district).
+    let general_pts = civ.great_person_points.get(&GreatPersonType::General).copied().unwrap_or(0);
+    assert_eq!(general_pts, 0, "No Encampment means no General points, even with modifier");
+}
+
+// ===========================================================================
+// Medieval era great persons
+// ===========================================================================
+
+#[test]
+fn test_medieval_era_great_person_available() {
+    use libciv::civ::era::Era;
+
+    let mut s = scenario_with_great_person_defs();
+    let rules = DefaultRulesEngine;
+
+    // Give Rome lots of gold.
+    s.state.civilizations.iter_mut()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .gold = 50_000;
+
+    // Recruit all Ancient + Classical Scientists (Euclid, Hypatia).
+    // First, set up eras so Classical is available.
+    let ancient_era_id = libciv::EraId::from_ulid(s.state.id_gen.next_ulid());
+    s.state.eras.push(Era {
+        id: ancient_era_id,
+        name: "Ancient",
+        age: libciv::AgeType::Ancient,
+        tech_count: 8,
+        civic_count: 4,
+    });
+    let classical_era_id = libciv::EraId::from_ulid(s.state.id_gen.next_ulid());
+    s.state.eras.push(Era {
+        id: classical_era_id,
+        name: "Classical",
+        age: libciv::AgeType::Classical,
+        tech_count: 16,
+        civic_count: 8,
+    });
+    s.state.current_era_index = 1; // Classical
+
+    rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist)
+        .expect("recruit Euclid");
+    rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist)
+        .expect("recruit Hypatia");
+
+    // Now try Medieval -- should fail because we're in Classical era.
+    let result = rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist);
+    assert!(result.is_err(), "Medieval GP should not be available in Classical era");
+
+    // Advance to Medieval era.
+    let medieval_era_id = libciv::EraId::from_ulid(s.state.id_gen.next_ulid());
+    s.state.eras.push(Era {
+        id: medieval_era_id,
+        name: "Medieval",
+        age: libciv::AgeType::Medieval,
+        tech_count: 24,
+        civic_count: 12,
+    });
+    s.state.current_era_index = 2; // Medieval
+
+    // Now recruit -- should get Al-Khwarizmi (first Medieval Scientist).
+    let result = rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist);
+    assert!(result.is_ok(), "Medieval GP should be available in Medieval era: {result:?}");
+
+    let gp = s.state.great_people.last().unwrap();
+    assert_eq!(gp.name, "Al-Khwarizmi");
+    assert_eq!(gp.era, "Medieval");
+}
+
+// ===========================================================================
+// Faith patronage
+// ===========================================================================
+
+#[test]
+fn test_faith_patronage_prophet() {
+    let mut s = scenario_with_great_person_defs();
+    let rules = DefaultRulesEngine;
+
+    // Give Rome plenty of faith.
+    s.state.civilizations.iter_mut()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .faith = 500;
+
+    // Patronize a Prophet with faith. With 0 points, cost = 60 * 2 = 120 faith.
+    let result = rules.recruit_great_person_with_faith(&mut s.state, s.rome_id, GreatPersonType::Prophet);
+    assert!(result.is_ok(), "faith patronage should succeed: {result:?}");
+
+    let diff = result.unwrap();
+
+    // Should have FaithChanged and GreatPersonPatronizedWithFaith deltas.
+    assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::FaithChanged { .. })));
+    assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::GreatPersonPatronizedWithFaith { .. })));
+
+    // Faith should have been deducted.
+    let civ = s.state.civ(s.rome_id).unwrap();
+    assert_eq!(civ.faith, 500 - 120, "should deduct 120 faith (60 points * 2 faith/point)");
+
+    // Great person should exist and be owned by Rome.
+    let gp = s.state.great_people.last().unwrap();
+    assert_eq!(gp.person_type, GreatPersonType::Prophet);
+    assert_eq!(gp.owner, Some(s.rome_id));
+    assert_eq!(gp.name, "Confucius");
+}
+
+#[test]
+fn test_faith_patronage_non_prophet_fails() {
+    let mut s = scenario_with_great_person_defs();
+    let rules = DefaultRulesEngine;
+
+    s.state.civilizations.iter_mut()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .faith = 500;
+
+    let result = rules.recruit_great_person_with_faith(&mut s.state, s.rome_id, GreatPersonType::Scientist);
+    assert!(result.is_err(), "faith patronage should fail for non-Prophet types");
+}
+
+#[test]
+fn test_faith_patronage_insufficient_faith_fails() {
+    let mut s = scenario_with_great_person_defs();
+    let rules = DefaultRulesEngine;
+
+    // Give Rome very little faith.
+    s.state.civilizations.iter_mut()
+        .find(|c| c.id == s.rome_id).unwrap()
+        .faith = 10;
+
+    let result = rules.recruit_great_person_with_faith(&mut s.state, s.rome_id, GreatPersonType::Prophet);
+    assert!(result.is_err(), "should fail with insufficient faith");
+}

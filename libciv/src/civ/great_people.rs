@@ -16,6 +16,9 @@ pub const GP_THRESHOLD_INCREMENT: u32 = 60;
 /// Gold cost per missing point when patronizing a great person.
 pub const GP_PATRONAGE_GOLD_PER_POINT: u32 = 3;
 
+/// Faith cost per missing point when patronizing a Great Prophet.
+pub const GP_PATRONAGE_FAITH_PER_POINT: u32 = 2;
+
 /// Maps a district to the great person type(s) it generates points for.
 ///
 /// TheaterSquare generates points for Writer, Artist, and Musician (the caller
@@ -249,6 +252,273 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             person_type: GreatPersonType::Prophet,
             era: "Classical",
             retire_effect: RetireEffect::GoldGrant { amount: 250 },
+        },
+        // ══════════════════════════════════════════════════════════════════════
+        // Medieval era
+        // ══════════════════════════════════════════════════════════════════════
+
+        // ── Great Generals ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "El Cid",
+            person_type: GreatPersonType::General,
+            era: "Medieval",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 7,
+            },
+        },
+        GreatPersonDef {
+            name: "Yi Sun-sin",
+            person_type: GreatPersonType::General,
+            era: "Medieval",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 7,
+            },
+        },
+        // ── Great Admirals ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Zheng He",
+            person_type: GreatPersonType::Admiral,
+            era: "Medieval",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Sea,
+                bonus: 7,
+            },
+        },
+        GreatPersonDef {
+            name: "Leif Erikson",
+            person_type: GreatPersonType::Admiral,
+            era: "Medieval",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Sea,
+                bonus: 7,
+            },
+        },
+        // ── Great Engineers ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Isidore of Miletus",
+            person_type: GreatPersonType::Engineer,
+            era: "Medieval",
+            retire_effect: RetireEffect::ProductionBurst { amount: 300 },
+        },
+        GreatPersonDef {
+            name: "Filippo Brunelleschi",
+            person_type: GreatPersonType::Engineer,
+            era: "Medieval",
+            retire_effect: RetireEffect::ProductionBurst { amount: 350 },
+        },
+        // ── Great Merchants ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Ibn Fadlan",
+            person_type: GreatPersonType::Merchant,
+            era: "Medieval",
+            retire_effect: RetireEffect::GoldGrant { amount: 300 },
+        },
+        GreatPersonDef {
+            name: "Jakob Fugger",
+            person_type: GreatPersonType::Merchant,
+            era: "Medieval",
+            retire_effect: RetireEffect::GoldGrant { amount: 350 },
+        },
+        // ── Great Scientists ────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Al-Khwarizmi",
+            person_type: GreatPersonType::Scientist,
+            era: "Medieval",
+            retire_effect: RetireEffect::ProductionBurst { amount: 250 },
+        },
+        GreatPersonDef {
+            name: "Omar Khayyam",
+            person_type: GreatPersonType::Scientist,
+            era: "Medieval",
+            retire_effect: RetireEffect::ProductionBurst { amount: 300 },
+        },
+        // ── Great Writers ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Murasaki Shikibu",
+            person_type: GreatPersonType::Writer,
+            era: "Medieval",
+            retire_effect: RetireEffect::GoldGrant { amount: 250 },
+        },
+        GreatPersonDef {
+            name: "Geoffrey Chaucer",
+            person_type: GreatPersonType::Writer,
+            era: "Medieval",
+            retire_effect: RetireEffect::GoldGrant { amount: 300 },
+        },
+        // ── Great Artists ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Giotto",
+            person_type: GreatPersonType::Artist,
+            era: "Medieval",
+            retire_effect: RetireEffect::GoldGrant { amount: 250 },
+        },
+        GreatPersonDef {
+            name: "Donatello",
+            person_type: GreatPersonType::Artist,
+            era: "Medieval",
+            retire_effect: RetireEffect::GoldGrant { amount: 300 },
+        },
+        // ── Great Musicians ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Hildegard of Bingen",
+            person_type: GreatPersonType::Musician,
+            era: "Medieval",
+            retire_effect: RetireEffect::GoldGrant { amount: 250 },
+        },
+        GreatPersonDef {
+            name: "Guillaume de Machaut",
+            person_type: GreatPersonType::Musician,
+            era: "Medieval",
+            retire_effect: RetireEffect::GoldGrant { amount: 300 },
+        },
+        // ── Great Prophets ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Thomas Aquinas",
+            person_type: GreatPersonType::Prophet,
+            era: "Medieval",
+            retire_effect: RetireEffect::GoldGrant { amount: 300 },
+        },
+        GreatPersonDef {
+            name: "Francis of Assisi",
+            person_type: GreatPersonType::Prophet,
+            era: "Medieval",
+            retire_effect: RetireEffect::GoldGrant { amount: 350 },
+        },
+
+        // ══════════════════════════════════════════════════════════════════════
+        // Renaissance era
+        // ══════════════════════════════════════════════════════════════════════
+
+        // ── Great Generals ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Gustavus Adolphus",
+            person_type: GreatPersonType::General,
+            era: "Renaissance",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 8,
+            },
+        },
+        GreatPersonDef {
+            name: "Oda Nobunaga",
+            person_type: GreatPersonType::General,
+            era: "Renaissance",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 8,
+            },
+        },
+        // ── Great Admirals ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Francis Drake",
+            person_type: GreatPersonType::Admiral,
+            era: "Renaissance",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Sea,
+                bonus: 8,
+            },
+        },
+        GreatPersonDef {
+            name: "Santa Cruz",
+            person_type: GreatPersonType::Admiral,
+            era: "Renaissance",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Sea,
+                bonus: 8,
+            },
+        },
+        // ── Great Engineers ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Leonardo da Vinci",
+            person_type: GreatPersonType::Engineer,
+            era: "Renaissance",
+            retire_effect: RetireEffect::ProductionBurst { amount: 400 },
+        },
+        GreatPersonDef {
+            name: "Mimar Sinan",
+            person_type: GreatPersonType::Engineer,
+            era: "Renaissance",
+            retire_effect: RetireEffect::ProductionBurst { amount: 450 },
+        },
+        // ── Great Merchants ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Giovanni de Medici",
+            person_type: GreatPersonType::Merchant,
+            era: "Renaissance",
+            retire_effect: RetireEffect::GoldGrant { amount: 400 },
+        },
+        GreatPersonDef {
+            name: "Raja Todar Mal",
+            person_type: GreatPersonType::Merchant,
+            era: "Renaissance",
+            retire_effect: RetireEffect::GoldGrant { amount: 450 },
+        },
+        // ── Great Scientists ────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Galileo Galilei",
+            person_type: GreatPersonType::Scientist,
+            era: "Renaissance",
+            retire_effect: RetireEffect::ProductionBurst { amount: 350 },
+        },
+        GreatPersonDef {
+            name: "Isaac Newton",
+            person_type: GreatPersonType::Scientist,
+            era: "Renaissance",
+            retire_effect: RetireEffect::ProductionBurst { amount: 400 },
+        },
+        // ── Great Writers ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "William Shakespeare",
+            person_type: GreatPersonType::Writer,
+            era: "Renaissance",
+            retire_effect: RetireEffect::GoldGrant { amount: 350 },
+        },
+        GreatPersonDef {
+            name: "Miguel de Cervantes",
+            person_type: GreatPersonType::Writer,
+            era: "Renaissance",
+            retire_effect: RetireEffect::GoldGrant { amount: 400 },
+        },
+        // ── Great Artists ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Michelangelo",
+            person_type: GreatPersonType::Artist,
+            era: "Renaissance",
+            retire_effect: RetireEffect::GoldGrant { amount: 350 },
+        },
+        GreatPersonDef {
+            name: "Albrecht Durer",
+            person_type: GreatPersonType::Artist,
+            era: "Renaissance",
+            retire_effect: RetireEffect::GoldGrant { amount: 400 },
+        },
+        // ── Great Musicians ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Giovanni Pierluigi da Palestrina",
+            person_type: GreatPersonType::Musician,
+            era: "Renaissance",
+            retire_effect: RetireEffect::GoldGrant { amount: 350 },
+        },
+        GreatPersonDef {
+            name: "Antonio Vivaldi",
+            person_type: GreatPersonType::Musician,
+            era: "Renaissance",
+            retire_effect: RetireEffect::GoldGrant { amount: 400 },
+        },
+        // ── Great Prophets ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Martin Luther",
+            person_type: GreatPersonType::Prophet,
+            era: "Renaissance",
+            retire_effect: RetireEffect::GoldGrant { amount: 400 },
+        },
+        GreatPersonDef {
+            name: "Guru Nanak",
+            person_type: GreatPersonType::Prophet,
+            era: "Renaissance",
+            retire_effect: RetireEffect::GoldGrant { amount: 450 },
         },
     ]
 }

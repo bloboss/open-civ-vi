@@ -880,7 +880,6 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
 
     // TODO(PHASE3-8.3): Deliver trade route yields; decrement turns_remaining; expire routes.
     // TODO(PHASE3-8.5): Compute religion spread per city pair; update Religion.followers.
-    // TODO(PHASE3-8.6): Accumulate great_person_points yield into per-type counters.
 
     // ── Phase 5a-2: Governor establishment countdown ─────────────────────
     for gov in &mut state.governors {
@@ -920,6 +919,20 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
             }
             if !increments.is_empty() {
                 civ_gp_increments.push((civ.id, increments));
+            }
+        }
+
+        // Add modifier-derived GP point bonus (from policies, buildings, wonders)
+        // to each GP type the civ is actively generating points for.
+        for (civ_id, increments) in &mut civ_gp_increments {
+            let bonus = civ_yields.iter()
+                .find(|(id, _)| id == civ_id)
+                .map(|(_, y)| y.great_person_points.max(0) as u32)
+                .unwrap_or(0);
+            if bonus > 0 {
+                for pts in increments.values_mut() {
+                    *pts += bonus;
+                }
             }
         }
 
