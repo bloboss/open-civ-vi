@@ -17,8 +17,6 @@ impl TurnEngine {
         state: &mut GameState,
         rules: &dyn RulesEngine,
     ) -> GameStateDiff {
-        let _diff = rules.advance_turn(state);
-        // Phase 2: apply diff to state, collect AI decisions, etc.
-        GameStateDiff::new()
+        rules.advance_turn(state)
     }
 }

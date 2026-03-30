@@ -153,8 +153,11 @@ pub enum StateDelta {
     /// A great person was patronized (sponsored) by spending gold.
     GreatPersonPatronized { great_person: GreatPersonId, civ: CivId, gold_spent: u32 },
 
-    // ── TODO(PHASE3-8.8): Era advancement ────────────────────────────────────
-    // EraAdvanced { civ: CivId, new_era: crate::AgeType },
+    // ── Diff consolidation (passive healing / trade route cleanup) ─────────
+    /// A unit passively healed (unique unit ability, fortification, etc.).
+    UnitHealed { unit: UnitId, old_health: u32, new_health: u32 },
+    /// A trader's route assignment was cleared after establishment failed.
+    TradeRouteCleared { unit: UnitId },
 
     // ── Great works / tourism (cultural victory) ──────────────────────────────
     /// A great person created a great work and it was slotted into a city.
