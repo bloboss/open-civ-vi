@@ -152,6 +152,8 @@ pub enum StateDelta {
     GreatPersonRecruited { great_person: GreatPersonId, civ: CivId, person_type: GreatPersonType },
     /// A great person was patronized (sponsored) by spending gold.
     GreatPersonPatronized { great_person: GreatPersonId, civ: CivId, gold_spent: u32 },
+    /// A great person was patronized (sponsored) by spending faith.
+    GreatPersonPatronizedWithFaith { great_person: GreatPersonId, civ: CivId, faith_spent: u32 },
 
     // ── Diff consolidation (passive healing / trade route cleanup) ─────────
     /// A unit passively healed (unique unit ability, fortification, etc.).

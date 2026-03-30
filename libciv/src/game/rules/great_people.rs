@@ -180,6 +180,60 @@ pub(crate) fn create_great_work(
     Ok(diff)
 }
 
+/// Patronize (sponsor) a Great Prophet by spending faith.
+pub(crate) fn recruit_great_person_with_faith(
+    state: &mut GameState,
+    civ_id: CivId,
+    person_type: GreatPersonType,
+) -> Result<GameStateDiff, RulesError> {
+    use crate::civ::great_people::{
+        recruitment_threshold, next_candidate_name, spawn_great_person,
+        GP_PATRONAGE_FAITH_PER_POINT,
+    };
+
+    if person_type != GreatPersonType::Prophet {
+        return Err(RulesError::InvalidGreatPersonType);
+    }
+
+    let civ = state.civ(civ_id).ok_or(RulesError::CivNotFound)?;
+
+    let def_name = next_candidate_name(person_type, state)
+        .ok_or(RulesError::NoGreatPersonAvailable)?;
+
+    let current_points = civ.great_person_points.get(&person_type).copied().unwrap_or(0);
+    let threshold = recruitment_threshold(person_type, state);
+    let points_needed = threshold.saturating_sub(current_points);
+    let faith_cost = points_needed * GP_PATRONAGE_FAITH_PER_POINT;
+
+    if civ.faith < faith_cost {
+        return Err(RulesError::InsufficientFaith);
+    }
+
+    let spawn_coord = state.cities.iter()
+        .find(|c| c.owner == civ_id && c.is_capital)
+        .or_else(|| state.cities.iter().find(|c| c.owner == civ_id))
+        .map(|c| c.coord)
+        .ok_or(RulesError::CityNotFound)?;
+
+    let civ = state.civilizations.iter_mut()
+        .find(|c| c.id == civ_id).unwrap();
+    civ.faith -= faith_cost;
+    civ.great_person_points.insert(person_type, 0);
+
+    let gp_id = spawn_great_person(state, civ_id, def_name, spawn_coord);
+
+    let mut diff = GameStateDiff::new();
+    if faith_cost > 0 {
+        diff.push(StateDelta::FaithChanged { civ: civ_id, delta: -(faith_cost as i32) });
+    }
+    diff.push(StateDelta::GreatPersonPatronizedWithFaith {
+        great_person: gp_id,
+        civ: civ_id,
+        faith_spent: faith_cost,
+    });
+    Ok(diff)
+}
+
 /// Patronize (sponsor) a great person by spending gold.
 pub(crate) fn recruit_great_person(
     state: &mut GameState,
