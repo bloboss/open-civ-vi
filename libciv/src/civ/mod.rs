@@ -1,3 +1,4 @@
+pub mod barbarian;
 pub mod civ_ability;
 pub mod civ_identity;
 pub mod city;
@@ -45,4 +46,5 @@ pub use tourism::{WonderTourism, compute_tourism, domestic_tourists, has_cultura
 pub use trade::TradeRoute;
 pub use unit::{BasicUnit, Unit};
 pub use civ_identity::{BuiltinCiv, BuiltinLeader};
+pub use barbarian::{BarbarianCamp, BarbarianConfig, ClanType, ScoutState, ClanInteraction};
 pub use civ_ability::{CivAbilityBundle, CityFoundedHook, RuleOverride};

@@ -59,6 +59,7 @@ define_id!(FeatureId);
 define_id!(EdgeFeatureId);
 define_id!(NaturalWonderId);
 define_id!(GreatWorkId);
+define_id!(BarbarianCampId);
 
 // BeliefRefs is defined in civ::religion (alongside the belief registry builder).
 

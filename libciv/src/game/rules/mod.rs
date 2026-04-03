@@ -7,6 +7,7 @@ use libhexgrid::coord::HexCoord;
 use super::diff::GameStateDiff;
 use super::state::GameState;
 
+pub(crate) mod barbarians;
 pub(crate) mod city;
 pub(crate) mod combat;
 pub(crate) mod diplomacy;
@@ -400,6 +401,50 @@ pub trait RulesEngine: std::fmt::Debug {
     //   Spends gold (or culture) from the civilization's treasury to immediately claim a tile
     //   within radius 3 of the city. Cost scales with tile distance. Distinct from automatic
     //   cultural expansion: this is a player action and debits the main treasury.
+
+    // ── Barbarian Clans interactions ─────────────────────────────────────────
+
+    /// Hire a unit from a barbarian camp (Clans mode).
+    ///
+    /// Costs gold (configured in `BarbarianConfig`). The hired unit is owned by
+    /// `civ_id` and spawns near the camp. A cooldown prevents repeat hiring.
+    fn hire_from_barbarian_camp(
+        &self,
+        state: &mut GameState,
+        camp_id: crate::BarbarianCampId,
+        civ_id: CivId,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// Bribe a barbarian camp not to attack (Clans mode).
+    ///
+    /// Costs gold. The camp will not generate units hostile to `civ_id` for
+    /// the bribe duration. Accelerates the camp's conversion to a city-state.
+    fn bribe_barbarian_camp(
+        &self,
+        state: &mut GameState,
+        camp_id: crate::BarbarianCampId,
+        civ_id: CivId,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// Incite a barbarian camp against another player (Clans mode).
+    ///
+    /// Costs gold. The camp's units will prioritize attacking `target`.
+    /// Slows the camp's conversion to a city-state.
+    fn incite_barbarian_camp(
+        &self,
+        state: &mut GameState,
+        camp_id: crate::BarbarianCampId,
+        civ_id: CivId,
+        target: CivId,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// Clear a barbarian camp after defeating all defenders on its tile.
+    fn clear_barbarian_camp(
+        &self,
+        state: &mut GameState,
+        camp_id: crate::BarbarianCampId,
+        cleared_by: CivId,
+    ) -> Result<GameStateDiff, RulesError>;
 }
 /// What can be purchased with faith.
 #[derive(Debug, Clone)]
@@ -558,6 +603,12 @@ pub enum RulesError {
     ReligionFullyEnhanced,
     /// The unit has no heal charges remaining.
     NoHealCharges,
+    /// The barbarian camp ID was not found.
+    BarbarianCampNotFound,
+    /// Barbarian clans mode is not enabled.
+    BarbarianClansNotEnabled,
+    /// The hire cooldown has not expired for this camp.
+    BarbarianHireOnCooldown,
 }
 
 impl std::fmt::Display for RulesError {
@@ -638,6 +689,9 @@ impl std::fmt::Display for RulesError {
             RulesError::InquisitionNotLaunched          => write!(f, "inquisition has not been launched"),
             RulesError::ReligionFullyEnhanced           => write!(f, "religion already has maximum beliefs"),
             RulesError::NoHealCharges                   => write!(f, "no heal charges remaining"),
+            RulesError::BarbarianCampNotFound          => write!(f, "barbarian camp not found"),
+            RulesError::BarbarianClansNotEnabled       => write!(f, "barbarian clans mode is not enabled"),
+            RulesError::BarbarianHireOnCooldown        => write!(f, "barbarian hire is on cooldown"),
         }
     }
 }
@@ -777,6 +831,22 @@ impl RulesEngine for DefaultRulesEngine {
 
     fn guru_heal(&self, state: &mut GameState, guru: UnitId) -> Result<GameStateDiff, RulesError> {
         religion::guru_heal(state, guru)
+    }
+
+    fn hire_from_barbarian_camp(&self, state: &mut GameState, camp_id: crate::BarbarianCampId, civ_id: CivId) -> Result<GameStateDiff, RulesError> {
+        barbarians::hire_from_camp(state, camp_id, civ_id)
+    }
+
+    fn bribe_barbarian_camp(&self, state: &mut GameState, camp_id: crate::BarbarianCampId, civ_id: CivId) -> Result<GameStateDiff, RulesError> {
+        barbarians::bribe_camp(state, camp_id, civ_id)
+    }
+
+    fn incite_barbarian_camp(&self, state: &mut GameState, camp_id: crate::BarbarianCampId, civ_id: CivId, target: CivId) -> Result<GameStateDiff, RulesError> {
+        barbarians::incite_camp(state, camp_id, civ_id, target)
+    }
+
+    fn clear_barbarian_camp(&self, state: &mut GameState, camp_id: crate::BarbarianCampId, cleared_by: CivId) -> Result<GameStateDiff, RulesError> {
+        Ok(barbarians::clear_camp(state, camp_id, cleared_by))
     }
 }
 
