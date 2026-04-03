@@ -495,6 +495,7 @@ pub fn project_game_view(state: &GameState, viewer: CivId) -> GameView {
                             name: b.name.to_string(),
                             description: b.description.to_string(),
                             category: match b.category {
+                                libciv::civ::religion::BeliefCategory::Pantheon => BeliefCategory::Pantheon,
                                 libciv::civ::religion::BeliefCategory::Founder => BeliefCategory::Founder,
                                 libciv::civ::religion::BeliefCategory::Follower => BeliefCategory::Follower,
                                 libciv::civ::religion::BeliefCategory::Worship => BeliefCategory::Worship,

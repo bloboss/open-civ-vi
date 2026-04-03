@@ -337,6 +337,32 @@ pub(crate) fn city_bombard(
     Ok(diff)
 }
 
+/// Check if a religion has the Scripture enhancer belief (+25% combat strength).
+fn religion_has_scripture(state: &GameState, religion_id: Option<crate::ReligionId>) -> bool {
+    let Some(rid) = religion_id else { return false };
+    let Some(religion) = state.religions.iter().find(|r| r.id == rid) else { return false };
+    religion.beliefs.iter().any(|bid|
+        state.belief_defs.iter().any(|b| b.id == *bid && b.name == "Scripture"))
+}
+
+/// Apply +250 followers of a winning religion to all cities within 10 tiles of combat.
+fn apply_theological_victory_pressure(
+    state: &mut GameState,
+    religion_id: crate::ReligionId,
+    combat_coord: libhexgrid::coord::HexCoord,
+) {
+    let nearby_cities: Vec<crate::CityId> = state.cities.iter()
+        .filter(|c| c.coord.distance(&combat_coord) <= 10)
+        .map(|c| c.id)
+        .collect();
+    for cid in nearby_cities {
+        if let Some(city) = state.cities.iter_mut().find(|c| c.id == cid) {
+            let added = 250u32.min(city.population);
+            *city.religious_followers.entry(religion_id).or_insert(0) += added;
+        }
+    }
+}
+
 /// Theological combat between two religious units.
 pub(crate) fn theological_combat(
     state: &mut GameState,
@@ -350,7 +376,7 @@ pub(crate) fn theological_combat(
     if attacker.category != crate::UnitCategory::Religious {
         return Err(RulesError::NotAReligiousUnit);
     }
-    let atk_str = attacker.religious_strength.ok_or(RulesError::NoReligiousStrength)?;
+    let mut atk_str = attacker.religious_strength.ok_or(RulesError::NoReligiousStrength)?;
     let atk_religion = attacker.religion_id;
     let atk_coord = attacker.coord;
 
@@ -361,7 +387,8 @@ pub(crate) fn theological_combat(
     if defender.category != crate::UnitCategory::Religious {
         return Err(RulesError::NotAReligiousUnit);
     }
-    let def_str = defender.religious_strength.unwrap_or(100);
+    let mut def_str = defender.religious_strength.unwrap_or(100);
+    let def_religion = defender.religion_id;
     let def_coord = defender.coord;
 
     // Must be adjacent.
@@ -379,6 +406,14 @@ pub(crate) fn theological_combat(
         return Err(RulesError::InsufficientMovement(GameStateDiff::new()));
     }
 
+    // Apply Scripture enhancer: +25% religious combat strength.
+    if religion_has_scripture(state, atk_religion) {
+        atk_str = (atk_str as f64 * 1.25).round() as u32;
+    }
+    if religion_has_scripture(state, def_religion) {
+        def_str = (def_str as f64 * 1.25).round() as u32;
+    }
+
     // Apply exponential damage formula (same as normal combat).
     let cs_diff = atk_str as f64 - def_str as f64;
     let rng_factor = 0.75 + (state.id_gen.next_f32() as f64) * 0.50;
@@ -389,9 +424,13 @@ pub(crate) fn theological_combat(
     let counter_damage = 30.0 * (-cs_diff / 25.0).exp() * rng_factor2;
     let attacker_damage = counter_damage.max(1.0) as u32;
 
-    // Apply damage to religious strength.
-    let def_new_str = def_str.saturating_sub(defender_damage);
-    let atk_new_str = atk_str.saturating_sub(attacker_damage);
+    // Apply damage to religious strength (use original, un-buffed values for storage).
+    let atk_orig = state.units.iter().find(|u| u.id == attacker_id)
+        .and_then(|u| u.religious_strength).unwrap_or(110);
+    let def_orig = state.units.iter().find(|u| u.id == defender_id)
+        .and_then(|u| u.religious_strength).unwrap_or(100);
+    let def_new_str = def_orig.saturating_sub(defender_damage);
+    let atk_new_str = atk_orig.saturating_sub(attacker_damage);
 
     let mut diff = GameStateDiff::new();
     diff.push(StateDelta::TheologicalCombat {
@@ -414,28 +453,24 @@ pub(crate) fn theological_combat(
         u.movement_left = 0;
     }
 
-    // Destroy killed units.
+    // Destroy killed units and apply pressure waves.
     if defender_killed {
         state.units.retain(|u| u.id != defender_id);
         diff.push(StateDelta::UnitDestroyed { unit: defender_id });
 
-        // Winner gets +250 pressure in nearby cities.
+        // Winner (attacker) gets +250 pressure in nearby cities.
         if let Some(rid) = atk_religion {
-            let nearby_cities: Vec<crate::CityId> = state.cities.iter()
-                .filter(|c| c.coord.distance(&def_coord) <= 10)
-                .map(|c| c.id)
-                .collect();
-            for cid in nearby_cities {
-                if let Some(city) = state.cities.iter_mut().find(|c| c.id == cid) {
-                    let added = 250u32.min(city.population);
-                    *city.religious_followers.entry(rid).or_insert(0) += added;
-                }
-            }
+            apply_theological_victory_pressure(state, rid, def_coord);
         }
     }
     if attacker_killed {
         state.units.retain(|u| u.id != attacker_id);
         diff.push(StateDelta::UnitDestroyed { unit: attacker_id });
+
+        // Winner (defender) gets +250 pressure in nearby cities.
+        if let Some(rid) = def_religion {
+            apply_theological_victory_pressure(state, rid, atk_coord);
+        }
     }
 
     Ok(diff)

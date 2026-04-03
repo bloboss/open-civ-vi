@@ -227,6 +227,7 @@ pub enum VictoryKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BeliefCategory {
+    Pantheon,
     Founder,
     Follower,
     Worship,

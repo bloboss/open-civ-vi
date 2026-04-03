@@ -45,6 +45,31 @@ fn grant_faith(state: &mut libciv::GameState, civ_id: libciv::CivId, amount: u32
     civ.faith += amount;
 }
 
+/// Add a named building to a city (registers a building def if needed).
+fn add_building(state: &mut libciv::GameState, city_id: libciv::CityId, name: &'static str) {
+    let bid = state.building_defs.iter()
+        .find(|b| b.name == name)
+        .map(|b| b.id)
+        .unwrap_or_else(|| {
+            let id = state.id_gen.next_building_id();
+            state.building_defs.push(libciv::game::state::BuildingDef {
+                id,
+                name,
+                cost: 50,
+                maintenance: 0,
+                yields: libciv::YieldBundle::default(),
+                requires_district: None,
+                great_work_slots: Vec::new(),
+                exclusive_to: None,
+                replaces: None,
+            });
+            id
+        });
+    if let Some(city) = state.cities.iter_mut().find(|c| c.id == city_id) {
+        city.buildings.push(bid);
+    }
+}
+
 fn spawn_great_prophet(state: &mut libciv::GameState, warrior_type: libciv::UnitTypeId, civ_id: libciv::CivId, coord: HexCoord) -> libciv::UnitId {
     let unit_id = state.id_gen.next_unit_id();
     state.units.push(BasicUnit {
@@ -183,7 +208,7 @@ fn found_pantheon_success() {
     let rules = DefaultRulesEngine;
     grant_faith(&mut s.state, s.rome_id, 30);
 
-    let belief = s.state.belief_refs.divine_inspiration;
+    let belief = s.state.belief_refs.stone_circles;
     let diff = rules.found_pantheon(&mut s.state, s.rome_id, belief)
         .expect("should succeed");
 
@@ -199,7 +224,7 @@ fn found_pantheon_insufficient_faith() {
     let rules = DefaultRulesEngine;
     grant_faith(&mut s.state, s.rome_id, 20);
 
-    let belief = s.state.belief_refs.divine_inspiration;
+    let belief = s.state.belief_refs.stone_circles;
     let result = rules.found_pantheon(&mut s.state, s.rome_id, belief);
     assert!(matches!(result, Err(libciv::game::RulesError::InsufficientFaith)));
 }
@@ -210,10 +235,10 @@ fn found_pantheon_already_founded() {
     let rules = DefaultRulesEngine;
     grant_faith(&mut s.state, s.rome_id, 60);
 
-    let belief = s.state.belief_refs.divine_inspiration;
+    let belief = s.state.belief_refs.stone_circles;
     rules.found_pantheon(&mut s.state, s.rome_id, belief).unwrap();
 
-    let belief2 = s.state.belief_refs.choral_music;
+    let belief2 = s.state.belief_refs.desert_folklore;
     let result = rules.found_pantheon(&mut s.state, s.rome_id, belief2);
     assert!(matches!(result, Err(libciv::game::RulesError::PantheonAlreadyFounded)));
 }
@@ -225,7 +250,7 @@ fn found_pantheon_belief_already_taken() {
     grant_faith(&mut s.state, s.rome_id, 30);
     grant_faith(&mut s.state, s.babylon_id, 30);
 
-    let belief = s.state.belief_refs.divine_inspiration;
+    let belief = s.state.belief_refs.stone_circles;
     rules.found_pantheon(&mut s.state, s.rome_id, belief).unwrap();
 
     // Babylon tries the same belief.
@@ -516,7 +541,7 @@ fn theological_combat_non_religious_unit() {
 fn purchase_missionary_with_faith() {
     let mut s = build_scenario();
     let rules = DefaultRulesEngine;
-    let religion_id = found_rome_religion(&mut s);
+    let _religion_id = found_rome_religion(&mut s);
 
     // Need a Missionary unit type in the registry.
     let missionary_type_id = libciv::UnitTypeId::from_ulid(s.state.id_gen.next_ulid());
@@ -538,8 +563,11 @@ fn purchase_missionary_with_faith() {
         replaces: None,
     });
 
-    // Give Rome faith and ensure the Holy Site is on the city.
-    grant_faith(&mut s.state, s.rome_id, 200);
+    // Missionary requires a Shrine building.
+    add_building(&mut s.state, s.rome_city, "Shrine");
+
+    // Give Rome faith (250 base cost for Missionary).
+    grant_faith(&mut s.state, s.rome_id, 300);
 
     let faith_before = s.state.civ(s.rome_id).unwrap().faith;
 
