@@ -679,5 +679,194 @@ fn belief_defs_loaded() {
     let s = build_scenario();
     // Verify that beliefs were loaded into state.
     assert!(!s.state.belief_defs.is_empty(), "belief_defs should be populated");
-    assert!(s.state.belief_defs.len() >= 18, "at least 18 built-in beliefs");
+    assert!(s.state.belief_defs.len() >= 38, "at least 38 built-in beliefs (18 original + 20 pantheon)");
+}
+
+// ===========================================================================
+// Pantheon adjacency bonus tests
+// ===========================================================================
+
+use libciv::rules::modifier::{
+    Condition, ConditionContext, ConditionResult, evaluate_condition,
+};
+use libciv::world::terrain::BuiltinTerrain;
+use libciv::world::feature::BuiltinFeature;
+use libhexgrid::board::HexBoard;
+
+/// Helper: set the terrain of a tile on the board.
+fn set_terrain(state: &mut libciv::GameState, coord: HexCoord, terrain: BuiltinTerrain) {
+    if let Some(tile) = state.board.tile_mut(coord) {
+        tile.terrain = terrain;
+    }
+}
+
+/// Helper: set the feature of a tile on the board.
+fn set_feature(state: &mut libciv::GameState, coord: HexCoord, feature: BuiltinFeature) {
+    if let Some(tile) = state.board.tile_mut(coord) {
+        tile.feature = Some(feature);
+    }
+}
+
+#[test]
+fn per_adjacent_terrain_counts_neighbors_not_self() {
+    let mut s = build_scenario();
+
+    // Place the Holy Site at (4,3).
+    let holy_site_coord = HexCoord::from_qr(4, 3);
+
+    // Set the Holy Site tile itself to Tundra — this should NOT count.
+    set_terrain(&mut s.state, holy_site_coord, BuiltinTerrain::Tundra);
+
+    // Set 3 of the 6 neighbors to Tundra.
+    let neighbors = s.state.board.neighbors(holy_site_coord);
+    assert!(neighbors.len() >= 3, "need at least 3 neighbors");
+    for &nb in &neighbors[..3] {
+        set_terrain(&mut s.state, nb, BuiltinTerrain::Tundra);
+    }
+    // Remaining neighbors stay as default (Grassland).
+
+    // Evaluate the condition.
+    let ctx = ConditionContext {
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(holy_site_coord),
+        unit_id: None,
+        city_id: None,
+    };
+    let result = evaluate_condition(
+        &Condition::PerAdjacentTerrain(BuiltinTerrain::Tundra),
+        &ctx,
+    );
+    // Should count exactly 3 neighbors, NOT the tile itself.
+    assert_eq!(result, ConditionResult::Scale(3));
+}
+
+#[test]
+fn per_adjacent_terrain_zero_when_no_match() {
+    let s = build_scenario();
+
+    // Default terrain is Grassland; check for Tundra adjacency at (4,3).
+    let coord = HexCoord::from_qr(4, 3);
+    let ctx = ConditionContext {
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(coord),
+        unit_id: None,
+        city_id: None,
+    };
+    let result = evaluate_condition(
+        &Condition::PerAdjacentTerrain(BuiltinTerrain::Tundra),
+        &ctx,
+    );
+    assert_eq!(result, ConditionResult::Scale(0));
+}
+
+#[test]
+fn per_adjacent_feature_counts_rainforest() {
+    let mut s = build_scenario();
+
+    let holy_site_coord = HexCoord::from_qr(4, 3);
+    let neighbors = s.state.board.neighbors(holy_site_coord);
+
+    // Set 2 neighbors to have Rainforest feature.
+    for &nb in &neighbors[..2] {
+        set_feature(&mut s.state, nb, BuiltinFeature::Rainforest);
+    }
+
+    // Set the Holy Site tile itself to Rainforest — should NOT count.
+    set_feature(&mut s.state, holy_site_coord, BuiltinFeature::Rainforest);
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(holy_site_coord),
+        unit_id: None,
+        city_id: None,
+    };
+    let result = evaluate_condition(
+        &Condition::PerAdjacentFeature(BuiltinFeature::Rainforest),
+        &ctx,
+    );
+    // Should count exactly 2, not including the tile itself.
+    assert_eq!(result, ConditionResult::Scale(2));
+}
+
+#[test]
+fn dance_of_the_aurora_belief_has_tundra_condition() {
+    let s = build_scenario();
+
+    // Find the "Dance of the Aurora" belief and verify it has the right condition.
+    let belief = s.state.belief_defs.iter()
+        .find(|b| b.name == "Dance of the Aurora")
+        .expect("Dance of the Aurora should exist");
+
+    assert_eq!(belief.modifiers.len(), 1, "should have exactly one modifier");
+    let modifier = &belief.modifiers[0];
+    assert_eq!(
+        modifier.condition,
+        Some(Condition::PerAdjacentTerrain(BuiltinTerrain::Tundra)),
+        "modifier should scale by adjacent Tundra tiles"
+    );
+}
+
+#[test]
+fn desert_folklore_belief_has_desert_condition() {
+    let s = build_scenario();
+
+    let belief = s.state.belief_defs.iter()
+        .find(|b| b.name == "Desert Folklore")
+        .expect("Desert Folklore should exist");
+
+    assert_eq!(belief.modifiers.len(), 1);
+    let modifier = &belief.modifiers[0];
+    assert_eq!(
+        modifier.condition,
+        Some(Condition::PerAdjacentTerrain(BuiltinTerrain::Desert)),
+        "modifier should scale by adjacent Desert tiles"
+    );
+}
+
+#[test]
+fn sacred_path_belief_has_rainforest_condition() {
+    let s = build_scenario();
+
+    let belief = s.state.belief_defs.iter()
+        .find(|b| b.name == "Sacred Path")
+        .expect("Sacred Path should exist");
+
+    assert_eq!(belief.modifiers.len(), 1);
+    let modifier = &belief.modifiers[0];
+    assert_eq!(
+        modifier.condition,
+        Some(Condition::PerAdjacentFeature(BuiltinFeature::Rainforest)),
+        "modifier should scale by adjacent Rainforest tiles"
+    );
+}
+
+#[test]
+fn per_adjacent_terrain_all_six_neighbors() {
+    let mut s = build_scenario();
+
+    // Use a central tile with all 6 neighbors on the board.
+    let coord = HexCoord::from_qr(6, 4);
+    let neighbors = s.state.board.neighbors(coord);
+    assert_eq!(neighbors.len(), 6, "interior tile should have 6 neighbors");
+
+    // Set all 6 neighbors to Desert.
+    for &nb in &neighbors {
+        set_terrain(&mut s.state, nb, BuiltinTerrain::Desert);
+    }
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(coord),
+        unit_id: None,
+        city_id: None,
+    };
+    let result = evaluate_condition(
+        &Condition::PerAdjacentTerrain(BuiltinTerrain::Desert),
+        &ctx,
+    );
+    assert_eq!(result, ConditionResult::Scale(6));
 }

@@ -56,7 +56,7 @@ let goddess_of_the_hunt_id          = BeliefId::from_ulid(ids.next_ulid());
 beliefs.push(BuiltinBelief {
     id: dance_of_the_aurora_id,
     name: "Dance of the Aurora",
-    description: "Holy Site districts get +1 Faith from adjacent Tundra tiles.",
+    description: "Holy Site districts get +1 Faith from each adjacent Tundra tile.",
     category: BeliefCategory::Pantheon,
     modifiers: vec![
         Modifier::new(
@@ -64,14 +64,14 @@ beliefs.push(BuiltinBelief {
             TargetSelector::DistrictAdjacency(BuiltinDistrict::HolySite),
             EffectType::YieldFlat(YieldType::Faith, 1),
             StackingRule::Additive,
-        ),
+        ).with_condition(Condition::PerAdjacentTerrain(BuiltinTerrain::Tundra)),
     ],
 });
 
 beliefs.push(BuiltinBelief {
     id: desert_folklore_id,
     name: "Desert Folklore",
-    description: "Holy Site districts get +1 Faith from adjacent Desert tiles.",
+    description: "Holy Site districts get +1 Faith from each adjacent Desert tile.",
     category: BeliefCategory::Pantheon,
     modifiers: vec![
         Modifier::new(
@@ -79,14 +79,14 @@ beliefs.push(BuiltinBelief {
             TargetSelector::DistrictAdjacency(BuiltinDistrict::HolySite),
             EffectType::YieldFlat(YieldType::Faith, 1),
             StackingRule::Additive,
-        ),
+        ).with_condition(Condition::PerAdjacentTerrain(BuiltinTerrain::Desert)),
     ],
 });
 
 beliefs.push(BuiltinBelief {
     id: sacred_path_id,
     name: "Sacred Path",
-    description: "Holy Site districts get +1 Faith from adjacent Rainforest tiles.",
+    description: "Holy Site districts get +1 Faith from each adjacent Rainforest tile.",
     category: BeliefCategory::Pantheon,
     modifiers: vec![
         Modifier::new(
@@ -94,7 +94,7 @@ beliefs.push(BuiltinBelief {
             TargetSelector::DistrictAdjacency(BuiltinDistrict::HolySite),
             EffectType::YieldFlat(YieldType::Faith, 1),
             StackingRule::Additive,
-        ),
+        ).with_condition(Condition::PerAdjacentFeature(BuiltinFeature::Rainforest)),
     ],
 });
 

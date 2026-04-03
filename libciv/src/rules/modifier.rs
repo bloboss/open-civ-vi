@@ -1,5 +1,7 @@
 use crate::{CivId, PolicyType, UnitDomain, YieldType};
 use crate::civ::district::BuiltinDistrict;
+use crate::world::feature::BuiltinFeature;
+use crate::world::terrain::BuiltinTerrain;
 
 // ── Effect types ─────────────────────────────────────────────────────────────
 
@@ -105,6 +107,14 @@ pub enum Condition {
     OnHills,
     /// Tile is coastal or unit is on a coast tile.
     OnCoast,
+
+    // ── Adjacency-counting conditions (scale by count of matching neighbors) ──
+    /// Multiply by number of adjacent tiles with the given terrain type.
+    /// Does NOT count the tile the district sits on, only the 6 neighbors.
+    PerAdjacentTerrain(BuiltinTerrain),
+    /// Multiply by number of adjacent tiles with the given feature.
+    /// Does NOT count the tile the district sits on, only the 6 neighbors.
+    PerAdjacentFeature(BuiltinFeature),
 
     // ── Scaling conditions (effect multiplied by count) ──────────────────
     /// Multiply by number of city-states where this civ is suzerain.
@@ -215,6 +225,32 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
                 }
             }
             ConditionResult::Fail
+        }
+        Condition::PerAdjacentTerrain(terrain) => {
+            if let Some(coord) = ctx.tile {
+                let count = ctx.state.board.neighbors(coord).iter()
+                    .filter(|nb| {
+                        ctx.state.board.tile(**nb)
+                            .is_some_and(|t| t.terrain == *terrain)
+                    })
+                    .count();
+                ConditionResult::Scale(count as i32)
+            } else {
+                ConditionResult::Scale(0)
+            }
+        }
+        Condition::PerAdjacentFeature(feature) => {
+            if let Some(coord) = ctx.tile {
+                let count = ctx.state.board.neighbors(coord).iter()
+                    .filter(|nb| {
+                        ctx.state.board.tile(**nb)
+                            .is_some_and(|t| t.feature == Some(*feature))
+                    })
+                    .count();
+                ConditionResult::Scale(count as i32)
+            } else {
+                ConditionResult::Scale(0)
+            }
         }
         Condition::PerCityStateSuzerain => {
             // Count city-states where this civ is suzerain.

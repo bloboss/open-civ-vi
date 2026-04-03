@@ -97,6 +97,8 @@ impl Religion {
 pub fn build_beliefs(ids: &mut crate::game::state::IdGenerator) -> (Vec<BuiltinBelief>, BeliefRefs) {
     use crate::rules::modifier::*;
     use crate::civ::district::BuiltinDistrict;
+    use crate::world::terrain::BuiltinTerrain;
+    use crate::world::feature::BuiltinFeature;
     use crate::YieldType;
 
     let mut beliefs: Vec<BuiltinBelief> = Vec::new();
