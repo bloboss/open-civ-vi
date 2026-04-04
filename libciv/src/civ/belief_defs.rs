@@ -106,10 +106,10 @@ beliefs.push(BuiltinBelief {
     modifiers: vec![
         Modifier::new(
             ModifierSource::Religion("Stone Circles"),
-            TargetSelector::Global,
+            TargetSelector::AllTiles,
             EffectType::YieldFlat(YieldType::Faith, 2),
             StackingRule::Additive,
-        ),
+        ).with_condition(Condition::TileHasImprovement(BuiltinImprovement::Quarry)),
     ],
 });
 
@@ -121,10 +121,16 @@ beliefs.push(BuiltinBelief {
     modifiers: vec![
         Modifier::new(
             ModifierSource::Religion("Religious Idols"),
-            TargetSelector::Global,
+            TargetSelector::AllTiles,
             EffectType::YieldFlat(YieldType::Faith, 2),
             StackingRule::Additive,
-        ),
+        ).with_condition(Condition::And(
+            Box::new(Condition::TileHasImprovement(BuiltinImprovement::Mine)),
+            Box::new(Condition::Or(
+                Box::new(Condition::TileHasResourceOfCategory(ResourceCategory::Luxury)),
+                Box::new(Condition::TileHasResourceOfCategory(ResourceCategory::Bonus)),
+            )),
+        )),
     ],
 });
 
@@ -151,10 +157,10 @@ beliefs.push(BuiltinBelief {
     modifiers: vec![
         Modifier::new(
             ModifierSource::Religion("God of the Sea"),
-            TargetSelector::Global,
+            TargetSelector::AllTiles,
             EffectType::YieldFlat(YieldType::Production, 1),
             StackingRule::Additive,
-        ),
+        ).with_condition(Condition::TileHasImprovement(BuiltinImprovement::FishingBoats)),
     ],
 });
 
@@ -189,10 +195,22 @@ beliefs.push(BuiltinBelief {
     modifiers: vec![
         Modifier::new(
             ModifierSource::Religion("Lady of the Reeds and Marshes"),
-            TargetSelector::Global,
+            TargetSelector::AllTiles,
             EffectType::YieldFlat(YieldType::Production, 2),
             StackingRule::Additive,
-        ),
+        ).with_condition(Condition::TileHasFeature(BuiltinFeature::Marsh)),
+        Modifier::new(
+            ModifierSource::Religion("Lady of the Reeds and Marshes"),
+            TargetSelector::AllTiles,
+            EffectType::YieldFlat(YieldType::Production, 2),
+            StackingRule::Additive,
+        ).with_condition(Condition::TileHasFeature(BuiltinFeature::Oasis)),
+        Modifier::new(
+            ModifierSource::Religion("Lady of the Reeds and Marshes"),
+            TargetSelector::AllTiles,
+            EffectType::YieldFlat(YieldType::Production, 2),
+            StackingRule::Additive,
+        ).with_condition(Condition::TileHasFeature(BuiltinFeature::Floodplain)),
     ],
 });
 
@@ -204,10 +222,10 @@ beliefs.push(BuiltinBelief {
     modifiers: vec![
         Modifier::new(
             ModifierSource::Religion("Oral Tradition"),
-            TargetSelector::Global,
+            TargetSelector::AllTiles,
             EffectType::YieldFlat(YieldType::Culture, 1),
             StackingRule::Additive,
-        ),
+        ).with_condition(Condition::TileHasImprovement(BuiltinImprovement::Plantation)),
     ],
 });
 
@@ -293,16 +311,22 @@ beliefs.push(BuiltinBelief {
     modifiers: vec![
         Modifier::new(
             ModifierSource::Religion("God of Craftsmen"),
-            TargetSelector::Global,
+            TargetSelector::AllTiles,
             EffectType::YieldFlat(YieldType::Production, 1),
             StackingRule::Additive,
-        ),
+        ).with_condition(Condition::And(
+            Box::new(Condition::TileHasResourceOfCategory(ResourceCategory::Strategic)),
+            Box::new(Condition::TileHasAnyImprovement),
+        )),
         Modifier::new(
             ModifierSource::Religion("God of Craftsmen"),
-            TargetSelector::Global,
+            TargetSelector::AllTiles,
             EffectType::YieldFlat(YieldType::Faith, 1),
             StackingRule::Additive,
-        ),
+        ).with_condition(Condition::And(
+            Box::new(Condition::TileHasResourceOfCategory(ResourceCategory::Strategic)),
+            Box::new(Condition::TileHasAnyImprovement),
+        )),
     ],
 });
 
@@ -330,10 +354,10 @@ beliefs.push(BuiltinBelief {
     modifiers: vec![
         Modifier::new(
             ModifierSource::Religion("Goddess of the Hunt"),
-            TargetSelector::Global,
+            TargetSelector::AllTiles,
             EffectType::YieldFlat(YieldType::Food, 1),
             StackingRule::Additive,
-        ),
+        ).with_condition(Condition::TileHasImprovement(BuiltinImprovement::Camp)),
     ],
 });
 

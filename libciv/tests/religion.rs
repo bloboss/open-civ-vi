@@ -870,3 +870,302 @@ fn per_adjacent_terrain_all_six_neighbors() {
     );
     assert_eq!(result, ConditionResult::Scale(6));
 }
+
+// ===========================================================================
+// Tile-level condition tests
+// ===========================================================================
+
+use libciv::world::improvement::BuiltinImprovement;
+use libciv::world::resource::BuiltinResource;
+use libciv::ResourceCategory;
+
+/// Helper: set improvement on a tile.
+fn set_improvement(state: &mut libciv::GameState, coord: HexCoord, imp: BuiltinImprovement) {
+    if let Some(tile) = state.board.tile_mut(coord) {
+        tile.improvement = Some(imp);
+    }
+}
+
+/// Helper: set resource on a tile.
+fn set_resource(state: &mut libciv::GameState, coord: HexCoord, res: BuiltinResource) {
+    if let Some(tile) = state.board.tile_mut(coord) {
+        tile.resource = Some(res);
+    }
+}
+
+#[test]
+fn tile_has_improvement_passes_when_present() {
+    let mut s = build_scenario();
+    let coord = HexCoord::from_qr(4, 3);
+    set_improvement(&mut s.state, coord, BuiltinImprovement::Mine);
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id, state: &s.state,
+        tile: Some(coord), unit_id: None, city_id: None,
+    };
+    assert_eq!(
+        evaluate_condition(&Condition::TileHasImprovement(BuiltinImprovement::Mine), &ctx),
+        ConditionResult::Pass,
+    );
+}
+
+#[test]
+fn tile_has_improvement_fails_wrong_type() {
+    let mut s = build_scenario();
+    let coord = HexCoord::from_qr(4, 3);
+    set_improvement(&mut s.state, coord, BuiltinImprovement::Farm);
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id, state: &s.state,
+        tile: Some(coord), unit_id: None, city_id: None,
+    };
+    assert_eq!(
+        evaluate_condition(&Condition::TileHasImprovement(BuiltinImprovement::Mine), &ctx),
+        ConditionResult::Fail,
+    );
+}
+
+#[test]
+fn tile_has_any_improvement_passes() {
+    let mut s = build_scenario();
+    let coord = HexCoord::from_qr(4, 3);
+    set_improvement(&mut s.state, coord, BuiltinImprovement::Pasture);
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id, state: &s.state,
+        tile: Some(coord), unit_id: None, city_id: None,
+    };
+    assert_eq!(
+        evaluate_condition(&Condition::TileHasAnyImprovement, &ctx),
+        ConditionResult::Pass,
+    );
+}
+
+#[test]
+fn tile_has_any_improvement_fails_when_empty() {
+    let s = build_scenario();
+    let coord = HexCoord::from_qr(4, 3);
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id, state: &s.state,
+        tile: Some(coord), unit_id: None, city_id: None,
+    };
+    assert_eq!(
+        evaluate_condition(&Condition::TileHasAnyImprovement, &ctx),
+        ConditionResult::Fail,
+    );
+}
+
+#[test]
+fn tile_has_resource_of_category_passes() {
+    let mut s = build_scenario();
+    let coord = HexCoord::from_qr(4, 3);
+    set_resource(&mut s.state, coord, BuiltinResource::Iron); // Strategic
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id, state: &s.state,
+        tile: Some(coord), unit_id: None, city_id: None,
+    };
+    assert_eq!(
+        evaluate_condition(&Condition::TileHasResourceOfCategory(ResourceCategory::Strategic), &ctx),
+        ConditionResult::Pass,
+    );
+}
+
+#[test]
+fn tile_has_resource_of_category_fails_wrong_category() {
+    let mut s = build_scenario();
+    let coord = HexCoord::from_qr(4, 3);
+    set_resource(&mut s.state, coord, BuiltinResource::Wheat); // Bonus, not Strategic
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id, state: &s.state,
+        tile: Some(coord), unit_id: None, city_id: None,
+    };
+    assert_eq!(
+        evaluate_condition(&Condition::TileHasResourceOfCategory(ResourceCategory::Strategic), &ctx),
+        ConditionResult::Fail,
+    );
+}
+
+#[test]
+fn tile_has_feature_passes() {
+    let mut s = build_scenario();
+    let coord = HexCoord::from_qr(4, 3);
+    set_feature(&mut s.state, coord, BuiltinFeature::Marsh);
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id, state: &s.state,
+        tile: Some(coord), unit_id: None, city_id: None,
+    };
+    assert_eq!(
+        evaluate_condition(&Condition::TileHasFeature(BuiltinFeature::Marsh), &ctx),
+        ConditionResult::Pass,
+    );
+}
+
+#[test]
+fn and_condition_both_required() {
+    let mut s = build_scenario();
+    let coord = HexCoord::from_qr(4, 3);
+
+    // Set up: Mine over Iron (strategic resource).
+    set_improvement(&mut s.state, coord, BuiltinImprovement::Mine);
+    set_resource(&mut s.state, coord, BuiltinResource::Iron);
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id, state: &s.state,
+        tile: Some(coord), unit_id: None, city_id: None,
+    };
+
+    // And(Mine, Strategic) should pass.
+    let cond = Condition::And(
+        Box::new(Condition::TileHasImprovement(BuiltinImprovement::Mine)),
+        Box::new(Condition::TileHasResourceOfCategory(ResourceCategory::Strategic)),
+    );
+    assert_eq!(evaluate_condition(&cond, &ctx), ConditionResult::Pass);
+}
+
+#[test]
+fn and_condition_fails_when_one_missing() {
+    let mut s = build_scenario();
+    let coord = HexCoord::from_qr(4, 3);
+
+    // Only mine, no resource — And(Mine, Strategic) should fail.
+    set_improvement(&mut s.state, coord, BuiltinImprovement::Mine);
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id, state: &s.state,
+        tile: Some(coord), unit_id: None, city_id: None,
+    };
+    let cond = Condition::And(
+        Box::new(Condition::TileHasImprovement(BuiltinImprovement::Mine)),
+        Box::new(Condition::TileHasResourceOfCategory(ResourceCategory::Strategic)),
+    );
+    assert_eq!(evaluate_condition(&cond, &ctx), ConditionResult::Fail);
+}
+
+#[test]
+fn or_condition_passes_on_either() {
+    let mut s = build_scenario();
+    let coord = HexCoord::from_qr(4, 3);
+
+    // Set luxury resource, no bonus resource.
+    set_resource(&mut s.state, coord, BuiltinResource::Wine); // Luxury
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id, state: &s.state,
+        tile: Some(coord), unit_id: None, city_id: None,
+    };
+
+    // Or(Luxury, Bonus) should pass because Luxury is present.
+    let cond = Condition::Or(
+        Box::new(Condition::TileHasResourceOfCategory(ResourceCategory::Luxury)),
+        Box::new(Condition::TileHasResourceOfCategory(ResourceCategory::Bonus)),
+    );
+    assert_eq!(evaluate_condition(&cond, &ctx), ConditionResult::Pass);
+}
+
+#[test]
+fn or_condition_fails_when_neither() {
+    let mut s = build_scenario();
+    let coord = HexCoord::from_qr(4, 3);
+
+    // Set strategic resource — neither Luxury nor Bonus.
+    set_resource(&mut s.state, coord, BuiltinResource::Iron);
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id, state: &s.state,
+        tile: Some(coord), unit_id: None, city_id: None,
+    };
+    let cond = Condition::Or(
+        Box::new(Condition::TileHasResourceOfCategory(ResourceCategory::Luxury)),
+        Box::new(Condition::TileHasResourceOfCategory(ResourceCategory::Bonus)),
+    );
+    assert_eq!(evaluate_condition(&cond, &ctx), ConditionResult::Fail);
+}
+
+#[test]
+fn religious_idols_compound_condition() {
+    // Religious Idols: And(Mine, Or(Luxury, Bonus))
+    let mut s = build_scenario();
+    let coord = HexCoord::from_qr(4, 3);
+
+    // Mine over Wine (Luxury) → should pass.
+    set_improvement(&mut s.state, coord, BuiltinImprovement::Mine);
+    set_resource(&mut s.state, coord, BuiltinResource::Wine);
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id, state: &s.state,
+        tile: Some(coord), unit_id: None, city_id: None,
+    };
+
+    let belief = s.state.belief_defs.iter()
+        .find(|b| b.name == "Religious Idols")
+        .expect("Religious Idols should exist");
+    assert_eq!(belief.modifiers.len(), 1, "should have one compound modifier");
+
+    let cond = belief.modifiers[0].condition.as_ref().expect("should have condition");
+    assert_eq!(evaluate_condition(cond, &ctx), ConditionResult::Pass);
+}
+
+#[test]
+fn religious_idols_fails_mine_over_strategic() {
+    // Mine over Iron (Strategic) → should fail.
+    let mut s = build_scenario();
+    let coord = HexCoord::from_qr(4, 3);
+    set_improvement(&mut s.state, coord, BuiltinImprovement::Mine);
+    set_resource(&mut s.state, coord, BuiltinResource::Iron);
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id, state: &s.state,
+        tile: Some(coord), unit_id: None, city_id: None,
+    };
+
+    let belief = s.state.belief_defs.iter()
+        .find(|b| b.name == "Religious Idols")
+        .expect("Religious Idols should exist");
+    let cond = belief.modifiers[0].condition.as_ref().expect("should have condition");
+    assert_eq!(evaluate_condition(cond, &ctx), ConditionResult::Fail);
+}
+
+#[test]
+fn god_of_craftsmen_requires_improved_strategic() {
+    let mut s = build_scenario();
+    let coord = HexCoord::from_qr(4, 3);
+
+    // Iron + Mine → should pass.
+    set_resource(&mut s.state, coord, BuiltinResource::Iron);
+    set_improvement(&mut s.state, coord, BuiltinImprovement::Mine);
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id, state: &s.state,
+        tile: Some(coord), unit_id: None, city_id: None,
+    };
+
+    let belief = s.state.belief_defs.iter()
+        .find(|b| b.name == "God of Craftsmen")
+        .expect("God of Craftsmen should exist");
+    let cond = belief.modifiers[0].condition.as_ref().expect("should have condition");
+    assert_eq!(evaluate_condition(cond, &ctx), ConditionResult::Pass);
+}
+
+#[test]
+fn god_of_craftsmen_fails_unimproved_strategic() {
+    let mut s = build_scenario();
+    let coord = HexCoord::from_qr(4, 3);
+
+    // Iron but no improvement → should fail.
+    set_resource(&mut s.state, coord, BuiltinResource::Iron);
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id, state: &s.state,
+        tile: Some(coord), unit_id: None, city_id: None,
+    };
+
+    let belief = s.state.belief_defs.iter()
+        .find(|b| b.name == "God of Craftsmen")
+        .expect("God of Craftsmen should exist");
+    let cond = belief.modifiers[0].condition.as_ref().expect("should have condition");
+    assert_eq!(evaluate_condition(cond, &ctx), ConditionResult::Fail);
+}

@@ -274,6 +274,9 @@ fn to_libciv_improvement(i: crate::types::enums::BuiltinImprovement) -> libciv::
         A::Farm => I::Farm, A::Mine => I::Mine, A::LumberMill => I::LumberMill,
         A::TradingPost => I::TradingPost, A::Fort => I::Fort, A::Airstrip => I::Airstrip,
         A::MissileSilo => I::MissileSilo,
+        A::Quarry => I::Quarry, A::Plantation => I::Plantation,
+        A::Camp => I::Camp, A::FishingBoats => I::FishingBoats,
+        A::Pasture => I::Pasture,
         A::Sphinx => I::Sphinx, A::Stepwell => I::Stepwell,
     }
 }

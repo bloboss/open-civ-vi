@@ -1,6 +1,7 @@
-use crate::{CivId, PolicyType, UnitDomain, YieldType};
+use crate::{CivId, PolicyType, ResourceCategory, UnitDomain, YieldType};
 use crate::civ::district::BuiltinDistrict;
 use crate::world::feature::BuiltinFeature;
+use crate::world::improvement::BuiltinImprovement;
 use crate::world::terrain::BuiltinTerrain;
 
 // ── Effect types ─────────────────────────────────────────────────────────────
@@ -108,6 +109,16 @@ pub enum Condition {
     /// Tile is coastal or unit is on a coast tile.
     OnCoast,
 
+    // ── Tile-level conditions (for per-tile yield modifiers) ─────────────
+    /// Tile has the given improvement built on it.
+    TileHasImprovement(BuiltinImprovement),
+    /// Tile has any improvement built on it (resource is "improved").
+    TileHasAnyImprovement,
+    /// Tile has a resource of the given category (Bonus, Luxury, Strategic).
+    TileHasResourceOfCategory(ResourceCategory),
+    /// Tile has the given feature (Marsh, Oasis, Floodplain, etc.).
+    TileHasFeature(BuiltinFeature),
+
     // ── Adjacency-counting conditions (scale by count of matching neighbors) ──
     /// Multiply by number of adjacent tiles with the given terrain type.
     /// Does NOT count the tile the district sits on, only the 6 neighbors.
@@ -147,8 +158,10 @@ pub enum Condition {
     CityHasWorshipBuilding,
 
     // ── Composite ────────────────────────────────────────────────────────
-    /// Both conditions must hold.
+    /// Both conditions must hold (conjunction).
     And(Box<Condition>, Box<Condition>),
+    /// At least one condition must hold (disjunction).
+    Or(Box<Condition>, Box<Condition>),
 }
 
 /// Result of evaluating a condition.
@@ -221,6 +234,38 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
                                 return ConditionResult::Pass;
                             }
                         }
+                    }
+                }
+            }
+            ConditionResult::Fail
+        }
+        Condition::TileHasImprovement(improvement) => {
+            if let Some(coord) = ctx.tile {
+                if let Some(tile) = ctx.state.board.tile(coord) {
+                    if tile.improvement == Some(*improvement) {
+                        return ConditionResult::Pass;
+                    }
+                }
+            }
+            ConditionResult::Fail
+        }
+        Condition::TileHasResourceOfCategory(category) => {
+            if let Some(coord) = ctx.tile {
+                if let Some(tile) = ctx.state.board.tile(coord) {
+                    if let Some(res) = tile.resource {
+                        if res.category() == *category {
+                            return ConditionResult::Pass;
+                        }
+                    }
+                }
+            }
+            ConditionResult::Fail
+        }
+        Condition::TileHasFeature(feature) => {
+            if let Some(coord) = ctx.tile {
+                if let Some(tile) = ctx.state.board.tile(coord) {
+                    if tile.feature == Some(*feature) {
+                        return ConditionResult::Pass;
                     }
                 }
             }
@@ -366,6 +411,16 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
             // Stub — worship building system not yet implemented.
             ConditionResult::Fail
         }
+        Condition::TileHasAnyImprovement => {
+            if let Some(coord) = ctx.tile {
+                if let Some(tile) = ctx.state.board.tile(coord) {
+                    if tile.improvement.is_some() {
+                        return ConditionResult::Pass;
+                    }
+                }
+            }
+            ConditionResult::Fail
+        }
         Condition::And(a, b) => {
             let ra = evaluate_condition(a, ctx);
             if matches!(ra, ConditionResult::Fail) {
@@ -381,6 +436,13 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
                 (ConditionResult::Scale(n), _) | (_, ConditionResult::Scale(n)) => ConditionResult::Scale(n),
                 _ => ConditionResult::Pass,
             }
+        }
+        Condition::Or(a, b) => {
+            let ra = evaluate_condition(a, ctx);
+            if !matches!(ra, ConditionResult::Fail) {
+                return ra;
+            }
+            evaluate_condition(b, ctx)
         }
     }
 }

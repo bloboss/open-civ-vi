@@ -116,6 +116,9 @@ fn conv_improvement(i: libciv::world::improvement::BuiltinImprovement) -> Builti
         I::LumberMill => BuiltinImprovement::LumberMill, I::TradingPost => BuiltinImprovement::TradingPost,
         I::Fort => BuiltinImprovement::Fort, I::Airstrip => BuiltinImprovement::Airstrip,
         I::MissileSilo => BuiltinImprovement::MissileSilo,
+        I::Quarry => BuiltinImprovement::Quarry, I::Plantation => BuiltinImprovement::Plantation,
+        I::Camp => BuiltinImprovement::Camp, I::FishingBoats => BuiltinImprovement::FishingBoats,
+        I::Pasture => BuiltinImprovement::Pasture,
         I::Sphinx => BuiltinImprovement::Sphinx, I::Stepwell => BuiltinImprovement::Stepwell,
     }
 }

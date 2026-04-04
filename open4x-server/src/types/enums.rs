@@ -80,6 +80,11 @@ pub enum BuiltinImprovement {
     Fort,
     Airstrip,
     MissileSilo,
+    Quarry,
+    Plantation,
+    Camp,
+    FishingBoats,
+    Pasture,
     Sphinx,
     Stepwell,
 }
