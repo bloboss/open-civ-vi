@@ -88,7 +88,9 @@ fn resource_category(r: BuiltinResource) -> ResourceCategory {
         | BuiltinResource::Fish
         | BuiltinResource::Stone
         | BuiltinResource::Copper
-        | BuiltinResource::Deer => ResourceCategory::Bonus,
+        | BuiltinResource::Deer
+        | BuiltinResource::Bananas
+        | BuiltinResource::Crabs => ResourceCategory::Bonus,
 
         BuiltinResource::Wine
         | BuiltinResource::Silk
@@ -97,7 +99,23 @@ fn resource_category(r: BuiltinResource) -> ResourceCategory {
         | BuiltinResource::Cotton
         | BuiltinResource::Ivory
         | BuiltinResource::Sugar
-        | BuiltinResource::Salt => ResourceCategory::Luxury,
+        | BuiltinResource::Salt
+        | BuiltinResource::Citrus
+        | BuiltinResource::Cocoa
+        | BuiltinResource::Coffee
+        | BuiltinResource::Diamonds
+        | BuiltinResource::Dyes
+        | BuiltinResource::Furs
+        | BuiltinResource::Gypsum
+        | BuiltinResource::Jade
+        | BuiltinResource::Marble
+        | BuiltinResource::Mercury
+        | BuiltinResource::Pearls
+        | BuiltinResource::Silver
+        | BuiltinResource::Tea
+        | BuiltinResource::Tobacco
+        | BuiltinResource::Truffles
+        | BuiltinResource::Whales => ResourceCategory::Luxury,
 
         BuiltinResource::Horses
         | BuiltinResource::Iron

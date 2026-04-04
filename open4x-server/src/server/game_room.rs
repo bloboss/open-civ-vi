@@ -278,6 +278,11 @@ fn to_libciv_improvement(i: crate::types::enums::BuiltinImprovement) -> libciv::
         A::Camp => I::Camp, A::FishingBoats => I::FishingBoats,
         A::Pasture => I::Pasture,
         A::Sphinx => I::Sphinx, A::Stepwell => I::Stepwell,
+        A::OilWell => I::OilWell, A::OffshoreOilRig => I::OffshoreOilRig,
+        A::BeachResort => I::BeachResort, A::Chateau => I::Chateau,
+        A::ColossalHead => I::ColossalHead, A::GreatWall => I::GreatWall,
+        A::Kurgan => I::Kurgan, A::Mission => I::Mission,
+        A::RomanFort => I::RomanFort, A::Ziggurat => I::Ziggurat,
     }
 }
 
@@ -304,5 +309,9 @@ fn to_libciv_district(d: crate::types::enums::BuiltinDistrict) -> libciv::civ::d
         A::Aqueduct => D::Aqueduct,
         A::Dam => D::Dam,
         A::Canal => D::Canal,
+        A::Aerodrome => D::Aerodrome, A::Neighborhood => D::Neighborhood,
+        A::Spaceport => D::Spaceport, A::CityCenter => D::CityCenter,
+        A::Lavra => D::Lavra, A::Mbanza => D::Mbanza,
+        A::StreetCarnival => D::StreetCarnival, A::RoyalNavyDockyard => D::RoyalNavyDockyard,
     }
 }

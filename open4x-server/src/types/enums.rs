@@ -43,6 +43,8 @@ pub enum BuiltinResource {
     Stone,
     Copper,
     Deer,
+    Bananas,
+    Crabs,
     // Luxury
     Wine,
     Silk,
@@ -52,6 +54,22 @@ pub enum BuiltinResource {
     Ivory,
     Sugar,
     Salt,
+    Citrus,
+    Cocoa,
+    Coffee,
+    Diamonds,
+    Dyes,
+    Furs,
+    Gypsum,
+    Jade,
+    Marble,
+    Mercury,
+    Pearls,
+    Silver,
+    Tea,
+    Tobacco,
+    Truffles,
+    Whales,
     // Strategic
     Horses,
     Iron,
@@ -87,6 +105,16 @@ pub enum BuiltinImprovement {
     Pasture,
     Sphinx,
     Stepwell,
+    OilWell,
+    OffshoreOilRig,
+    BeachResort,
+    Chateau,
+    ColossalHead,
+    GreatWall,
+    Kurgan,
+    Mission,
+    RomanFort,
+    Ziggurat,
 }
 
 // ── Roads ────────────────────────────────────────────────────────────────────
@@ -115,6 +143,14 @@ pub enum BuiltinDistrict {
     Aqueduct,
     Dam,
     Canal,
+    Aerodrome,
+    Neighborhood,
+    Spaceport,
+    CityCenter,
+    Lavra,
+    Mbanza,
+    StreetCarnival,
+    RoyalNavyDockyard,
 }
 
 // ── Units ────────────────────────────────────────────────────────────────────

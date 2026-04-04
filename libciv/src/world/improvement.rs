@@ -72,6 +72,26 @@ pub enum BuiltinImprovement {
     Sphinx,
     /// Indian unique improvement.
     Stepwell,
+    /// Oil resource improvement (land).
+    OilWell,
+    /// Oil resource improvement (sea).
+    OffshoreOilRig,
+    /// Tourism improvement requiring high appeal.
+    BeachResort,
+    /// French unique improvement.
+    Chateau,
+    /// La Venta city-state unique improvement.
+    ColossalHead,
+    /// Chinese unique improvement.
+    GreatWall,
+    /// Scythian unique improvement.
+    Kurgan,
+    /// Spanish unique improvement.
+    Mission,
+    /// Roman unique improvement (built by Legion).
+    RomanFort,
+    /// Sumerian unique improvement.
+    Ziggurat,
 }
 
 impl BuiltinImprovement {
@@ -89,8 +109,18 @@ impl BuiltinImprovement {
             BuiltinImprovement::Camp         => "Camp",
             BuiltinImprovement::FishingBoats => "Fishing Boats",
             BuiltinImprovement::Pasture      => "Pasture",
-            BuiltinImprovement::Sphinx       => "Sphinx",
-            BuiltinImprovement::Stepwell     => "Stepwell",
+            BuiltinImprovement::Sphinx          => "Sphinx",
+            BuiltinImprovement::Stepwell        => "Stepwell",
+            BuiltinImprovement::OilWell         => "Oil Well",
+            BuiltinImprovement::OffshoreOilRig  => "Offshore Oil Rig",
+            BuiltinImprovement::BeachResort     => "Beach Resort",
+            BuiltinImprovement::Chateau         => "Chateau",
+            BuiltinImprovement::ColossalHead    => "Colossal Head",
+            BuiltinImprovement::GreatWall       => "Great Wall",
+            BuiltinImprovement::Kurgan          => "Kurgan",
+            BuiltinImprovement::Mission         => "Mission",
+            BuiltinImprovement::RomanFort       => "Roman Fort",
+            BuiltinImprovement::Ziggurat        => "Ziggurat",
         }
     }
 
@@ -109,8 +139,18 @@ impl BuiltinImprovement {
             BuiltinImprovement::Camp         => YieldBundle::new().with(YieldType::Gold, 1),
             BuiltinImprovement::FishingBoats => YieldBundle::new().with(YieldType::Food, 1),
             BuiltinImprovement::Pasture      => YieldBundle::new().with(YieldType::Production, 1),
-            BuiltinImprovement::Sphinx       => YieldBundle::new().with(YieldType::Culture, 1).with(YieldType::Faith, 1),
-            BuiltinImprovement::Stepwell     => YieldBundle::new().with(YieldType::Food, 1).with(YieldType::Housing, 1),
+            BuiltinImprovement::Sphinx          => YieldBundle::new().with(YieldType::Culture, 1).with(YieldType::Faith, 1),
+            BuiltinImprovement::Stepwell        => YieldBundle::new().with(YieldType::Food, 1).with(YieldType::Housing, 1),
+            BuiltinImprovement::OilWell         => YieldBundle::new().with(YieldType::Production, 2),
+            BuiltinImprovement::OffshoreOilRig  => YieldBundle::new().with(YieldType::Production, 2),
+            BuiltinImprovement::BeachResort     => YieldBundle::new().with(YieldType::Gold, 1),
+            BuiltinImprovement::Chateau         => YieldBundle::new().with(YieldType::Culture, 2).with(YieldType::Gold, 1),
+            BuiltinImprovement::ColossalHead    => YieldBundle::new().with(YieldType::Faith, 2),
+            BuiltinImprovement::GreatWall       => YieldBundle::new().with(YieldType::Gold, 1),
+            BuiltinImprovement::Kurgan          => YieldBundle::new().with(YieldType::Gold, 3).with(YieldType::Faith, 1),
+            BuiltinImprovement::Mission         => YieldBundle::new().with(YieldType::Faith, 2),
+            BuiltinImprovement::RomanFort       => YieldBundle::new(),
+            BuiltinImprovement::Ziggurat        => YieldBundle::new().with(YieldType::Science, 2),
         }
     }
 
@@ -128,8 +168,18 @@ impl BuiltinImprovement {
             BuiltinImprovement::Camp         => 5,
             BuiltinImprovement::FishingBoats => 5,
             BuiltinImprovement::Pasture      => 5,
-            BuiltinImprovement::Sphinx       => 5,
-            BuiltinImprovement::Stepwell     => 5,
+            BuiltinImprovement::Sphinx          => 5,
+            BuiltinImprovement::Stepwell        => 5,
+            BuiltinImprovement::OilWell         => 5,
+            BuiltinImprovement::OffshoreOilRig  => 5,
+            BuiltinImprovement::BeachResort     => 5,
+            BuiltinImprovement::Chateau         => 5,
+            BuiltinImprovement::ColossalHead    => 5,
+            BuiltinImprovement::GreatWall       => 5,
+            BuiltinImprovement::Kurgan          => 5,
+            BuiltinImprovement::Mission         => 5,
+            BuiltinImprovement::RomanFort       => 10,
+            BuiltinImprovement::Ziggurat        => 5,
         }
     }
 
@@ -303,6 +353,126 @@ impl BuiltinImprovement {
                 conditional_features: &[],
                 required_resource:    None,
                 required_tech:        None,
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::OilWell => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::Any,
+                blocked_terrains:     &[],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    Some(BuiltinResource::Oil),
+                required_tech:        Some(tech_refs.unreachable), // Steel not in refs
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::OffshoreOilRig => ImprovementRequirements {
+                requires_land:        false,
+                requires_water:       true,
+                elevation:            ElevationReq::Any,
+                blocked_terrains:     &[],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    Some(BuiltinResource::Oil),
+                required_tech:        Some(tech_refs.unreachable), // Plastics not in refs
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::BeachResort => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::Flat,
+                blocked_terrains:     &[BuiltinTerrain::Snow, BuiltinTerrain::Tundra, BuiltinTerrain::Desert],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        Some(tech_refs.unreachable), // Radio not in refs
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::Chateau => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::Any,
+                blocked_terrains:     &[BuiltinTerrain::Snow, BuiltinTerrain::Coast, BuiltinTerrain::Ocean, BuiltinTerrain::Mountain],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        None,
+                required_civic:       Some(_civic_refs.unreachable), // Humanism not in refs
+                proximity:            None,
+            },
+            BuiltinImprovement::ColossalHead => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::Any,
+                blocked_terrains:     &[BuiltinTerrain::Snow, BuiltinTerrain::Coast, BuiltinTerrain::Ocean, BuiltinTerrain::Mountain],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        None,
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::GreatWall => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::Any,
+                blocked_terrains:     &[BuiltinTerrain::Coast, BuiltinTerrain::Ocean, BuiltinTerrain::Mountain],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        Some(tech_refs.masonry),
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::Kurgan => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::Any,
+                blocked_terrains:     &[BuiltinTerrain::Snow, BuiltinTerrain::Coast, BuiltinTerrain::Ocean, BuiltinTerrain::Mountain],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        Some(tech_refs.animal_husbandry),
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::Mission => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::Any,
+                blocked_terrains:     &[BuiltinTerrain::Snow, BuiltinTerrain::Coast, BuiltinTerrain::Ocean, BuiltinTerrain::Mountain],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        Some(tech_refs.unreachable), // Education not in refs
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::RomanFort => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::NotMountain,
+                blocked_terrains:     &[],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        None, // Built by Legion unit, no tech required
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::Ziggurat => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::Flat,
+                blocked_terrains:     &[BuiltinTerrain::Snow, BuiltinTerrain::Coast, BuiltinTerrain::Ocean, BuiltinTerrain::Mountain],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        None, // No tech required
                 required_civic:       None,
                 proximity:            None,
             },

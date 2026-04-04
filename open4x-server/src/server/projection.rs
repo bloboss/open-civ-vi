@@ -106,6 +106,15 @@ fn conv_resource(r: libciv::world::resource::BuiltinResource) -> BuiltinResource
         R::Coal => BuiltinResource::Coal, R::Oil => BuiltinResource::Oil,
         R::Aluminum => BuiltinResource::Aluminum, R::Niter => BuiltinResource::Niter,
         R::Uranium => BuiltinResource::Uranium,
+        R::Bananas => BuiltinResource::Bananas, R::Crabs => BuiltinResource::Crabs,
+        R::Citrus => BuiltinResource::Citrus, R::Cocoa => BuiltinResource::Cocoa,
+        R::Coffee => BuiltinResource::Coffee, R::Diamonds => BuiltinResource::Diamonds,
+        R::Dyes => BuiltinResource::Dyes, R::Furs => BuiltinResource::Furs,
+        R::Gypsum => BuiltinResource::Gypsum, R::Jade => BuiltinResource::Jade,
+        R::Marble => BuiltinResource::Marble, R::Mercury => BuiltinResource::Mercury,
+        R::Pearls => BuiltinResource::Pearls, R::Silver => BuiltinResource::Silver,
+        R::Tea => BuiltinResource::Tea, R::Tobacco => BuiltinResource::Tobacco,
+        R::Truffles => BuiltinResource::Truffles, R::Whales => BuiltinResource::Whales,
     }
 }
 
@@ -120,6 +129,11 @@ fn conv_improvement(i: libciv::world::improvement::BuiltinImprovement) -> Builti
         I::Camp => BuiltinImprovement::Camp, I::FishingBoats => BuiltinImprovement::FishingBoats,
         I::Pasture => BuiltinImprovement::Pasture,
         I::Sphinx => BuiltinImprovement::Sphinx, I::Stepwell => BuiltinImprovement::Stepwell,
+        I::OilWell => BuiltinImprovement::OilWell, I::OffshoreOilRig => BuiltinImprovement::OffshoreOilRig,
+        I::BeachResort => BuiltinImprovement::BeachResort, I::Chateau => BuiltinImprovement::Chateau,
+        I::ColossalHead => BuiltinImprovement::ColossalHead, I::GreatWall => BuiltinImprovement::GreatWall,
+        I::Kurgan => BuiltinImprovement::Kurgan, I::Mission => BuiltinImprovement::Mission,
+        I::RomanFort => BuiltinImprovement::RomanFort, I::Ziggurat => BuiltinImprovement::Ziggurat,
     }
 }
 
@@ -221,6 +235,14 @@ fn conv_district(d: libciv::civ::district::BuiltinDistrict) -> BuiltinDistrict {
         D::Aqueduct              => BuiltinDistrict::Aqueduct,
         D::Dam                   => BuiltinDistrict::Dam,
         D::Canal                 => BuiltinDistrict::Canal,
+        D::Aerodrome             => BuiltinDistrict::Aerodrome,
+        D::Neighborhood          => BuiltinDistrict::Neighborhood,
+        D::Spaceport             => BuiltinDistrict::Spaceport,
+        D::CityCenter            => BuiltinDistrict::CityCenter,
+        D::Lavra                 => BuiltinDistrict::Lavra,
+        D::Mbanza                => BuiltinDistrict::Mbanza,
+        D::StreetCarnival        => BuiltinDistrict::StreetCarnival,
+        D::RoyalNavyDockyard     => BuiltinDistrict::RoyalNavyDockyard,
     }
 }
 

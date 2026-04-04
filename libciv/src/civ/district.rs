@@ -48,6 +48,22 @@ pub enum BuiltinDistrict {
     Dam,
     /// Maritime passage — connects water bodies through land.
     Canal,
+    /// Air unit district — houses and maintains aircraft.
+    Aerodrome,
+    /// Housing district — provides housing based on appeal.
+    Neighborhood,
+    /// Space race district — required for Science Victory projects.
+    Spaceport,
+    /// Implicit city center district.
+    CityCenter,
+    /// Russian unique district — replaces Holy Site.
+    Lavra,
+    /// Kongolese unique district — replaces Neighborhood.
+    Mbanza,
+    /// Brazilian unique district — replaces Entertainment Complex.
+    StreetCarnival,
+    /// English unique district — replaces Harbor.
+    RoyalNavyDockyard,
 }
 
 impl BuiltinDistrict {
@@ -65,6 +81,14 @@ impl BuiltinDistrict {
             BuiltinDistrict::Aqueduct             => "Aqueduct",
             BuiltinDistrict::Dam                  => "Dam",
             BuiltinDistrict::Canal                => "Canal",
+            BuiltinDistrict::Aerodrome            => "Aerodrome",
+            BuiltinDistrict::Neighborhood         => "Neighborhood",
+            BuiltinDistrict::Spaceport            => "Spaceport",
+            BuiltinDistrict::CityCenter           => "City Center",
+            BuiltinDistrict::Lavra                => "Lavra",
+            BuiltinDistrict::Mbanza               => "Mbanza",
+            BuiltinDistrict::StreetCarnival       => "Street Carnival",
+            BuiltinDistrict::RoyalNavyDockyard    => "Royal Navy Dockyard",
         }
     }
 
@@ -82,6 +106,14 @@ impl BuiltinDistrict {
             BuiltinDistrict::Aqueduct             => 36,
             BuiltinDistrict::Dam                  => 54,
             BuiltinDistrict::Canal                => 54,
+            BuiltinDistrict::Aerodrome            => 54,
+            BuiltinDistrict::Neighborhood         => 54,
+            BuiltinDistrict::Spaceport            => 1800,
+            BuiltinDistrict::CityCenter           => 0,
+            BuiltinDistrict::Lavra                => 27,
+            BuiltinDistrict::Mbanza               => 27,
+            BuiltinDistrict::StreetCarnival       => 27,
+            BuiltinDistrict::RoyalNavyDockyard    => 27,
         }
     }
 
@@ -170,6 +202,68 @@ impl BuiltinDistrict {
                 requires_land:      true,
                 requires_water:     false,
                 forbidden_terrains: &[BuiltinTerrain::Mountain],
+                required_tech:      Some(tech_refs.unreachable),
+                required_civic:     None,
+            },
+            BuiltinDistrict::Aerodrome => DistrictRequirements {
+                requires_land:      true,
+                requires_water:     false,
+                forbidden_terrains: &[BuiltinTerrain::Mountain],
+                // "Flight" is not yet in the tech tree — use unreachable sentinel.
+                required_tech:      Some(tech_refs.unreachable),
+                required_civic:     None,
+            },
+            BuiltinDistrict::Neighborhood => DistrictRequirements {
+                requires_land:      true,
+                requires_water:     false,
+                forbidden_terrains: &[BuiltinTerrain::Mountain],
+                required_tech:      None,
+                // "Urbanization" is not yet in the civic tree — use unreachable sentinel.
+                required_civic:     Some(civic_refs.unreachable),
+            },
+            BuiltinDistrict::Spaceport => DistrictRequirements {
+                requires_land:      true,
+                requires_water:     false,
+                forbidden_terrains: &[BuiltinTerrain::Mountain],
+                // "Rocketry" is not yet in the tech tree — use unreachable sentinel.
+                required_tech:      Some(tech_refs.unreachable),
+                required_civic:     None,
+            },
+            BuiltinDistrict::CityCenter => DistrictRequirements {
+                requires_land:      true,
+                requires_water:     false,
+                forbidden_terrains: &[BuiltinTerrain::Mountain, BuiltinTerrain::Ocean],
+                required_tech:      None,
+                required_civic:     None,
+            },
+            BuiltinDistrict::Lavra => DistrictRequirements {
+                requires_land:      true,
+                requires_water:     false,
+                forbidden_terrains: &[BuiltinTerrain::Mountain],
+                required_tech:      Some(tech_refs.astrology),
+                required_civic:     None,
+            },
+            BuiltinDistrict::Mbanza => DistrictRequirements {
+                requires_land:      true,
+                requires_water:     false,
+                forbidden_terrains: &[BuiltinTerrain::Mountain],
+                required_tech:      None,
+                // "Guilds" is not yet in the civic tree — use unreachable sentinel.
+                required_civic:     Some(civic_refs.unreachable),
+            },
+            BuiltinDistrict::StreetCarnival => DistrictRequirements {
+                requires_land:      true,
+                requires_water:     false,
+                forbidden_terrains: &[BuiltinTerrain::Mountain],
+                required_tech:      None,
+                // "Games & Recreation" is not yet in the civic tree — use unreachable sentinel.
+                required_civic:     Some(civic_refs.unreachable),
+            },
+            BuiltinDistrict::RoyalNavyDockyard => DistrictRequirements {
+                requires_land:      false,
+                requires_water:     true,
+                forbidden_terrains: &[],
+                // "Celestial Navigation" is not yet in the tech tree — use unreachable sentinel.
                 required_tech:      Some(tech_refs.unreachable),
                 required_civic:     None,
             },
