@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use crate::{
-    BuildingId, CivId, CivicRefs, CityId, GrievanceId, TechRefs, UnitCategory, UnitDomain, UnitId, UnitTypeId, EraId, VictoryId, YieldBundle,
+    BuildingId, CivId, CivicRefs, CityId, GrievanceId, TechRefs, UnitCategory, UnitDomain, UnitId, UnitTypeId, WonderId, EraId, VictoryId, YieldBundle,
 };
 use super::victory::VictoryCondition;
 use crate::civ::{
@@ -50,6 +50,18 @@ pub struct UnitTypeDef {
     pub exclusive_to:    Option<crate::civ::civ_identity::BuiltinCiv>,
     /// If set, this unit replaces the named base unit for its civilization.
     pub replaces:        Option<&'static str>,
+    /// Era this unit belongs to (for production bonus conditions).
+    pub era:             Option<crate::AgeType>,
+}
+
+/// Static descriptor for a wonder; stored in `GameState.wonder_defs`.
+#[derive(Debug, Clone)]
+pub struct WonderDef {
+    pub id:              WonderId,
+    pub name:            &'static str,
+    pub production_cost: u32,
+    /// Era this wonder belongs to (for production bonus conditions).
+    pub era:             Option<crate::AgeType>,
 }
 
 /// Static descriptor for a building type; stored in `GameState.building_defs`.
@@ -180,6 +192,8 @@ pub struct GameState {
     /// Registry of building types. Populated by callers before the game loop.
     /// `apply_effect(FreeBuilding)` looks up entries by name to place real buildings.
     pub building_defs: Vec<BuildingDef>,
+    /// Registry of wonder types. Populated by callers before the game loop.
+    pub wonder_defs: Vec<WonderDef>,
     /// Governors owned by civilizations. Loyalty computation checks for
     /// established governors assigned to cities.
     pub governors: Vec<Governor>,
@@ -239,6 +253,7 @@ impl GameState {
             current_era_index: 0,
             unit_type_defs: Vec::new(),
             building_defs: Vec::new(),
+            wonder_defs: Vec::new(),
             victory_conditions: Vec::new(),
             game_over: None,
             wonder_tourism: Vec::new(),

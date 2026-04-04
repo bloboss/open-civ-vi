@@ -362,6 +362,39 @@ pub trait RulesEngine: std::fmt::Debug {
         item: FaithPurchaseItem,
     ) -> Result<GameStateDiff, RulesError>;
 
+    /// Use an Apostle to add a belief (Worship or Enhancer) to the civ's religion.
+    /// Consumes one spread charge. Religion can have at most 4 beliefs.
+    fn evangelize_belief(
+        &self,
+        state: &mut GameState,
+        apostle: UnitId,
+        belief: crate::BeliefId,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// Use an Apostle to launch an inquisition, enabling Inquisitor purchases.
+    /// Consumes the Apostle unit.
+    fn launch_inquisition(
+        &self,
+        state: &mut GameState,
+        apostle: UnitId,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// Use an Inquisitor to remove 75% of foreign religion followers from the
+    /// city at the unit's location. Consumes one charge; destroys unit at zero.
+    fn remove_heresy(
+        &self,
+        state: &mut GameState,
+        inquisitor: UnitId,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// Use a Guru to heal nearby friendly religious units by up to 40 HP.
+    /// Consumes one heal charge; destroys unit at zero.
+    fn guru_heal(
+        &self,
+        state: &mut GameState,
+        guru: UnitId,
+    ) -> Result<GameStateDiff, RulesError>;
+
     // TODO(PHASE3-BORDERS): fn purchase_tile(&self, state: &mut GameState, city_id: CityId,
     //   coord: HexCoord) -> Result<GameStateDiff, RulesError>;
     //   Spends gold (or culture) from the civilization's treasury to immediately claim a tile
@@ -513,6 +546,18 @@ pub enum RulesError {
     InsufficientFaith,
     /// The city does not have the required building/district for this purchase.
     MissingPrerequisite,
+    /// Maximum number of religions for this game has been reached.
+    MaxReligionsReached,
+    /// The unit is not an Apostle.
+    NotAnApostle,
+    /// The unit is not an Inquisitor.
+    NotAnInquisitor,
+    /// The civilization has not launched an inquisition (no apostle used Launch Inquisition).
+    InquisitionNotLaunched,
+    /// The religion already has the maximum number of beliefs (4).
+    ReligionFullyEnhanced,
+    /// The unit has no heal charges remaining.
+    NoHealCharges,
 }
 
 impl std::fmt::Display for RulesError {
@@ -587,6 +632,12 @@ impl std::fmt::Display for RulesError {
             RulesError::NoReligiousStrength            => write!(f, "unit has no religious combat strength"),
             RulesError::InsufficientFaith              => write!(f, "insufficient faith"),
             RulesError::MissingPrerequisite            => write!(f, "missing prerequisite building or district"),
+            RulesError::MaxReligionsReached             => write!(f, "maximum number of religions reached"),
+            RulesError::NotAnApostle                    => write!(f, "unit is not an Apostle"),
+            RulesError::NotAnInquisitor                 => write!(f, "unit is not an Inquisitor"),
+            RulesError::InquisitionNotLaunched          => write!(f, "inquisition has not been launched"),
+            RulesError::ReligionFullyEnhanced           => write!(f, "religion already has maximum beliefs"),
+            RulesError::NoHealCharges                   => write!(f, "no heal charges remaining"),
         }
     }
 }
@@ -710,6 +761,22 @@ impl RulesEngine for DefaultRulesEngine {
 
     fn purchase_with_faith(&self, state: &mut GameState, civ: CivId, city: CityId, item: FaithPurchaseItem) -> Result<GameStateDiff, RulesError> {
         religion::purchase_with_faith(state, civ, city, item)
+    }
+
+    fn evangelize_belief(&self, state: &mut GameState, apostle: UnitId, belief: crate::BeliefId) -> Result<GameStateDiff, RulesError> {
+        religion::evangelize_belief(state, apostle, belief)
+    }
+
+    fn launch_inquisition(&self, state: &mut GameState, apostle: UnitId) -> Result<GameStateDiff, RulesError> {
+        religion::launch_inquisition(state, apostle)
+    }
+
+    fn remove_heresy(&self, state: &mut GameState, inquisitor: UnitId) -> Result<GameStateDiff, RulesError> {
+        religion::remove_heresy(state, inquisitor)
+    }
+
+    fn guru_heal(&self, state: &mut GameState, guru: UnitId) -> Result<GameStateDiff, RulesError> {
+        religion::guru_heal(state, guru)
     }
 }
 
@@ -1381,7 +1448,7 @@ mod tests {
             can_found_city: false,
             resource_cost: None,
             siege_bonus: 0, max_charges: 0,
-            exclusive_to: None, replaces: None,
+            exclusive_to: None, replaces: None, era: None,
         });
 
         let effect = OneShotEffect::FreeUnit { unit_type: "Warrior", city: None };

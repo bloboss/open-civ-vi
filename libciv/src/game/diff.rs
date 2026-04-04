@@ -196,6 +196,14 @@ pub enum StateDelta {
     TheologicalCombat { attacker: UnitId, defender: UnitId, attacker_damage: u32, defender_damage: u32 },
     /// A civilization's faith stockpile changed.
     FaithChanged { civ: CivId, delta: i32 },
+    /// An Apostle evangelized a new belief onto a religion.
+    BeliefEvangelized { civ: CivId, religion: ReligionId, belief: BeliefId },
+    /// An Apostle launched an inquisition for a civilization.
+    InquisitionLaunched { civ: CivId },
+    /// An Inquisitor removed foreign religion followers from a city.
+    HeresyRemoved { city: CityId, followers_removed: u32 },
+    /// A Guru healed nearby religious units.
+    ReligiousUnitsHealed { healer: UnitId, healed_count: u32 },
 }
 
 /// A batch of deltas representing a complete state transition.

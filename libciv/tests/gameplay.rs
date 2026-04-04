@@ -519,6 +519,7 @@ fn spawn_slinger(s: &mut common::Scenario, coord: HexCoord) -> libciv::UnitId {
         max_charges:     0,
         exclusive_to:    None,
         replaces:        None,
+            era:             None,
     });
     let unit_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
@@ -950,6 +951,7 @@ fn unit_production_blocked_without_resource() {
         max_charges:     0,
         exclusive_to:    None,
         replaces:        None,
+            era:             None,
     });
 
     s.state.cities.iter_mut()
@@ -1003,6 +1005,7 @@ fn unit_production_consumes_strategic_resource() {
         max_charges:     0,
         exclusive_to:    None,
         replaces:        None,
+            era:             None,
     });
 
     // Grant Rome 3 Iron.
@@ -1530,6 +1533,7 @@ fn siege_unit_bonus_applies_on_city_tile() {
             siege_bonus, max_charges: 0,
             exclusive_to:    None,
             replaces:        None,
+            era:             None,
         });
 
         // Defender on Babylon's city tile (10, 5).
@@ -1600,6 +1604,7 @@ fn siege_bonus_not_applied_in_open_field() {
             siege_bonus, max_charges: 0,
             exclusive_to:    None,
             replaces:        None,
+            era:             None,
         });
 
         // Defender in open field (not on a city tile).

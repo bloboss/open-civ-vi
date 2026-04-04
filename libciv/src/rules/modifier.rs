@@ -1,5 +1,8 @@
-use crate::{CivId, PolicyType, UnitDomain, YieldType};
+use crate::{CivId, PolicyType, ResourceCategory, UnitDomain, YieldType};
 use crate::civ::district::BuiltinDistrict;
+use crate::world::feature::BuiltinFeature;
+use crate::world::improvement::BuiltinImprovement;
+use crate::world::terrain::BuiltinTerrain;
 
 // ── Effect types ─────────────────────────────────────────────────────────────
 
@@ -106,6 +109,32 @@ pub enum Condition {
     /// Tile is coastal or unit is on a coast tile.
     OnCoast,
 
+    // ── Tile-level conditions (for per-tile yield modifiers) ─────────────
+    /// Tile has the given improvement built on it.
+    TileHasImprovement(BuiltinImprovement),
+    /// Tile has any improvement built on it (resource is "improved").
+    TileHasAnyImprovement,
+    /// Tile has a resource of the given category (Bonus, Luxury, Strategic).
+    TileHasResourceOfCategory(ResourceCategory),
+    /// Tile has the given feature (Marsh, Oasis, Floodplain, etc.).
+    TileHasFeature(BuiltinFeature),
+    /// Tile has appeal >= the given threshold (Charming = 2, Breathtaking = 4).
+    TileMinAppeal(i32),
+
+    // ── Production-queue conditions ─────────────────────────────────────
+    /// City is producing a military unit (Combat/Support) of the given era.
+    ProducingMilitaryUnitOfEra(crate::AgeType),
+    /// City is producing a wonder of the given era.
+    ProducingWonderOfEra(crate::AgeType),
+
+    // ── Adjacency-counting conditions (scale by count of matching neighbors) ──
+    /// Multiply by number of adjacent tiles with the given terrain type.
+    /// Does NOT count the tile the district sits on, only the 6 neighbors.
+    PerAdjacentTerrain(BuiltinTerrain),
+    /// Multiply by number of adjacent tiles with the given feature.
+    /// Does NOT count the tile the district sits on, only the 6 neighbors.
+    PerAdjacentFeature(BuiltinFeature),
+
     // ── Scaling conditions (effect multiplied by count) ──────────────────
     /// Multiply by number of city-states where this civ is suzerain.
     PerCityStateSuzerain,
@@ -137,8 +166,10 @@ pub enum Condition {
     CityHasWorshipBuilding,
 
     // ── Composite ────────────────────────────────────────────────────────
-    /// Both conditions must hold.
+    /// Both conditions must hold (conjunction).
     And(Box<Condition>, Box<Condition>),
+    /// At least one condition must hold (disjunction).
+    Or(Box<Condition>, Box<Condition>),
 }
 
 /// Result of evaluating a condition.
@@ -166,6 +197,47 @@ impl<'a> ConditionContext<'a> {
     pub fn for_civ(civ_id: CivId, state: &'a crate::game::state::GameState) -> Self {
         Self { civ_id, state, tile: None, unit_id: None, city_id: None }
     }
+}
+
+/// Compute the appeal of a tile based on adjacent terrain, features, and districts.
+/// Charming = 2+, Breathtaking = 4+.
+pub fn compute_tile_appeal(coord: libhexgrid::coord::HexCoord, state: &crate::game::state::GameState) -> i32 {
+    use libhexgrid::board::HexBoard;
+    let mut appeal: i32 = 0;
+    for nb in state.board.neighbors(coord) {
+        if let Some(tile) = state.board.tile(nb) {
+            // Terrain bonuses.
+            match tile.terrain {
+                BuiltinTerrain::Mountain => appeal += 1,
+                BuiltinTerrain::Coast    => appeal += 1,
+                _ => {}
+            }
+            // Feature bonuses/penalties.
+            match tile.feature {
+                Some(BuiltinFeature::Forest) | Some(BuiltinFeature::Oasis) => appeal += 1,
+                Some(BuiltinFeature::Rainforest) | Some(BuiltinFeature::Marsh)
+                | Some(BuiltinFeature::Floodplain) => appeal -= 1,
+                _ => {}
+            }
+        }
+        // District penalties.
+        for pd in &state.placed_districts {
+            if pd.coord == nb {
+                match pd.district_type {
+                    crate::civ::district::BuiltinDistrict::Encampment
+                    | crate::civ::district::BuiltinDistrict::IndustrialZone => appeal -= 1,
+                    _ => {}
+                }
+            }
+        }
+    }
+    // Natural wonder adjacency.
+    if let Some(tile) = state.board.tile(coord)
+        && tile.natural_wonder.is_some()
+    {
+        appeal += 2;
+    }
+    appeal
 }
 
 /// Evaluate a condition against the given context.
@@ -215,6 +287,64 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
                 }
             }
             ConditionResult::Fail
+        }
+        Condition::TileHasImprovement(improvement) => {
+            if let Some(coord) = ctx.tile {
+                if let Some(tile) = ctx.state.board.tile(coord) {
+                    if tile.improvement == Some(*improvement) {
+                        return ConditionResult::Pass;
+                    }
+                }
+            }
+            ConditionResult::Fail
+        }
+        Condition::TileHasResourceOfCategory(category) => {
+            if let Some(coord) = ctx.tile {
+                if let Some(tile) = ctx.state.board.tile(coord) {
+                    if let Some(res) = tile.resource {
+                        if res.category() == *category {
+                            return ConditionResult::Pass;
+                        }
+                    }
+                }
+            }
+            ConditionResult::Fail
+        }
+        Condition::TileHasFeature(feature) => {
+            if let Some(coord) = ctx.tile {
+                if let Some(tile) = ctx.state.board.tile(coord) {
+                    if tile.feature == Some(*feature) {
+                        return ConditionResult::Pass;
+                    }
+                }
+            }
+            ConditionResult::Fail
+        }
+        Condition::PerAdjacentTerrain(terrain) => {
+            if let Some(coord) = ctx.tile {
+                let count = ctx.state.board.neighbors(coord).iter()
+                    .filter(|nb| {
+                        ctx.state.board.tile(**nb)
+                            .is_some_and(|t| t.terrain == *terrain)
+                    })
+                    .count();
+                ConditionResult::Scale(count as i32)
+            } else {
+                ConditionResult::Scale(0)
+            }
+        }
+        Condition::PerAdjacentFeature(feature) => {
+            if let Some(coord) = ctx.tile {
+                let count = ctx.state.board.neighbors(coord).iter()
+                    .filter(|nb| {
+                        ctx.state.board.tile(**nb)
+                            .is_some_and(|t| t.feature == Some(*feature))
+                    })
+                    .count();
+                ConditionResult::Scale(count as i32)
+            } else {
+                ConditionResult::Scale(0)
+            }
         }
         Condition::PerCityStateSuzerain => {
             // Count city-states where this civ is suzerain.
@@ -330,6 +460,56 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
             // Stub — worship building system not yet implemented.
             ConditionResult::Fail
         }
+        Condition::TileMinAppeal(threshold) => {
+            if let Some(coord) = ctx.tile {
+                let appeal = compute_tile_appeal(coord, ctx.state);
+                if appeal >= *threshold {
+                    return ConditionResult::Pass;
+                }
+            }
+            ConditionResult::Fail
+        }
+        Condition::ProducingMilitaryUnitOfEra(era) => {
+            if let Some(city_id) = ctx.city_id {
+                if let Some(city) = ctx.state.cities.iter().find(|c| c.id == city_id) {
+                    if let Some(crate::civ::ProductionItem::Unit(utid)) = city.production_queue.front() {
+                        if let Some(utd) = ctx.state.unit_type_defs.iter().find(|u| u.id == *utid) {
+                            if matches!(utd.category, crate::UnitCategory::Combat | crate::UnitCategory::Support)
+                                && utd.era == Some(*era)
+                            {
+                                return ConditionResult::Pass;
+                            }
+                        }
+                    }
+                }
+            }
+            ConditionResult::Fail
+        }
+        Condition::ProducingWonderOfEra(era) => {
+            if let Some(city_id) = ctx.city_id {
+                if let Some(city) = ctx.state.cities.iter().find(|c| c.id == city_id) {
+                    if let Some(crate::civ::ProductionItem::Wonder(wid)) = city.production_queue.front() {
+                        // Check wonder era via wonder_defs if available.
+                        if let Some(wdef) = ctx.state.wonder_defs.iter().find(|w| w.id == *wid) {
+                            if wdef.era == Some(*era) {
+                                return ConditionResult::Pass;
+                            }
+                        }
+                    }
+                }
+            }
+            ConditionResult::Fail
+        }
+        Condition::TileHasAnyImprovement => {
+            if let Some(coord) = ctx.tile {
+                if let Some(tile) = ctx.state.board.tile(coord) {
+                    if tile.improvement.is_some() {
+                        return ConditionResult::Pass;
+                    }
+                }
+            }
+            ConditionResult::Fail
+        }
         Condition::And(a, b) => {
             let ra = evaluate_condition(a, ctx);
             if matches!(ra, ConditionResult::Fail) {
@@ -345,6 +525,13 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
                 (ConditionResult::Scale(n), _) | (_, ConditionResult::Scale(n)) => ConditionResult::Scale(n),
                 _ => ConditionResult::Pass,
             }
+        }
+        Condition::Or(a, b) => {
+            let ra = evaluate_condition(a, ctx);
+            if !matches!(ra, ConditionResult::Fail) {
+                return ra;
+            }
+            evaluate_condition(b, ctx)
         }
     }
 }

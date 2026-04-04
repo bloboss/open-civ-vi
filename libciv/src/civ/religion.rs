@@ -7,6 +7,8 @@ use super::city::City;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BeliefCategory {
+    /// Terrain/gameplay bonus chosen before founding a religion.
+    Pantheon,
     /// Bonus to the founding civilization only.
     Founder,
     /// Bonus to all cities where this religion is the majority.
@@ -94,6 +96,11 @@ impl Religion {
 /// Returns (beliefs_vec, named_refs) — same pattern as `build_tech_tree`.
 pub fn build_beliefs(ids: &mut crate::game::state::IdGenerator) -> (Vec<BuiltinBelief>, BeliefRefs) {
     use crate::rules::modifier::*;
+    use crate::civ::district::BuiltinDistrict;
+    use crate::world::feature::BuiltinFeature;
+    use crate::world::improvement::BuiltinImprovement;
+    use crate::world::terrain::BuiltinTerrain;
+    use crate::ResourceCategory;
     use crate::YieldType;
 
     let mut beliefs: Vec<BuiltinBelief> = Vec::new();
@@ -106,6 +113,27 @@ pub fn build_beliefs(ids: &mut crate::game::state::IdGenerator) -> (Vec<BuiltinB
 /// Named handles to every built-in belief ID.
 #[derive(Debug, Clone, Copy)]
 pub struct BeliefRefs {
+    // ── Pantheon beliefs ──
+    pub dance_of_the_aurora: BeliefId,
+    pub desert_folklore: BeliefId,
+    pub sacred_path: BeliefId,
+    pub stone_circles: BeliefId,
+    pub religious_idols: BeliefId,
+    pub earth_goddess: BeliefId,
+    pub god_of_the_sea: BeliefId,
+    pub god_of_the_forge: BeliefId,
+    pub divine_spark: BeliefId,
+    pub lady_of_the_reeds_and_marshes: BeliefId,
+    pub oral_tradition: BeliefId,
+    pub monument_to_the_gods: BeliefId,
+    pub river_goddess: BeliefId,
+    pub city_patron_goddess: BeliefId,
+    pub fertility_rites: BeliefId,
+    pub god_of_war: BeliefId,
+    pub god_of_craftsmen: BeliefId,
+    pub initiation_rites: BeliefId,
+    pub religious_settlements: BeliefId,
+    pub goddess_of_the_hunt: BeliefId,
     // ── Founder beliefs ──
     pub church_property: BeliefId,
     pub tithe: BeliefId,
@@ -123,6 +151,9 @@ pub struct BeliefRefs {
     pub pagoda: BeliefId,
     pub synagogue: BeliefId,
     pub wat: BeliefId,
+    pub meeting_house: BeliefId,
+    pub stupa: BeliefId,
+    pub dar_e_mehr: BeliefId,
     // ── Enhancer beliefs ──
     pub missionary_zeal: BeliefId,
     pub holy_order: BeliefId,

@@ -80,6 +80,11 @@ pub enum BuiltinImprovement {
     Fort,
     Airstrip,
     MissileSilo,
+    Quarry,
+    Plantation,
+    Camp,
+    FishingBoats,
+    Pasture,
     Sphinx,
     Stepwell,
 }
@@ -227,6 +232,7 @@ pub enum VictoryKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BeliefCategory {
+    Pantheon,
     Founder,
     Follower,
     Worship,

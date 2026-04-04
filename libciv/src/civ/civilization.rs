@@ -84,6 +84,10 @@ pub struct Civilization {
     pub pantheon_belief: Option<BeliefId>,
     /// The religion this civilization has founded, if any.
     pub founded_religion: Option<ReligionId>,
+    /// Whether this civ has had an apostle launch an inquisition (unlocks Inquisitor purchase).
+    pub inquisition_launched: bool,
+    /// Number of each religious unit type purchased (for cost scaling).
+    pub faith_purchase_counts: HashMap<String, u32>,
     // treasury_per_turn removed (PHASE3-3.4): gold income is computed per turn
     // via compute_yields().gold and goes stale when policies or government change.
     /// Stockpile of consumable strategic resources (e.g. Iron, Horses).
@@ -179,6 +183,8 @@ impl Civilization {
             faith: 0,
             pantheon_belief: None,
             founded_religion: None,
+            inquisition_launched: false,
+            faith_purchase_counts: HashMap::new(),
             strategic_resources: HashMap::new(),
             revealed_resources: HashSet::new(),
             eureka_triggered: HashSet::new(),

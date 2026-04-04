@@ -168,3 +168,65 @@ impl VictoryCondition for DominationVictory {
         }
     }
 }
+
+// ── Religious Victory ────────────────────────────────────────────────────────
+
+/// Religious victory: a civ wins when its religion is the majority religion in
+/// every other major civilization (>50% of that civ's cities follow the religion).
+/// City-states are exempt.
+#[derive(Debug)]
+pub struct ReligiousVictory {
+    pub id: VictoryId,
+}
+
+impl VictoryCondition for ReligiousVictory {
+    fn id(&self) -> VictoryId { self.id }
+    fn name(&self) -> &'static str { "Religious Victory" }
+    fn description(&self) -> &'static str {
+        "Win by converting every other civilization to your religion."
+    }
+    fn kind(&self) -> VictoryKind { VictoryKind::ImmediateWin }
+    fn check_progress(&self, civ_id: CivId, state: &GameState) -> VictoryProgress {
+        let civ = state.civilizations.iter().find(|c| c.id == civ_id);
+        let religion_id = civ.and_then(|c| c.founded_religion);
+
+        let Some(rid) = religion_id else {
+            // No religion founded — 0 progress, target is 1 (need a religion first).
+            return VictoryProgress {
+                victory_id: self.id,
+                civ_id,
+                current: 0,
+                target: 1,
+            };
+        };
+
+        // Count other major civilizations (not city-states, not self).
+        let other_civs: Vec<CivId> = state.civilizations.iter()
+            .filter(|c| c.id != civ_id)
+            .map(|c| c.id)
+            .collect();
+        let total = other_civs.len() as u32;
+
+        // For each other civ, check if >50% of their cities have our religion as majority.
+        let mut converted = 0u32;
+        for other_civ_id in &other_civs {
+            let civ_cities: Vec<&crate::civ::City> = state.cities.iter()
+                .filter(|c| c.owner == *other_civ_id)
+                .collect();
+            if civ_cities.is_empty() { continue; }
+            let following = civ_cities.iter()
+                .filter(|c| c.majority_religion() == Some(rid))
+                .count();
+            if following * 2 > civ_cities.len() {
+                converted += 1;
+            }
+        }
+
+        VictoryProgress {
+            victory_id: self.id,
+            civ_id,
+            current: converted,
+            target: if total == 0 { 1 } else { total },
+        }
+    }
+}

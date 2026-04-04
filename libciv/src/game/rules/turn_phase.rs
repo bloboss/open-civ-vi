@@ -677,13 +677,20 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
     }
 
     // ── Phase 3d: Religious pressure ──────────────────────────────────────
-    // For each city, compute passive religious pressure from nearby cities.
-    // Cities with followers of a religion exert pressure on neighbors,
-    // spreading that religion's followers over time.
+    // Canonical Civ VI pressure: per source city with majority religion,
+    // base +1, +2 if has Holy Site, +4 if is Holy City. Divided by distance.
+    // Itinerant Preachers enhancer extends radius by 3 tiles.
+    // Trade route pressure: +0.5 per active trade route between cities.
     {
-        // Collect pressure deltas: (city_idx, religion_id, delta).
         let num_cities = state.cities.len();
         let mut pressure_deltas: Vec<(usize, crate::ReligionId, i32)> = Vec::new();
+
+        // Pre-compute: which religions have Itinerant Preachers.
+        let itinerant_religions: std::collections::HashSet<crate::ReligionId> = state.religions.iter()
+            .filter(|r| r.beliefs.iter().any(|bid|
+                state.belief_defs.iter().any(|b| b.id == *bid && b.name == "Itinerant Preachers")))
+            .map(|r| r.id)
+            .collect();
 
         for target_idx in 0..num_cities {
             let target = &state.cities[target_idx];
@@ -691,9 +698,9 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
                 continue;
             }
             let target_coord = target.coord;
+            let target_id = target.id;
             let target_pop = target.population;
 
-            // Collect pressure from all other cities with religion followers.
             let mut religion_pressure: std::collections::HashMap<crate::ReligionId, i32> =
                 std::collections::HashMap::new();
 
@@ -701,25 +708,62 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
                 if source_idx == target_idx { continue; }
                 let source = &state.cities[source_idx];
                 let dist = source.coord.distance(&target_coord);
-                if dist == 0 || dist > RELIGIOUS_PRESSURE_RADIUS { continue; }
+                if dist == 0 { continue; }
 
-                for (&rid, &followers) in &source.religious_followers {
-                    if followers == 0 { continue; }
-                    let mut pressure = (followers as i32 * 10) / dist as i32;
+                // Determine majority religion of source city.
+                let source_majority = source.majority_religion();
+                let Some(majority_rid) = source_majority else { continue };
 
-                    // Holy city bonus.
-                    if state.religions.iter().any(|r| r.id == rid && r.holy_city == source.id) {
-                        pressure += 4;
-                    }
+                // Itinerant Preachers extends radius by 3.
+                let radius = if itinerant_religions.contains(&majority_rid) {
+                    RELIGIOUS_PRESSURE_RADIUS + 3
+                } else {
+                    RELIGIOUS_PRESSURE_RADIUS
+                };
+                if dist > radius { continue; }
 
-                    *religion_pressure.entry(rid).or_insert(0) += pressure;
+                // Canonical pressure formula:
+                let mut pressure: i32 = 1; // Base: city has majority religion.
+
+                // +2 if source city has Holy Site district.
+                let has_holy_site = state.placed_districts.iter()
+                    .any(|pd| pd.city_id == source.id
+                        && pd.district_type == crate::civ::district::BuiltinDistrict::HolySite);
+                if has_holy_site {
+                    pressure += 2;
+                }
+
+                // +4 if source city is a Holy City.
+                if state.religions.iter().any(|r| r.id == majority_rid && r.holy_city == source.id) {
+                    pressure += 4;
+                }
+
+                // Scale by inverse distance.
+                let scaled = (pressure * 10) / dist as i32;
+                *religion_pressure.entry(majority_rid).or_insert(0) += scaled;
+            }
+
+            // Trade route pressure: +0.5 per active trade route to/from this city.
+            for route in &state.trade_routes {
+                let other_city_id = if route.origin == target_id {
+                    Some(route.destination)
+                } else if route.destination == target_id {
+                    Some(route.origin)
+                } else {
+                    None
+                };
+                if let Some(other_id) = other_city_id
+                    && let Some(other) = state.cities.iter().find(|c| c.id == other_id)
+                    && let Some(rid) = other.majority_religion()
+                {
+                    // +0.5 per route, represented as +5 in our i32 pressure scale.
+                    *religion_pressure.entry(rid).or_insert(0) += 5;
                 }
             }
 
             // Convert pressure to follower change (scaled down).
             for (rid, pressure) in religion_pressure {
                 if pressure <= 0 { continue; }
-                // 1 follower per 50 pressure, minimum 1 if any pressure.
                 let delta = (pressure / 50).max(1).min(target_pop as i32);
                 pressure_deltas.push((target_idx, rid, delta));
             }

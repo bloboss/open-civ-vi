@@ -14,5 +14,5 @@ pub use rules::{DefaultRulesEngine, FaithPurchaseItem, RulesEngine, RulesError};
 pub use score::{all_scores, compute_score};
 pub use state::{GameState, IdGenerator};
 pub use turn::TurnEngine;
-pub use victory::{CultureVictory, DominationVictory, GameOver, ScoreVictory, VictoryCondition, VictoryKind};
+pub use victory::{CultureVictory, DominationVictory, GameOver, ReligiousVictory, ScoreVictory, VictoryCondition, VictoryKind};
 pub use visibility::recalculate_visibility;
