@@ -1,4 +1,4 @@
-use crate::{GovernmentId, PolicyId, PolicyType};
+use crate::{AgeType, GovernmentId, PolicyId, PolicyType};
 
 use super::modifier::Modifier;
 
@@ -21,6 +21,7 @@ pub struct Policy {
     pub id: PolicyId,
     pub name: &'static str,
     pub policy_type: PolicyType,
+    pub prereq_civic: &'static str,
     pub modifiers: Vec<Modifier>,
     pub maintenance: u32,
 }
@@ -29,6 +30,8 @@ pub struct Policy {
 pub struct Government {
     pub id: GovernmentId,
     pub name: &'static str,
+    pub era: AgeType,
+    pub prereq_civic: &'static str,
     pub slots: PolicySlots,
     pub inherent_modifiers: Vec<Modifier>,
     pub legacy_bonus: Option<&'static str>,

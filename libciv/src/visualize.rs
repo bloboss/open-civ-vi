@@ -96,6 +96,10 @@ fn feature_char(f: BuiltinFeature) -> char {
         BuiltinFeature::Ice          => 'i',
         BuiltinFeature::VolcanicSoil => 'v',
         BuiltinFeature::Oasis        => 'o',
+        BuiltinFeature::GeothermalFissure  => 'g',
+        BuiltinFeature::Volcano            => 'V',
+        BuiltinFeature::FloodplainGrassland => 'F',
+        BuiltinFeature::FloodplainPlains   => 'F',
     }
 }
 

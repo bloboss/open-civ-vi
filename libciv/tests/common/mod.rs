@@ -15,35 +15,16 @@ use libciv::{
     CivId, CityId, GameState, DefaultRulesEngine, TurnEngine,
     UnitCategory, UnitDomain, UnitId, UnitTypeId,
 };
-use libciv::civ::{Agenda, BasicUnit, City, Civilization, Leader};
+use libciv::civ::{BasicUnit, BuiltinAgenda, City, Civilization, Leader};
 use libciv::game::recalculate_visibility;
 use libciv::game::state::UnitTypeDef;
 use libhexgrid::coord::HexCoord;
-
-// ---------------------------------------------------------------------------
-// Minimal Agenda stub
-// ---------------------------------------------------------------------------
-
-struct NoOpAgenda;
-
-impl std::fmt::Debug for NoOpAgenda {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "NoOpAgenda")
-    }
-}
-
-impl Agenda for NoOpAgenda {
-    fn name(&self) -> &'static str { "Neutral" }
-    fn description(&self) -> &'static str { "No preferences." }
-    fn attitude(&self, _: CivId) -> i32 { 0 }
-}
 
 fn stub_leader(name: &'static str, civ_id: CivId) -> Leader {
     Leader {
         name,
         civ_id,
-        abilities:  Vec::new(),
-        agenda:     Box::new(NoOpAgenda),
+        agenda: BuiltinAgenda::Default,
     }
 }
 

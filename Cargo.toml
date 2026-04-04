@@ -3,7 +3,7 @@ members = [
     "libhexgrid",
     "libciv",
     "open4x-server",
-    "civsim",
+    "open4x-cli",
 ]
 resolver = "2"
 

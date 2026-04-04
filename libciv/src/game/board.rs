@@ -11,6 +11,7 @@ use crate::world::tile::WorldTile;
 
 /// Concrete hex board for the world map.
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct WorldBoard {
     pub width: u32,
     pub height: u32,
@@ -19,6 +20,7 @@ pub struct WorldBoard {
     tiles: Vec<WorldTile>,
     /// Edges keyed by canonical (HexCoord, HexDir) pair.
     /// Forward-half directions only: {E, NE, NW}.
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_hashmap_as_vec"))]
     edges: HashMap<(HexCoord, HexDir), WorldEdge>,
 }
 

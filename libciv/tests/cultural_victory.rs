@@ -3,12 +3,11 @@
 mod common;
 
 use libciv::{
-    CultureVictory, DefaultRulesEngine, GreatPersonType, RulesEngine,
+    BuiltinVictoryCondition, DefaultRulesEngine, GreatPersonType, RulesEngine,
 };
 use libciv::civ::great_people::GreatPerson;
 use libciv::civ::great_works::{GreatWorkSlot, GreatWorkSlotType};
 use libciv::game::state::BuildingDef;
-use libciv::game::victory::VictoryCondition;
 use libciv::{BuildingId, GreatPersonId, YieldBundle, YieldType};
 
 use common::{build_scenario, advance_turn};
@@ -27,8 +26,11 @@ fn register_amphitheater(s: &mut common::Scenario) -> BuildingId {
         maintenance: 1,
         yields: YieldBundle::new().with(YieldType::Culture, 2),
         requires_district: Some("Theater Square"),
+        prereq_building: None,
+        mutually_exclusive: None,
         great_work_slots: vec![GreatWorkSlotType::Writing, GreatWorkSlotType::Writing],
         exclusive_to: None, replaces: None,
+        power_cost: 0, power_generated: 0, co2_per_turn: 0,
     });
     id
 }
@@ -44,8 +46,11 @@ fn register_broadcast_center(s: &mut common::Scenario) -> BuildingId {
             .with(YieldType::Culture, 2)
             .with(YieldType::Tourism, 2),
         requires_district: Some("Theater Square"),
+        prereq_building: None,
+        mutually_exclusive: None,
         great_work_slots: vec![GreatWorkSlotType::Music],
         exclusive_to: None, replaces: None,
+        power_cost: 0, power_generated: 0, co2_per_turn: 0,
     });
     id
 }
@@ -219,7 +224,7 @@ fn test_cultural_victory_fires() {
 
     // Register CultureVictory condition.
     let victory_id = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(CultureVictory { id: victory_id }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Culture { id: victory_id });
 
     // Give Rome massive tourism via many great works.
     let rc = s.rome_city;
@@ -285,7 +290,7 @@ fn test_cultural_victory_requires_exceeding_all_civs() {
 
     // Register victory.
     let victory_id = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(CultureVictory { id: victory_id }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Culture { id: victory_id });
 
     // Give Babylon very high domestic culture by setting it directly.
     if let Some(civ) = s.state.civilizations.iter_mut().find(|c| c.id == babylon_id) {
@@ -312,7 +317,7 @@ fn test_cultural_victory_not_fired_when_tied() {
     let babylon_id = s.babylon_id;
 
     let victory_id = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(CultureVictory { id: victory_id }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Culture { id: victory_id });
 
     // Set both to equal values: tourism == domestic_culture (should NOT win).
     if let Some(civ) = s.state.civilizations.iter_mut().find(|c| c.id == rome_id) {
@@ -323,7 +328,7 @@ fn test_cultural_victory_not_fired_when_tied() {
     }
 
     // Check progress directly.
-    let vc = CultureVictory { id: victory_id };
+    let vc = BuiltinVictoryCondition::Culture { id: victory_id };
     let progress = vc.check_progress(rome_id, &s.state);
     assert!(!progress.is_won(), "tourism == domestic_culture should not win (must strictly exceed)");
 }

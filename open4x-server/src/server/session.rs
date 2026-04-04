@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use libciv::ai::HeuristicAgent;
-use libciv::civ::{BasicUnit, City, Civilization, Leader};
+use libciv::civ::{BasicUnit, BuiltinAgenda, City, Civilization, Leader};
 use libciv::game::recalculate_visibility;
 use libciv::game::state::{GameState, UnitTypeDef};
 use libciv::world::mapgen::{MapGenConfig, generate as mapgen_generate};
@@ -26,20 +26,6 @@ pub struct ServerSession {
     pub ai_agents: Vec<(CivId, HeuristicAgent)>,
 }
 
-/// No-op agenda for human players.
-struct NoOpAgenda;
-
-impl std::fmt::Debug for NoOpAgenda {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "NoOpAgenda")
-    }
-}
-
-impl libciv::civ::Agenda for NoOpAgenda {
-    fn name(&self) -> &'static str { "Expansionist" }
-    fn description(&self) -> &'static str { "Likes open land." }
-    fn attitude(&self, _: CivId) -> i32 { 0 }
-}
 
 pub fn build_server_session(
     req: &CreateGameRequest,
@@ -113,8 +99,8 @@ pub fn build_server_session(
 
     state.civilizations.push(Civilization::new(
         civ_id, civ_name, adjective,
-        Leader { name: leader_name, civ_id, abilities: Vec::new(),
-                 agenda: Box::new(NoOpAgenda) },
+        Leader { name: leader_name, civ_id,
+                 agenda: BuiltinAgenda::Default },
     ));
 
     // Capital city.
@@ -185,8 +171,8 @@ pub fn build_server_session(
 
         state.civilizations.push(Civilization::new(
             ai_civ_id, ai_civ_name, ai_adjective,
-            Leader { name: ai_leader, civ_id: ai_civ_id, abilities: Vec::new(),
-                     agenda: Box::new(NoOpAgenda) },
+            Leader { name: ai_leader, civ_id: ai_civ_id,
+                     agenda: BuiltinAgenda::Default },
         ));
 
         let ai_city_id = state.id_gen.next_city_id();

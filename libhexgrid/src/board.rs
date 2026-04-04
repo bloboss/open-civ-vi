@@ -28,6 +28,7 @@ pub trait HexEdge {
 
 /// Topology describing how the board wraps (or doesn't).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BoardTopology {
     /// Finite flat board — coords outside bounds are invalid.
     Flat,

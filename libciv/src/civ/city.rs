@@ -1,11 +1,12 @@
 use std::collections::{HashMap, HashSet, VecDeque};
-use crate::{BuildingId, CityId, CivId, ReligionId, UnitTypeId, WonderId};
+use crate::{BuildingId, CityId, CivId, ProjectId, ReligionId, UnitTypeId, WonderId};
 use libhexgrid::coord::HexCoord;
 use super::city_state::CityStateData;
 use super::district::BuiltinDistrict;
 
 /// Whether this city is a regular player city or an independent city-state.
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum CityKind {
     /// A standard player or AI city.
     Regular,
@@ -48,9 +49,11 @@ pub enum ProductionItem {
     Building(BuildingId),
     District(BuiltinDistrict),
     Wonder(WonderId),
+    Project(ProjectId),
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct City {
     pub id: CityId,
     pub name: String,
@@ -99,7 +102,14 @@ pub struct City {
     pub great_work_slots: Vec<super::great_works::GreatWorkSlot>,
     /// Followers of each religion in this city. Source of truth for religion
     /// follower counts; `Religion` computes totals by querying cities.
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_hashmap_as_vec"))]
     pub religious_followers: HashMap<ReligionId, u32>,
+    /// Sum of `power_cost` from all buildings in this city. Recomputed each turn.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub power_consumed: u32,
+    /// Sum of `power_generated` from all power-plant buildings in this city. Recomputed each turn.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub power_generated: u32,
 }
 
 impl City {
@@ -130,6 +140,8 @@ impl City {
             loyalty: 100,
             great_work_slots: Vec::new(),
             religious_followers: HashMap::new(),
+            power_consumed: 0,
+            power_generated: 0,
         }
     }
 

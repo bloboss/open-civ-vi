@@ -52,5 +52,6 @@ define_api_id!(TerrainId);
 define_api_id!(FeatureId);
 define_api_id!(EdgeFeatureId);
 define_api_id!(NaturalWonderId);
+define_api_id!(ProjectId);
 define_api_id!(GameId);
 define_api_id!(CivTemplateId);

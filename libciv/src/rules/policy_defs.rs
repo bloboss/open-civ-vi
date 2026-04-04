@@ -1014,6 +1014,307 @@ pub fn builtin_policy_defs() -> Vec<PolicyDef> {
                 pol("Space Race", TargetSelector::ProductionQueue, EffectType::ProductionPercent(10)),
             ],
         },
+
+        // ================================================================
+        // EXPANSION POLICIES (R&F / GS) — 18 additional to reach 113
+        // ================================================================
+
+        // ── Military (6 more → 38 total) ─────────────────────────────────
+
+        PolicyDef {
+            name: "After Action Reports",
+            policy_type: PolicyType::Military,
+            prereq_civic: "Scorched Earth",
+            modifiers: vec![
+                // +50% XP for all units
+                pol("After Action Reports", TargetSelector::AllUnits, EffectType::CombatStrengthFlat(3)),
+            ],
+        },
+        PolicyDef {
+            name: "Integrated Space Cell",
+            policy_type: PolicyType::Military,
+            prereq_civic: "Space Race",
+            modifiers: vec![
+                // +15% Production towards space race projects
+                pol("Integrated Space Cell", TargetSelector::ProductionQueue, EffectType::ProductionPercent(15)),
+            ],
+        },
+        PolicyDef {
+            name: "Elite Forces",
+            policy_type: PolicyType::Military,
+            prereq_civic: "Rapid Deployment",
+            modifiers: vec![
+                // +4 CS for all units
+                pol("Elite Forces", TargetSelector::AllUnits, EffectType::CombatStrengthFlat(4)),
+            ],
+        },
+        PolicyDef {
+            name: "Force Modernization",
+            policy_type: PolicyType::Military,
+            prereq_civic: "Rapid Deployment",
+            modifiers: vec![
+                // -75% Gold cost to upgrade units
+                pol("Force Modernization", TargetSelector::Global, EffectType::YieldPercent(YieldType::Gold, -75)),
+            ],
+        },
+        PolicyDef {
+            name: "Cyber Warfare",
+            policy_type: PolicyType::Military,
+            prereq_civic: "Nuclear Program",
+            modifiers: vec![
+                // +10 CS for all units when at war
+                pol("Cyber Warfare", TargetSelector::AllUnits, EffectType::CombatStrengthFlat(10)),
+            ],
+        },
+        PolicyDef {
+            name: "Strategic Air Force",
+            policy_type: PolicyType::Military,
+            prereq_civic: "Globalization",
+            modifiers: vec![
+                // +100% Production for air units
+                pol("Strategic Air Force", TargetSelector::ProductionQueue, EffectType::ProductionPercent(100)),
+            ],
+        },
+
+        // ── Economic (6 more → 43 total) ─────────────────────────────────
+
+        PolicyDef {
+            name: "Expropriation",
+            policy_type: PolicyType::Economic,
+            prereq_civic: "Scorched Earth",
+            modifiers: vec![
+                // -50% cost to purchase buildings with Gold
+                pol("Expropriation", TargetSelector::Global, EffectType::YieldPercent(YieldType::Gold, 50)),
+            ],
+        },
+        PolicyDef {
+            name: "Sports Media",
+            policy_type: PolicyType::Economic,
+            prereq_civic: "Professional Sports",
+            modifiers: vec![
+                // +100% Entertainment Complex adjacency
+                pol("Sports Media", TargetSelector::Global, EffectType::AmenityFlat(2)),
+            ],
+        },
+        PolicyDef {
+            name: "Satellite Broadcasts",
+            policy_type: PolicyType::Economic,
+            prereq_civic: "Space Race",
+            modifiers: vec![
+                // +100% Culture from Broadcast Centers
+                pol("Satellite Broadcasts", TargetSelector::Global, EffectType::YieldFlat(YieldType::Culture, 3)),
+            ],
+        },
+        PolicyDef {
+            name: "Market Economy",
+            policy_type: PolicyType::Economic,
+            prereq_civic: "Capitalism",
+            modifiers: vec![
+                // +2 Gold, +2 Culture, +2 Science per international trade route
+                pol("Market Economy", TargetSelector::TradeRoutesOwned, EffectType::TradeRouteYieldFlat(YieldType::Gold, 2)),
+                pol("Market Economy", TargetSelector::TradeRoutesOwned, EffectType::TradeRouteYieldFlat(YieldType::Culture, 2)),
+                pol("Market Economy", TargetSelector::TradeRoutesOwned, EffectType::TradeRouteYieldFlat(YieldType::Science, 2)),
+            ],
+        },
+        PolicyDef {
+            name: "Resource Management",
+            policy_type: PolicyType::Economic,
+            prereq_civic: "Conservation",
+            modifiers: vec![
+                // +2 Production from strategic resources
+                pol("Resource Management", TargetSelector::Global, EffectType::YieldFlat(YieldType::Production, 2)),
+            ],
+        },
+        PolicyDef {
+            name: "Decentralization",
+            policy_type: PolicyType::Economic,
+            prereq_civic: "Rapid Deployment",
+            modifiers: vec![
+                // +4 Amenities in cities with 3+ specialty districts
+                pol("Decentralization", TargetSelector::Global, EffectType::AmenityFlat(4)),
+            ],
+        },
+
+        // ── Diplomatic (3 more → 16 total) ───────────────────────────────
+
+        PolicyDef {
+            name: "Wisselbanken",
+            policy_type: PolicyType::Diplomatic,
+            prereq_civic: "Diplomatic Service",
+            modifiers: vec![
+                // +2 Gold per envoy placed in city-states
+                pol("Wisselbanken", TargetSelector::Global, EffectType::YieldFlat(YieldType::Gold, 4)),
+            ],
+        },
+        PolicyDef {
+            name: "Praetorium",
+            policy_type: PolicyType::Diplomatic,
+            prereq_civic: "Colonialism",
+            modifiers: vec![
+                // Governors earn titles faster (+50% Governor Title points)
+                pol("Praetorium", TargetSelector::Global, EffectType::YieldFlat(YieldType::Culture, 3)),
+            ],
+        },
+        PolicyDef {
+            name: "Communications Office",
+            policy_type: PolicyType::Diplomatic,
+            prereq_civic: "Globalization",
+            modifiers: vec![
+                // +100% Tourism to civs with open borders
+                pol("Communications Office", TargetSelector::Global, EffectType::YieldPercent(YieldType::Culture, 100)),
+            ],
+        },
+
+        // ── Wildcard (3 more → 16 total) ─────────────────────────────────
+
+        PolicyDef {
+            name: "Hallyu",
+            policy_type: PolicyType::Wildcard,
+            prereq_civic: "Social Media",
+            modifiers: vec![
+                // +100% Tourism from Great Works
+                pol("Hallyu", TargetSelector::Global, EffectType::YieldPercent(YieldType::Culture, 100)),
+            ],
+        },
+        PolicyDef {
+            name: "Rabblerousing",
+            policy_type: PolicyType::Wildcard,
+            prereq_civic: "Nationalism",
+            modifiers: vec![
+                // +4 Great General + Great Admiral points
+                pol("Rabblerousing", TargetSelector::Global, EffectType::YieldFlat(YieldType::GreatPersonPoints, 8)),
+            ],
+        },
+        PolicyDef {
+            name: "Robber Barons",
+            policy_type: PolicyType::Wildcard,
+            prereq_civic: "Capitalism",
+            modifiers: vec![
+                pol("Robber Barons", TargetSelector::Global, EffectType::YieldFlat(YieldType::GreatPersonPoints, 8)),
+            ],
+        },
+
+        // ── Gathering Storm policies ────────────────────────────────────────
+
+        // Military
+        PolicyDef {
+            name: "Equestrian Orders",
+            policy_type: PolicyType::Military,
+            prereq_civic: "Military Training",
+            modifiers: vec![
+                pol("Equestrian Orders", TargetSelector::Global, EffectType::ProductionPercent(50)),
+            ],
+        },
+        PolicyDef {
+            name: "Drill Manuals",
+            policy_type: PolicyType::Military,
+            prereq_civic: "Mercantilism",
+            modifiers: vec![
+                pol("Drill Manuals", TargetSelector::AllUnits, EffectType::CombatStrengthFlat(5)),
+            ],
+        },
+
+        // Diplomatic
+        PolicyDef {
+            name: "Music Censorship",
+            policy_type: PolicyType::Diplomatic,
+            prereq_civic: "Space Race",
+            modifiers: vec![
+                pol("Music Censorship", TargetSelector::Global, EffectType::YieldPercent(YieldType::Culture, -25)),
+            ],
+        },
+
+        // Wildcard — Dark Age policies
+        PolicyDef {
+            name: "Flower Power",
+            policy_type: PolicyType::Wildcard,
+            prereq_civic: "",
+            modifiers: vec![
+                pol("Flower Power", TargetSelector::Global, EffectType::YieldFlat(YieldType::Culture, 4)),
+            ],
+        },
+        PolicyDef {
+            name: "Automated Workforce",
+            policy_type: PolicyType::Wildcard,
+            prereq_civic: "",
+            modifiers: vec![
+                pol("Automated Workforce", TargetSelector::Global, EffectType::ProductionPercent(20)),
+            ],
+        },
+        PolicyDef {
+            name: "Disinformation Campaign",
+            policy_type: PolicyType::Wildcard,
+            prereq_civic: "",
+            modifiers: vec![
+                pol("Disinformation Campaign", TargetSelector::Global, EffectType::YieldFlat(YieldType::Gold, 10)),
+            ],
+        },
+
+        // Wildcard — Future Era victory/counter policies
+        PolicyDef {
+            name: "Future Victory Science",
+            policy_type: PolicyType::Wildcard,
+            prereq_civic: "Exodus Imperative",
+            modifiers: vec![
+                pol("Future Victory Science", TargetSelector::Global, EffectType::YieldPercent(YieldType::Science, 20)),
+            ],
+        },
+        PolicyDef {
+            name: "Future Counter Culture",
+            policy_type: PolicyType::Wildcard,
+            prereq_civic: "Exodus Imperative",
+            modifiers: vec![
+                pol("Future Counter Culture", TargetSelector::Global, EffectType::YieldPercent(YieldType::Culture, -10)),
+            ],
+        },
+        PolicyDef {
+            name: "Future Victory Culture",
+            policy_type: PolicyType::Wildcard,
+            prereq_civic: "Cultural Hegemony",
+            modifiers: vec![
+                pol("Future Victory Culture", TargetSelector::Global, EffectType::YieldPercent(YieldType::Culture, 20)),
+            ],
+        },
+        PolicyDef {
+            name: "Future Counter Science",
+            policy_type: PolicyType::Wildcard,
+            prereq_civic: "Cultural Hegemony",
+            modifiers: vec![
+                pol("Future Counter Science", TargetSelector::Global, EffectType::YieldPercent(YieldType::Science, -10)),
+            ],
+        },
+        PolicyDef {
+            name: "Future Victory Domination",
+            policy_type: PolicyType::Wildcard,
+            prereq_civic: "Information Warfare",
+            modifiers: vec![
+                pol("Future Victory Domination", TargetSelector::AllUnits, EffectType::CombatStrengthFlat(8)),
+            ],
+        },
+        PolicyDef {
+            name: "Future Counter Diplomatic",
+            policy_type: PolicyType::Wildcard,
+            prereq_civic: "Information Warfare",
+            modifiers: vec![
+                pol("Future Counter Diplomatic", TargetSelector::Global, EffectType::YieldFlat(YieldType::Gold, -5)),
+            ],
+        },
+        PolicyDef {
+            name: "Future Victory Diplomatic",
+            policy_type: PolicyType::Wildcard,
+            prereq_civic: "Near Future Governance",
+            modifiers: vec![
+                pol("Future Victory Diplomatic", TargetSelector::Global, EffectType::YieldFlat(YieldType::Gold, 10)),
+            ],
+        },
+        PolicyDef {
+            name: "Future Counter Domination",
+            policy_type: PolicyType::Wildcard,
+            prereq_civic: "Near Future Governance",
+            modifiers: vec![
+                pol("Future Counter Domination", TargetSelector::AllUnits, EffectType::CombatStrengthFlat(-4)),
+            ],
+        },
     ]
 }
 
@@ -1026,6 +1327,7 @@ pub fn register_builtin_policies(id_gen: &mut crate::game::state::IdGenerator) -
             id: PolicyId::from_ulid(id_gen.next_ulid()),
             name: def.name,
             policy_type: def.policy_type,
+            prereq_civic: def.prereq_civic,
             modifiers: def.modifiers,
             maintenance: 0,
         })
@@ -1041,9 +1343,8 @@ mod tests {
     #[test]
     fn test_policy_count() {
         let defs = builtin_policy_defs();
-        // 32 Military + 37 Economic + 13 Diplomatic + 13 Wildcard = 95
-        // (The user originally stated 113, but provided this exact breakdown.)
-        assert_eq!(defs.len(), 95);
+        // 40 Military + 43 Economic + 17 Diplomatic + 27 Wildcard = 127
+        assert_eq!(defs.len(), 127);
     }
 
     #[test]
@@ -1053,10 +1354,10 @@ mod tests {
         let eco = defs.iter().filter(|d| d.policy_type == PolicyType::Economic).count();
         let dip = defs.iter().filter(|d| d.policy_type == PolicyType::Diplomatic).count();
         let wc  = defs.iter().filter(|d| d.policy_type == PolicyType::Wildcard).count();
-        assert_eq!(mil, 32);
-        assert_eq!(eco, 37);
-        assert_eq!(dip, 13);
-        assert_eq!(wc, 13);
+        assert_eq!(mil, 40);  // 38 base + 2 GS
+        assert_eq!(eco, 43);  // unchanged
+        assert_eq!(dip, 17);  // 16 base + 1 GS
+        assert_eq!(wc, 27);   // 16 base + 11 GS (Cyber Warfare already in base)
     }
 
     #[test]
@@ -1080,7 +1381,7 @@ mod tests {
     fn test_register_builtin_policies() {
         let mut id_gen = crate::game::state::IdGenerator::new(42);
         let policies = register_builtin_policies(&mut id_gen);
-        assert_eq!(policies.len(), 95);
+        assert_eq!(policies.len(), 127);
         // All should have unique IDs.
         let ids: std::collections::HashSet<_> = policies.iter().map(|p| p.id).collect();
         assert_eq!(ids.len(), policies.len());

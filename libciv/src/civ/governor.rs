@@ -18,11 +18,15 @@ pub trait GovernorPromotion: std::fmt::Debug {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(bound(deserialize = "")))]
 pub struct Governor {
     pub id: GovernorId,
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
     pub def_name: &'static str,
     pub owner: CivId,
     pub assigned_city: Option<CityId>,
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str_vec"))]
     pub promotions: Vec<&'static str>,
     pub turns_to_establish: u32,
 }

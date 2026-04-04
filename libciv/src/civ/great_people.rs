@@ -125,6 +125,11 @@ pub struct GreatPersonDef {
 pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
     vec![
         // ── Great Generals ──────────────────────────────────────────────────
+        // ══════════════════════════════════════════════════════════════════════
+        // Ancient era
+        // ══════════════════════════════════════════════════════════════════════
+
+        // ── Great Generals ──────────────────────────────────────────────────
         GreatPersonDef {
             name: "Sun Tzu",
             person_type: GreatPersonType::General,
@@ -135,9 +140,9 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             },
         },
         GreatPersonDef {
-            name: "Boudica",
+            name: "Hannibal Barca",
             person_type: GreatPersonType::General,
-            era: "Classical",
+            era: "Ancient",
             retire_effect: RetireEffect::CombatStrengthBonus {
                 domain: UnitDomain::Land,
                 bonus: 5,
@@ -154,9 +159,9 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             },
         },
         GreatPersonDef {
-            name: "Artemisia",
+            name: "Nearchus",
             person_type: GreatPersonType::Admiral,
-            era: "Classical",
+            era: "Ancient",
             retire_effect: RetireEffect::CombatStrengthBonus {
                 domain: UnitDomain::Sea,
                 bonus: 5,
@@ -170,10 +175,10 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             retire_effect: RetireEffect::ProductionBurst { amount: 200 },
         },
         GreatPersonDef {
-            name: "Bi Sheng",
+            name: "Archimedes",
             person_type: GreatPersonType::Engineer,
-            era: "Classical",
-            retire_effect: RetireEffect::ProductionBurst { amount: 250 },
+            era: "Ancient",
+            retire_effect: RetireEffect::ProductionBurst { amount: 200 },
         },
         // ── Great Merchants ─────────────────────────────────────────────────
         GreatPersonDef {
@@ -185,20 +190,20 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
         GreatPersonDef {
             name: "Colaeus",
             person_type: GreatPersonType::Merchant,
-            era: "Classical",
-            retire_effect: RetireEffect::GoldGrant { amount: 250 },
+            era: "Ancient",
+            retire_effect: RetireEffect::GoldGrant { amount: 200 },
         },
         // ── Great Scientists ────────────────────────────────────────────────
         GreatPersonDef {
             name: "Euclid",
             person_type: GreatPersonType::Scientist,
             era: "Ancient",
-            retire_effect: RetireEffect::ProductionBurst { amount: 150 },
+            retire_effect: RetireEffect::ProductionBurst { amount: 200 },
         },
         GreatPersonDef {
-            name: "Hypatia",
+            name: "Pythagoras",
             person_type: GreatPersonType::Scientist,
-            era: "Classical",
+            era: "Ancient",
             retire_effect: RetireEffect::ProductionBurst { amount: 200 },
         },
         // ── Great Writers ───────────────────────────────────────────────────
@@ -209,10 +214,10 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             retire_effect: RetireEffect::GoldGrant { amount: 150 },
         },
         GreatPersonDef {
-            name: "Ovid",
+            name: "Sappho",
             person_type: GreatPersonType::Writer,
-            era: "Classical",
-            retire_effect: RetireEffect::GoldGrant { amount: 200 },
+            era: "Ancient",
+            retire_effect: RetireEffect::GoldGrant { amount: 150 },
         },
         // ── Great Artists ───────────────────────────────────────────────────
         GreatPersonDef {
@@ -222,10 +227,10 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             retire_effect: RetireEffect::GoldGrant { amount: 150 },
         },
         GreatPersonDef {
-            name: "Andrei Rublev",
+            name: "Praxiteles",
             person_type: GreatPersonType::Artist,
-            era: "Classical",
-            retire_effect: RetireEffect::GoldGrant { amount: 200 },
+            era: "Ancient",
+            retire_effect: RetireEffect::GoldGrant { amount: 150 },
         },
         // ── Great Musicians ─────────────────────────────────────────────────
         GreatPersonDef {
@@ -235,23 +240,175 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             retire_effect: RetireEffect::GoldGrant { amount: 150 },
         },
         GreatPersonDef {
-            name: "Pindar",
+            name: "Terpander",
             person_type: GreatPersonType::Musician,
-            era: "Classical",
-            retire_effect: RetireEffect::GoldGrant { amount: 200 },
+            era: "Ancient",
+            retire_effect: RetireEffect::GoldGrant { amount: 150 },
         },
         // ── Great Prophets ──────────────────────────────────────────────────
         GreatPersonDef {
             name: "Confucius",
             person_type: GreatPersonType::Prophet,
             era: "Ancient",
+            retire_effect: RetireEffect::GoldGrant { amount: 150 },
+        },
+        GreatPersonDef {
+            name: "Siddhartha Gautama",
+            person_type: GreatPersonType::Prophet,
+            era: "Ancient",
+            retire_effect: RetireEffect::GoldGrant { amount: 150 },
+        },
+
+        // ══════════════════════════════════════════════════════════════════════
+        // Classical era
+        // ══════════════════════════════════════════════════════════════════════
+
+        // ── Great Generals ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Boudica",
+            person_type: GreatPersonType::General,
+            era: "Classical",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 5,
+            },
+        },
+        GreatPersonDef {
+            name: "Scipio Africanus",
+            person_type: GreatPersonType::General,
+            era: "Classical",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 5,
+            },
+        },
+        // ── Great Admirals ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Artemisia",
+            person_type: GreatPersonType::Admiral,
+            era: "Classical",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Sea,
+                bonus: 5,
+            },
+        },
+        GreatPersonDef {
+            name: "Gaius Duilius",
+            person_type: GreatPersonType::Admiral,
+            era: "Classical",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Sea,
+                bonus: 5,
+            },
+        },
+        // ── Great Engineers ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Bi Sheng",
+            person_type: GreatPersonType::Engineer,
+            era: "Classical",
+            retire_effect: RetireEffect::ProductionBurst { amount: 300 },
+        },
+        GreatPersonDef {
+            name: "Hero of Alexandria",
+            person_type: GreatPersonType::Engineer,
+            era: "Classical",
+            retire_effect: RetireEffect::ProductionBurst { amount: 300 },
+        },
+        // ── Great Merchants ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Zhang Qian",
+            person_type: GreatPersonType::Merchant,
+            era: "Classical",
+            retire_effect: RetireEffect::GoldGrant { amount: 300 },
+        },
+        GreatPersonDef {
+            name: "Marcus Licinius Crassus",
+            person_type: GreatPersonType::Merchant,
+            era: "Classical",
+            retire_effect: RetireEffect::GoldGrant { amount: 300 },
+        },
+        // ── Great Scientists ────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Aryabhata",
+            person_type: GreatPersonType::Scientist,
+            era: "Classical",
+            retire_effect: RetireEffect::ProductionBurst { amount: 300 },
+        },
+        GreatPersonDef {
+            name: "Hypatia",
+            person_type: GreatPersonType::Scientist,
+            era: "Classical",
+            retire_effect: RetireEffect::ProductionBurst { amount: 300 },
+        },
+        GreatPersonDef {
+            name: "Aristotle",
+            person_type: GreatPersonType::Scientist,
+            era: "Classical",
+            retire_effect: RetireEffect::ProductionBurst { amount: 300 },
+        },
+        // ── Great Writers ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Bhasa",
+            person_type: GreatPersonType::Writer,
+            era: "Classical",
             retire_effect: RetireEffect::GoldGrant { amount: 200 },
         },
+        GreatPersonDef {
+            name: "Qu Yuan",
+            person_type: GreatPersonType::Writer,
+            era: "Classical",
+            retire_effect: RetireEffect::GoldGrant { amount: 200 },
+        },
+        GreatPersonDef {
+            name: "Ovid",
+            person_type: GreatPersonType::Writer,
+            era: "Classical",
+            retire_effect: RetireEffect::GoldGrant { amount: 200 },
+        },
+        GreatPersonDef {
+            name: "Virgil",
+            person_type: GreatPersonType::Writer,
+            era: "Classical",
+            retire_effect: RetireEffect::GoldGrant { amount: 200 },
+        },
+        // ── Great Artists ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Andrei Rublev",
+            person_type: GreatPersonType::Artist,
+            era: "Classical",
+            retire_effect: RetireEffect::GoldGrant { amount: 200 },
+        },
+        GreatPersonDef {
+            name: "Apelles",
+            person_type: GreatPersonType::Artist,
+            era: "Classical",
+            retire_effect: RetireEffect::GoldGrant { amount: 200 },
+        },
+        // ── Great Musicians ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Pindar",
+            person_type: GreatPersonType::Musician,
+            era: "Classical",
+            retire_effect: RetireEffect::GoldGrant { amount: 200 },
+        },
+        GreatPersonDef {
+            name: "Mesomedes",
+            person_type: GreatPersonType::Musician,
+            era: "Classical",
+            retire_effect: RetireEffect::GoldGrant { amount: 200 },
+        },
+        // ── Great Prophets ──────────────────────────────────────────────────
         GreatPersonDef {
             name: "Adi Shankara",
             person_type: GreatPersonType::Prophet,
             era: "Classical",
-            retire_effect: RetireEffect::GoldGrant { amount: 250 },
+            retire_effect: RetireEffect::GoldGrant { amount: 200 },
+        },
+        GreatPersonDef {
+            name: "Laozi",
+            person_type: GreatPersonType::Prophet,
+            era: "Classical",
+            retire_effect: RetireEffect::GoldGrant { amount: 200 },
         },
         // ══════════════════════════════════════════════════════════════════════
         // Medieval era
@@ -259,12 +416,30 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
 
         // ── Great Generals ──────────────────────────────────────────────────
         GreatPersonDef {
+            name: "Aethelflaed",
+            person_type: GreatPersonType::General,
+            era: "Medieval",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 5,
+            },
+        },
+        GreatPersonDef {
             name: "El Cid",
             person_type: GreatPersonType::General,
             era: "Medieval",
             retire_effect: RetireEffect::CombatStrengthBonus {
                 domain: UnitDomain::Land,
-                bonus: 7,
+                bonus: 5,
+            },
+        },
+        GreatPersonDef {
+            name: "Genghis Khan",
+            person_type: GreatPersonType::General,
+            era: "Medieval",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 5,
             },
         },
         GreatPersonDef {
@@ -273,7 +448,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Medieval",
             retire_effect: RetireEffect::CombatStrengthBonus {
                 domain: UnitDomain::Land,
-                bonus: 7,
+                bonus: 5,
             },
         },
         // ── Great Admirals ──────────────────────────────────────────────────
@@ -283,7 +458,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Medieval",
             retire_effect: RetireEffect::CombatStrengthBonus {
                 domain: UnitDomain::Sea,
-                bonus: 7,
+                bonus: 5,
             },
         },
         GreatPersonDef {
@@ -292,7 +467,16 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Medieval",
             retire_effect: RetireEffect::CombatStrengthBonus {
                 domain: UnitDomain::Sea,
-                bonus: 7,
+                bonus: 5,
+            },
+        },
+        GreatPersonDef {
+            name: "Rajendra Chola",
+            person_type: GreatPersonType::Admiral,
+            era: "Medieval",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Sea,
+                bonus: 5,
             },
         },
         // ── Great Engineers ─────────────────────────────────────────────────
@@ -300,46 +484,76 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             name: "Isidore of Miletus",
             person_type: GreatPersonType::Engineer,
             era: "Medieval",
-            retire_effect: RetireEffect::ProductionBurst { amount: 300 },
+            retire_effect: RetireEffect::ProductionBurst { amount: 400 },
+        },
+        GreatPersonDef {
+            name: "James of St George",
+            person_type: GreatPersonType::Engineer,
+            era: "Medieval",
+            retire_effect: RetireEffect::ProductionBurst { amount: 400 },
         },
         GreatPersonDef {
             name: "Filippo Brunelleschi",
             person_type: GreatPersonType::Engineer,
             era: "Medieval",
-            retire_effect: RetireEffect::ProductionBurst { amount: 350 },
+            retire_effect: RetireEffect::ProductionBurst { amount: 400 },
         },
         // ── Great Merchants ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Piero de Bardi",
+            person_type: GreatPersonType::Merchant,
+            era: "Medieval",
+            retire_effect: RetireEffect::GoldGrant { amount: 400 },
+        },
+        GreatPersonDef {
+            name: "Irene of Athens",
+            person_type: GreatPersonType::Merchant,
+            era: "Medieval",
+            retire_effect: RetireEffect::GoldGrant { amount: 400 },
+        },
         GreatPersonDef {
             name: "Ibn Fadlan",
             person_type: GreatPersonType::Merchant,
             era: "Medieval",
-            retire_effect: RetireEffect::GoldGrant { amount: 300 },
+            retire_effect: RetireEffect::GoldGrant { amount: 400 },
         },
         GreatPersonDef {
             name: "Jakob Fugger",
             person_type: GreatPersonType::Merchant,
             era: "Medieval",
-            retire_effect: RetireEffect::GoldGrant { amount: 350 },
+            retire_effect: RetireEffect::GoldGrant { amount: 400 },
         },
         // ── Great Scientists ────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Abu Al-Qasim Al-Zahrawi",
+            person_type: GreatPersonType::Scientist,
+            era: "Medieval",
+            retire_effect: RetireEffect::ProductionBurst { amount: 400 },
+        },
         GreatPersonDef {
             name: "Al-Khwarizmi",
             person_type: GreatPersonType::Scientist,
             era: "Medieval",
-            retire_effect: RetireEffect::ProductionBurst { amount: 250 },
+            retire_effect: RetireEffect::ProductionBurst { amount: 400 },
         },
         GreatPersonDef {
             name: "Omar Khayyam",
             person_type: GreatPersonType::Scientist,
             era: "Medieval",
-            retire_effect: RetireEffect::ProductionBurst { amount: 300 },
+            retire_effect: RetireEffect::ProductionBurst { amount: 400 },
         },
         // ── Great Writers ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Li Bai",
+            person_type: GreatPersonType::Writer,
+            era: "Medieval",
+            retire_effect: RetireEffect::GoldGrant { amount: 300 },
+        },
         GreatPersonDef {
             name: "Murasaki Shikibu",
             person_type: GreatPersonType::Writer,
             era: "Medieval",
-            retire_effect: RetireEffect::GoldGrant { amount: 250 },
+            retire_effect: RetireEffect::GoldGrant { amount: 300 },
         },
         GreatPersonDef {
             name: "Geoffrey Chaucer",
@@ -352,7 +566,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             name: "Giotto",
             person_type: GreatPersonType::Artist,
             era: "Medieval",
-            retire_effect: RetireEffect::GoldGrant { amount: 250 },
+            retire_effect: RetireEffect::GoldGrant { amount: 300 },
         },
         GreatPersonDef {
             name: "Donatello",
@@ -365,7 +579,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             name: "Hildegard of Bingen",
             person_type: GreatPersonType::Musician,
             era: "Medieval",
-            retire_effect: RetireEffect::GoldGrant { amount: 250 },
+            retire_effect: RetireEffect::GoldGrant { amount: 300 },
         },
         GreatPersonDef {
             name: "Guillaume de Machaut",
@@ -384,7 +598,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             name: "Francis of Assisi",
             person_type: GreatPersonType::Prophet,
             era: "Medieval",
-            retire_effect: RetireEffect::GoldGrant { amount: 350 },
+            retire_effect: RetireEffect::GoldGrant { amount: 300 },
         },
 
         // ══════════════════════════════════════════════════════════════════════
@@ -398,7 +612,25 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Renaissance",
             retire_effect: RetireEffect::CombatStrengthBonus {
                 domain: UnitDomain::Land,
-                bonus: 8,
+                bonus: 5,
+            },
+        },
+        GreatPersonDef {
+            name: "Joan of Arc",
+            person_type: GreatPersonType::General,
+            era: "Renaissance",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 5,
+            },
+        },
+        GreatPersonDef {
+            name: "Ana Nzinga",
+            person_type: GreatPersonType::General,
+            era: "Renaissance",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 5,
             },
         },
         GreatPersonDef {
@@ -407,7 +639,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Renaissance",
             retire_effect: RetireEffect::CombatStrengthBonus {
                 domain: UnitDomain::Land,
-                bonus: 8,
+                bonus: 5,
             },
         },
         // ── Great Admirals ──────────────────────────────────────────────────
@@ -417,7 +649,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Renaissance",
             retire_effect: RetireEffect::CombatStrengthBonus {
                 domain: UnitDomain::Sea,
-                bonus: 8,
+                bonus: 5,
             },
         },
         GreatPersonDef {
@@ -426,7 +658,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Renaissance",
             retire_effect: RetireEffect::CombatStrengthBonus {
                 domain: UnitDomain::Sea,
-                bonus: 8,
+                bonus: 5,
             },
         },
         // ── Great Engineers ─────────────────────────────────────────────────
@@ -434,46 +666,70 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             name: "Leonardo da Vinci",
             person_type: GreatPersonType::Engineer,
             era: "Renaissance",
-            retire_effect: RetireEffect::ProductionBurst { amount: 400 },
+            retire_effect: RetireEffect::ProductionBurst { amount: 500 },
         },
         GreatPersonDef {
             name: "Mimar Sinan",
             person_type: GreatPersonType::Engineer,
             era: "Renaissance",
-            retire_effect: RetireEffect::ProductionBurst { amount: 450 },
+            retire_effect: RetireEffect::ProductionBurst { amount: 500 },
         },
         // ── Great Merchants ─────────────────────────────────────────────────
         GreatPersonDef {
             name: "Giovanni de Medici",
             person_type: GreatPersonType::Merchant,
             era: "Renaissance",
-            retire_effect: RetireEffect::GoldGrant { amount: 400 },
+            retire_effect: RetireEffect::GoldGrant { amount: 500 },
         },
         GreatPersonDef {
             name: "Raja Todar Mal",
             person_type: GreatPersonType::Merchant,
             era: "Renaissance",
-            retire_effect: RetireEffect::GoldGrant { amount: 450 },
+            retire_effect: RetireEffect::GoldGrant { amount: 500 },
         },
         // ── Great Scientists ────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Emilie du Chatelet",
+            person_type: GreatPersonType::Scientist,
+            era: "Renaissance",
+            retire_effect: RetireEffect::ProductionBurst { amount: 500 },
+        },
         GreatPersonDef {
             name: "Galileo Galilei",
             person_type: GreatPersonType::Scientist,
             era: "Renaissance",
-            retire_effect: RetireEffect::ProductionBurst { amount: 350 },
+            retire_effect: RetireEffect::ProductionBurst { amount: 500 },
         },
         GreatPersonDef {
             name: "Isaac Newton",
             person_type: GreatPersonType::Scientist,
             era: "Renaissance",
-            retire_effect: RetireEffect::ProductionBurst { amount: 400 },
+            retire_effect: RetireEffect::ProductionBurst { amount: 500 },
         },
         // ── Great Writers ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Margaret Cavendish",
+            person_type: GreatPersonType::Writer,
+            era: "Renaissance",
+            retire_effect: RetireEffect::GoldGrant { amount: 400 },
+        },
+        GreatPersonDef {
+            name: "Niccolo Machiavelli",
+            person_type: GreatPersonType::Writer,
+            era: "Renaissance",
+            retire_effect: RetireEffect::GoldGrant { amount: 400 },
+        },
+        GreatPersonDef {
+            name: "Marie-Catherine d'Aulnoy",
+            person_type: GreatPersonType::Writer,
+            era: "Renaissance",
+            retire_effect: RetireEffect::GoldGrant { amount: 400 },
+        },
         GreatPersonDef {
             name: "William Shakespeare",
             person_type: GreatPersonType::Writer,
             era: "Renaissance",
-            retire_effect: RetireEffect::GoldGrant { amount: 350 },
+            retire_effect: RetireEffect::GoldGrant { amount: 400 },
         },
         GreatPersonDef {
             name: "Miguel de Cervantes",
@@ -483,10 +739,16 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
         },
         // ── Great Artists ───────────────────────────────────────────────────
         GreatPersonDef {
+            name: "Hieronymus Bosch",
+            person_type: GreatPersonType::Artist,
+            era: "Renaissance",
+            retire_effect: RetireEffect::GoldGrant { amount: 400 },
+        },
+        GreatPersonDef {
             name: "Michelangelo",
             person_type: GreatPersonType::Artist,
             era: "Renaissance",
-            retire_effect: RetireEffect::GoldGrant { amount: 350 },
+            retire_effect: RetireEffect::GoldGrant { amount: 400 },
         },
         GreatPersonDef {
             name: "Albrecht Durer",
@@ -499,7 +761,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             name: "Giovanni Pierluigi da Palestrina",
             person_type: GreatPersonType::Musician,
             era: "Renaissance",
-            retire_effect: RetireEffect::GoldGrant { amount: 350 },
+            retire_effect: RetireEffect::GoldGrant { amount: 400 },
         },
         GreatPersonDef {
             name: "Antonio Vivaldi",
@@ -518,7 +780,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             name: "Guru Nanak",
             person_type: GreatPersonType::Prophet,
             era: "Renaissance",
-            retire_effect: RetireEffect::GoldGrant { amount: 450 },
+            retire_effect: RetireEffect::GoldGrant { amount: 400 },
         },
 
         // ══════════════════════════════════════════════════════════════════════
@@ -532,7 +794,16 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Industrial",
             retire_effect: RetireEffect::CombatStrengthBonus {
                 domain: UnitDomain::Land,
-                bonus: 10,
+                bonus: 5,
+            },
+        },
+        GreatPersonDef {
+            name: "Rani Lakshmibai",
+            person_type: GreatPersonType::General,
+            era: "Industrial",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 5,
             },
         },
         GreatPersonDef {
@@ -541,7 +812,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Industrial",
             retire_effect: RetireEffect::CombatStrengthBonus {
                 domain: UnitDomain::Land,
-                bonus: 10,
+                bonus: 5,
             },
         },
         // ── Great Admirals ──────────────────────────────────────────────────
@@ -551,7 +822,16 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Industrial",
             retire_effect: RetireEffect::CombatStrengthBonus {
                 domain: UnitDomain::Sea,
-                bonus: 10,
+                bonus: 5,
+            },
+        },
+        GreatPersonDef {
+            name: "Ching Shih",
+            person_type: GreatPersonType::Admiral,
+            era: "Industrial",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Sea,
+                bonus: 5,
             },
         },
         GreatPersonDef {
@@ -560,49 +840,85 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Industrial",
             retire_effect: RetireEffect::CombatStrengthBonus {
                 domain: UnitDomain::Sea,
-                bonus: 10,
+                bonus: 5,
             },
         },
         // ── Great Engineers ─────────────────────────────────────────────────
         GreatPersonDef {
+            name: "Ada Lovelace",
+            person_type: GreatPersonType::Engineer,
+            era: "Industrial",
+            retire_effect: RetireEffect::ProductionBurst { amount: 600 },
+        },
+        GreatPersonDef {
             name: "James Watt",
             person_type: GreatPersonType::Engineer,
             era: "Industrial",
-            retire_effect: RetireEffect::ProductionBurst { amount: 500 },
+            retire_effect: RetireEffect::ProductionBurst { amount: 600 },
         },
         GreatPersonDef {
             name: "Nikola Tesla",
             person_type: GreatPersonType::Engineer,
             era: "Industrial",
-            retire_effect: RetireEffect::ProductionBurst { amount: 550 },
+            retire_effect: RetireEffect::ProductionBurst { amount: 600 },
         },
         // ── Great Merchants ─────────────────────────────────────────────────
         GreatPersonDef {
             name: "Adam Smith",
             person_type: GreatPersonType::Merchant,
             era: "Industrial",
-            retire_effect: RetireEffect::GoldGrant { amount: 500 },
+            retire_effect: RetireEffect::GoldGrant { amount: 600 },
+        },
+        GreatPersonDef {
+            name: "John Spilsbury",
+            person_type: GreatPersonType::Merchant,
+            era: "Industrial",
+            retire_effect: RetireEffect::GoldGrant { amount: 600 },
         },
         GreatPersonDef {
             name: "John Jacob Astor",
             person_type: GreatPersonType::Merchant,
             era: "Industrial",
-            retire_effect: RetireEffect::GoldGrant { amount: 550 },
+            retire_effect: RetireEffect::GoldGrant { amount: 600 },
         },
         // ── Great Scientists ────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "James Young",
+            person_type: GreatPersonType::Scientist,
+            era: "Industrial",
+            retire_effect: RetireEffect::ProductionBurst { amount: 600 },
+        },
         GreatPersonDef {
             name: "Charles Darwin",
             person_type: GreatPersonType::Scientist,
             era: "Industrial",
-            retire_effect: RetireEffect::ProductionBurst { amount: 500 },
+            retire_effect: RetireEffect::ProductionBurst { amount: 600 },
         },
         GreatPersonDef {
             name: "Dmitri Mendeleev",
             person_type: GreatPersonType::Scientist,
             era: "Industrial",
-            retire_effect: RetireEffect::ProductionBurst { amount: 550 },
+            retire_effect: RetireEffect::ProductionBurst { amount: 600 },
         },
         // ── Great Writers ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Alexander Pushkin",
+            person_type: GreatPersonType::Writer,
+            era: "Industrial",
+            retire_effect: RetireEffect::GoldGrant { amount: 500 },
+        },
+        GreatPersonDef {
+            name: "Edgar Allan Poe",
+            person_type: GreatPersonType::Writer,
+            era: "Industrial",
+            retire_effect: RetireEffect::GoldGrant { amount: 500 },
+        },
+        GreatPersonDef {
+            name: "Mary Shelley",
+            person_type: GreatPersonType::Writer,
+            era: "Industrial",
+            retire_effect: RetireEffect::GoldGrant { amount: 500 },
+        },
         GreatPersonDef {
             name: "Jane Austen",
             person_type: GreatPersonType::Writer,
@@ -613,9 +929,27 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             name: "Mark Twain",
             person_type: GreatPersonType::Writer,
             era: "Industrial",
-            retire_effect: RetireEffect::GoldGrant { amount: 550 },
+            retire_effect: RetireEffect::GoldGrant { amount: 500 },
         },
         // ── Great Artists ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Qiu Ying",
+            person_type: GreatPersonType::Artist,
+            era: "Industrial",
+            retire_effect: RetireEffect::GoldGrant { amount: 500 },
+        },
+        GreatPersonDef {
+            name: "El Greco",
+            person_type: GreatPersonType::Artist,
+            era: "Industrial",
+            retire_effect: RetireEffect::GoldGrant { amount: 500 },
+        },
+        GreatPersonDef {
+            name: "Rembrandt van Rijn",
+            person_type: GreatPersonType::Artist,
+            era: "Industrial",
+            retire_effect: RetireEffect::GoldGrant { amount: 500 },
+        },
         GreatPersonDef {
             name: "Claude Monet",
             person_type: GreatPersonType::Artist,
@@ -626,7 +960,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             name: "Vincent van Gogh",
             person_type: GreatPersonType::Artist,
             era: "Industrial",
-            retire_effect: RetireEffect::GoldGrant { amount: 550 },
+            retire_effect: RetireEffect::GoldGrant { amount: 500 },
         },
         // ── Great Musicians ─────────────────────────────────────────────────
         GreatPersonDef {
@@ -639,7 +973,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             name: "Johann Sebastian Bach",
             person_type: GreatPersonType::Musician,
             era: "Industrial",
-            retire_effect: RetireEffect::GoldGrant { amount: 550 },
+            retire_effect: RetireEffect::GoldGrant { amount: 500 },
         },
         // ── Great Prophets ──────────────────────────────────────────────────
         GreatPersonDef {
@@ -652,7 +986,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             name: "Hong Xiuquan",
             person_type: GreatPersonType::Prophet,
             era: "Industrial",
-            retire_effect: RetireEffect::GoldGrant { amount: 550 },
+            retire_effect: RetireEffect::GoldGrant { amount: 500 },
         },
 
         // ══════════════════════════════════════════════════════════════════════
@@ -666,7 +1000,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Modern",
             retire_effect: RetireEffect::CombatStrengthBonus {
                 domain: UnitDomain::Land,
-                bonus: 12,
+                bonus: 5,
             },
         },
         GreatPersonDef {
@@ -675,7 +1009,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Modern",
             retire_effect: RetireEffect::CombatStrengthBonus {
                 domain: UnitDomain::Land,
-                bonus: 12,
+                bonus: 5,
             },
         },
         // ── Great Admirals ──────────────────────────────────────────────────
@@ -685,7 +1019,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Modern",
             retire_effect: RetireEffect::CombatStrengthBonus {
                 domain: UnitDomain::Sea,
-                bonus: 12,
+                bonus: 5,
             },
         },
         GreatPersonDef {
@@ -694,7 +1028,16 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Modern",
             retire_effect: RetireEffect::CombatStrengthBonus {
                 domain: UnitDomain::Sea,
-                bonus: 12,
+                bonus: 5,
+            },
+        },
+        GreatPersonDef {
+            name: "Franz von Hipper",
+            person_type: GreatPersonType::Admiral,
+            era: "Modern",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Sea,
+                bonus: 5,
             },
         },
         // ── Great Engineers ─────────────────────────────────────────────────
@@ -702,39 +1045,51 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             name: "Robert Goddard",
             person_type: GreatPersonType::Engineer,
             era: "Modern",
-            retire_effect: RetireEffect::ProductionBurst { amount: 600 },
+            retire_effect: RetireEffect::ProductionBurst { amount: 800 },
         },
         GreatPersonDef {
             name: "Wernher von Braun",
             person_type: GreatPersonType::Engineer,
             era: "Modern",
-            retire_effect: RetireEffect::ProductionBurst { amount: 650 },
+            retire_effect: RetireEffect::ProductionBurst { amount: 800 },
         },
         // ── Great Merchants ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Mary Katherine Goddard",
+            person_type: GreatPersonType::Merchant,
+            era: "Modern",
+            retire_effect: RetireEffect::GoldGrant { amount: 800 },
+        },
         GreatPersonDef {
             name: "Helena Rubinstein",
             person_type: GreatPersonType::Merchant,
             era: "Modern",
-            retire_effect: RetireEffect::GoldGrant { amount: 600 },
+            retire_effect: RetireEffect::GoldGrant { amount: 800 },
         },
         GreatPersonDef {
             name: "Melitta Bentz",
             person_type: GreatPersonType::Merchant,
             era: "Modern",
-            retire_effect: RetireEffect::GoldGrant { amount: 650 },
+            retire_effect: RetireEffect::GoldGrant { amount: 800 },
         },
         // ── Great Scientists ────────────────────────────────────────────────
         GreatPersonDef {
             name: "Albert Einstein",
             person_type: GreatPersonType::Scientist,
             era: "Modern",
-            retire_effect: RetireEffect::ProductionBurst { amount: 600 },
+            retire_effect: RetireEffect::ProductionBurst { amount: 800 },
+        },
+        GreatPersonDef {
+            name: "Alfred Nobel",
+            person_type: GreatPersonType::Scientist,
+            era: "Modern",
+            retire_effect: RetireEffect::ProductionBurst { amount: 800 },
         },
         GreatPersonDef {
             name: "Marie Curie",
             person_type: GreatPersonType::Scientist,
             era: "Modern",
-            retire_effect: RetireEffect::ProductionBurst { amount: 650 },
+            retire_effect: RetireEffect::ProductionBurst { amount: 800 },
         },
         // ── Great Writers ───────────────────────────────────────────────────
         GreatPersonDef {
@@ -747,7 +1102,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             name: "Karel Čapek",
             person_type: GreatPersonType::Writer,
             era: "Modern",
-            retire_effect: RetireEffect::GoldGrant { amount: 650 },
+            retire_effect: RetireEffect::GoldGrant { amount: 600 },
         },
         // ── Great Artists ───────────────────────────────────────────────────
         GreatPersonDef {
@@ -760,7 +1115,7 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             name: "Frida Kahlo",
             person_type: GreatPersonType::Artist,
             era: "Modern",
-            retire_effect: RetireEffect::GoldGrant { amount: 650 },
+            retire_effect: RetireEffect::GoldGrant { amount: 600 },
         },
         // ── Great Musicians ─────────────────────────────────────────────────
         GreatPersonDef {
@@ -773,7 +1128,20 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             name: "Billie Holiday",
             person_type: GreatPersonType::Musician,
             era: "Modern",
-            retire_effect: RetireEffect::GoldGrant { amount: 650 },
+            retire_effect: RetireEffect::GoldGrant { amount: 600 },
+        },
+        // ── Great Prophets ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Mary Baker Eddy",
+            person_type: GreatPersonType::Prophet,
+            era: "Modern",
+            retire_effect: RetireEffect::GoldGrant { amount: 600 },
+        },
+        GreatPersonDef {
+            name: "Mirza Ghulam Ahmad",
+            person_type: GreatPersonType::Prophet,
+            era: "Modern",
+            retire_effect: RetireEffect::GoldGrant { amount: 600 },
         },
 
         // ══════════════════════════════════════════════════════════════════════
@@ -832,6 +1200,12 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             retire_effect: RetireEffect::ProductionBurst { amount: 750 },
         },
         // ── Great Merchants ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Levi Strauss",
+            person_type: GreatPersonType::Merchant,
+            era: "Atomic",
+            retire_effect: RetireEffect::GoldGrant { amount: 700 },
+        },
         GreatPersonDef {
             name: "Estée Lauder",
             person_type: GreatPersonType::Merchant,
@@ -895,6 +1269,19 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             person_type: GreatPersonType::Musician,
             era: "Atomic",
             retire_effect: RetireEffect::GoldGrant { amount: 750 },
+        },
+        // ── Great Prophets ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Martin Luther King Jr.",
+            person_type: GreatPersonType::Prophet,
+            era: "Atomic",
+            retire_effect: RetireEffect::GoldGrant { amount: 800 },
+        },
+        GreatPersonDef {
+            name: "Desmond Tutu",
+            person_type: GreatPersonType::Prophet,
+            era: "Atomic",
+            retire_effect: RetireEffect::GoldGrant { amount: 800 },
         },
 
         // ══════════════════════════════════════════════════════════════════════
@@ -1017,19 +1404,35 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Information",
             retire_effect: RetireEffect::GoldGrant { amount: 850 },
         },
+        // ── Great Prophets ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Thich Nhat Hanh",
+            person_type: GreatPersonType::Prophet,
+            era: "Information",
+            retire_effect: RetireEffect::GoldGrant { amount: 1000 },
+        },
+        GreatPersonDef {
+            name: "Dalai Lama XIV",
+            person_type: GreatPersonType::Prophet,
+            era: "Information",
+            retire_effect: RetireEffect::GoldGrant { amount: 1000 },
+        },
     ]
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(bound(deserialize = "")))]
 pub struct GreatPerson {
     pub id: GreatPersonId,
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
     pub name: &'static str,
     pub person_type: GreatPersonType,
-    // TODO(PHASE3-8.6): Change era from &'static str to EraId (typed ID); update
-    //   GreatPerson::new() signature. Currently a string risks silent mismatches.
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
     pub era: &'static str,
     pub owner: Option<CivId>,
     pub coord: Option<HexCoord>,
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str_vec"))]
     pub ability_names: Vec<&'static str>,
     pub is_retired: bool,
 }

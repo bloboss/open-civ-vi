@@ -105,6 +105,7 @@ pub struct UniqueBuildingDef {
     pub yields: YieldBundle,
     pub requires_district: Option<&'static str>,
     pub extra_housing: i32,
+    pub extra_amenities: i32,
     pub abilities: Vec<UniqueBuildingAbility>,
 }
 

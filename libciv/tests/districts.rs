@@ -251,10 +251,11 @@ fn harbor_on_coast_succeeds() {
         t.owner = Some(s.rome_id);
     }
 
-    let sailing_id = s.state.tech_refs.sailing;
+    // Harbor requires Celestial Navigation (Classical era tech).
+    let cn_id = s.state.tech_refs.celestial_navigation;
     s.state.civilizations.iter_mut()
         .find(|c| c.id == s.rome_id).unwrap()
-        .researched_techs.push(sailing_id);
+        .researched_techs.push(cn_id);
 
     let rules = DefaultRulesEngine;
     let result = rules.place_district(&mut s.state, s.rome_city, BuiltinDistrict::Harbor, target);

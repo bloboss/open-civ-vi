@@ -40,7 +40,7 @@ cargo run -p open4x -- play
 ```
 libhexgrid    — pure hex geometry, no game knowledge
 libciv        — all game state and rules (world, civ, rules, game, ai modules)
-civsim        — CLI binary (clap: `new` and `run` subcommands)
+open4x-cli    — CLI binary (clap: `new-game`, `action`, `end-turn`, `view`, `status`, `list`)
 open4x-server — merged server + frontend (feature flags: `ssr` for Axum server, `csr` for Leptos/WASM)
 ```
 
@@ -83,31 +83,36 @@ libciv/tests/
 | `libciv/src/world/edge.rs` | `EdgeFeatureDef` trait + `WorldEdge` (River/Canal/MountainPass); stores `(HexCoord, HexDir)` |
 | `libciv/src/world/improvement.rs` | `BuiltinImprovement` (Farm/Mine/LumberMill/TradingPost/Fort/Airstrip/MissileSilo) + `ImprovementRequirements` |
 | `libciv/src/world/road.rs` | `RoadDef` trait + `BuiltinRoad` (Ancient/Medieval/Industrial/Railroad); `as_def()` wrapper |
-| `libciv/src/world/wonder.rs` | `NaturalWonder` trait + `BuiltinNaturalWonder` (5 wonders); `as_def()` wrapper |
+| `libciv/src/world/wonder.rs` | `NaturalWonder` trait + `BuiltinNaturalWonder` (22 wonders); `as_def()` wrapper |
 | `libciv/src/rules/modifier.rs` | `Modifier`, `EffectType`, `TargetSelector`, `StackingRule`, `ModifierSource`, `resolve_modifiers()` |
 | `libciv/src/rules/effect.rs` | `OneShotEffect` enum + `CascadeClass`; replaces old `Unlock` enum |
 | `libciv/src/rules/tech.rs` | `TechNode`/`CivicNode`, `TechTree`/`CivicTree`; nodes carry `Vec<OneShotEffect>` |
 | `libciv/src/rules/tech_tree_def.rs` | Full tech tree definition (Pottery, Mining, ...) with effects and eureka data |
 | `libciv/src/rules/civic_tree_def.rs` | Full civic tree definition with inspiration data |
 | `libciv/src/rules/policy.rs` | `Policy`, `Government`, `PolicySlots` |
-| `libciv/src/rules/victory.rs` | `VictoryCondition` trait, `VictoryProgress`, `ScoreVictory`, `CultureVictory`, `DominationVictory` |
-| `libciv/src/civ/civilization.rs` | `Civilization` (research_queue VecDeque, unlocked_* tracking, fog-of-war sets), `TechProgress`, `CivicProgress`, `Leader`, `LeaderAbility`/`Agenda` traits |
+| `libciv/src/rules/victory.rs` | `BuiltinVictoryCondition` enum (Score, Culture, Domination, Science, Diplomatic, Religious) |
+| `libciv/src/civ/civilization.rs` | `Civilization`, `TechProgress`, `CivicProgress`, `Leader` (with `BuiltinAgenda` enum, no trait objects) |
 | `libciv/src/civ/city.rs` | `City`, `CityKind`, `CityOwnership`, `WallLevel`, `ProductionItem`; `worked_tiles` + `locked_tiles` |
 | `libciv/src/civ/city_state.rs` | `CityStateType`, `CityStateBonus` trait, `CityStateData` |
 | `libciv/src/civ/diplomacy.rs` | `DiplomaticRelation`, `DiplomaticStatus`, `GrievanceRecord`, `GrievanceVisibility` |
 | `libciv/src/civ/district.rs` | `DistrictDef`/`BuildingDef` traits, `AdjacencyContext`, `PlacedDistrict` |
-| `libciv/src/civ/religion.rs` | `Religion`, `Belief` trait, `BeliefContext` (no spread/conversion logic) |
+| `libciv/src/civ/religion.rs` | `Religion`, `Belief` trait, `BeliefContext`, spread/conversion, theological combat |
 | `libciv/src/civ/trade.rs` | `TradeRoute`; `is_international(&[City])` compares city owners; `compute_route_yields(bool)` returns gold yields |
 | `libciv/src/game/state.rs` | `GameState` (single source of truth), `IdGenerator`, `UnitTypeDef`, `BuildingDef` registries, `effect_queue` |
 | `libciv/src/game/board.rs` | `WorldBoard`: `HexBoard` impl, Dijkstra pathfinding (road override active), LOS, edge canonicalization |
-| `libciv/src/game/rules.rs` | `RulesEngine` trait (14 methods) + `DefaultRulesEngine` |
-| `libciv/src/game/diff.rs` | `StateDelta` enum (35+ variants), `GameStateDiff`, `AttackType` |
-| `libciv/src/game/turn.rs` | `TurnEngine` (stub: calls `advance_turn`, discards diff) |
+| `libciv/src/game/rules/mod.rs` | `RulesEngine` trait (38+ methods) + `DefaultRulesEngine` |
+| `libciv/src/game/diff.rs` | `StateDelta` enum (70+ variants), `GameStateDiff`, `AttackType` |
+| `libciv/src/game/turn.rs` | `TurnEngine`: calls `advance_turn`, returns `GameStateDiff` |
+| `libciv/src/game/apply_delta.rs` | `apply_delta()` / `apply_diff()` for state reconstruction |
+| `libciv/src/game/save_load.rs` | `save_game()` / `load_game()` (serde feature-gated) |
+| `libciv/src/game/replay.rs` | `ReplayRecorder` / `ReplayViewer` (serde feature-gated) |
+| `libciv/src/game/production_helpers.rs` | `available_unit_defs()`, `resolve_unit_replacement()`, tech gating |
+| `libciv/src/rl/env.rs` | `CivEnv` gym-like RL training harness |
 | `libciv/src/game/visibility.rs` | `recalculate_visibility()` free function |
 | `libciv/src/ai/deterministic.rs` | `Agent` trait + `HeuristicAgent` (exploration/production heuristic) |
 | `libciv/tests/common/` | Shared `Scenario` setup used by all integration tests |
 | `libciv/tests/gameplay.rs` | End-to-end integration tests |
-| `civsim/src/main.rs` | CLI entry point with interactive `play` loop |
+| `open4x-cli/src/main.rs` | CLI entry point (non-REPL + legacy interactive) |
 
 ### Key design decisions
 
@@ -117,7 +122,7 @@ libciv/tests/
 - **Semantic diffs** -- all `RulesEngine` operations return `GameStateDiff` (a `Vec<StateDelta>`) to support replay and RL observation.
 - **Edge canonicalization** -- edges stored as `(HexCoord, HexDir)` with forward-half canonical form (`{E, NE, NW}`). Backward-half lookups (`{W, SW, SE}`) normalize to the adjacent tile with the opposite direction. Use `WorldBoard::set_edge()` for automatic canonicalization.
 - **Movement costs scaled by 100** -- `ONE=100`, `TWO=200`, `THREE=300`. Road cost overrides tile cost in Dijkstra when `tile.road.is_some()`.
-- **`Box<dyn Trait>` prevents Clone** -- `Leader` and `Civilization` contain trait objects and do not derive `Clone`. Document this on any new structs with `Box<dyn>` fields.
+- **Trait objects replaced with enums** -- `VictoryCondition` → `BuiltinVictoryCondition` enum, `Agenda` → `BuiltinAgenda` enum. `Leader.abilities` was removed (was always empty). This enables serde serialization.
 - **`&'static str` for built-in names** -- compile-time game content never uses `String`. Only external/user data at system boundaries uses `String`.
 - **Yields/amenities/housing never stored on City** -- computed via `RulesEngine` queries so modifiers apply correctly. The `yields` field on `City` is a cache only.
 - **CityState as City** -- city-states are stored as `City` with `kind = CityKind::CityState(CityStateData)`. Access via `GameState::city_state_by_civ(CivId)`.
@@ -160,7 +165,18 @@ The [`agents/`](./agents/) directory contains reusable skill guides for common d
 | [add-game-content](./agents/add-game-content.md) | Adding civilizations, units, buildings, improvements |
 | [implement-roadmap-feature](./agents/implement-roadmap-feature.md) | Picking up a feature from the implementation roadmap |
 | [advance-turn-phase](./agents/advance-turn-phase.md) | Adding per-turn processing to `advance_turn` |
+| [make-todo](./agents/make-todo.md) | Adding a tracked TODO (code comment + `todo.md` entry) |
+| [modify-todo](./agents/modify-todo.md) | Updating an existing TODO (description, priority, location) |
+| [delete-todo](./agents/delete-todo.md) | Removing a completed or obsolete TODO |
+
+## TODO Management
+
+Code TODOs are tracked in two places simultaneously:
+1. **Code comment**: `// TODO(<TAG>): description` at the relevant source location
+2. **Global list**: `book/src/roadmap/todo.md` with file:line, description, and priority
+
+Always use the `make-todo`, `modify-todo`, and `delete-todo` skills to keep both in sync. Never add ad-hoc TODO comments without a corresponding `todo.md` entry.
 
 ## Documentation
 
-Full documentation including architecture details, all game systems, engine design, and multiplayer protocol is in the [mdBook](./book/). The [Implementation Roadmap](./book/src/roadmap/status.md) tracks current status and planned work.
+Full documentation including architecture details, all game systems, engine design, and multiplayer protocol is in the [mdBook](./book/). The [Implementation Status](./book/src/roadmap/status.md) shows current feature coverage. `cargo doc -p libciv` generates API documentation.

@@ -42,6 +42,7 @@ impl Era {
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum EraAge {
     Dark,
     #[default]
@@ -91,6 +92,7 @@ pub enum HistoricMomentKind {
     DistrictBuilt,
     BuildingCompleted,
     TradeRouteEstablished,
+    NaturalWonderDiscovered,
 }
 
 /// Static definition of a historic moment. Const data in `historic_moments.rs`.
@@ -106,8 +108,11 @@ pub struct HistoricMomentDef {
 
 /// A recorded historic moment for a specific civilization.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(bound(deserialize = "")))]
 pub struct HistoricMoment {
     pub civ: CivId,
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
     pub moment_name: &'static str,
     pub era_score: u32,
     pub turn: u32,

@@ -30,6 +30,35 @@ pub trait Agenda: std::fmt::Debug + Send + Sync {
     fn attitude(&self, toward: CivId) -> i32;
 }
 
+/// Concrete agenda enum that replaces `Box<dyn Agenda>` for serialization.
+/// Currently only a single variant exists; extend as specific leader agendas are added.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum BuiltinAgenda {
+    /// No-op / neutral agenda — returns 0 attitude toward everyone.
+    Default,
+}
+
+impl BuiltinAgenda {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Default => "Neutral",
+        }
+    }
+
+    pub fn description(&self) -> &'static str {
+        match self {
+            Self::Default => "No preferences.",
+        }
+    }
+
+    pub fn attitude(&self, _toward: CivId) -> i32 {
+        match self {
+            Self::Default => 0,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TechProgress {
@@ -46,17 +75,22 @@ pub struct CivicProgress {
     pub inspired: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(bound(deserialize = "")))]
 pub struct Leader {
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
     pub name: &'static str,
     pub civ_id: CivId,
-    pub abilities: Vec<Box<dyn LeaderAbility>>,
-    pub agenda: Box<dyn Agenda>,
+    pub agenda: BuiltinAgenda,
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(bound(deserialize = "")))]
 pub struct Civilization {
     pub id: CivId,
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
     pub name: &'static str,
     /// Which built-in civilization this is, for gating unique components.
     pub civ_identity: Option<super::civ_identity::BuiltinCiv>,
@@ -64,6 +98,7 @@ pub struct Civilization {
     pub leader_identity: Option<super::civ_identity::BuiltinLeader>,
     /// Used for flavor text in unique unit unlock descriptions
     /// (e.g., "Roman unit" -> "Legionary"). Not yet queried by the rules engine.
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
     pub adjective: &'static str,
     pub leader: Leader,
     pub cities: Vec<crate::CityId>,
@@ -91,6 +126,7 @@ pub struct Civilization {
     // treasury_per_turn removed (PHASE3-3.4): gold income is computed per turn
     // via compute_yields().gold and goes stale when policies or government change.
     /// Stockpile of consumable strategic resources (e.g. Iron, Horses).
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_hashmap_as_vec"))]
     pub strategic_resources: HashMap<BuiltinResource, u32>,
 
     // ── OneShotEffect tracking fields ─────────────────────────────────────────
@@ -102,24 +138,33 @@ pub struct Civilization {
     /// Civics for which the Inspiration boost has been earned. Guards re-triggering.
     pub inspiration_triggered: HashSet<CivicId>,
     /// Government types unlocked for adoption.
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str_vec"))]
     pub unlocked_governments: Vec<&'static str>,
     /// Name of the currently adopted government, if any.
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str_opt"))]
     pub current_government_name: Option<&'static str>,
     /// Policy cards unlocked for equipping in government slots.
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str_vec"))]
     pub unlocked_policies: Vec<&'static str>,
     /// Unit types unlocked for production by this civ.
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str_vec"))]
     pub unlocked_units: Vec<&'static str>,
     /// Building types unlocked for production by this civ.
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str_vec"))]
     pub unlocked_buildings: Vec<&'static str>,
     /// Improvement types unlocked for builders of this civ.
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str_vec"))]
     pub unlocked_improvements: Vec<&'static str>,
 
     // ── Great person tracking ───────────────────────────────────────────────
     /// Permanent modifiers granted by retired great persons.
+    /// Skipped during serialization; rebuilt from great person data after load.
+    #[cfg_attr(feature = "serde", serde(skip))]
     pub great_person_modifiers: Vec<Modifier>,
     /// Accumulated great person points per type. Districts generate points
     /// each turn; when points reach the recruitment threshold the next
     /// available candidate of that type is automatically recruited.
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_hashmap_as_vec"))]
     pub great_person_points: HashMap<GreatPersonType, u32>,
 
     // ── Tourism & culture tracking ──────────────────────────────────────────
@@ -129,6 +174,7 @@ pub struct Civilization {
     /// Per-target-civ accumulated tourism. Key = target civ, value = total
     /// tourism pressure applied so far. Culture victory is achieved when
     /// `tourism_accumulated[B] >= B.lifetime_culture` for every other civ B.
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_hashmap_as_vec"))]
     pub tourism_accumulated: HashMap<CivId, u32>,
 
     // ── Era score tracking ──────────────────────────────────────────────────
@@ -137,8 +183,10 @@ pub struct Civilization {
     /// The civ's current era age (Dark/Normal/Golden/Heroic).
     pub era_age: EraAge,
     /// All historic moments earned by this civ across all eras.
+    #[cfg_attr(feature = "serde", serde(bound(deserialize = "")))]
     pub historic_moments: Vec<HistoricMoment>,
     /// Names of unique historic moments already earned this era (uniqueness guard).
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str_set"))]
     pub earned_moments: HashSet<&'static str>,
 
     // ── Tourism / cultural victory ──────────────────────────────────────────
@@ -151,6 +199,14 @@ pub struct Civilization {
     /// Number of unspent governor titles. Titles are earned from civics and spent
     /// to appoint new governors or promote existing ones.
     pub governor_titles: u32,
+
+    // ── Science victory tracking ─────────────────────────────────────────────
+    /// Number of science milestones completed (max 3 for Science Victory).
+    pub science_milestones_completed: u32,
+
+    // ── Diplomatic victory tracking ──────────────────────────────────────────
+    /// Accumulated diplomatic favor. At 100 the civ wins a Diplomatic Victory.
+    pub diplomatic_favor: u32,
 
     // ── Fog of war ────────────────────────────────────────────────────────────
     /// Tiles currently within this civ's vision this turn.
@@ -206,6 +262,8 @@ impl Civilization {
             tourism_output: 0,
             domestic_culture: 0,
             governor_titles: 0,
+            science_milestones_completed: 0,
+            diplomatic_favor: 0,
             visible_tiles:  HashSet::new(),
             explored_tiles: HashSet::new(),
         }
@@ -240,9 +298,8 @@ impl Civilization {
     ) -> Vec<Modifier> {
         let mut modifiers = Vec::new();
 
-        for ability in &self.leader.abilities {
-            modifiers.extend(ability.modifiers());
-        }
+        // Leader abilities: currently no concrete implementations exist.
+        // When BuiltinLeaderAbility is added, iterate here.
 
         for pid in &self.active_policies {
             if let Some(policy) = policies.iter().find(|p| p.id == *pid) {
@@ -320,18 +377,9 @@ mod tests {
     use ulid::Ulid;
 
     fn empty_civ() -> Civilization {
-        struct NoOp;
-        impl std::fmt::Debug for NoOp {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "NoOp") }
-        }
-        impl Agenda for NoOp {
-            fn name(&self) -> &'static str { "noop" }
-            fn description(&self) -> &'static str { "" }
-            fn attitude(&self, _: CivId) -> i32 { 0 }
-        }
         let id = CivId::from_ulid(Ulid::nil());
         Civilization::new(id, "Test", "Test",
-            Leader { name: "L", civ_id: id, abilities: vec![], agenda: Box::new(NoOp) })
+            Leader { name: "L", civ_id: id, agenda: BuiltinAgenda::Default })
     }
 
     #[test]

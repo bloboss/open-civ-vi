@@ -1,8 +1,10 @@
 use crate::{
   AgeType, BarbarianCampId, BeliefId, CivId, CityId, GovernorId, GreatPersonId, GreatPersonType,
-  PolicyId, ReligionId, TradeRouteId, UnitId
+  PolicyId, PromotionId, ReligionId, TradeRouteId, UnitId,
 };
+use crate::world::disaster::DisasterKind;
 use crate::civ::DiplomaticStatus;
+use crate::civ::diplomacy::AllianceType;
 use crate::civ::city::WallLevel;
 use crate::civ::district::BuiltinDistrict;
 use crate::civ::era::EraAge;
@@ -23,6 +25,8 @@ pub enum AttackType {
 
 /// A single atomic change to the game state.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(bound(deserialize = "")))]
 pub enum StateDelta {
     TurnAdvanced    { from: u32, to: u32 },
     UnitMoved       { unit: UnitId, from: HexCoord, to: HexCoord, cost: u32 },
@@ -32,37 +36,100 @@ pub enum StateDelta {
     CityCaptured    { city: CityId, new_owner: CivId, old_owner: CivId },
     PopulationGrew  { city: CityId, new_population: u32 },
     GoldChanged     { civ: CivId, delta: i32 },
-    TechResearched  { civ: CivId, tech: &'static str },
-    CivicCompleted  { civ: CivId, civic: &'static str },
+    TechResearched  {
+        civ: CivId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        tech: &'static str,
+    },
+    CivicCompleted  {
+        civ: CivId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        civic: &'static str,
+    },
     DiplomacyChanged { civ_a: CivId, civ_b: CivId, new_status: DiplomaticStatus },
     // ── OneShotEffect outcomes ──────────────────────────────────────────────
     ResourceRevealed     { civ: CivId, resource: BuiltinResource },
-    EurekaTriggered      { civ: CivId, tech:  &'static str },
-    InspirationTriggered { civ: CivId, civic: &'static str },
-    UnitUnlocked         { civ: CivId, unit_type:    &'static str },
-    BuildingUnlocked     { civ: CivId, building:     &'static str },
-    ImprovementUnlocked  { civ: CivId, improvement:  &'static str },
-    GovernmentUnlocked   { civ: CivId, government:   &'static str },
-    GovernmentAdopted    { civ: CivId, government:   &'static str },
-    PolicyUnlocked       { civ: CivId, policy: &'static str },
+    EurekaTriggered      {
+        civ: CivId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        tech: &'static str,
+    },
+    InspirationTriggered {
+        civ: CivId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        civic: &'static str,
+    },
+    UnitUnlocked         {
+        civ: CivId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        unit_type: &'static str,
+    },
+    BuildingUnlocked     {
+        civ: CivId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        building: &'static str,
+    },
+    ImprovementUnlocked  {
+        civ: CivId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        improvement: &'static str,
+    },
+    GovernmentUnlocked   {
+        civ: CivId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        government: &'static str,
+    },
+    GovernmentAdopted    {
+        civ: CivId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        government: &'static str,
+    },
+    PolicyUnlocked       {
+        civ: CivId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        policy: &'static str,
+    },
     /// A policy was removed from the slot because the new government has fewer slots.
     PolicyUnslotted      { civ: CivId, policy: PolicyId },
     PolicyAssigned       { civ: CivId, policy: PolicyId },
     /// Emitted when a free unit grant is processed. Full unit creation
     /// requires a unit-type registry (Phase 4).
-    FreeUnitGranted      { civ: CivId, unit_type: &'static str, coord: HexCoord },
+    FreeUnitGranted      {
+        civ: CivId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        unit_type: &'static str,
+        coord: HexCoord,
+    },
     /// Emitted when a free building grant is processed. Full building creation
     /// requires a building registry (Phase 4).
-    FreeBuildingGranted  { civ: CivId, building: &'static str, city: CityId },
+    FreeBuildingGranted  {
+        civ: CivId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        building: &'static str,
+        city: CityId,
+    },
     // ── Production queue outcomes (PHASE3-4.3) ──────────────────────────────
     /// A building has been completed and added to the city.
-    BuildingCompleted    { city: CityId, building: &'static str },
+    BuildingCompleted    {
+        city: CityId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        building: &'static str,
+    },
     /// A district has been placed on the map.
     DistrictBuilt        { city: CityId, district: BuiltinDistrict, coord: HexCoord },
     /// A wonder has been completed globally.
-    WonderBuilt          { civ: CivId, wonder: &'static str, city: CityId },
+    WonderBuilt          {
+        civ: CivId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        wonder: &'static str,
+        city: CityId,
+    },
     /// A new production item has moved to the front of the queue.
-    ProductionStarted    { city: CityId, item: &'static str },
+    ProductionStarted    {
+        city: CityId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        item: &'static str,
+    },
     // ── Citizen assignment (PHASE3-4.1) ──────────────────────────────────────
     /// A citizen has been assigned (or auto-assigned) to work a tile.
     CitizenAssigned      { city: CityId, tile: HexCoord },
@@ -76,9 +143,28 @@ pub enum StateDelta {
         defender_damage: u32,
     },
 
+    // ── Combat XP and promotions ──────────────────────────────────────────────
+    /// A unit gained combat experience.
+    ExperienceGained { unit: UnitId, amount: u32, new_total: u32 },
+    /// A unit was promoted (gained a promotion ability and healed).
+    UnitPromoted {
+        unit: UnitId,
+        promotion: PromotionId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        promotion_name: &'static str,
+    },
+
     // ── Fog of war (PHASE3-10.2) ─────────────────────────────────────────────
     /// Tiles newly added to `explored_tiles` this move (not previously explored).
     TilesRevealed { civ: CivId, coords: Vec<HexCoord> },
+
+    /// A civilization explored a tile containing a natural wonder for the first time.
+    NaturalWonderDiscovered {
+        civ: CivId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        wonder_name: &'static str,
+        coord: HexCoord,
+    },
 
     /// An improvement was placed on a tile.
     ImprovementPlaced { coord: HexCoord, improvement: BuiltinImprovement },
@@ -138,7 +224,12 @@ pub enum StateDelta {
 
     // ── Era score (PHASE3-8.8) ─────────────────────────────────────────────
     /// A civilization earned a historic moment, gaining era score.
-    HistoricMomentEarned { civ: CivId, moment: &'static str, era_score: u32 },
+    HistoricMomentEarned {
+        civ: CivId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        moment: &'static str,
+        era_score: u32,
+    },
     /// A civilization transitioned to a new era with a determined age.
     EraAdvanced { civ: CivId, new_era: AgeType, era_age: EraAge },
     // ── Great persons (PHASE3-8.6) ─────────────────────────────────────────
@@ -163,7 +254,12 @@ pub enum StateDelta {
 
     // ── Great works / tourism (cultural victory) ──────────────────────────────
     /// A great person created a great work and it was slotted into a city.
-    GreatWorkCreated { civ: CivId, work_name: &'static str, city: CityId },
+    GreatWorkCreated {
+        civ: CivId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        work_name: &'static str,
+        city: CityId,
+    },
 
     // ── Governors (PHASE3-8.7) ──────────────────────────────────────────────
     /// A governor was assigned (or reassigned) to a city.
@@ -171,13 +267,21 @@ pub enum StateDelta {
     /// A governor finished its establishment countdown and is now active.
     GovernorEstablished { governor: GovernorId, city: CityId },
     /// A governor promotion was unlocked.
-    GovernorPromoted  { governor: GovernorId, promotion: &'static str },
+    GovernorPromoted  {
+        governor: GovernorId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        promotion: &'static str,
+    },
     /// A civilization earned a governor title (from completing a civic, etc.).
     GovernorTitleEarned { civ: CivId },
 
     // ── Victory condition (PHASE3-8.9) ────────────────────────────────────────
     /// Emitted when a civ wins the game. After this delta `GameState::game_over` is set.
-    VictoryAchieved { civ: CivId, condition: &'static str },
+    VictoryAchieved {
+        civ: CivId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        condition: &'static str,
+    },
 
     // ── Religion ─────────────────────────────────────────────────────────────
     /// A civilization founded a new religion.
@@ -206,6 +310,29 @@ pub enum StateDelta {
     ReligiousUnitsHealed { healer: UnitId, healed_count: u32 },
 
     // ── Barbarian system ────────────────────────────────────────────────────
+    // ── Science victory ─────────────────────────────────────────────────────
+    /// A civilization completed a science milestone toward Science Victory.
+    ScienceMilestoneCompleted {
+        civ: CivId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        milestone: &'static str,
+    },
+
+    // ── Diplomatic victory ──────────────────────────────────────────────────
+    /// A civilization's diplomatic favor changed.
+    DiplomaticFavorChanged { civ: CivId, delta: i32 },
+
+    // ── Power & CO2 (GS-1) ──────────────────────────────────────────────
+    /// Global CO2 accumulated this turn from fossil fuel power plants.
+    CO2Accumulated { total: u32 },
+
+    /// A city project was completed.
+    ProjectCompleted {
+        city: CityId,
+        #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
+        project: &'static str,
+    },
+
     /// A barbarian camp was spawned on the map.
     BarbarianCampSpawned { camp: BarbarianCampId, coord: HexCoord },
     /// A barbarian camp was destroyed (cleared by a player unit).
@@ -226,10 +353,37 @@ pub enum StateDelta {
     BarbarianClanIncited { camp: BarbarianCampId, civ: CivId, target: CivId, gold_spent: u32 },
     /// A barbarian camp converted into a city-state (Clans mode).
     BarbarianCampConverted { camp: BarbarianCampId, city: CityId, coord: HexCoord },
+
+    // ── World Congress (GS-3) ────────────────────────────────────────────
+    /// A World Congress session was held; the civ with the most diplomatic
+    /// favor won the session.
+    CongressSessionHeld { winner: CivId },
+    /// A civilization earned diplomatic victory points from a Congress session.
+    DiplomaticVPEarned { civ: CivId, points: u32 },
+
+    // ── Rock Band / Cultural Combat (GS-16) ────────────────────────────
+    /// A Rock Band performed at a foreign city, generating tourism.
+    RockBandPerformed { unit: UnitId, city: CityId, tourism_gained: u32 },
+
+    // ── Climate & Disasters (GS-2) ─────────────────────────────────────
+    /// Global sea level rose to a new stage.
+    SeaLevelRose { new_level: u8 },
+    /// A coastal lowland tile was submerged by rising sea levels.
+    TileSubmerged { coord: HexCoord },
+    /// An environmental disaster occurred on a tile.
+    DisasterOccurred { kind: DisasterKind, coord: HexCoord, severity: u8 },
+
+    // ── Alliances (Rise & Fall) ────────────────────────────────────────────
+    /// Two civilizations formed an alliance of a specific type.
+    AllianceFormed { civ_a: CivId, civ_b: CivId, alliance_type: AllianceType },
+    /// An alliance between two civilizations leveled up.
+    AllianceLevelUp { civ_a: CivId, civ_b: CivId, new_level: u8 },
 }
 
 /// A batch of deltas representing a complete state transition.
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(bound(deserialize = "'de: 'static")))]
 pub struct GameStateDiff {
     pub deltas: Vec<StateDelta>,
 }

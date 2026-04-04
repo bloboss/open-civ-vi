@@ -1,8 +1,13 @@
+//! Civilization-layer types: civilizations, cities, units, diplomacy, religion,
+//! great people, governors, era system, loyalty, trade routes, tourism, and
+//! barbarian clans.
+
 pub mod barbarian;
 pub mod civ_ability;
 pub mod civ_identity;
 pub mod city;
 pub mod city_state;
+pub mod congress;
 pub mod city_state_defs;
 pub mod civilization;
 pub mod diplomacy;
@@ -20,9 +25,9 @@ pub mod unit;
 pub use city::{City, CityKind, CityOwnership, ProductionItem, WallLevel};
 pub use city_state::{CityStateBonus, CityStateData, CityStateType};
 pub use city_state_defs::{CityStateDef, builtin_city_state_defs};
-pub use civilization::{Agenda, Civilization, CivicProgress, Leader, LeaderAbility, StartBias, TechProgress};
+pub use civilization::{Agenda, BuiltinAgenda, Civilization, CivicProgress, Leader, LeaderAbility, StartBias, TechProgress};
 pub use diplomacy::{
-    Agreement, DiplomaticRelation, DiplomaticStatus, GrievanceTrigger,
+    Agreement, AllianceType, DiplomaticRelation, DiplomaticStatus, GrievanceTrigger,
     GrievanceRecord, GrievanceVisibility,
 };
 pub use grievance::{CapturedCityGrievance, DeclaredWarGrievance, PillageGrievance};
@@ -50,3 +55,4 @@ pub use unit::{BasicUnit, Unit};
 pub use civ_identity::{BuiltinCiv, BuiltinLeader};
 pub use barbarian::{BarbarianCamp, BarbarianConfig, ClanType, ScoutState, ClanInteraction};
 pub use civ_ability::{CivAbilityBundle, CityFoundedHook, RuleOverride};
+pub use congress::{WorldCongress, ActiveResolution, ResolutionKind};

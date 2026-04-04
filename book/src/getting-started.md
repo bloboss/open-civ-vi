@@ -21,7 +21,7 @@ cargo clippy --workspace -- -D warnings
 
 ## Running the CLI
 
-The CLI binary is the `open4x` package (in the `civsim/` directory):
+The CLI binary is the `open4x` package (in the `open4x-cli/` directory):
 
 ```bash
 # Create a new game and print board dimensions
@@ -103,7 +103,7 @@ open-civ-vi/
 |   |   +-- rules/       # Modifiers, tech trees, policies
 |   |   +-- world/       # Terrain, features, improvements, mapgen
 |   +-- tests/           # Integration tests (20+ test files)
-+-- civsim/              # CLI binary
++-- open4x-cli/          # CLI binary
 +-- open4x-server/       # Merged server + frontend (ssr/csr features)
 +-- book/                # This documentation (mdBook)
 +-- CLAUDE.md            # Claude Code configuration

@@ -1,3 +1,7 @@
+//! Game content definitions and rule data: tech/civic trees, modifier pipeline,
+//! governments, policies, promotions, civilization abilities, building/unit/wonder
+//! registries, and project definitions.
+
 pub mod building_defs;
 pub mod civ_registry;
 pub mod effect;
@@ -5,6 +9,7 @@ pub mod government_defs;
 pub mod modifier;
 pub mod policy;
 pub mod policy_defs;
+pub mod project_defs;
 pub mod promotion;
 pub mod tech;
 pub mod unique;
@@ -22,4 +27,5 @@ pub use promotion::{PromotionDef, builtin_promotions};
 pub use tech::{build_civic_tree, build_tech_tree, CivicNode, CivicTree, TechNode, TechTree};
 pub use unit_defs::builtin_unit_type_defs;
 pub use victory::{VictoryCondition, VictoryProgress};
+pub use project_defs::builtin_project_defs;
 pub use wonder_defs::builtin_wonder_defs;

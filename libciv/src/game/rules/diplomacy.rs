@@ -1,10 +1,10 @@
-//! Diplomacy handlers: `declare_war`, `make_peace`, `assign_policy`.
+//! Diplomacy handlers: `declare_war`, `make_peace`, `form_alliance`, `assign_policy`.
 
 use crate::{CivId, PolicyId, PolicyType};
 use crate::civ::DiplomaticStatus;
 use crate::civ::GrievanceRecord;
 use crate::civ::grievance::DeclaredWarGrievance;
-use crate::civ::diplomacy::GrievanceTrigger;
+use crate::civ::diplomacy::{AllianceType, GrievanceTrigger};
 
 use super::RulesError;
 use super::super::diff::{GameStateDiff, StateDelta};
@@ -74,6 +74,40 @@ pub(crate) fn make_peace(
     let (a, b) = (rel.civ_a, rel.civ_b);
     let mut diff = GameStateDiff::new();
     diff.push(StateDelta::DiplomacyChanged { civ_a: a, civ_b: b, new_status });
+    Ok(diff)
+}
+
+/// Form an alliance between two civilizations.
+pub(crate) fn form_alliance(
+    state: &mut GameState,
+    civ_a: CivId,
+    civ_b: CivId,
+    alliance_type: AllianceType,
+) -> Result<GameStateDiff, RulesError> {
+    if civ_a == civ_b { return Err(RulesError::SameCivilization); }
+    if state.civ(civ_a).is_none() { return Err(RulesError::CivNotFound); }
+    if state.civ(civ_b).is_none() { return Err(RulesError::CivNotFound); }
+
+    let rel_idx = find_or_create_relation(state, civ_a, civ_b);
+    let rel = &state.diplomatic_relations[rel_idx];
+
+    if rel.status == DiplomaticStatus::War {
+        return Err(RulesError::CannotAllyAtWar);
+    }
+    if rel.status != DiplomaticStatus::Friendly && rel.status != DiplomaticStatus::Neutral {
+        return Err(RulesError::InvalidAllianceStatus);
+    }
+
+    let rel = &mut state.diplomatic_relations[rel_idx];
+    rel.status = DiplomaticStatus::Alliance;
+    rel.alliance_type = Some(alliance_type);
+    rel.alliance_level = 1;
+    rel.alliance_turns = 0;
+
+    let (a, b) = (rel.civ_a, rel.civ_b);
+    let mut diff = GameStateDiff::new();
+    diff.push(StateDelta::AllianceFormed { civ_a: a, civ_b: b, alliance_type });
+    diff.push(StateDelta::DiplomacyChanged { civ_a: a, civ_b: b, new_status: DiplomaticStatus::Alliance });
     Ok(diff)
 }
 

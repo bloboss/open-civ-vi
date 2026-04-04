@@ -64,6 +64,10 @@ fn conv_wonder_id(id: libciv::WonderId) -> api::WonderId {
     api::WonderId::from_ulid(id.as_ulid())
 }
 
+fn conv_project_id(id: libciv::ProjectId) -> api::ProjectId {
+    api::ProjectId::from_ulid(id.as_ulid())
+}
+
 fn conv_terrain(t: libciv::world::terrain::BuiltinTerrain) -> BuiltinTerrain {
     match t {
         libciv::world::terrain::BuiltinTerrain::Grassland => BuiltinTerrain::Grassland,
@@ -87,6 +91,10 @@ fn conv_feature(f: libciv::world::feature::BuiltinFeature) -> BuiltinFeature {
         libciv::world::feature::BuiltinFeature::Ice         => BuiltinFeature::Ice,
         libciv::world::feature::BuiltinFeature::VolcanicSoil => BuiltinFeature::VolcanicSoil,
         libciv::world::feature::BuiltinFeature::Oasis       => BuiltinFeature::Oasis,
+        libciv::world::feature::BuiltinFeature::GeothermalFissure  => BuiltinFeature::GeothermalFissure,
+        libciv::world::feature::BuiltinFeature::Volcano            => BuiltinFeature::Volcano,
+        libciv::world::feature::BuiltinFeature::FloodplainGrassland => BuiltinFeature::FloodplainGrassland,
+        libciv::world::feature::BuiltinFeature::FloodplainPlains   => BuiltinFeature::FloodplainPlains,
     }
 }
 
@@ -134,6 +142,10 @@ fn conv_improvement(i: libciv::world::improvement::BuiltinImprovement) -> Builti
         I::ColossalHead => BuiltinImprovement::ColossalHead, I::GreatWall => BuiltinImprovement::GreatWall,
         I::Kurgan => BuiltinImprovement::Kurgan, I::Mission => BuiltinImprovement::Mission,
         I::RomanFort => BuiltinImprovement::RomanFort, I::Ziggurat => BuiltinImprovement::Ziggurat,
+        I::SolarFarm => BuiltinImprovement::SolarFarm, I::WindFarm => BuiltinImprovement::WindFarm,
+        I::OffshoreWindFarm => BuiltinImprovement::OffshoreWindFarm, I::GeothermalPlant => BuiltinImprovement::GeothermalPlant,
+        I::Seastead => BuiltinImprovement::Seastead, I::MountainTunnel => BuiltinImprovement::MountainTunnel,
+        I::SkiResort => BuiltinImprovement::SkiResort,
     }
 }
 
@@ -217,6 +229,7 @@ fn conv_production_item(item: &libciv::civ::ProductionItem) -> ProductionItemVie
         libciv::civ::ProductionItem::Building(id)  => ProductionItemView::Building(conv_building_id(*id)),
         libciv::civ::ProductionItem::District(d)   => ProductionItemView::District(conv_district(*d)),
         libciv::civ::ProductionItem::Wonder(id)    => ProductionItemView::Wonder(conv_wonder_id(*id)),
+        libciv::civ::ProductionItem::Project(id)   => ProductionItemView::Project(conv_project_id(*id)),
     }
 }
 

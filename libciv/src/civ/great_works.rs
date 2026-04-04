@@ -13,8 +13,11 @@ pub enum GreatWorkType {
 
 /// A created great work that generates tourism and culture each turn.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(bound(deserialize = "")))]
 pub struct GreatWork {
     pub id: GreatWorkId,
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
     pub name: &'static str,
     pub work_type: GreatWorkType,
     pub creator: Option<CivId>,
@@ -49,6 +52,7 @@ impl GreatWorkSlotType {
 
 /// A slot in a city that can hold one great work.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct GreatWorkSlot {
     pub slot_type: GreatWorkSlotType,
     pub work: Option<GreatWorkId>,

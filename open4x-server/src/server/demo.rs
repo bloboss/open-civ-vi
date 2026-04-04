@@ -1,7 +1,7 @@
 //! Run a full AI-vs-AI demo game and return per-turn GameViews.
 
 use libciv::ai::{Agent, HeuristicAgent};
-use libciv::civ::{BasicUnit, City, Civilization, Leader};
+use libciv::civ::{BasicUnit, BuiltinAgenda, City, Civilization, Leader};
 use libciv::game::recalculate_visibility;
 use libciv::game::state::{GameState, UnitTypeDef};
 use libciv::world::mapgen::{MapGenConfig, generate as mapgen_generate};
@@ -12,18 +12,6 @@ use libhexgrid::coord::HexCoord;
 use crate::types::view::GameView;
 use crate::server::projection::project_game_view;
 
-/// No-op agenda for AI civs.
-struct NoOpAgenda;
-impl std::fmt::Debug for NoOpAgenda {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "NoOpAgenda")
-    }
-}
-impl libciv::civ::Agenda for NoOpAgenda {
-    fn name(&self) -> &'static str { "Expansionist" }
-    fn description(&self) -> &'static str { "" }
-    fn attitude(&self, _: CivId) -> i32 { 0 }
-}
 
 /// Pool of civilizations available for demo games.
 const CIV_POOL: &[(&str, &str, &str, &str)] = &[
@@ -126,8 +114,8 @@ pub fn run_demo_game(
 
         state.civilizations.push(Civilization::new(
             civ_id, name, adjective,
-            Leader { name: leader_name, civ_id, abilities: Vec::new(),
-                     agenda: Box::new(NoOpAgenda) },
+            Leader { name: leader_name, civ_id,
+                     agenda: BuiltinAgenda::Default },
         ));
 
         // Capital city.

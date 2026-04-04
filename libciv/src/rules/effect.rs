@@ -125,25 +125,13 @@ mod tests {
 
     fn empty_civ() -> Civilization {
         use crate::CivId;
-        use crate::civ::civilization::{Leader, Agenda};
+        use crate::civ::civilization::{Leader, BuiltinAgenda};
         use ulid::Ulid;
-
-        struct NoOp;
-        impl std::fmt::Debug for NoOp {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "NoOp")
-            }
-        }
-        impl Agenda for NoOp {
-            fn name(&self) -> &'static str { "noop" }
-            fn description(&self) -> &'static str { "" }
-            fn attitude(&self, _: CivId) -> i32 { 0 }
-        }
 
         let civ_id = CivId::from_ulid(Ulid::nil());
         Civilization::new(
             civ_id, "Test", "Test",
-            Leader { name: "L", civ_id, abilities: vec![], agenda: Box::new(NoOp) },
+            Leader { name: "L", civ_id, agenda: BuiltinAgenda::Default },
         )
     }
 

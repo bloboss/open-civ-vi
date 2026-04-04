@@ -3,7 +3,7 @@
 mod common;
 
 use libciv::{
-    DefaultRulesEngine, RulesEngine, ScoreVictory,
+    BuiltinVictoryCondition, DefaultRulesEngine, RulesEngine,
     CivId, CityId, UnitCategory, UnitDomain, UnitId, UnitTypeId,
     GreatPersonType,
 };
@@ -252,7 +252,7 @@ fn full_game_50_turns_no_panic() {
 
     // Register score victory at turn 50.
     let vc_id = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(ScoreVictory { id: vc_id, turn_limit: 50 }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Score { id: vc_id, turn_limit: 50 });
 
     // Set up AI agent for Babylon.
     let ai = HeuristicAgent::new(s.babylon_id);
@@ -911,7 +911,7 @@ fn full_game_all_systems_integrated() {
 
     // --- Run 30 turns with AI ---
     let vc_id = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(ScoreVictory { id: vc_id, turn_limit: 30 }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Score { id: vc_id, turn_limit: 30 });
 
     for _ in 0..30 {
         if s.state.game_over.is_some() {

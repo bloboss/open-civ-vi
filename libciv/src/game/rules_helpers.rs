@@ -342,10 +342,16 @@ pub(crate) fn status_from_score(score: i32, active_agreements: &[AgreementId]) -
 /// rule: once at war, the relation stays at War while the combined score
 /// remains below -50. All other transitions are driven purely by score.
 pub(crate) fn compute_diplomatic_status(rel: &DiplomaticRelation) -> DiplomaticStatus {
-    let score = combined_score(rel);
-    if rel.status == DiplomaticStatus::War && score < -50 {
-        DiplomaticStatus::War
-    } else {
-        status_from_score(score, &rel.active_agreements)
+    // War persists until explicitly ended via make_peace(). It does NOT
+    // auto-resolve from opinion score improvements.
+    if rel.status == DiplomaticStatus::War {
+        return DiplomaticStatus::War;
     }
+    // Alliance persists until explicitly broken; it does NOT auto-resolve
+    // from opinion score changes.
+    if rel.status == DiplomaticStatus::Alliance {
+        return DiplomaticStatus::Alliance;
+    }
+    let score = combined_score(rel);
+    status_from_score(score, &rel.active_agreements)
 }

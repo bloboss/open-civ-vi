@@ -76,6 +76,7 @@ fn CitiesTable(game_view: ReadSignal<Option<GameView>>) -> impl IntoView {
                     .unwrap_or_else(|| "Building".into()),
                 ProductionItemView::District(d) => format!("{d:?}"),
                 ProductionItemView::Wonder(_) => "Wonder".into(),
+                ProductionItemView::Project(_) => "Project".into(),
             }).unwrap_or_else(|| "Idle".into());
             let capital = if c.is_capital { " *" } else { "" };
             view! {

@@ -16,6 +16,15 @@ pub enum BuiltinFeature {
     /// NOTE: Volcanic Soil is a Gathering Storm feature, not in the Civ VI base game.
     VolcanicSoil,
     Oasis,
+    // ── Gathering Storm features ──────────────────────────────────────────
+    /// Geothermal fissure — required for Geothermal Plant improvement.
+    GeothermalFissure,
+    /// Active volcano — can erupt as a disaster, adding VolcanicSoil.
+    Volcano,
+    /// GS variant: floodplains on grassland terrain.
+    FloodplainGrassland,
+    /// GS variant: floodplains on plains terrain.
+    FloodplainPlains,
 }
 
 impl BuiltinFeature {
@@ -29,6 +38,10 @@ impl BuiltinFeature {
             BuiltinFeature::Ice         => "Ice",
             BuiltinFeature::VolcanicSoil => "Volcanic Soil",
             BuiltinFeature::Oasis       => "Oasis",
+            BuiltinFeature::GeothermalFissure  => "Geothermal Fissure",
+            BuiltinFeature::Volcano            => "Volcano",
+            BuiltinFeature::FloodplainGrassland => "Floodplains (Grassland)",
+            BuiltinFeature::FloodplainPlains   => "Floodplains (Plains)",
         }
     }
 
@@ -46,6 +59,13 @@ impl BuiltinFeature {
             BuiltinFeature::Oasis        => YieldBundle::new()
                 .with(crate::YieldType::Food, 3)
                 .with(crate::YieldType::Gold, 1),
+            BuiltinFeature::GeothermalFissure  => YieldBundle::new()
+                .with(crate::YieldType::Science, 1),
+            BuiltinFeature::Volcano            => YieldBundle::new(),
+            BuiltinFeature::FloodplainGrassland => YieldBundle::new().with(crate::YieldType::Food, 3),
+            BuiltinFeature::FloodplainPlains   => YieldBundle::new()
+                .with(crate::YieldType::Food, 2)
+                .with(crate::YieldType::Production, 1),
         }
     }
 

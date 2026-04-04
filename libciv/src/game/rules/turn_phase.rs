@@ -150,9 +150,14 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
 
     let unit_completions: Vec<UnitCompletion> = city_turn_data.iter().filter_map(|d| {
         use crate::civ::city::ProductionItem;
+        use crate::game::production_helpers::resolve_unit_replacement;
         let city = &state.cities[d.city_idx];
         if let Some(ProductionItem::Unit(tid)) = city.production_queue.front() {
-            let def = state.unit_type_defs.iter().find(|def| def.id == *tid)?;
+            // Resolve civ-exclusive replacement: the queue stores the generic
+            // unit (e.g. "Swordsman") and we swap in the civ's unique variant
+            // (e.g. "Legion" for Rome) at completion time.
+            let (resolved_tid, _) = resolve_unit_replacement(state, d.civ_id, *tid);
+            let def = state.unit_type_defs.iter().find(|def| def.id == resolved_tid)?;
             if city.production_stored >= def.production_cost {
                 Some(UnitCompletion {
                     city_idx:        d.city_idx,
@@ -221,7 +226,177 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
             trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
         });
         diff.push(StateDelta::UnitCreated { unit: unit_id, coord: uc.coord, owner: uc.civ_id });
-        // TODO(PHASE3-4.3): Building, District, Wonder completion.
+    }
+
+    // ── Phase 2a-1b: Building completion ────────────────────────────────
+    {
+        use crate::civ::city::ProductionItem;
+        use crate::game::production_helpers::resolve_building_replacement;
+
+        struct BuildingCompletion {
+            city_idx: usize,
+            building_id: crate::BuildingId,
+            building_name: &'static str,
+            cost: u32,
+        }
+
+        let bldg_completions: Vec<BuildingCompletion> = city_turn_data.iter().filter_map(|d| {
+            let city = &state.cities[d.city_idx];
+            if let Some(ProductionItem::Building(bid)) = city.production_queue.front() {
+                let (resolved_bid, _) = resolve_building_replacement(state, d.civ_id, *bid);
+                let def = state.building_defs.iter().find(|b| b.id == resolved_bid)?;
+                if city.production_stored >= def.cost {
+                    Some(BuildingCompletion {
+                        city_idx: d.city_idx,
+                        building_id: def.id,
+                        building_name: def.name,
+                        cost: def.cost,
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        }).collect();
+
+        for bc in bldg_completions {
+            state.cities[bc.city_idx].production_stored -= bc.cost;
+            state.cities[bc.city_idx].production_queue.pop_front();
+            if !state.cities[bc.city_idx].buildings.contains(&bc.building_id) {
+                state.cities[bc.city_idx].buildings.push(bc.building_id);
+            }
+            diff.push(StateDelta::BuildingCompleted {
+                city: state.cities[bc.city_idx].id,
+                building: bc.building_name,
+            });
+        }
+    }
+
+    // ── Phase 2a-1c: Wonder completion ────────────────────────────────
+    {
+        use crate::civ::city::ProductionItem;
+
+        struct WonderCompletion {
+            city_idx: usize,
+            civ_id: CivId,
+            wonder_name: &'static str,
+            cost: u32,
+        }
+
+        let wonder_completions: Vec<WonderCompletion> = city_turn_data.iter().filter_map(|d| {
+            let city = &state.cities[d.city_idx];
+            if let Some(ProductionItem::Wonder(wid)) = city.production_queue.front() {
+                let def = state.wonder_defs.iter().find(|w| w.id == *wid)?;
+                if city.production_stored >= def.production_cost {
+                    Some(WonderCompletion {
+                        city_idx: d.city_idx,
+                        civ_id: d.civ_id,
+                        wonder_name: def.name,
+                        cost: def.production_cost,
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        }).collect();
+
+        for wc in wonder_completions {
+            state.cities[wc.city_idx].production_stored -= wc.cost;
+            state.cities[wc.city_idx].production_queue.pop_front();
+            diff.push(StateDelta::WonderBuilt {
+                civ: wc.civ_id,
+                wonder: wc.wonder_name,
+                city: state.cities[wc.city_idx].id,
+            });
+        }
+    }
+
+    // ── Phase 2a-2: Project completion ──────────────────────────────────
+    // Complete projects when stored production meets the cost.
+    {
+        use crate::civ::city::ProductionItem;
+        use crate::ProjectId;
+
+        struct ProjectCompletion {
+            city_idx: usize,
+            civ_id:   CivId,
+            project_id: ProjectId,
+            project_name: &'static str,
+            production_cost: u32,
+        }
+
+        let completions: Vec<ProjectCompletion> = city_turn_data.iter().filter_map(|d| {
+            let city = &state.cities[d.city_idx];
+            if let Some(ProductionItem::Project(pid)) = city.production_queue.front() {
+                let def = state.project_defs.iter().find(|def| def.id == *pid)?;
+                if city.production_stored >= def.production_cost {
+                    // Validate district requirement.
+                    if let Some(req_district) = def.requires_district {
+                        let has_district = city.districts.iter().any(|d| d.name() == req_district);
+                        if !has_district {
+                            return None;
+                        }
+                    }
+                    Some(ProjectCompletion {
+                        city_idx: d.city_idx,
+                        civ_id: d.civ_id,
+                        project_id: def.id,
+                        project_name: def.name,
+                        production_cost: def.production_cost,
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        }).collect();
+
+        let science_milestone_names: &[&str] = &[
+            "Launch Earth Satellite",
+            "Launch Moon Landing",
+            "Launch Mars Colony",
+            "Exoplanet Expedition",
+        ];
+
+        for pc in completions {
+            state.cities[pc.city_idx].production_stored -= pc.production_cost;
+            state.cities[pc.city_idx].production_queue.pop_front();
+
+            diff.push(StateDelta::ProjectCompleted {
+                city: state.cities[pc.city_idx].id,
+                project: pc.project_name,
+            });
+
+            // Science milestone projects increment the civ's milestone counter.
+            if science_milestone_names.contains(&pc.project_name) {
+                if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == pc.civ_id) {
+                    civ.science_milestones_completed += 1;
+                }
+                diff.push(StateDelta::ScienceMilestoneCompleted {
+                    civ: pc.civ_id,
+                    milestone: pc.project_name,
+                });
+            }
+
+            // Carbon Recapture reduces global CO2.
+            if pc.project_name == "Carbon Recapture" {
+                state.global_co2 = state.global_co2.saturating_sub(50);
+            }
+
+            // Non-repeatable projects: prevent re-queuing by removing from defs.
+            // (Repeatable projects stay in the registry.)
+            let is_repeatable = state.project_defs.iter()
+                .find(|d| d.id == pc.project_id)
+                .map(|d| d.repeatable)
+                .unwrap_or(false);
+            if !is_repeatable {
+                state.project_defs.retain(|d| d.id != pc.project_id);
+            }
+        }
     }
 
     // ── Phase 2b: Trade route countdown ──────────────────────────────────
@@ -336,6 +511,110 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
             {
                 civ.gold -= cost;
                 diff.push(StateDelta::GoldChanged { civ: civ_id, delta: -cost });
+            }
+        }
+    }
+
+    // ── Phase 2c-2: Power & CO2 accumulation ──────────────────────────────
+    // For each city, recompute power balance and accumulate CO2 from fossil fuel plants.
+    {
+        // Collect per-city power data (immutable borrow of both cities + building_defs).
+        let city_power: Vec<(usize, u32, u32, u32)> = state.cities.iter().enumerate()
+            .map(|(i, city)| {
+                let mut consumed: u32 = 0;
+                let mut generated: u32 = 0;
+                let mut co2: u32 = 0;
+                for &bid in &city.buildings {
+                    if let Some(bdef) = state.building_defs.iter().find(|d| d.id == bid) {
+                        consumed += bdef.power_cost;
+                        generated += bdef.power_generated;
+                        co2 += bdef.co2_per_turn;
+                    }
+                }
+                (i, consumed, generated, co2)
+            })
+            .collect();
+        let mut co2_this_turn: u32 = 0;
+        for (i, consumed, generated, co2) in city_power {
+            state.cities[i].power_consumed = consumed;
+            state.cities[i].power_generated = generated;
+            co2_this_turn += co2;
+        }
+        if co2_this_turn > 0 {
+            state.global_co2 += co2_this_turn;
+            diff.push(StateDelta::CO2Accumulated { total: state.global_co2 });
+        }
+    }
+
+    // ── Phase 2c-3: Climate & Disasters ──────────────────────────────────
+    {
+        use crate::world::climate::climate_level_for_co2;
+        use crate::world::disaster::DisasterKind;
+        use crate::world::feature::BuiltinFeature;
+
+        // (a) Check if global_co2 crossed a threshold → increment climate_level.
+        let new_level = climate_level_for_co2(state.global_co2);
+        if new_level > state.climate_level {
+            state.climate_level = new_level;
+            diff.push(StateDelta::SeaLevelRose { new_level });
+        }
+
+        // (b) Submerge coastal lowland tiles whose elevation <= climate_level.
+        let coords_to_submerge: Vec<HexCoord> = state.board.all_coords().into_iter()
+            .filter(|&coord| {
+                if let Some(tile) = state.board.tile(coord) {
+                    if let Some(elev) = tile.coastal_lowland {
+                        !tile.submerged && elev <= state.climate_level
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            })
+            .collect();
+
+        for coord in coords_to_submerge {
+            if let Some(tile) = state.board.tile_mut(coord) {
+                tile.submerged = true;
+                tile.improvement = None;
+                tile.improvement_pillaged = false;
+            }
+            diff.push(StateDelta::TileSubmerged { coord });
+        }
+
+        // (c) Roll for random disaster (simplified: at most one per turn).
+        // Base probability 5% + 2% per climate_level.
+        let disaster_chance = 0.05 + 0.02 * state.climate_level as f32;
+        let roll = state.id_gen.next_f32();
+        if roll < disaster_chance {
+            // Pick a random disaster type.
+            let type_roll = state.id_gen.next_f32();
+            let type_idx = (type_roll * DisasterKind::ALL.len() as f32) as usize;
+            let kind = DisasterKind::ALL[type_idx.min(DisasterKind::ALL.len() - 1)];
+
+            // Pick a random tile.
+            let all_coords = state.board.all_coords();
+            if !all_coords.is_empty() {
+                let coord_roll = state.id_gen.next_f32();
+                let coord_idx = (coord_roll * all_coords.len() as f32) as usize;
+                let coord = all_coords[coord_idx.min(all_coords.len() - 1)];
+
+                // Severity 1-3, biased by climate level.
+                let sev_roll = state.id_gen.next_f32();
+                let severity = ((sev_roll * 3.0) as u8 + 1).min(3);
+
+                // Apply damage: destroy improvement.
+                if let Some(tile) = state.board.tile_mut(coord) {
+                    tile.improvement = None;
+                    tile.improvement_pillaged = false;
+                    // Volcanic eruptions add VolcanicSoil.
+                    if kind == DisasterKind::VolcanicEruption {
+                        tile.feature = Some(BuiltinFeature::VolcanicSoil);
+                    }
+                }
+
+                diff.push(StateDelta::DisasterOccurred { kind, coord, severity });
             }
         }
     }
@@ -923,8 +1202,27 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         diff.push(StateDelta::DiplomacyChanged { civ_a, civ_b, new_status });
     }
 
-    // TODO(PHASE3-8.3): Deliver trade route yields; decrement turns_remaining; expire routes.
-    // TODO(PHASE3-8.5): Compute religion spread per city pair; update Religion.followers.
+    // ── Phase 5 (cont.): Alliance leveling ──────────────────────────────
+    // For each active alliance, increment alliance_turns and check for level-up.
+    let mut alliance_levelups: Vec<(CivId, CivId, u8)> = Vec::new();
+    for rel in state.diplomatic_relations.iter_mut() {
+        if rel.status == DiplomaticStatus::Alliance && rel.alliance_type.is_some() {
+            rel.alliance_turns += 1;
+            if rel.alliance_turns >= 60 && rel.alliance_level < 3 {
+                rel.alliance_level = 3;
+                alliance_levelups.push((rel.civ_a, rel.civ_b, 3));
+            } else if rel.alliance_turns >= 30 && rel.alliance_level < 2 {
+                rel.alliance_level = 2;
+                alliance_levelups.push((rel.civ_a, rel.civ_b, 2));
+            }
+        }
+    }
+    for (civ_a, civ_b, new_level) in alliance_levelups {
+        diff.push(StateDelta::AllianceLevelUp { civ_a, civ_b, new_level });
+    }
+
+    // NOTE: Trade route yields, expiry, and religion spread are handled in
+    // earlier phases (Phase 2b trade routes, Phase 3d religion pressure).
 
     // ── Phase 5a-2: Governor establishment countdown ─────────────────────
     for gov in &mut state.governors {
@@ -1048,6 +1346,19 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         }
     }
 
+    // ── Phase 5b-0: Visibility refresh ──────────────────────────────────────
+    // Recalculate visibility for all civs so that any newly explored natural
+    // wonders emit NaturalWonderDiscovered deltas before the era score observer.
+    {
+        let civ_ids: Vec<_> = state.civilizations.iter().map(|c| c.id).collect();
+        for cid in civ_ids {
+            let vis_diff = crate::game::recalculate_visibility(state, cid);
+            for delta in vis_diff.deltas {
+                diff.push(delta);
+            }
+        }
+    }
+
     // ── Phase 5b-1: Era score observer ──────────────────────────────────────
     // Scan deltas produced so far and award era score for matching historic moments.
     {
@@ -1102,6 +1413,62 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
                     });
                 }
             }
+        }
+    }
+
+    // ── Phase 5b-3: Diplomatic favor accumulation ─────────────────────────
+    // Each civ gains: +1 base, +1 per suzerained city-state, +1 if not at war.
+    {
+        use crate::civ::city::CityKind;
+
+        let civ_ids_for_favor: Vec<CivId> = state.civilizations.iter().map(|c| c.id).collect();
+        for &civ_id in &civ_ids_for_favor {
+            let mut favor: i32 = 1; // base
+
+            // +1 per suzerained city-state
+            for city in &state.cities {
+                if let CityKind::CityState(ref cs_data) = city.kind
+                    && cs_data.suzerain == Some(civ_id)
+                {
+                    favor += 1;
+                }
+            }
+
+            // +1 if not at war with anyone
+            let at_war = state.diplomatic_relations.iter().any(|rel| {
+                (rel.civ_a == civ_id || rel.civ_b == civ_id) && rel.status == DiplomaticStatus::War
+            });
+            if !at_war {
+                favor += 1;
+            }
+
+            if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == civ_id) {
+                civ.diplomatic_favor = civ.diplomatic_favor.saturating_add(favor as u32);
+            }
+            diff.push(StateDelta::DiplomaticFavorChanged { civ: civ_id, delta: favor });
+        }
+    }
+
+    // ── Phase 5c-0: World Congress session ─────────────────────────────────
+    // If the current turn reaches the next scheduled session, hold a session.
+    // The civ with the most diplomatic_favor wins and earns +1 Diplomatic VP.
+    if state.turn >= state.world_congress.next_session_turn
+        && !state.civilizations.is_empty()
+    {
+        // Schedule next session.
+        state.world_congress.next_session_turn += state.world_congress.session_interval;
+
+        // Find the civ with the most diplomatic favor (skip barbarian civ).
+        let winner = state.civilizations.iter()
+            .filter(|c| Some(c.id) != state.barbarian_civ)
+            .max_by_key(|c| c.diplomatic_favor)
+            .map(|c| c.id);
+
+        if let Some(winner_id) = winner {
+            *state.world_congress.diplomatic_victory_points
+                .entry(winner_id).or_insert(0) += 1;
+            diff.push(StateDelta::CongressSessionHeld { winner: winner_id });
+            diff.push(StateDelta::DiplomaticVPEarned { civ: winner_id, points: 1 });
         }
     }
 

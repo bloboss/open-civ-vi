@@ -1,0 +1,17 @@
+[package]
+name = "open4x-cli"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "open4x"
+path = "src/main.rs"
+
+[dependencies]
+libciv = { path = "../libciv", features = ["serde"] }
+libhexgrid = { path = "../libhexgrid" }
+clap = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+ulid = { workspace = true }

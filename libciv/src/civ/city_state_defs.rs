@@ -1,4 +1,4 @@
-//! Static definitions for all 24 base-game city-states.
+//! Static definitions for all 45 city-states (24 base-game + 9 Gathering Storm + 12 DLC).
 
 use crate::civ::city_state::CityStateType;
 use crate::rules::modifier::*;
@@ -449,6 +449,274 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             envoy_3_modifiers: militaristic_envoy_3("Valletta"),
             envoy_6_modifiers: militaristic_envoy_6("Valletta"),
         },
+
+        // ── Gathering Storm city-states ────────────────────────────────
+
+        // ── GS Militaristic ────────────────────────────────────────────
+        CityStateDef {
+            name: "Akkad",
+            state_type: CityStateType::Militaristic,
+            suzerain_bonus_description: "Melee class units gain +5 Combat Strength",
+            suzerain_modifiers: vec![
+                Modifier::new(
+                    ModifierSource::Custom("Akkad"),
+                    TargetSelector::Global,
+                    EffectType::CombatStrengthFlat(5),
+                    StackingRule::Additive,
+                ),
+            ],
+            envoy_1_modifiers: militaristic_envoy_1("Akkad"),
+            envoy_3_modifiers: militaristic_envoy_3("Akkad"),
+            envoy_6_modifiers: militaristic_envoy_6("Akkad"),
+        },
+        CityStateDef {
+            name: "Ngazargamu",
+            state_type: CityStateType::Militaristic,
+            suzerain_bonus_description: "+20% combat XP for mounted units",
+            // Complex effect: XP bonus for specific unit class; no direct modifier.
+            suzerain_modifiers: vec![],
+            envoy_1_modifiers: militaristic_envoy_1("Ngazargamu"),
+            envoy_3_modifiers: militaristic_envoy_3("Ngazargamu"),
+            envoy_6_modifiers: militaristic_envoy_6("Ngazargamu"),
+        },
+
+        // ── GS Scientific ──────────────────────────────────────────────
+        CityStateDef {
+            name: "Bologna",
+            state_type: CityStateType::Scientific,
+            suzerain_bonus_description: "+1 Great Person point per district",
+            suzerain_modifiers: vec![
+                suzerain_yield_flat("Bologna", YieldType::GreatPersonPoints, 1),
+            ],
+            envoy_1_modifiers: scientific_envoy_1("Bologna"),
+            envoy_3_modifiers: scientific_envoy_3("Bologna"),
+            envoy_6_modifiers: scientific_envoy_6("Bologna"),
+        },
+        CityStateDef {
+            name: "Fez",
+            state_type: CityStateType::Scientific,
+            suzerain_bonus_description: "+20 Science when you convert a city for the first time",
+            // Complex effect: one-shot science grant on conversion; no direct modifier.
+            suzerain_modifiers: vec![],
+            envoy_1_modifiers: scientific_envoy_1("Fez"),
+            envoy_3_modifiers: scientific_envoy_3("Fez"),
+            envoy_6_modifiers: scientific_envoy_6("Fez"),
+        },
+
+        // ── GS Trade ───────────────────────────────────────────────────
+        CityStateDef {
+            name: "Cahokia",
+            state_type: CityStateType::Trade,
+            suzerain_bonus_description: "Free unique Cahokia Mounds improvement",
+            // Complex effect: unlocks unique improvement; no direct modifier.
+            suzerain_modifiers: vec![],
+            envoy_1_modifiers: trade_envoy_1("Cahokia"),
+            envoy_3_modifiers: trade_envoy_3("Cahokia"),
+            envoy_6_modifiers: trade_envoy_6("Cahokia"),
+        },
+
+        // ── GS Industrial ──────────────────────────────────────────────
+        CityStateDef {
+            name: "Cardiff",
+            state_type: CityStateType::Industrial,
+            suzerain_bonus_description: "+2 Power from each Harbor building",
+            // Complex effect: power from harbor buildings; approximate with production bonus.
+            suzerain_modifiers: vec![
+                suzerain_yield_flat("Cardiff", YieldType::Production, 2),
+            ],
+            envoy_1_modifiers: industrial_envoy_1("Cardiff"),
+            envoy_3_modifiers: industrial_envoy_3("Cardiff"),
+            envoy_6_modifiers: industrial_envoy_6("Cardiff"),
+        },
+        CityStateDef {
+            name: "Mexico City",
+            state_type: CityStateType::Industrial,
+            suzerain_bonus_description: "+2 Production from each improved tile",
+            suzerain_modifiers: vec![
+                suzerain_yield_flat("Mexico City", YieldType::Production, 2),
+            ],
+            envoy_1_modifiers: industrial_envoy_1("Mexico City"),
+            envoy_3_modifiers: industrial_envoy_3("Mexico City"),
+            envoy_6_modifiers: industrial_envoy_6("Mexico City"),
+        },
+
+        // ── GS Religious ───────────────────────────────────────────────
+        CityStateDef {
+            name: "Nazca",
+            state_type: CityStateType::Religious,
+            suzerain_bonus_description: "Free Nazca Line improvement",
+            // Complex effect: unlocks unique improvement; no direct modifier.
+            suzerain_modifiers: vec![],
+            envoy_1_modifiers: religious_envoy_1("Nazca"),
+            envoy_3_modifiers: religious_envoy_3("Nazca"),
+            envoy_6_modifiers: religious_envoy_6("Nazca"),
+        },
+
+        // ── GS Cultural ────────────────────────────────────────────────
+        CityStateDef {
+            name: "Rapa Nui",
+            state_type: CityStateType::Cultural,
+            suzerain_bonus_description: "Free Moai improvement",
+            // Complex effect: unlocks unique improvement; no direct modifier.
+            suzerain_modifiers: vec![],
+            envoy_1_modifiers: cultural_envoy_1("Rapa Nui"),
+            envoy_3_modifiers: cultural_envoy_3("Rapa Nui"),
+            envoy_6_modifiers: cultural_envoy_6("Rapa Nui"),
+        },
+
+        // ── DLC city-states ───────────────────────────────────────────
+
+        // ── DLC Cultural ──────────────────────────────────────────────
+        CityStateDef {
+            name: "Ayutthaya",
+            state_type: CityStateType::Cultural,
+            suzerain_bonus_description: "+10% culture from buildings",
+            suzerain_modifiers: vec![
+                suzerain_yield_percent("Ayutthaya", YieldType::Culture, 10),
+            ],
+            envoy_1_modifiers: cultural_envoy_1("Ayutthaya"),
+            envoy_3_modifiers: cultural_envoy_3("Ayutthaya"),
+            envoy_6_modifiers: cultural_envoy_6("Ayutthaya"),
+        },
+        CityStateDef {
+            name: "Caguana",
+            state_type: CityStateType::Cultural,
+            suzerain_bonus_description: "+2 culture per entertainment building",
+            suzerain_modifiers: vec![
+                suzerain_yield_flat("Caguana", YieldType::Culture, 2),
+            ],
+            envoy_1_modifiers: cultural_envoy_1("Caguana"),
+            envoy_3_modifiers: cultural_envoy_3("Caguana"),
+            envoy_6_modifiers: cultural_envoy_6("Caguana"),
+        },
+
+        // ── DLC Religious ─────────────────────────────────────────────
+        CityStateDef {
+            name: "Chinguetti",
+            state_type: CityStateType::Religious,
+            suzerain_bonus_description: "+2 faith per trade route",
+            suzerain_modifiers: vec![
+                Modifier::new(
+                    ModifierSource::Custom("Chinguetti"),
+                    TargetSelector::TradeRoutesOwned,
+                    EffectType::TradeRouteYieldFlat(YieldType::Faith, 2),
+                    StackingRule::Additive,
+                ),
+            ],
+            envoy_1_modifiers: religious_envoy_1("Chinguetti"),
+            envoy_3_modifiers: religious_envoy_3("Chinguetti"),
+            envoy_6_modifiers: religious_envoy_6("Chinguetti"),
+        },
+        CityStateDef {
+            name: "Vatican City",
+            state_type: CityStateType::Religious,
+            suzerain_bonus_description: "+100% religious pressure from wonders",
+            suzerain_modifiers: vec![
+                suzerain_yield_percent("Vatican City", YieldType::Faith, 100),
+            ],
+            envoy_1_modifiers: religious_envoy_1("Vatican City"),
+            envoy_3_modifiers: religious_envoy_3("Vatican City"),
+            envoy_6_modifiers: religious_envoy_6("Vatican City"),
+        },
+
+        // ── DLC Industrial ────────────────────────────────────────────
+        CityStateDef {
+            name: "Johannesburg",
+            state_type: CityStateType::Industrial,
+            suzerain_bonus_description: "+3 gold per improved resource",
+            suzerain_modifiers: vec![
+                suzerain_yield_flat("Johannesburg", YieldType::Gold, 3),
+            ],
+            envoy_1_modifiers: industrial_envoy_1("Johannesburg"),
+            envoy_3_modifiers: industrial_envoy_3("Johannesburg"),
+            envoy_6_modifiers: industrial_envoy_6("Johannesburg"),
+        },
+        CityStateDef {
+            name: "Singapore",
+            state_type: CityStateType::Industrial,
+            suzerain_bonus_description: "+2 production per foreign trade route",
+            suzerain_modifiers: vec![
+                Modifier::new(
+                    ModifierSource::Custom("Singapore"),
+                    TargetSelector::TradeRoutesOwned,
+                    EffectType::TradeRouteYieldFlat(YieldType::Production, 2),
+                    StackingRule::Additive,
+                ),
+            ],
+            envoy_1_modifiers: industrial_envoy_1("Singapore"),
+            envoy_3_modifiers: industrial_envoy_3("Singapore"),
+            envoy_6_modifiers: industrial_envoy_6("Singapore"),
+        },
+
+        // ── DLC Scientific ────────────────────────────────────────────
+        CityStateDef {
+            name: "Nalanda",
+            state_type: CityStateType::Scientific,
+            suzerain_bonus_description: "+2 science per library",
+            suzerain_modifiers: vec![
+                suzerain_yield_flat("Nalanda", YieldType::Science, 2),
+            ],
+            envoy_1_modifiers: scientific_envoy_1("Nalanda"),
+            envoy_3_modifiers: scientific_envoy_3("Nalanda"),
+            envoy_6_modifiers: scientific_envoy_6("Nalanda"),
+        },
+        CityStateDef {
+            name: "Taruga",
+            state_type: CityStateType::Scientific,
+            suzerain_bonus_description: "+1 science per strategic resource",
+            suzerain_modifiers: vec![
+                suzerain_yield_flat("Taruga", YieldType::Science, 1),
+            ],
+            envoy_1_modifiers: scientific_envoy_1("Taruga"),
+            envoy_3_modifiers: scientific_envoy_3("Taruga"),
+            envoy_6_modifiers: scientific_envoy_6("Taruga"),
+        },
+
+        // ── DLC Trade ─────────────────────────────────────────────────
+        CityStateDef {
+            name: "Samarkand",
+            state_type: CityStateType::Trade,
+            suzerain_bonus_description: "Free luxury resource on suzerainty",
+            // Complex effect: grants luxury resource; no direct modifier.
+            suzerain_modifiers: vec![],
+            envoy_1_modifiers: trade_envoy_1("Samarkand"),
+            envoy_3_modifiers: trade_envoy_3("Samarkand"),
+            envoy_6_modifiers: trade_envoy_6("Samarkand"),
+        },
+        CityStateDef {
+            name: "Hunza",
+            state_type: CityStateType::Trade,
+            suzerain_bonus_description: "+1 gold per mountain within 3 tiles",
+            suzerain_modifiers: vec![
+                suzerain_yield_flat("Hunza", YieldType::Gold, 1),
+            ],
+            envoy_1_modifiers: trade_envoy_1("Hunza"),
+            envoy_3_modifiers: trade_envoy_3("Hunza"),
+            envoy_6_modifiers: trade_envoy_6("Hunza"),
+        },
+
+        // ── DLC Militaristic ──────────────────────────────────────────
+        CityStateDef {
+            name: "Wolin",
+            state_type: CityStateType::Militaristic,
+            suzerain_bonus_description: "+2 production for naval units",
+            suzerain_modifiers: vec![
+                suzerain_yield_flat("Wolin", YieldType::Production, 2),
+            ],
+            envoy_1_modifiers: militaristic_envoy_1("Wolin"),
+            envoy_3_modifiers: militaristic_envoy_3("Wolin"),
+            envoy_6_modifiers: militaristic_envoy_6("Wolin"),
+        },
+        CityStateDef {
+            name: "Lahore",
+            state_type: CityStateType::Militaristic,
+            suzerain_bonus_description: "Can purchase Nihang units with faith",
+            // Complex effect: faith purchase of unique unit; no direct modifier.
+            suzerain_modifiers: vec![],
+            envoy_1_modifiers: militaristic_envoy_1("Lahore"),
+            envoy_3_modifiers: militaristic_envoy_3("Lahore"),
+            envoy_6_modifiers: militaristic_envoy_6("Lahore"),
+        },
     ]
 }
 
@@ -459,7 +727,7 @@ mod tests {
     #[test]
     fn test_builtin_city_state_defs_count() {
         let defs = builtin_city_state_defs();
-        assert_eq!(defs.len(), 24, "Expected 24 base-game city-state definitions");
+        assert_eq!(defs.len(), 45, "Expected 45 city-state definitions (24 base + 9 GS + 12 DLC)");
     }
 
     #[test]
@@ -468,7 +736,7 @@ mod tests {
         let mut names: Vec<&str> = defs.iter().map(|d| d.name).collect();
         names.sort();
         names.dedup();
-        assert_eq!(names.len(), 24, "All city-state names must be unique");
+        assert_eq!(names.len(), 45, "All city-state names must be unique");
     }
 
     #[test]
@@ -481,12 +749,12 @@ mod tests {
         let religious = defs.iter().filter(|d| d.state_type == CityStateType::Religious).count();
         let militaristic = defs.iter().filter(|d| d.state_type == CityStateType::Militaristic).count();
 
-        assert_eq!(trade, 5);
-        assert_eq!(industrial, 4);
-        assert_eq!(scientific, 4);
-        assert_eq!(cultural, 4);
-        assert_eq!(religious, 4);
-        assert_eq!(militaristic, 3);
+        assert_eq!(trade, 8);
+        assert_eq!(industrial, 8);
+        assert_eq!(scientific, 8);
+        assert_eq!(cultural, 7);
+        assert_eq!(religious, 7);
+        assert_eq!(militaristic, 7);
     }
 
     #[test]

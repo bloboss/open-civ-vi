@@ -10,6 +10,17 @@ pub enum DiplomaticStatus {
     Alliance,
 }
 
+/// The type of alliance formed between two civilizations (Rise & Fall).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum AllianceType {
+    Research,
+    Military,
+    Economic,
+    Cultural,
+    Religious,
+}
+
 pub trait Agreement: std::fmt::Debug {
     fn id(&self) -> AgreementId;
     fn name(&self) -> &'static str;
@@ -34,6 +45,7 @@ pub trait GrievanceTrigger: std::fmt::Debug {
 // - Hidden(u8) // we can have various levels of spy
 // - Secret
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum GrievanceVisibility {
     /// All civilizations can see this grievance.
     Public,
@@ -45,8 +57,11 @@ pub enum GrievanceVisibility {
 
 /// A single recorded grievance event between two civilizations.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(bound(deserialize = "")))]
 pub struct GrievanceRecord {
     pub grievance_id: GrievanceId,
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
     pub description: &'static str,
     pub amount: i32,
     pub visibility: GrievanceVisibility,
@@ -56,14 +71,29 @@ pub struct GrievanceRecord {
 // TODO: Any way we can just track this as a bi-directional graph? Is there
 // a nicer way to do that?
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DiplomaticRelation {
     pub civ_a: CivId,
     pub civ_b: CivId,
     pub status: DiplomaticStatus,
+    /// Skipped during serialization — grievance records contain `&'static str`
+    /// descriptions that require special handling. Grievances are transient
+    /// per-era data; on load they start empty.
+    #[cfg_attr(feature = "serde", serde(skip))]
     pub grievances_a_against_b: Vec<GrievanceRecord>,
+    #[cfg_attr(feature = "serde", serde(skip))]
     pub grievances_b_against_a: Vec<GrievanceRecord>,
     pub active_agreements: Vec<AgreementId>,
     pub turns_at_war: u32,
+    /// The type of alliance, if any. `None` when not in an alliance.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub alliance_type: Option<AllianceType>,
+    /// Alliance level (1-3). Increases over time while in an alliance.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub alliance_level: u8,
+    /// Number of turns the current alliance has lasted.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub alliance_turns: u32,
 }
 
 impl DiplomaticRelation {
@@ -76,6 +106,9 @@ impl DiplomaticRelation {
             grievances_b_against_a: Vec::new(),
             active_agreements: Vec::new(),
             turns_at_war: 0,
+            alliance_type: None,
+            alliance_level: 0,
+            alliance_turns: 0,
         }
     }
 

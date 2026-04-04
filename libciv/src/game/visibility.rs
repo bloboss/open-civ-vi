@@ -45,6 +45,18 @@ pub fn recalculate_visibility(state: &mut GameState, civ_id: CivId) -> GameState
 
     let mut diff = GameStateDiff::new();
     if !newly_explored.is_empty() {
+        // Check newly explored tiles for natural wonders.
+        for &coord in &newly_explored {
+            if let Some(tile) = state.board.tile(coord)
+                && let Some(ref wonder) = tile.natural_wonder
+            {
+                diff.push(StateDelta::NaturalWonderDiscovered {
+                    civ: civ_id,
+                    wonder_name: wonder.as_def().name(),
+                    coord,
+                });
+            }
+        }
         diff.push(StateDelta::TilesRevealed { civ: civ_id, coords: newly_explored });
     }
     diff

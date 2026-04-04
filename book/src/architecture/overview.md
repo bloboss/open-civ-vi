@@ -7,7 +7,7 @@ libhexgrid      (pure geometry, zero game knowledge)
     |
 libciv          (all game state and rules)
     |           |
-civsim      open4x-server   (CLI binary / merged server + frontend)
+open4x-cli  open4x-server   (CLI binary / merged server + frontend)
 ```
 
 > **History**: `open4x-api` (shared wire types) and `open4x-web` (Leptos frontend)

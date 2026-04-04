@@ -283,6 +283,10 @@ fn to_libciv_improvement(i: crate::types::enums::BuiltinImprovement) -> libciv::
         A::ColossalHead => I::ColossalHead, A::GreatWall => I::GreatWall,
         A::Kurgan => I::Kurgan, A::Mission => I::Mission,
         A::RomanFort => I::RomanFort, A::Ziggurat => I::Ziggurat,
+        A::SolarFarm => I::SolarFarm, A::WindFarm => I::WindFarm,
+        A::OffshoreWindFarm => I::OffshoreWindFarm, A::GeothermalPlant => I::GeothermalPlant,
+        A::Seastead => I::Seastead, A::MountainTunnel => I::MountainTunnel,
+        A::SkiResort => I::SkiResort,
     }
 }
 
@@ -293,6 +297,7 @@ fn to_libciv_production_item(item: &crate::types::enums::ProductionItemView) -> 
         P::Building(id) => ProductionItem::Building(libciv::BuildingId::from_ulid(id.as_ulid())),
         P::District(d) => ProductionItem::District(to_libciv_district(*d)),
         P::Wonder(id) => ProductionItem::Wonder(libciv::WonderId::from_ulid(id.as_ulid())),
+        P::Project(id) => ProductionItem::Project(libciv::ProjectId::from_ulid(id.as_ulid())),
     }
 }
 

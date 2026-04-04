@@ -43,6 +43,40 @@ pub(crate) fn lookup_bundle(civ_identity: Option<BuiltinCiv>) -> Option<CivAbili
         BuiltinCiv::Scythia => civ_registry::scythia(),
         BuiltinCiv::Spain   => civ_registry::spain(),
         BuiltinCiv::Sumeria => civ_registry::sumeria(),
+        // Gathering Storm
+        BuiltinCiv::Canada    => civ_registry::canada(),
+        BuiltinCiv::Hungary   => civ_registry::hungary(),
+        BuiltinCiv::Inca      => civ_registry::inca(),
+        BuiltinCiv::Mali      => civ_registry::mali(),
+        BuiltinCiv::Maori     => civ_registry::maori(),
+        BuiltinCiv::Ottoman   => civ_registry::ottoman(),
+        BuiltinCiv::Phoenicia => civ_registry::phoenicia(),
+        BuiltinCiv::Sweden    => civ_registry::sweden(),
+        // Rise & Fall
+        BuiltinCiv::Cree        => civ_registry::cree(),
+        BuiltinCiv::Georgia     => civ_registry::georgia(),
+        BuiltinCiv::Korea       => civ_registry::korea(),
+        BuiltinCiv::Mapuche     => civ_registry::mapuche(),
+        BuiltinCiv::Mongolia    => civ_registry::mongolia(),
+        BuiltinCiv::Netherlands => civ_registry::netherlands(),
+        BuiltinCiv::Scotland    => civ_registry::scotland(),
+        BuiltinCiv::Zulu        => civ_registry::zulu(),
+        // DLC Civilization Packs
+        BuiltinCiv::Australia    => civ_registry::australia(),
+        BuiltinCiv::Aztec        => civ_registry::aztec(),
+        BuiltinCiv::Byzantium    => civ_registry::byzantium(),
+        BuiltinCiv::Gaul         => civ_registry::gaul(),
+        BuiltinCiv::Ethiopia     => civ_registry::ethiopia(),
+        BuiltinCiv::GranColombia => civ_registry::gran_colombia(),
+        BuiltinCiv::Maya         => civ_registry::maya(),
+        BuiltinCiv::Indonesia    => civ_registry::indonesia(),
+        BuiltinCiv::Khmer        => civ_registry::khmer(),
+        BuiltinCiv::Vietnam      => civ_registry::vietnam(),
+        BuiltinCiv::Macedon      => civ_registry::macedon(),
+        BuiltinCiv::Persia       => civ_registry::persia(),
+        BuiltinCiv::Nubia        => civ_registry::nubia(),
+        BuiltinCiv::Poland       => civ_registry::poland(),
+        BuiltinCiv::Portugal     => civ_registry::portugal(),
     })
 }
 
@@ -116,6 +150,19 @@ pub trait RulesEngine: std::fmt::Debug {
         state: &mut GameState,
         civ_a: CivId,
         civ_b: CivId,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// Form an alliance of the given type between two civilizations.
+    ///
+    /// Both civs must exist; they must not be at war; current status must be
+    /// Friendly or Neutral. On success: sets status to Alliance, records
+    /// `alliance_type`, sets `alliance_level = 1` and `alliance_turns = 0`.
+    fn form_alliance(
+        &self,
+        state: &mut GameState,
+        civ_a: CivId,
+        civ_b: CivId,
+        alliance_type: crate::civ::diplomacy::AllianceType,
     ) -> Result<GameStateDiff, RulesError>;
 
     /// Resolve combat between `attacker` and `defender`.
@@ -407,11 +454,35 @@ pub trait RulesEngine: std::fmt::Debug {
         guru: UnitId,
     ) -> Result<GameStateDiff, RulesError>;
 
+    /// Complete the next science milestone for `civ_id`. Milestones must be
+    /// completed in order: "Launch Earth Satellite", "Land on Moon",
+    /// "Establish Mars Colony". Returns `AllMilestonesCompleted` if the civ
+    /// has already completed all three.
+    fn complete_science_milestone(
+        &self,
+        state: &mut GameState,
+        civ_id: CivId,
+    ) -> Result<GameStateDiff, RulesError>;
+
     // TODO(PHASE3-BORDERS): fn purchase_tile(&self, state: &mut GameState, city_id: CityId,
     //   coord: HexCoord) -> Result<GameStateDiff, RulesError>;
     //   Spends gold (or culture) from the civilization's treasury to immediately claim a tile
     //   within radius 3 of the city. Cost scales with tile distance. Distinct from automatic
     //   cultural expansion: this is a player action and debits the main treasury.
+
+    // ── Rock Band / Cultural Combat (GS-16) ────────────────────────────────
+
+    /// Perform a Rock Band concert at a foreign city's district.
+    ///
+    /// Validation: unit must be a "Rock Band"; must be on a tile belonging to
+    /// a foreign city. On success: generates tourism (base 500 + 250 per
+    /// district in target city). 30% chance the band disbands; otherwise
+    /// charges are decremented and the unit is destroyed when charges reach 0.
+    fn rock_band_perform(
+        &self,
+        state: &mut GameState,
+        unit_id: UnitId,
+    ) -> Result<GameStateDiff, RulesError>;
 
     // ── Barbarian Clans interactions ─────────────────────────────────────────
 
@@ -447,6 +518,25 @@ pub trait RulesEngine: std::fmt::Debug {
         camp_id: crate::BarbarianCampId,
         civ_id: CivId,
         target: CivId,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// Promote a unit with a named promotion. Validates XP eligibility,
+    /// promotion class match, and prerequisites. On success: pushes the
+    /// PromotionId, heals +50 HP (capped at 100), emits UnitPromoted + UnitHealed.
+    fn promote_unit(
+        &self,
+        state: &mut GameState,
+        unit_id: UnitId,
+        promotion_name: &str,
+    ) -> Result<GameStateDiff, RulesError>;
+
+    /// Raid a barbarian camp with a military unit on or adjacent to the camp tile.
+    /// Grants 25 gold to the unit's owner and reduces the camp's conversion_progress by 5.
+    fn raid_barbarian_camp(
+        &self,
+        state: &mut GameState,
+        unit_id: UnitId,
+        camp_id: crate::BarbarianCampId,
     ) -> Result<GameStateDiff, RulesError>;
 
     /// Clear a barbarian camp after defeating all defenders on its tile.
@@ -614,12 +704,27 @@ pub enum RulesError {
     ReligionFullyEnhanced,
     /// The unit has no heal charges remaining.
     NoHealCharges,
+    /// All science milestones have already been completed by this civilization.
+    AllMilestonesCompleted,
     /// The barbarian camp ID was not found.
     BarbarianCampNotFound,
     /// Barbarian clans mode is not enabled.
     BarbarianClansNotEnabled,
     /// The hire cooldown has not expired for this camp.
     BarbarianHireOnCooldown,
+    /// The unit does not have enough XP for a promotion, or the promotion class
+    /// does not match the unit's promotion class.
+    PromotionNotEligible,
+    /// The specified unit promotion was not found in the promotion registry.
+    UnitPromotionNotFound,
+    /// The unit is not a Rock Band.
+    NotARockBand,
+    /// The unit is not on a tile belonging to a foreign city.
+    NotOnForeignCity,
+    /// Cannot form an alliance while at war with the target civilization.
+    CannotAllyAtWar,
+    /// Cannot form an alliance — status must be Friendly or Neutral.
+    InvalidAllianceStatus,
 }
 
 impl std::fmt::Display for RulesError {
@@ -700,9 +805,16 @@ impl std::fmt::Display for RulesError {
             RulesError::InquisitionNotLaunched          => write!(f, "inquisition has not been launched"),
             RulesError::ReligionFullyEnhanced           => write!(f, "religion already has maximum beliefs"),
             RulesError::NoHealCharges                   => write!(f, "no heal charges remaining"),
+            RulesError::AllMilestonesCompleted         => write!(f, "all science milestones already completed"),
             RulesError::BarbarianCampNotFound          => write!(f, "barbarian camp not found"),
             RulesError::BarbarianClansNotEnabled       => write!(f, "barbarian clans mode is not enabled"),
             RulesError::BarbarianHireOnCooldown        => write!(f, "barbarian hire is on cooldown"),
+            RulesError::PromotionNotEligible           => write!(f, "unit not eligible for this promotion"),
+            RulesError::UnitPromotionNotFound          => write!(f, "unit promotion not found"),
+            RulesError::NotARockBand                   => write!(f, "unit is not a Rock Band"),
+            RulesError::NotOnForeignCity               => write!(f, "unit is not on a foreign city tile"),
+            RulesError::CannotAllyAtWar                => write!(f, "cannot form alliance while at war"),
+            RulesError::InvalidAllianceStatus          => write!(f, "status must be Friendly or Neutral to form alliance"),
         }
     }
 }
@@ -734,6 +846,10 @@ impl RulesEngine for DefaultRulesEngine {
 
     fn assign_policy(&self, state: &mut GameState, civ: CivId, policy: PolicyId) -> Result<GameStateDiff, RulesError> {
         diplomacy::assign_policy(state, civ, policy)
+    }
+
+    fn form_alliance(&self, state: &mut GameState, civ_a: CivId, civ_b: CivId, alliance_type: crate::civ::diplomacy::AllianceType) -> Result<GameStateDiff, RulesError> {
+        diplomacy::form_alliance(state, civ_a, civ_b, alliance_type)
     }
 
     fn declare_war(&self, state: &mut GameState, aggressor: CivId, target: CivId) -> Result<GameStateDiff, RulesError> {
@@ -844,6 +960,29 @@ impl RulesEngine for DefaultRulesEngine {
         religion::guru_heal(state, guru)
     }
 
+    fn complete_science_milestone(&self, state: &mut GameState, civ_id: CivId) -> Result<GameStateDiff, RulesError> {
+        use super::victory::SCIENCE_MILESTONES;
+        use super::diff::StateDelta;
+
+        let civ = state.civilizations.iter().find(|c| c.id == civ_id)
+            .ok_or(RulesError::CivNotFound)?;
+        let completed = civ.science_milestones_completed as usize;
+        if completed >= SCIENCE_MILESTONES.len() {
+            return Err(RulesError::AllMilestonesCompleted);
+        }
+        let milestone = SCIENCE_MILESTONES[completed];
+        let civ = state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap();
+        civ.science_milestones_completed += 1;
+
+        let mut diff = GameStateDiff::new();
+        diff.push(StateDelta::ScienceMilestoneCompleted { civ: civ_id, milestone });
+        Ok(diff)
+    }
+
+    fn rock_band_perform(&self, state: &mut GameState, unit_id: UnitId) -> Result<GameStateDiff, RulesError> {
+        combat::rock_band_perform(state, unit_id)
+    }
+
     fn hire_from_barbarian_camp(&self, state: &mut GameState, camp_id: crate::BarbarianCampId, civ_id: CivId) -> Result<GameStateDiff, RulesError> {
         barbarians::hire_from_camp(state, camp_id, civ_id)
     }
@@ -854,6 +993,14 @@ impl RulesEngine for DefaultRulesEngine {
 
     fn incite_barbarian_camp(&self, state: &mut GameState, camp_id: crate::BarbarianCampId, civ_id: CivId, target: CivId) -> Result<GameStateDiff, RulesError> {
         barbarians::incite_camp(state, camp_id, civ_id, target)
+    }
+
+    fn promote_unit(&self, state: &mut GameState, unit_id: UnitId, promotion_name: &str) -> Result<GameStateDiff, RulesError> {
+        combat::promote_unit(state, unit_id, promotion_name)
+    }
+
+    fn raid_barbarian_camp(&self, state: &mut GameState, unit_id: UnitId, camp_id: crate::BarbarianCampId) -> Result<GameStateDiff, RulesError> {
+        combat::raid_barbarian_camp(state, unit_id, camp_id)
     }
 
     fn clear_barbarian_camp(&self, state: &mut GameState, camp_id: crate::BarbarianCampId, cleared_by: CivId) -> Result<GameStateDiff, RulesError> {
@@ -869,7 +1016,7 @@ impl RulesEngine for DefaultRulesEngine {
 mod tests {
     use super::*;
     use crate::civ::{BasicUnit, Civilization, City, DiplomaticRelation, DiplomaticStatus, GrievanceRecord, Leader};
-    use crate::civ::civilization::Agenda;
+    use crate::civ::civilization::BuiltinAgenda;
     use crate::{CivId, PolicyType, UnitCategory, UnitDomain, UnitTypeId};
     use crate::rules::effect::OneShotEffect;
     use super::effects::apply_effect;
@@ -879,24 +1026,11 @@ mod tests {
 
     // ── Shared test helpers ───────────────────────────────────────────────────
 
-    struct NoOpAgenda;
-    impl std::fmt::Debug for NoOpAgenda {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "NoOpAgenda")
-        }
-    }
-    impl Agenda for NoOpAgenda {
-        fn name(&self) -> &'static str { "No-op" }
-        fn description(&self) -> &'static str { "" }
-        fn attitude(&self, _: CivId) -> i32 { 0 }
-    }
-
     fn test_leader(civ_id: CivId) -> Leader {
         Leader {
             name: "TestLeader",
             civ_id,
-            abilities: Vec::new(),
-            agenda: Box::new(NoOpAgenda),
+            agenda: BuiltinAgenda::Default,
         }
     }
 
@@ -1336,6 +1470,8 @@ mod tests {
         let gov = Government {
             id: gov_id,
             name: "Autocracy",
+            era: crate::AgeType::Classical,
+            prereq_civic: "Political Philosophy",
             slots: PolicySlots { military: 1, economic: 1, diplomatic: 0, wildcard: 0 },
             inherent_modifiers: vec![],
             legacy_bonus: None,
@@ -1362,6 +1498,7 @@ mod tests {
             id: pol_id,
             name: "Strategos",
             policy_type: PolicyType::Military,
+            prereq_civic: "Military Tradition",
             modifiers: vec![],
             maintenance: 0,
         });
@@ -1392,6 +1529,7 @@ mod tests {
             id: pol_id,
             name: "Strategos",
             policy_type: PolicyType::Military,
+            prereq_civic: "Military Tradition",
             modifiers: vec![],
             maintenance: 0,
         });
@@ -1415,12 +1553,12 @@ mod tests {
         let pol1_id = crate::PolicyId::from_ulid(state.id_gen.next_ulid());
         state.policies.push(Policy {
             id: pol1_id, name: "First", policy_type: PolicyType::Military,
-            modifiers: vec![], maintenance: 0,
+            prereq_civic: "Code of Laws", modifiers: vec![], maintenance: 0,
         });
         let pol2_id = crate::PolicyId::from_ulid(state.id_gen.next_ulid());
         state.policies.push(Policy {
             id: pol2_id, name: "Second", policy_type: PolicyType::Military,
-            modifiers: vec![], maintenance: 0,
+            prereq_civic: "Code of Laws", modifiers: vec![], maintenance: 0,
         });
 
         let civ = state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap();
@@ -1445,7 +1583,7 @@ mod tests {
         let pol_id = crate::PolicyId::from_ulid(state.id_gen.next_ulid());
         state.policies.push(Policy {
             id: pol_id, name: "Free", policy_type: PolicyType::Economic,
-            modifiers: vec![], maintenance: 0,
+            prereq_civic: "Code of Laws", modifiers: vec![], maintenance: 0,
         });
         state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap()
             .unlocked_policies.push("Free");
@@ -1468,6 +1606,7 @@ mod tests {
         let old_gov_id = GovernmentId::from_ulid(state.id_gen.next_ulid());
         state.governments.push(Government {
             id: old_gov_id, name: "OldGov",
+            era: crate::AgeType::Ancient, prereq_civic: "Code of Laws",
             slots: PolicySlots { military: 2, economic: 0, diplomatic: 0, wildcard: 0 },
             inherent_modifiers: vec![], legacy_bonus: None,
         });
@@ -1476,14 +1615,15 @@ mod tests {
         let new_gov_id = GovernmentId::from_ulid(state.id_gen.next_ulid());
         state.governments.push(Government {
             id: new_gov_id, name: "NewGov",
+            era: crate::AgeType::Classical, prereq_civic: "Political Philosophy",
             slots: PolicySlots { military: 1, economic: 0, diplomatic: 0, wildcard: 0 },
             inherent_modifiers: vec![], legacy_bonus: None,
         });
 
         let pol1_id = crate::PolicyId::from_ulid(state.id_gen.next_ulid());
         let pol2_id = crate::PolicyId::from_ulid(state.id_gen.next_ulid());
-        state.policies.push(Policy { id: pol1_id, name: "Pol1", policy_type: PolicyType::Military, modifiers: vec![], maintenance: 0 });
-        state.policies.push(Policy { id: pol2_id, name: "Pol2", policy_type: PolicyType::Military, modifiers: vec![], maintenance: 0 });
+        state.policies.push(Policy { id: pol1_id, name: "Pol1", policy_type: PolicyType::Military, prereq_civic: "Code of Laws", modifiers: vec![], maintenance: 0 });
+        state.policies.push(Policy { id: pol2_id, name: "Pol2", policy_type: PolicyType::Military, prereq_civic: "Code of Laws", modifiers: vec![], maintenance: 0 });
 
         let civ = state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap();
         civ.current_government = Some(old_gov_id);
@@ -1550,7 +1690,8 @@ mod tests {
     #[test]
     fn test_free_unit_without_registry_emits_placeholder() {
         let (mut state, civ_id) = make_state();
-        // No unit_type_defs registered.
+        // Clear builtin unit_type_defs so no matching type is found.
+        state.unit_type_defs.clear();
 
         let effect = OneShotEffect::FreeUnit { unit_type: "Catapult", city: None };
         let mut diff = GameStateDiff::new();
@@ -1821,25 +1962,31 @@ mod tests {
     }
 
     #[test]
-    fn test_war_auto_resolves_when_grievances_decay() {
+    fn test_war_persists_until_explicit_peace() {
         let (mut state, a, b) = make_two_civ_state();
         let engine = DefaultRulesEngine;
 
         engine.declare_war(&mut state, a, b).unwrap();
 
-        // Leave the initial 30-point DeclaredWar grievance in place.
-        // Score = -30/2 = -15, above -50 so War doesn't persist.
-        // But score is -15 which is > -20, so status becomes Neutral.
-        engine.advance_turn(&mut state);
+        // Advance several turns — war should NOT auto-resolve regardless of
+        // grievance score. War only ends via explicit make_peace().
+        for _ in 0..5 {
+            engine.advance_turn(&mut state);
+        }
 
         let rel = state.diplomatic_relations.iter()
             .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
             .unwrap();
-        // Score is average of opinion_score_a_toward_b() and opinion_score_b_toward_a().
-        // Only one side has the 30-pt grievance (target's grievance against aggressor = -30).
-        // Average = (-30 + 0) / 2 = -15, which is > -20 -> Neutral.
-        assert_eq!(rel.status, DiplomaticStatus::Neutral,
-            "war should auto-resolve to Neutral when grievance score > -50 (got {:?})", rel.status);
+        assert_eq!(rel.status, DiplomaticStatus::War,
+            "war should persist until make_peace is called (got {:?})", rel.status);
+
+        // Now make peace — status should change.
+        engine.make_peace(&mut state, a, b).unwrap();
+        let rel = state.diplomatic_relations.iter()
+            .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
+            .unwrap();
+        assert_ne!(rel.status, DiplomaticStatus::War,
+            "status should no longer be War after make_peace");
     }
 
     // ── 7.4: Grievance triggers re-exported from civ::grievance ─────────────

@@ -43,6 +43,7 @@ pub struct BeliefContext {
 /// A founded religion. Follower counts live on `City.religious_followers`;
 /// `Religion` provides query methods that take `&[City]` to derive totals.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Religion {
     pub id: ReligionId,
     pub name: String,
@@ -111,7 +112,7 @@ pub fn build_beliefs(ids: &mut crate::game::state::IdGenerator) -> (Vec<BuiltinB
 }
 
 /// Named handles to every built-in belief ID.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct BeliefRefs {
     // ── Pantheon beliefs ──
     pub dance_of_the_aurora: BeliefId,

@@ -56,6 +56,7 @@ impl BuiltinEdgeFeature {
 /// Stored in canonical form: `dir` is always in the forward half {E, NE, NW}.
 /// The backward directions {W, SW, SE} are normalised by `WorldBoard::canonical`.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct WorldEdge {
     /// Canonical tile coordinate (forward-half endpoint).
     pub coord: HexCoord,

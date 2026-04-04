@@ -74,6 +74,13 @@ pub const HISTORIC_MOMENTS: &[HistoricMomentDef] = &[
         kind: HistoricMomentKind::CityFounded,
         unique: true,
     },
+    HistoricMomentDef {
+        name: "Natural Wonder Discovered",
+        description: "Explored a tile containing a natural wonder.",
+        era_score: 3,
+        kind: HistoricMomentKind::NaturalWonderDiscovered,
+        unique: false,
+    },
 ];
 
 // ---------------------------------------------------------------------------
@@ -105,6 +112,9 @@ fn delta_to_kind(delta: &StateDelta) -> Option<(CivId, HistoricMomentKind)> {
         }
         StateDelta::TradeRouteEstablished { owner, .. } => {
             Some((*owner, HistoricMomentKind::TradeRouteEstablished))
+        }
+        StateDelta::NaturalWonderDiscovered { civ, .. } => {
+            Some((*civ, HistoricMomentKind::NaturalWonderDiscovered))
         }
         _ => None,
     }
