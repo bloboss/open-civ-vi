@@ -1448,7 +1448,7 @@ mod tests {
             can_found_city: false,
             resource_cost: None,
             siege_bonus: 0, max_charges: 0,
-            exclusive_to: None, replaces: None,
+            exclusive_to: None, replaces: None, era: None,
         });
 
         let effect = OneShotEffect::FreeUnit { unit_type: "Warrior", city: None };

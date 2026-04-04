@@ -206,7 +206,7 @@ fn test_hoplite_adjacency_bonus() {
         max_movement: 200, combat_strength: Some(28),
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0,
-        exclusive_to: Some(BuiltinCiv::Greece), replaces: Some("spearman"),
+        exclusive_to: Some(BuiltinCiv::Greece), replaces: Some("spearman"), era: None,
     });
 
     // Place two hoplites adjacent to each other.
@@ -289,7 +289,7 @@ fn test_mamluk_heals_every_turn() {
         max_movement: 400, combat_strength: Some(50),
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0,
-        exclusive_to: Some(BuiltinCiv::Arabia), replaces: Some("knight"),
+        exclusive_to: Some(BuiltinCiv::Arabia), replaces: Some("knight"), era: None,
     });
 
     // Place a damaged Mamluk.
