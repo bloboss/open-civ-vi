@@ -36,6 +36,10 @@ pub enum EffectType {
     TradeRouteYieldFlat(YieldType, i32),
     /// Worship building purchase cost modifier (percent, -90 = 90% cheaper).
     WorshipBuildingCostPercent(i32),
+    /// Flat unit maintenance reduction (e.g., -1 = save 1 gold per unit).
+    MaintenanceReduction(i32),
+    /// Multiply a district's adjacency bonus (100 = +100% = double).
+    AdjacencyMultiplier(BuiltinDistrict, i32),
 }
 
 // ── Target selectors ─────────────────────────────────────────────────────────

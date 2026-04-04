@@ -39,6 +39,22 @@ pub enum RuleOverride {
     DoubleWarWearinessToEnemies,
     /// First specialty district of each type gives a free lowest-cost building (Hammurabi).
     FirstDistrictGivesFreeBuildingAndEnvoy,
+    /// Government legacy bonuses are earned at double speed (America).
+    LegacyBonusesFaster,
+    /// Eurekas and inspirations grant +10% bonus (China).
+    EurekaInspirationBonus(i32),
+    /// Extra territory on city founding (Russia).
+    ExtraTerritoryOnFounding(u32),
+    /// Build two light cavalry or unique unit at once (Scythia).
+    DoubleUnitProduction(&'static str),
+    /// +yield to intercontinental trade routes (Spain).
+    InterContinentalTradeBonus,
+    /// Bonus reward from tribal villages on barbarian camp capture (Sumeria).
+    BonusOnBarbarianCampCapture,
+    /// Cannot earn Great Prophets but gets bonus great works slots (Kongo).
+    NoGreatProphets,
+    /// Ocean travel unlocked early; +50% XP for naval melee (Norway).
+    EarlyOceanTravel,
 }
 
 /// All unique components and abilities for a civilization, encoded as data.

@@ -32,6 +32,17 @@ pub(crate) fn lookup_bundle(civ_identity: Option<BuiltinCiv>) -> Option<CivAbili
         BuiltinCiv::Japan   => civ_registry::japan(),
         BuiltinCiv::India   => civ_registry::india(),
         BuiltinCiv::Arabia  => civ_registry::arabia(),
+        BuiltinCiv::America => civ_registry::america(),
+        BuiltinCiv::Brazil  => civ_registry::brazil(),
+        BuiltinCiv::China   => civ_registry::china(),
+        BuiltinCiv::England => civ_registry::england(),
+        BuiltinCiv::France  => civ_registry::france(),
+        BuiltinCiv::Kongo   => civ_registry::kongo(),
+        BuiltinCiv::Norway  => civ_registry::norway(),
+        BuiltinCiv::Russia  => civ_registry::russia(),
+        BuiltinCiv::Scythia => civ_registry::scythia(),
+        BuiltinCiv::Spain   => civ_registry::spain(),
+        BuiltinCiv::Sumeria => civ_registry::sumeria(),
     })
 }
 
@@ -912,6 +923,7 @@ mod tests {
             max_movement:   movement,
             combat_strength: Some(20),
             promotions:     Vec::new(),
+            experience:     0,
             health:         100,
             range:          0,
             vision_range:   2,
@@ -1519,6 +1531,7 @@ mod tests {
             resource_cost: None,
             siege_bonus: 0, max_charges: 0,
             exclusive_to: None, replaces: None, era: None,
+            promotion_class: None,
         });
 
         let effect = OneShotEffect::FreeUnit { unit_type: "Warrior", city: None };

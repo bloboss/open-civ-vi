@@ -175,6 +175,7 @@ fn melee_attack_emits_damage_and_reduces_health() {
         max_movement:    200,
         combat_strength: Some(20),
         promotions:      Vec::new(),
+        experience:      0,
         health:          100,
         range:           0,
         vision_range:    2,
@@ -234,6 +235,7 @@ fn attacking_unit_at_one_hp_destroys_it() {
         max_movement:    200,
         combat_strength: Some(20),
         promotions:      Vec::new(),
+        experience:      0,
         health:          1,      // barely alive
         range:           0,
         vision_range:    2,
@@ -282,6 +284,7 @@ fn settler_founds_city_and_is_consumed() {
         max_movement:    200,
         combat_strength: None,
         promotions:      Vec::new(),
+        experience:      0,
         health:          100,
         range:           0,
         vision_range:    2,
@@ -348,6 +351,7 @@ fn founder_too_close_to_existing_city_is_rejected() {
         max_movement:    200,
         combat_strength: None,
         promotions:      Vec::new(),
+        experience:      0,
         health:          100,
         range:           0,
         vision_range:    2,
@@ -520,6 +524,7 @@ fn spawn_slinger(s: &mut common::Scenario, coord: HexCoord) -> libciv::UnitId {
         exclusive_to:    None,
         replaces:        None,
             era:             None,
+            promotion_class: None,
     });
     let unit_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
@@ -533,6 +538,7 @@ fn spawn_slinger(s: &mut common::Scenario, coord: HexCoord) -> libciv::UnitId {
         max_movement:    200,
         combat_strength: Some(10),
         promotions:      Vec::new(),
+        experience:      0,
         health:          100,
         range:           2,
         vision_range:    2,
@@ -566,6 +572,7 @@ fn ranged_unit_attacks_from_two_tiles_away() {
         max_movement:    200,
         combat_strength: Some(20),
         promotions:      Vec::new(),
+        experience:      0,
         health:          100,
         range:           0,
         vision_range:    2,
@@ -613,6 +620,7 @@ fn ranged_attack_beyond_range_is_rejected() {
         max_movement:    200,
         combat_strength: Some(20),
         promotions:      Vec::new(),
+        experience:      0,
         health:          100,
         range:           0,
         vision_range:    2,
@@ -650,6 +658,7 @@ fn ranged_attack_succeeds_without_adjacency() {
         max_movement:    200,
         combat_strength: Some(20),
         promotions:      Vec::new(),
+        experience:      0,
         health:          100,
         range:           0,
         vision_range:    2,
@@ -690,6 +699,7 @@ fn two_friendly_units_cannot_stack() {
         max_movement:    200,
         combat_strength: Some(20),
         promotions:      Vec::new(),
+        experience:      0,
         health:          100,
         range:           0,
         vision_range:    2,
@@ -731,6 +741,7 @@ fn cannot_found_city_near_enemy_capital() {
         max_movement:    200,
         combat_strength: None,
         promotions:      Vec::new(),
+        experience:      0,
         health:          100,
         range:           0,
         vision_range:    2,
@@ -768,6 +779,7 @@ fn civilian_blocked_from_moving_onto_enemy_unit() {
         max_movement:    200,
         combat_strength: None,
         promotions:      Vec::new(),
+        experience:      0,
         health:          100,
         range:           0,
         vision_range:    2,
@@ -785,6 +797,7 @@ fn civilian_blocked_from_moving_onto_enemy_unit() {
         max_movement:    200,
         combat_strength: Some(20),
         promotions:      Vec::new(),
+        experience:      0,
         health:          100,
         range:           0,
         vision_range:    2,
@@ -818,6 +831,7 @@ fn civilian_blocked_from_stacking_with_friendly_unit() {
         max_movement:    200,
         combat_strength: None,
         promotions:      Vec::new(),
+        experience:      0,
         health:          100,
         range:           0,
         vision_range:    2,
@@ -852,6 +866,7 @@ fn combat_unit_cannot_walk_into_enemy_tile() {
         max_movement:    200,
         combat_strength: Some(20),
         promotions:      Vec::new(),
+        experience:      0,
         health:          100,
         range:           0,
         vision_range:    2,
@@ -953,6 +968,7 @@ fn unit_production_blocked_without_resource() {
         exclusive_to:    None,
         replaces:        None,
             era:             None,
+            promotion_class: None,
     });
 
     s.state.cities.iter_mut()
@@ -1008,6 +1024,7 @@ fn unit_production_consumes_strategic_resource() {
         exclusive_to:    None,
         replaces:        None,
             era:             None,
+            promotion_class: None,
     });
 
     // Grant Rome 3 Iron.
@@ -1145,6 +1162,7 @@ fn wall_defense_bonus_reduces_damage_to_defender() {
             max_movement:    200,
             combat_strength: Some(20),
             promotions:      Vec::new(),
+            experience:      0,
             health:          100,
             range:           0,
             vision_range:    2,
@@ -1165,6 +1183,7 @@ fn wall_defense_bonus_reduces_damage_to_defender() {
             max_movement:    200,
             combat_strength: Some(20),
             promotions:      Vec::new(),
+            experience:      0,
             health:          100,
             range:           0,
             vision_range:    2,
@@ -1220,6 +1239,7 @@ fn melee_attack_damages_city_walls() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1231,6 +1251,7 @@ fn melee_attack_damages_city_walls() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1277,6 +1298,7 @@ fn wall_destruction_when_hp_reaches_zero() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1288,6 +1310,7 @@ fn wall_destruction_when_hp_reaches_zero() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(40), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1334,6 +1357,7 @@ fn ranged_attack_does_not_damage_walls() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1345,6 +1369,7 @@ fn ranged_attack_does_not_damage_walls() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(25), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 2, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1386,6 +1411,7 @@ fn city_bombard_deals_damage_no_counter() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1423,6 +1449,7 @@ fn city_bombard_requires_walls() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1450,6 +1477,7 @@ fn city_bombard_range_check() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1478,6 +1506,7 @@ fn city_bombard_once_per_turn_resets_after_advance() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
     let target2 = s.state.id_gen.next_unit_id();
@@ -1487,6 +1516,7 @@ fn city_bombard_once_per_turn_resets_after_advance() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1537,6 +1567,7 @@ fn siege_unit_bonus_applies_on_city_tile() {
             exclusive_to:    None,
             replaces:        None,
             era:             None,
+            promotion_class: None,
         });
 
         // Defender on Babylon's city tile (10, 5).
@@ -1547,6 +1578,7 @@ fn siege_unit_bonus_applies_on_city_tile() {
             domain: UnitDomain::Land, category: UnitCategory::Combat,
             movement_left: 200, max_movement: 200,
             combat_strength: Some(20), promotions: Vec::new(),
+            experience: 0,
             health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
         });
 
@@ -1558,6 +1590,7 @@ fn siege_unit_bonus_applies_on_city_tile() {
             domain: UnitDomain::Land, category: UnitCategory::Combat,
             movement_left: 200, max_movement: 200,
             combat_strength: Some(20), promotions: Vec::new(),
+            experience: 0,
             health: 100, range: 2, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
         });
 
@@ -1608,6 +1641,7 @@ fn siege_bonus_not_applied_in_open_field() {
             exclusive_to:    None,
             replaces:        None,
             era:             None,
+            promotion_class: None,
         });
 
         // Defender in open field (not on a city tile).
@@ -1618,6 +1652,7 @@ fn siege_bonus_not_applied_in_open_field() {
             domain: UnitDomain::Land, category: UnitCategory::Combat,
             movement_left: 200, max_movement: 200,
             combat_strength: Some(20), promotions: Vec::new(),
+            experience: 0,
             health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
         });
 
@@ -1629,6 +1664,7 @@ fn siege_bonus_not_applied_in_open_field() {
             domain: UnitDomain::Land, category: UnitCategory::Combat,
             movement_left: 200, max_movement: 200,
             combat_strength: Some(20), promotions: Vec::new(),
+            experience: 0,
             health: 100, range: 2, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
         });
 
@@ -1676,6 +1712,7 @@ fn city_capture_transfers_ownership_on_last_defender_killed() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1687,6 +1724,7 @@ fn city_capture_transfers_ownership_on_last_defender_killed() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(60), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1737,6 +1775,7 @@ fn city_capture_destroys_garrisoned_units_on_tile() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 1,   // one HP so it dies immediately
         range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
@@ -1747,6 +1786,7 @@ fn city_capture_destroys_garrisoned_units_on_tile() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 1,   // also one HP
         range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
@@ -1759,6 +1799,7 @@ fn city_capture_destroys_garrisoned_units_on_tile() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1799,6 +1840,7 @@ fn ranged_kill_on_city_tile_does_not_capture() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 1, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1810,6 +1852,7 @@ fn ranged_kill_on_city_tile_does_not_capture() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 2, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1840,6 +1883,7 @@ fn no_capture_while_defenders_remain() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
     let _defender2_id = s.state.id_gen.next_unit_id();
@@ -1849,6 +1893,7 @@ fn no_capture_while_defenders_remain() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1860,6 +1905,7 @@ fn no_capture_while_defenders_remain() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(1), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1901,6 +1947,7 @@ fn city_bombard_fails_after_walls_are_destroyed() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1935,6 +1982,7 @@ fn city_bombard_fails_after_walls_breached_by_combat() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1947,6 +1995,7 @@ fn city_bombard_fails_after_walls_breached_by_combat() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(60), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
@@ -1972,6 +2021,7 @@ fn city_bombard_fails_after_walls_breached_by_combat() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 

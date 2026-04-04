@@ -1,4 +1,4 @@
-//! Static data definitions for all 8 starter civilizations.
+//! Static data definitions for all 19 base-game civilizations.
 
 use crate::civ::civ_ability::*;
 use crate::civ::civ_identity::*;
@@ -7,9 +7,13 @@ use crate::rules::modifier::*;
 use crate::rules::unique::*;
 use crate::{PolicyType, UnitCategory, UnitDomain, YieldBundle, YieldType};
 
-/// Return ability bundles for all 8 starter civilizations.
+/// Return ability bundles for all 19 base-game civilizations.
 pub fn all_civ_bundles() -> Vec<CivAbilityBundle> {
-    vec![rome(), greece(), egypt(), babylon(), germany(), japan(), india(), arabia()]
+    vec![
+        rome(), greece(), egypt(), babylon(), germany(), japan(), india(), arabia(),
+        america(), brazil(), china(), england(), france(), kongo(), norway(), russia(),
+        scythia(), spain(), sumeria(),
+    ]
 }
 
 pub fn rome() -> CivAbilityBundle {
@@ -381,5 +385,421 @@ pub fn arabia() -> CivAbilityBundle {
         unique_improvement: None,
         on_city_founded: vec![],
         rule_overrides: vec![RuleOverride::AutoLastGreatProphet],
+    }
+}
+
+// ── New base-game civilizations ─────────────────────────────────────────────
+
+pub fn america() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::America, leader: BuiltinLeader::Roosevelt,
+        civ_name: "America", adjective: "American", leader_name: "Teddy Roosevelt",
+        civ_ability_name: "Founding Fathers",
+        civ_ability_description: "Earn government legacy bonuses in half the usual time.",
+        leader_ability_name: "Roosevelt Corollary",
+        leader_ability_description: "+5 Combat Strength on your home continent. +1 Appeal to tiles in cities with a National Park.",
+        civ_modifiers: vec![],
+        leader_modifiers: vec![
+            Modifier::new(
+                ModifierSource::Leader("Teddy Roosevelt"),
+                TargetSelector::AllUnits,
+                EffectType::CombatStrengthFlat(5),
+                StackingRule::Additive,
+            ),
+        ],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::America, name: "rough_rider", replaces: None,
+            production_cost: 340, domain: UnitDomain::Land, category: UnitCategory::Combat,
+            max_movement: 500, combat_strength: Some(67), ranged_strength: None,
+            range: 0, vision_range: 2, resource_cost: None,
+            abilities: vec![],
+        }),
+        unique_district: None,
+        unique_building: Some(UniqueBuildingDef {
+            civ: BuiltinCiv::America, name: "film_studio", replaces: Some("broadcast_center"),
+            cost: 580, maintenance: 3,
+            yields: YieldBundle::new().with(YieldType::Culture, 4),
+            requires_district: Some("Theater Square"),
+            extra_housing: 0,
+            abilities: vec![],
+        }),
+        unique_improvement: None,
+        on_city_founded: vec![],
+        rule_overrides: vec![RuleOverride::LegacyBonusesFaster],
+    }
+}
+
+pub fn brazil() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::Brazil, leader: BuiltinLeader::Pedro,
+        civ_name: "Brazil", adjective: "Brazilian", leader_name: "Pedro II",
+        civ_ability_name: "Amazon",
+        civ_ability_description: "Rainforest tiles provide +1 adjacency bonus for Campus, Commercial Hub, Holy Site, and Theater Square districts.",
+        leader_ability_name: "Magnanimous",
+        leader_ability_description: "After recruiting or patronizing a Great Person, 20% of the Great Person point cost is refunded.",
+        civ_modifiers: vec![],
+        leader_modifiers: vec![],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::Brazil, name: "minas_geraes", replaces: Some("battleship"),
+            production_cost: 430, domain: UnitDomain::Sea, category: UnitCategory::Combat,
+            max_movement: 500, combat_strength: Some(70), ranged_strength: Some(80),
+            range: 3, vision_range: 2, resource_cost: None,
+            abilities: vec![],
+        }),
+        unique_district: Some(UniqueDistrictDef {
+            civ: BuiltinCiv::Brazil, name: "Street Carnival",
+            replaces: BuiltinDistrict::EntertainmentComplex,
+            base_cost: 54, extra_yields: YieldBundle::default(),
+            extra_housing: 0, extra_amenities: 2,
+            placement: None, adjacency_overrides: vec![],
+        }),
+        unique_building: None,
+        unique_improvement: None,
+        on_city_founded: vec![],
+        rule_overrides: vec![],
+    }
+}
+
+pub fn china() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::China, leader: BuiltinLeader::QinShiHuang,
+        civ_name: "China", adjective: "Chinese", leader_name: "Qin Shi Huang",
+        civ_ability_name: "Dynastic Cycle",
+        civ_ability_description: "Eurekas and Inspirations provide +10% of the civic or technology cost.",
+        leader_ability_name: "The First Emperor",
+        leader_ability_description: "Builders receive one extra charge. Can use a builder charge to complete 15% of an Ancient or Classical wonder.",
+        civ_modifiers: vec![],
+        leader_modifiers: vec![],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::China, name: "crouching_tiger", replaces: None,
+            production_cost: 160, domain: UnitDomain::Land, category: UnitCategory::Combat,
+            max_movement: 200, combat_strength: Some(40), ranged_strength: Some(50),
+            range: 1, vision_range: 2, resource_cost: None,
+            abilities: vec![],
+        }),
+        unique_district: None,
+        unique_building: None,
+        unique_improvement: Some(UniqueImprovementDef {
+            civ: BuiltinCiv::China, name: "Great Wall",
+            base_yields: YieldBundle::new().with(YieldType::Gold, 2).with(YieldType::Culture, 2),
+            appeal_modifier: 0,
+            adjacency_bonuses: vec![],
+        }),
+        on_city_founded: vec![],
+        rule_overrides: vec![RuleOverride::EurekaInspirationBonus(10)],
+    }
+}
+
+pub fn england() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::England, leader: BuiltinLeader::Victoria,
+        civ_name: "England", adjective: "English", leader_name: "Victoria",
+        civ_ability_name: "British Museum",
+        civ_ability_description: "Each Archaeological Museum holds 6 Artifacts instead of 3 and can hold any artifacts.",
+        leader_ability_name: "Pax Britannica",
+        leader_ability_description: "The first city founded on each continent other than your home continent receives a free melee unit. Gain the Redcoat unique unit with Military Science.",
+        civ_modifiers: vec![],
+        leader_modifiers: vec![],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::England, name: "redcoat", replaces: None,
+            production_cost: 280, domain: UnitDomain::Land, category: UnitCategory::Combat,
+            max_movement: 200, combat_strength: Some(65), ranged_strength: None,
+            range: 0, vision_range: 2, resource_cost: None,
+            abilities: vec![],
+        }),
+        unique_district: Some(UniqueDistrictDef {
+            civ: BuiltinCiv::England, name: "Royal Navy Dockyard",
+            replaces: BuiltinDistrict::Harbor,
+            base_cost: 54,
+            extra_yields: YieldBundle::new().with(YieldType::Gold, 2),
+            extra_housing: 0, extra_amenities: 0,
+            placement: None, adjacency_overrides: vec![],
+        }),
+        unique_building: None,
+        unique_improvement: None,
+        on_city_founded: vec![],
+        rule_overrides: vec![],
+    }
+}
+
+pub fn france() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::France, leader: BuiltinLeader::Catherine,
+        civ_name: "France", adjective: "French", leader_name: "Catherine de Medici",
+        civ_ability_name: "Grand Tour",
+        civ_ability_description: "+20% Production towards Medieval, Renaissance, and Industrial era wonders. Tourism is doubled for wonders.",
+        leader_ability_name: "Catherine's Flying Squadron",
+        leader_ability_description: "Has 1 extra level of Diplomatic Visibility with every civ she has met. Receives a free Spy with Castles.",
+        civ_modifiers: vec![
+            Modifier::new(
+                ModifierSource::CivAbility("Grand Tour"),
+                TargetSelector::ProductionQueue,
+                EffectType::ProductionPercent(20),
+                StackingRule::Additive,
+            ),
+        ],
+        leader_modifiers: vec![],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::France, name: "garde_imperiale", replaces: None,
+            production_cost: 340, domain: UnitDomain::Land, category: UnitCategory::Combat,
+            max_movement: 200, combat_strength: Some(65), ranged_strength: None,
+            range: 0, vision_range: 2, resource_cost: None,
+            abilities: vec![],
+        }),
+        unique_district: None,
+        unique_building: None,
+        unique_improvement: Some(UniqueImprovementDef {
+            civ: BuiltinCiv::France, name: "Chateau",
+            base_yields: YieldBundle::new().with(YieldType::Culture, 2).with(YieldType::Gold, 1),
+            appeal_modifier: 1,
+            adjacency_bonuses: vec![],
+        }),
+        on_city_founded: vec![],
+        rule_overrides: vec![],
+    }
+}
+
+pub fn kongo() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::Kongo, leader: BuiltinLeader::Mvemba,
+        civ_name: "Kongo", adjective: "Kongolese", leader_name: "Mvemba a Nzinga",
+        civ_ability_name: "Nkisi",
+        civ_ability_description: "+2 Food, +2 Production, and +4 Gold from each Relic, Artifact, and Great Work of Sculpture. +50% Great Writer and Artist points from Palace and cultural buildings.",
+        leader_ability_name: "Religious Convert",
+        leader_ability_description: "May not build Holy Sites or earn Great Prophets. Receives all beliefs of any religion that has established itself in a majority of his cities.",
+        civ_modifiers: vec![
+            Modifier::new(
+                ModifierSource::CivAbility("Nkisi"),
+                TargetSelector::Global,
+                EffectType::YieldFlat(YieldType::Food, 2),
+                StackingRule::Additive,
+            ),
+            Modifier::new(
+                ModifierSource::CivAbility("Nkisi"),
+                TargetSelector::Global,
+                EffectType::YieldFlat(YieldType::Production, 2),
+                StackingRule::Additive,
+            ),
+            Modifier::new(
+                ModifierSource::CivAbility("Nkisi"),
+                TargetSelector::Global,
+                EffectType::YieldFlat(YieldType::Gold, 4),
+                StackingRule::Additive,
+            ),
+        ],
+        leader_modifiers: vec![],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::Kongo, name: "ngao_mbeba", replaces: Some("swordsman"),
+            production_cost: 110, domain: UnitDomain::Land, category: UnitCategory::Combat,
+            max_movement: 200, combat_strength: Some(38), ranged_strength: None,
+            range: 0, vision_range: 2, resource_cost: None,
+            abilities: vec![],
+        }),
+        // Mbanza replaces the Neighborhood district, which is not yet in BuiltinDistrict.
+        unique_district: None,
+        unique_building: None,
+        unique_improvement: None,
+        on_city_founded: vec![],
+        rule_overrides: vec![RuleOverride::NoGreatProphets],
+    }
+}
+
+pub fn norway() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::Norway, leader: BuiltinLeader::Harald,
+        civ_name: "Norway", adjective: "Norwegian", leader_name: "Harald Hardrada",
+        civ_ability_name: "Knarr",
+        civ_ability_description: "Units may enter ocean tiles with Shipbuilding. Naval melee units can heal in neutral territory. +50% Production towards naval melee units.",
+        leader_ability_name: "Thunderbolt of the North",
+        leader_ability_description: "Naval melee units gain the ability to perform coastal raids. +50% Production for naval melee units.",
+        civ_modifiers: vec![
+            Modifier::new(
+                ModifierSource::CivAbility("Knarr"),
+                TargetSelector::ProductionQueue,
+                EffectType::ProductionPercent(50),
+                StackingRule::Additive,
+            ),
+        ],
+        leader_modifiers: vec![],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::Norway, name: "berserker", replaces: None,
+            production_cost: 160, domain: UnitDomain::Land, category: UnitCategory::Combat,
+            max_movement: 200, combat_strength: Some(40), ranged_strength: None,
+            range: 0, vision_range: 2, resource_cost: None,
+            abilities: vec![],
+        }),
+        unique_district: None,
+        unique_building: Some(UniqueBuildingDef {
+            civ: BuiltinCiv::Norway, name: "stave_church", replaces: Some("temple"),
+            cost: 120, maintenance: 2,
+            yields: YieldBundle::new().with(YieldType::Faith, 3),
+            requires_district: Some("Holy Site"),
+            extra_housing: 0,
+            abilities: vec![],
+        }),
+        unique_improvement: None,
+        on_city_founded: vec![],
+        rule_overrides: vec![RuleOverride::EarlyOceanTravel],
+    }
+}
+
+pub fn russia() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::Russia, leader: BuiltinLeader::Peter,
+        civ_name: "Russia", adjective: "Russian", leader_name: "Peter",
+        civ_ability_name: "Mother Russia",
+        civ_ability_description: "Founded cities automatically claim extra territory. +1 Faith and +1 Production from Tundra tiles.",
+        leader_ability_name: "The Grand Embassy",
+        leader_ability_description: "Trade routes to more advanced civilizations grant +1 Science for every 3 technologies that civ is ahead, and +1 Culture for every 3 civics.",
+        civ_modifiers: vec![
+            Modifier::new(
+                ModifierSource::CivAbility("Mother Russia"),
+                TargetSelector::AllTiles,
+                EffectType::YieldFlat(YieldType::Faith, 1),
+                StackingRule::Additive,
+            ).with_condition(Condition::TileHasFeature(crate::world::feature::BuiltinFeature::Forest)),
+            Modifier::new(
+                ModifierSource::CivAbility("Mother Russia"),
+                TargetSelector::AllTiles,
+                EffectType::YieldFlat(YieldType::Production, 1),
+                StackingRule::Additive,
+            ).with_condition(Condition::TileHasFeature(crate::world::feature::BuiltinFeature::Forest)),
+        ],
+        leader_modifiers: vec![],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::Russia, name: "cossack", replaces: Some("cavalry"),
+            production_cost: 340, domain: UnitDomain::Land, category: UnitCategory::Combat,
+            max_movement: 500, combat_strength: Some(67), ranged_strength: None,
+            range: 0, vision_range: 2, resource_cost: None,
+            abilities: vec![],
+        }),
+        unique_district: Some(UniqueDistrictDef {
+            civ: BuiltinCiv::Russia, name: "Lavra",
+            replaces: BuiltinDistrict::HolySite,
+            base_cost: 54, extra_yields: YieldBundle::default(),
+            extra_housing: 0, extra_amenities: 0,
+            placement: None, adjacency_overrides: vec![],
+        }),
+        unique_building: None,
+        unique_improvement: None,
+        on_city_founded: vec![],
+        rule_overrides: vec![RuleOverride::ExtraTerritoryOnFounding(3)],
+    }
+}
+
+pub fn scythia() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::Scythia, leader: BuiltinLeader::Tomyris,
+        civ_name: "Scythia", adjective: "Scythian", leader_name: "Tomyris",
+        civ_ability_name: "People of the Steppe",
+        civ_ability_description: "Building a light cavalry unit or Saka Horse Archer grants a second copy of that unit for free.",
+        leader_ability_name: "Killer of Cyrus",
+        leader_ability_description: "All units receive +5 Combat Strength when attacking wounded units. When they eliminate a unit they heal 30 HP.",
+        civ_modifiers: vec![],
+        leader_modifiers: vec![
+            Modifier::new(
+                ModifierSource::Leader("Tomyris"),
+                TargetSelector::AllUnits,
+                EffectType::CombatStrengthFlat(5),
+                StackingRule::Additive,
+            ),
+        ],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::Scythia, name: "saka_horse_archer", replaces: None,
+            production_cost: 100, domain: UnitDomain::Land, category: UnitCategory::Combat,
+            max_movement: 400, combat_strength: Some(20), ranged_strength: Some(25),
+            range: 1, vision_range: 2, resource_cost: None,
+            abilities: vec![],
+        }),
+        unique_district: None,
+        unique_building: None,
+        unique_improvement: Some(UniqueImprovementDef {
+            civ: BuiltinCiv::Scythia, name: "Kurgan",
+            base_yields: YieldBundle::new().with(YieldType::Gold, 3).with(YieldType::Faith, 1),
+            appeal_modifier: 0,
+            adjacency_bonuses: vec![
+                ImprovementAdjacencyBonus {
+                    adjacent_to: ImprovementAdjacencySource::Pasture,
+                    yield_type: YieldType::Gold,
+                    amount: 1,
+                },
+            ],
+        }),
+        on_city_founded: vec![],
+        rule_overrides: vec![RuleOverride::DoubleUnitProduction("saka_horse_archer")],
+    }
+}
+
+pub fn spain() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::Spain, leader: BuiltinLeader::Philip,
+        civ_name: "Spain", adjective: "Spanish", leader_name: "Philip II",
+        civ_ability_name: "Treasure Fleet",
+        civ_ability_description: "Trade routes between cities on different continents receive bonus Gold. Can build Missions with a Builder.",
+        leader_ability_name: "El Escorial",
+        leader_ability_description: "Inquisitors gain +1 removal charge. Combat and Religious units gain +4 Combat Strength when on the same continent as their capital.",
+        civ_modifiers: vec![
+            Modifier::new(
+                ModifierSource::CivAbility("Treasure Fleet"),
+                TargetSelector::TradeRoutesOwned,
+                EffectType::TradeRouteYieldFlat(YieldType::Gold, 3),
+                StackingRule::Additive,
+            ),
+        ],
+        leader_modifiers: vec![
+            Modifier::new(
+                ModifierSource::Leader("Philip II"),
+                TargetSelector::AllUnits,
+                EffectType::CombatStrengthFlat(4),
+                StackingRule::Additive,
+            ),
+        ],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::Spain, name: "conquistador", replaces: None,
+            production_cost: 250, domain: UnitDomain::Land, category: UnitCategory::Combat,
+            max_movement: 200, combat_strength: Some(58), ranged_strength: None,
+            range: 0, vision_range: 2, resource_cost: None,
+            abilities: vec![],
+        }),
+        unique_district: None,
+        unique_building: None,
+        unique_improvement: Some(UniqueImprovementDef {
+            civ: BuiltinCiv::Spain, name: "Mission",
+            base_yields: YieldBundle::new().with(YieldType::Faith, 2).with(YieldType::Science, 1),
+            appeal_modifier: 0,
+            adjacency_bonuses: vec![],
+        }),
+        on_city_founded: vec![],
+        rule_overrides: vec![RuleOverride::InterContinentalTradeBonus],
+    }
+}
+
+pub fn sumeria() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::Sumeria, leader: BuiltinLeader::Gilgamesh,
+        civ_name: "Sumeria", adjective: "Sumerian", leader_name: "Gilgamesh",
+        civ_ability_name: "Epic Quest",
+        civ_ability_description: "When you capture a Barbarian Outpost, you also receive a Tribal Village reward.",
+        leader_ability_name: "Adventures with Enkidu",
+        leader_ability_description: "Can declare War of Liberation at any time. Allied units share combat experience when within 5 tiles.",
+        civ_modifiers: vec![],
+        leader_modifiers: vec![],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::Sumeria, name: "war_cart", replaces: None,
+            production_cost: 55, domain: UnitDomain::Land, category: UnitCategory::Combat,
+            max_movement: 300, combat_strength: Some(30), ranged_strength: None,
+            range: 0, vision_range: 2, resource_cost: None,
+            abilities: vec![],
+        }),
+        unique_district: None,
+        unique_building: None,
+        unique_improvement: Some(UniqueImprovementDef {
+            civ: BuiltinCiv::Sumeria, name: "Ziggurat",
+            base_yields: YieldBundle::new().with(YieldType::Science, 2).with(YieldType::Culture, 1),
+            appeal_modifier: 0,
+            adjacency_bonuses: vec![],
+        }),
+        on_city_founded: vec![],
+        rule_overrides: vec![RuleOverride::BonusOnBarbarianCampCapture],
     }
 }

@@ -54,6 +54,8 @@ pub struct UnitTypeDef {
     pub replaces:        Option<&'static str>,
     /// Era this unit belongs to (for production bonus conditions).
     pub era:             Option<crate::AgeType>,
+    /// Promotion class for this unit type (determines which promotions are available).
+    pub promotion_class: Option<crate::PromotionClass>,
 }
 
 /// Static descriptor for a wonder; stored in `GameState.wonder_defs`.

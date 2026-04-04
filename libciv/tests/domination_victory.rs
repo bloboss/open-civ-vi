@@ -26,7 +26,7 @@ fn spawn_strong_unit(s: &mut common::Scenario, owner: CivId, coord: HexCoord, cs
         id: uid, unit_type: s.warrior_type, owner,
         coord, domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200, combat_strength: Some(cs),
-        promotions: Vec::new(), health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        promotions: Vec::new(), experience: 0, health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
     uid
 }

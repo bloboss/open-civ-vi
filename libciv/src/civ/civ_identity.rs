@@ -12,6 +12,17 @@ pub enum BuiltinCiv {
     Japan,
     India,
     Arabia,
+    America,
+    Brazil,
+    China,
+    England,
+    France,
+    Kongo,
+    Norway,
+    Russia,
+    Scythia,
+    Spain,
+    Sumeria,
 }
 
 /// Built-in leader identifiers.
@@ -26,4 +37,15 @@ pub enum BuiltinLeader {
     Hojo,
     Gandhi,
     Saladin,
+    Roosevelt,
+    Pedro,
+    QinShiHuang,
+    Victoria,
+    Catherine,
+    Mvemba,
+    Harald,
+    Peter,
+    Tomyris,
+    Philip,
+    Gilgamesh,
 }

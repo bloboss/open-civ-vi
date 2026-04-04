@@ -520,6 +520,503 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Renaissance",
             retire_effect: RetireEffect::GoldGrant { amount: 450 },
         },
+
+        // ══════════════════════════════════════════════════════════════════════
+        // Industrial era
+        // ══════════════════════════════════════════════════════════════════════
+
+        // ── Great Generals ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Napoleon Bonaparte",
+            person_type: GreatPersonType::General,
+            era: "Industrial",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 10,
+            },
+        },
+        GreatPersonDef {
+            name: "Simón Bolívar",
+            person_type: GreatPersonType::General,
+            era: "Industrial",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 10,
+            },
+        },
+        // ── Great Admirals ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Horatio Nelson",
+            person_type: GreatPersonType::Admiral,
+            era: "Industrial",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Sea,
+                bonus: 10,
+            },
+        },
+        GreatPersonDef {
+            name: "Laskarina Bouboulina",
+            person_type: GreatPersonType::Admiral,
+            era: "Industrial",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Sea,
+                bonus: 10,
+            },
+        },
+        // ── Great Engineers ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "James Watt",
+            person_type: GreatPersonType::Engineer,
+            era: "Industrial",
+            retire_effect: RetireEffect::ProductionBurst { amount: 500 },
+        },
+        GreatPersonDef {
+            name: "Nikola Tesla",
+            person_type: GreatPersonType::Engineer,
+            era: "Industrial",
+            retire_effect: RetireEffect::ProductionBurst { amount: 550 },
+        },
+        // ── Great Merchants ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Adam Smith",
+            person_type: GreatPersonType::Merchant,
+            era: "Industrial",
+            retire_effect: RetireEffect::GoldGrant { amount: 500 },
+        },
+        GreatPersonDef {
+            name: "John Jacob Astor",
+            person_type: GreatPersonType::Merchant,
+            era: "Industrial",
+            retire_effect: RetireEffect::GoldGrant { amount: 550 },
+        },
+        // ── Great Scientists ────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Charles Darwin",
+            person_type: GreatPersonType::Scientist,
+            era: "Industrial",
+            retire_effect: RetireEffect::ProductionBurst { amount: 500 },
+        },
+        GreatPersonDef {
+            name: "Dmitri Mendeleev",
+            person_type: GreatPersonType::Scientist,
+            era: "Industrial",
+            retire_effect: RetireEffect::ProductionBurst { amount: 550 },
+        },
+        // ── Great Writers ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Jane Austen",
+            person_type: GreatPersonType::Writer,
+            era: "Industrial",
+            retire_effect: RetireEffect::GoldGrant { amount: 500 },
+        },
+        GreatPersonDef {
+            name: "Mark Twain",
+            person_type: GreatPersonType::Writer,
+            era: "Industrial",
+            retire_effect: RetireEffect::GoldGrant { amount: 550 },
+        },
+        // ── Great Artists ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Claude Monet",
+            person_type: GreatPersonType::Artist,
+            era: "Industrial",
+            retire_effect: RetireEffect::GoldGrant { amount: 500 },
+        },
+        GreatPersonDef {
+            name: "Vincent van Gogh",
+            person_type: GreatPersonType::Artist,
+            era: "Industrial",
+            retire_effect: RetireEffect::GoldGrant { amount: 550 },
+        },
+        // ── Great Musicians ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Ludwig van Beethoven",
+            person_type: GreatPersonType::Musician,
+            era: "Industrial",
+            retire_effect: RetireEffect::GoldGrant { amount: 500 },
+        },
+        GreatPersonDef {
+            name: "Johann Sebastian Bach",
+            person_type: GreatPersonType::Musician,
+            era: "Industrial",
+            retire_effect: RetireEffect::GoldGrant { amount: 550 },
+        },
+        // ── Great Prophets ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Bahá'u'lláh",
+            person_type: GreatPersonType::Prophet,
+            era: "Industrial",
+            retire_effect: RetireEffect::GoldGrant { amount: 500 },
+        },
+        GreatPersonDef {
+            name: "Hong Xiuquan",
+            person_type: GreatPersonType::Prophet,
+            era: "Industrial",
+            retire_effect: RetireEffect::GoldGrant { amount: 550 },
+        },
+
+        // ══════════════════════════════════════════════════════════════════════
+        // Modern era
+        // ══════════════════════════════════════════════════════════════════════
+
+        // ── Great Generals ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Dwight D. Eisenhower",
+            person_type: GreatPersonType::General,
+            era: "Modern",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 12,
+            },
+        },
+        GreatPersonDef {
+            name: "Douglas MacArthur",
+            person_type: GreatPersonType::General,
+            era: "Modern",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 12,
+            },
+        },
+        // ── Great Admirals ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Chester Nimitz",
+            person_type: GreatPersonType::Admiral,
+            era: "Modern",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Sea,
+                bonus: 12,
+            },
+        },
+        GreatPersonDef {
+            name: "Sergei Gorshkov",
+            person_type: GreatPersonType::Admiral,
+            era: "Modern",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Sea,
+                bonus: 12,
+            },
+        },
+        // ── Great Engineers ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Robert Goddard",
+            person_type: GreatPersonType::Engineer,
+            era: "Modern",
+            retire_effect: RetireEffect::ProductionBurst { amount: 600 },
+        },
+        GreatPersonDef {
+            name: "Wernher von Braun",
+            person_type: GreatPersonType::Engineer,
+            era: "Modern",
+            retire_effect: RetireEffect::ProductionBurst { amount: 650 },
+        },
+        // ── Great Merchants ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Helena Rubinstein",
+            person_type: GreatPersonType::Merchant,
+            era: "Modern",
+            retire_effect: RetireEffect::GoldGrant { amount: 600 },
+        },
+        GreatPersonDef {
+            name: "Melitta Bentz",
+            person_type: GreatPersonType::Merchant,
+            era: "Modern",
+            retire_effect: RetireEffect::GoldGrant { amount: 650 },
+        },
+        // ── Great Scientists ────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Albert Einstein",
+            person_type: GreatPersonType::Scientist,
+            era: "Modern",
+            retire_effect: RetireEffect::ProductionBurst { amount: 600 },
+        },
+        GreatPersonDef {
+            name: "Marie Curie",
+            person_type: GreatPersonType::Scientist,
+            era: "Modern",
+            retire_effect: RetireEffect::ProductionBurst { amount: 650 },
+        },
+        // ── Great Writers ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "F. Scott Fitzgerald",
+            person_type: GreatPersonType::Writer,
+            era: "Modern",
+            retire_effect: RetireEffect::GoldGrant { amount: 600 },
+        },
+        GreatPersonDef {
+            name: "Karel Čapek",
+            person_type: GreatPersonType::Writer,
+            era: "Modern",
+            retire_effect: RetireEffect::GoldGrant { amount: 650 },
+        },
+        // ── Great Artists ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Pablo Picasso",
+            person_type: GreatPersonType::Artist,
+            era: "Modern",
+            retire_effect: RetireEffect::GoldGrant { amount: 600 },
+        },
+        GreatPersonDef {
+            name: "Frida Kahlo",
+            person_type: GreatPersonType::Artist,
+            era: "Modern",
+            retire_effect: RetireEffect::GoldGrant { amount: 650 },
+        },
+        // ── Great Musicians ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Duke Ellington",
+            person_type: GreatPersonType::Musician,
+            era: "Modern",
+            retire_effect: RetireEffect::GoldGrant { amount: 600 },
+        },
+        GreatPersonDef {
+            name: "Billie Holiday",
+            person_type: GreatPersonType::Musician,
+            era: "Modern",
+            retire_effect: RetireEffect::GoldGrant { amount: 650 },
+        },
+
+        // ══════════════════════════════════════════════════════════════════════
+        // Atomic era
+        // ══════════════════════════════════════════════════════════════════════
+
+        // ── Great Generals ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Ahmad Shah Massoud",
+            person_type: GreatPersonType::General,
+            era: "Atomic",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 14,
+            },
+        },
+        GreatPersonDef {
+            name: "Vo Nguyen Giap",
+            person_type: GreatPersonType::General,
+            era: "Atomic",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 14,
+            },
+        },
+        // ── Great Admirals ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Clancy Fernando",
+            person_type: GreatPersonType::Admiral,
+            era: "Atomic",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Sea,
+                bonus: 14,
+            },
+        },
+        GreatPersonDef {
+            name: "Grace Hopper",
+            person_type: GreatPersonType::Admiral,
+            era: "Atomic",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Sea,
+                bonus: 14,
+            },
+        },
+        // ── Great Engineers ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "John Roebling",
+            person_type: GreatPersonType::Engineer,
+            era: "Atomic",
+            retire_effect: RetireEffect::ProductionBurst { amount: 700 },
+        },
+        GreatPersonDef {
+            name: "Sergei Korolev",
+            person_type: GreatPersonType::Engineer,
+            era: "Atomic",
+            retire_effect: RetireEffect::ProductionBurst { amount: 750 },
+        },
+        // ── Great Merchants ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Estée Lauder",
+            person_type: GreatPersonType::Merchant,
+            era: "Atomic",
+            retire_effect: RetireEffect::GoldGrant { amount: 700 },
+        },
+        GreatPersonDef {
+            name: "Jamsetji Tata",
+            person_type: GreatPersonType::Merchant,
+            era: "Atomic",
+            retire_effect: RetireEffect::GoldGrant { amount: 750 },
+        },
+        // ── Great Scientists ────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Alan Turing",
+            person_type: GreatPersonType::Scientist,
+            era: "Atomic",
+            retire_effect: RetireEffect::ProductionBurst { amount: 700 },
+        },
+        GreatPersonDef {
+            name: "Lise Meitner",
+            person_type: GreatPersonType::Scientist,
+            era: "Atomic",
+            retire_effect: RetireEffect::ProductionBurst { amount: 750 },
+        },
+        // ── Great Writers ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Alexander Solzhenitsyn",
+            person_type: GreatPersonType::Writer,
+            era: "Atomic",
+            retire_effect: RetireEffect::GoldGrant { amount: 700 },
+        },
+        GreatPersonDef {
+            name: "Rabindranath Tagore",
+            person_type: GreatPersonType::Writer,
+            era: "Atomic",
+            retire_effect: RetireEffect::GoldGrant { amount: 750 },
+        },
+        // ── Great Artists ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Andy Warhol",
+            person_type: GreatPersonType::Artist,
+            era: "Atomic",
+            retire_effect: RetireEffect::GoldGrant { amount: 700 },
+        },
+        GreatPersonDef {
+            name: "Yayoi Kusama",
+            person_type: GreatPersonType::Artist,
+            era: "Atomic",
+            retire_effect: RetireEffect::GoldGrant { amount: 750 },
+        },
+        // ── Great Musicians ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Ella Fitzgerald",
+            person_type: GreatPersonType::Musician,
+            era: "Atomic",
+            retire_effect: RetireEffect::GoldGrant { amount: 700 },
+        },
+        GreatPersonDef {
+            name: "Louis Armstrong",
+            person_type: GreatPersonType::Musician,
+            era: "Atomic",
+            retire_effect: RetireEffect::GoldGrant { amount: 750 },
+        },
+
+        // ══════════════════════════════════════════════════════════════════════
+        // Information era
+        // ══════════════════════════════════════════════════════════════════════
+
+        // ── Great Generals ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Vijaya Wimalaratne",
+            person_type: GreatPersonType::General,
+            era: "Information",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 15,
+            },
+        },
+        GreatPersonDef {
+            name: "Norman Schwarzkopf",
+            person_type: GreatPersonType::General,
+            era: "Information",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Land,
+                bonus: 15,
+            },
+        },
+        // ── Great Admirals ──────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Tōgō Heihachirō",
+            person_type: GreatPersonType::Admiral,
+            era: "Information",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Sea,
+                bonus: 15,
+            },
+        },
+        GreatPersonDef {
+            name: "Arleigh Burke",
+            person_type: GreatPersonType::Admiral,
+            era: "Information",
+            retire_effect: RetireEffect::CombatStrengthBonus {
+                domain: UnitDomain::Sea,
+                bonus: 15,
+            },
+        },
+        // ── Great Engineers ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Tim Berners-Lee",
+            person_type: GreatPersonType::Engineer,
+            era: "Information",
+            retire_effect: RetireEffect::ProductionBurst { amount: 800 },
+        },
+        GreatPersonDef {
+            name: "Hedy Lamarr",
+            person_type: GreatPersonType::Engineer,
+            era: "Information",
+            retire_effect: RetireEffect::ProductionBurst { amount: 850 },
+        },
+        // ── Great Merchants ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Bill Gates",
+            person_type: GreatPersonType::Merchant,
+            era: "Information",
+            retire_effect: RetireEffect::GoldGrant { amount: 800 },
+        },
+        GreatPersonDef {
+            name: "Oprah Winfrey",
+            person_type: GreatPersonType::Merchant,
+            era: "Information",
+            retire_effect: RetireEffect::GoldGrant { amount: 850 },
+        },
+        // ── Great Scientists ────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Stephen Hawking",
+            person_type: GreatPersonType::Scientist,
+            era: "Information",
+            retire_effect: RetireEffect::ProductionBurst { amount: 800 },
+        },
+        GreatPersonDef {
+            name: "Tu Youyou",
+            person_type: GreatPersonType::Scientist,
+            era: "Information",
+            retire_effect: RetireEffect::ProductionBurst { amount: 850 },
+        },
+        // ── Great Writers ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Toni Morrison",
+            person_type: GreatPersonType::Writer,
+            era: "Information",
+            retire_effect: RetireEffect::GoldGrant { amount: 800 },
+        },
+        GreatPersonDef {
+            name: "Gabriel García Márquez",
+            person_type: GreatPersonType::Writer,
+            era: "Information",
+            retire_effect: RetireEffect::GoldGrant { amount: 850 },
+        },
+        // ── Great Artists ───────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Ai Weiwei",
+            person_type: GreatPersonType::Artist,
+            era: "Information",
+            retire_effect: RetireEffect::GoldGrant { amount: 800 },
+        },
+        GreatPersonDef {
+            name: "Banksy",
+            person_type: GreatPersonType::Artist,
+            era: "Information",
+            retire_effect: RetireEffect::GoldGrant { amount: 850 },
+        },
+        // ── Great Musicians ─────────────────────────────────────────────────
+        GreatPersonDef {
+            name: "Bob Dylan",
+            person_type: GreatPersonType::Musician,
+            era: "Information",
+            retire_effect: RetireEffect::GoldGrant { amount: 800 },
+        },
+        GreatPersonDef {
+            name: "Aretha Franklin",
+            person_type: GreatPersonType::Musician,
+            era: "Information",
+            retire_effect: RetireEffect::GoldGrant { amount: 850 },
+        },
     ]
 }
 
@@ -596,6 +1093,7 @@ pub fn spawn_great_person(
         max_movement: 200,
         combat_strength: None,
         promotions: Vec::new(),
+        experience: 0,
         health: 100,
         range: 0,
         vision_range: 2,

@@ -31,6 +31,8 @@ pub struct BasicUnit {
     pub max_movement: u32,
     pub combat_strength: Option<u32>,
     pub promotions: Vec<PromotionId>,
+    /// Combat experience accumulated by this unit. Used for promotion eligibility.
+    pub experience: u32,
     pub health: u32,
     /// Melee = 0; ranged units have range > 0 (tiles). Distinct from vision_range.
     pub range: u8,

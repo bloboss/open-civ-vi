@@ -379,6 +379,7 @@ pub(crate) fn purchase_with_faith(
                 max_movement: utd.max_movement,
                 combat_strength: utd.combat_strength,
                 promotions: Vec::new(),
+                experience: 0,
                 health: 100,
                 range: utd.range,
                 vision_range: utd.vision_range,

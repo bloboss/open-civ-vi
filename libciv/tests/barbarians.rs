@@ -61,6 +61,7 @@ fn register_scout_type(state: &mut GameState) -> UnitTypeId {
         exclusive_to: None,
         replaces: None,
         era: None,
+        promotion_class: None,
     });
     id
 }
@@ -166,6 +167,7 @@ fn barbarian_scout_discovers_player_and_returns() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 300, max_movement: 300,
         combat_strength: Some(10), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 3, charges: None,
         trade_origin: None, trade_destination: None, religion_id: None,
         spread_charges: None, religious_strength: None,
@@ -497,6 +499,7 @@ fn clear_barbarian_camp_removes_units() {
         domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
+        experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None,
         trade_origin: None, trade_destination: None, religion_id: None,
         spread_charges: None, religious_strength: None,

@@ -33,6 +33,7 @@ fn spawn_builder(
         max_movement: 200,
         combat_strength: None,
         promotions: Vec::new(),
+        experience: 0,
         health: 100,
         range: 0,
         vision_range: 2,

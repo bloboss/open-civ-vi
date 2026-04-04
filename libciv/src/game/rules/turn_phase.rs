@@ -212,6 +212,7 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
             max_movement:    uc.max_movement,
             combat_strength: uc.combat_strength,
             promotions:      Vec::new(),
+            experience:      0,
             health:          100,
             range:           uc.range,
             vision_range:    uc.vision_range,

@@ -75,19 +75,19 @@ pub fn build_server_session(
         UnitTypeDef { id: warrior_type_id, name: "warrior", production_cost: 40,
                       max_movement: 200, combat_strength: Some(20),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None },
         UnitTypeDef { id: settler_type_id, name: "settler", production_cost: 80,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: true, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None },
+                      range: 0, vision_range: 2, can_found_city: true, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None },
         UnitTypeDef { id: builder_type_id, name: "builder", production_cost: 50,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None },
         UnitTypeDef { id: trader_type_id, name: "trader", production_cost: 40,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Trader,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None },
     ]);
 
     // ── Creator's civilization ────────────────────────────────────────────
@@ -145,7 +145,7 @@ pub fn build_server_session(
         id: unit_id, unit_type: warrior_type_id, owner: civ_id,
         coord: city_coord, domain: UnitDomain::Land, category: UnitCategory::Combat,
         movement_left: 200, max_movement: 200, combat_strength: Some(20),
-        promotions: Vec::new(), health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        promotions: Vec::new(), experience: 0, health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
     let builder_id = state.id_gen.next_unit_id();
@@ -153,7 +153,7 @@ pub fn build_server_session(
         id: builder_id, unit_type: builder_type_id, owner: civ_id,
         coord: city_coord, domain: UnitDomain::Land, category: UnitCategory::Civilian,
         movement_left: 200, max_movement: 200, combat_strength: None,
-        promotions: Vec::new(), health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        promotions: Vec::new(), experience: 0, health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
     });
 
     recalculate_visibility(&mut state, civ_id);
@@ -219,7 +219,7 @@ pub fn build_server_session(
             id: ai_warrior, unit_type: warrior_type_id, owner: ai_civ_id,
             coord: ai_coord, domain: UnitDomain::Land, category: UnitCategory::Combat,
             movement_left: 200, max_movement: 200, combat_strength: Some(20),
-            promotions: Vec::new(), health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+            promotions: Vec::new(), experience: 0, health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
         });
 
         recalculate_visibility(&mut state, ai_civ_id);

@@ -27,7 +27,7 @@ fn spawn_trader(s: &mut common::Scenario, owner: CivId, coord: HexCoord) -> Unit
         vision_range: 2,
         can_found_city: false,
         resource_cost: None,
-        siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None,
+        siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None,
     });
     let unit_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
@@ -41,6 +41,7 @@ fn spawn_trader(s: &mut common::Scenario, owner: CivId, coord: HexCoord) -> Unit
         max_movement: 200,
         combat_strength: None,
         promotions: Vec::new(),
+        experience: 0,
         health: 100,
         range: 0,
         vision_range: 2,

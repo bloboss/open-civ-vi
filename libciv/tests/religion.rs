@@ -83,6 +83,7 @@ fn spawn_great_prophet(state: &mut libciv::GameState, warrior_type: libciv::Unit
         max_movement: 200,
         combat_strength: None,
         promotions: Vec::new(),
+        experience: 0,
         health: 100,
         range: 0,
         vision_range: 2,
@@ -115,6 +116,7 @@ fn spawn_missionary(
         max_movement: 200,
         combat_strength: None,
         promotions: Vec::new(),
+        experience: 0,
         health: 100,
         range: 0,
         vision_range: 2,
@@ -147,6 +149,7 @@ fn spawn_apostle(
         max_movement: 200,
         combat_strength: None,
         promotions: Vec::new(),
+        experience: 0,
         health: 100,
         range: 0,
         vision_range: 2,
@@ -425,6 +428,7 @@ fn spread_religion_unit_destroyed_at_zero_charges() {
         max_movement: 200,
         combat_strength: None,
         promotions: Vec::new(),
+        experience: 0,
         health: 100,
         range: 0,
         vision_range: 2,
@@ -560,7 +564,7 @@ fn purchase_missionary_with_faith() {
         siege_bonus: 0,
         max_charges: 0,
         exclusive_to: None,
-        replaces: None, era: None,
+        replaces: None, era: None, promotion_class: None,
     });
 
     // Missionary requires a Shrine building.
@@ -608,7 +612,7 @@ fn purchase_with_insufficient_faith() {
         siege_bonus: 0,
         max_charges: 0,
         exclusive_to: None,
-        replaces: None, era: None,
+        replaces: None, era: None, promotion_class: None,
     });
 
     // No extra faith (founding spent the 100 we gave, leaving whatever is left).
@@ -1307,6 +1311,7 @@ fn producing_military_unit_of_era_passes() {
         exclusive_to: None,
         replaces: None,
         era: Some(AgeType::Ancient),
+        promotion_class: None,
     });
 
     // Set Rome's production queue to produce this warrior.
@@ -1353,6 +1358,7 @@ fn producing_military_unit_fails_for_civilian() {
         exclusive_to: None,
         replaces: None,
         era: Some(AgeType::Ancient),
+        promotion_class: None,
     });
 
     if let Some(city) = s.state.cities.iter_mut().find(|c| c.id == s.rome_city) {

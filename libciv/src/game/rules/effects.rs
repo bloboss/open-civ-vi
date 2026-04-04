@@ -114,6 +114,7 @@ pub(crate) fn apply_effect(
                     max_movement:    def.max_movement,
                     combat_strength: def.combat_strength,
                     promotions:      Vec::new(),
+                    experience:      0,
                     health:          100,
                     range:           0,
                     vision_range:    2,

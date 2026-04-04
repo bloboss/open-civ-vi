@@ -404,6 +404,7 @@ fn found_city_emits_tile_claimed_deltas() {
         max_movement: 200,
         combat_strength: None,
         promotions: Vec::new(),
+        experience: 0,
         health: 100,
         range: 0,
         vision_range: 2,

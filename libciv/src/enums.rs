@@ -61,3 +61,24 @@ pub enum PolicyType {
     Diplomatic,
     Wildcard,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum PromotionClass {
+    Recon,
+    Melee,
+    Ranged,
+    AntiCavalry,
+    LightCavalry,
+    HeavyCavalry,
+    Siege,
+    NavalMelee,
+    NavalRanged,
+    NavalRaider,
+    NavalCarrier,
+    AirFighter,
+    AirBomber,
+    Monk,
+    Apostle,
+    Spy,
+}
