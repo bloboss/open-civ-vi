@@ -904,7 +904,7 @@ fn unit_production_no_resource_cost_completes() {
         .find(|c| c.id == s.rome_city).unwrap()
         .worked_tiles.push(plains_tile);
 
-    let units_before = s.state.units.len();
+    let rome_units_before = s.state.units.iter().filter(|u| u.owner == s.rome_id).count();
 
     // Set production one turn away from completion.
     s.state.cities.iter_mut()
@@ -914,7 +914,8 @@ fn unit_production_no_resource_cost_completes() {
     let diff = rules.advance_turn(&mut s.state);
 
     // After advance_turn adds 1 Plains production, 40 >= 40, unit should complete.
-    assert_eq!(s.state.units.len(), units_before + 1, "warrior should have been produced");
+    let rome_units_after = s.state.units.iter().filter(|u| u.owner == s.rome_id).count();
+    assert_eq!(rome_units_after, rome_units_before + 1, "warrior should have been produced");
     assert!(
         diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitCreated { .. })),
         "UnitCreated delta expected"
@@ -963,15 +964,16 @@ fn unit_production_blocked_without_resource() {
         .find(|c| c.id == s.rome_city).unwrap()
         .production_stored = 10;
 
-    let units_before = s.state.units.len();
+    let rome_units_before = s.state.units.iter().filter(|u| u.owner == s.rome_id).count();
 
     // Rome has no Iron — production should be deferred.
     let diff = rules.advance_turn(&mut s.state);
 
-    assert_eq!(s.state.units.len(), units_before, "no unit should be produced without Iron");
+    let rome_units_after = s.state.units.iter().filter(|u| u.owner == s.rome_id).count();
+    assert_eq!(rome_units_after, rome_units_before, "no unit should be produced without Iron");
     assert!(
-        !diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitCreated { .. })),
-        "no UnitCreated delta expected when blocked by resource"
+        !diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitCreated { owner, .. } if *owner == s.rome_id)),
+        "no UnitCreated delta expected for Rome when blocked by resource"
     );
     // Queue still has the item.
     assert!(
@@ -1020,14 +1022,15 @@ fn unit_production_consumes_strategic_resource() {
         .find(|c| c.id == s.rome_city).unwrap()
         .production_stored = 10;
 
-    let units_before = s.state.units.len();
+    let rome_units_before = s.state.units.iter().filter(|u| u.owner == s.rome_id).count();
 
     let diff = rules.advance_turn(&mut s.state);
 
-    assert_eq!(s.state.units.len(), units_before + 1, "swordsman should be produced");
+    let rome_units_after = s.state.units.iter().filter(|u| u.owner == s.rome_id).count();
+    assert_eq!(rome_units_after, rome_units_before + 1, "swordsman should be produced");
     assert!(
-        diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitCreated { .. })),
-        "UnitCreated expected"
+        diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitCreated { owner, .. } if *owner == s.rome_id)),
+        "UnitCreated expected for Rome"
     );
     // Iron should have been decremented by 1 (from 3 to 2).
     let iron_left = *s.state.civilizations.iter()

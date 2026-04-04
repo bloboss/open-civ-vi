@@ -1146,6 +1146,9 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         }
     }
 
+    // ── Barbarian phase ────────────────────────────────────────────────────
+    super::barbarians::process_barbarian_turn(state, &mut diff);
+
     // ── Advance turn counter ──────────────────────────────────────────────
     let prev = state.turn;
     state.turn += 1;

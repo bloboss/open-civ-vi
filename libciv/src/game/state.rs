@@ -1,11 +1,13 @@
 use std::collections::VecDeque;
 use crate::{
-    BuildingId, CivId, CivicRefs, CityId, GrievanceId, TechRefs, UnitCategory, UnitDomain, UnitId, UnitTypeId, WonderId, EraId, VictoryId, YieldBundle,
+    BarbarianCampId, BuildingId, CivId, CivicRefs, CityId, GrievanceId, TechRefs,
+    UnitCategory, UnitDomain, UnitId, UnitTypeId, WonderId, EraId, VictoryId, YieldBundle,
 };
 use super::victory::VictoryCondition;
 use crate::civ::{
-    BasicUnit, BeliefRefs, BuiltinBelief, Civilization, City, CityKind, DiplomaticRelation,
-    GreatPerson, GreatPersonDef, Governor, PlacedDistrict, Religion, TradeRoute, WonderTourism,
+    BarbarianCamp, BarbarianConfig, BasicUnit, BeliefRefs, BuiltinBelief, Civilization, City,
+    CityKind, DiplomaticRelation, GreatPerson, GreatPersonDef, Governor, PlacedDistrict,
+    Religion, TradeRoute, WonderTourism,
 };
 use crate::civ::era::Era;
 use crate::civ::religion::build_beliefs;
@@ -149,6 +151,10 @@ impl IdGenerator {
         crate::GreatWorkId::from_ulid(self.next_ulid())
     }
 
+    pub fn next_barbarian_camp_id(&mut self) -> BarbarianCampId {
+        BarbarianCampId::from_ulid(self.next_ulid())
+    }
+
     /// Returns a pseudo-random f32 in [0.0, 1.0) drawn from the seeded RNG.
     /// Used for combat randomisation; does not affect the ULID sequence.
     pub fn next_f32(&mut self) -> f32 {
@@ -213,6 +219,13 @@ pub struct GameState {
     /// Pending one-shot effects to be drained at the end of each turn's
     /// completion sweep (Phase 4 of `advance_turn`).
     pub effect_queue: VecDeque<(CivId, OneShotEffect)>,
+    /// Active barbarian camps on the map.
+    pub barbarian_camps: Vec<BarbarianCamp>,
+    /// Configuration for the barbarian system.
+    pub barbarian_config: BarbarianConfig,
+    /// The CivId representing the barbarian faction. All barbarian units and
+    /// camps are owned by this civ. `None` when barbarians are disabled.
+    pub barbarian_civ: Option<CivId>,
 }
 
 impl GameState {
@@ -258,6 +271,9 @@ impl GameState {
             game_over: None,
             wonder_tourism: Vec::new(),
             effect_queue: VecDeque::new(),
+            barbarian_camps: Vec::new(),
+            barbarian_config: BarbarianConfig::default(),
+            barbarian_civ: None,
         }
     }
 
@@ -283,6 +299,14 @@ impl GameState {
         self.cities.iter().find(|c| {
             matches!(c.kind, CityKind::CityState(_)) && c.owner == civ_id
         })
+    }
+
+    pub fn barbarian_camp(&self, id: BarbarianCampId) -> Option<&BarbarianCamp> {
+        self.barbarian_camps.iter().find(|c| c.id == id)
+    }
+
+    pub fn barbarian_camp_mut(&mut self, id: BarbarianCampId) -> Option<&mut BarbarianCamp> {
+        self.barbarian_camps.iter_mut().find(|c| c.id == id)
     }
 
     pub fn great_person(&self, id: crate::GreatPersonId) -> Option<&GreatPerson> {

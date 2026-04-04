@@ -1,0 +1,317 @@
+//! Barbarian camps and barbarian clans game mode.
+//!
+//! ## Base Barbarian Mechanic
+//! - Camps spawn on unclaimed land tiles in fog-of-war, away from cities.
+//! - Each camp spawns a scout and one melee defender.
+//! - The scout explores the map. When it spots a player city, it returns.
+//! - Once the scout returns, the camp's boldness increases faster, driving
+//!   unit generation. Even untriggered camps slowly accumulate boldness.
+//!
+//! ## Boldness System (from Civ VI XML: GlobalParameters)
+//! Each camp tracks a `boldness` value:
+//! - +2/turn for triggered camps (`BARBARIAN_BOLDNESS_PER_TURN`)
+//! - +1/turn for untriggered camps (half rate)
+//! - +15 when a barbarian kills a player unit (`BARBARIAN_BOLDNESS_PER_KILL`)
+//! - -10 when a barbarian unit is lost (`BARBARIAN_BOLDNESS_PER_UNIT_LOST`)
+//! - -5 when a scout is killed (`BARBARIAN_BOLDNESS_PER_SCOUT_LOST`)
+//! - -30 when the camp is attacked (`BARBARIAN_BOLDNESS_PER_CAMP_ATTACK`)
+//! - A unit spawns when boldness >= 10, then boldness resets to 0.
+//!
+//! ## Barbarian Clans Mode
+//! When enabled, camps belong to a clan type and offer diplomacy:
+//! - **Hire**: Pay gold to recruit a unit (+5 conversion points, 15-turn cooldown).
+//! - **Bribe**: Pay gold for non-aggression for 20 turns (+8 conversion points).
+//! - **Incite**: Pay gold to direct attacks against another player (-5 conversion points).
+//! - Camps convert to city-states when conversion_progress >= 120 and
+//!   city-placement rules (no city within 3 tiles) are satisfied.
+//! - Conversion progress each turn = food yield of unowned tiles in radius,
+//!   with a 50% chance of advancing each turn.
+
+use crate::{CivId, UnitId};
+use libhexgrid::coord::HexCoord;
+
+/// Unique identifier for a barbarian camp.
+/// Defined in `ids.rs` via `define_id!(BarbarianCampId)`.
+pub use crate::BarbarianCampId;
+
+/// The functional type of a barbarian clan (Barbarian Clans mode only).
+/// Matches the seven clan types from Civilization VI.
+/// Determines the unit types the camp can produce and the city-state type
+/// it converts into.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum ClanType {
+    /// Flatland Clan: prefers open terrain away from woods/hills. Balance of
+    /// melee and ranged units. Converts to Militaristic city-state.
+    Flatland,
+    /// Woodland Clan: prefers woods/rainforest. Greater numbers of ranged units.
+    /// Converts to Scientific city-state.
+    Woodland,
+    /// Hills Clan: prefers open terrain with hills. Strongly prefers melee.
+    /// Converts to Industrial city-state.
+    Hills,
+    /// Rover Clan: requires nearby Horse resources, prefers open terrain.
+    /// Mounted/cavalry units. Converts to Trade city-state.
+    Rover,
+    /// Chariot Clan: vehicles and mounted units. Converts to Cultural city-state.
+    Chariot,
+    /// Jungle Clan: prefers rainforest. Mix of cavalry and foot soldiers.
+    /// Converts to Religious city-state.
+    Jungle,
+    /// Seafaring Clan: coastal outposts. Naval melee/ranged units with
+    /// land-based anti-cavalry for defense. Converts to Industrial city-state.
+    Seafaring,
+}
+
+/// Lifecycle state of the camp's scout.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum ScoutState {
+    /// Scout has not yet been spawned. The camp will spawn one on the next
+    /// barbarian turn phase.
+    NotSpawned,
+    /// Scout is exploring the map. Contains the scout's `UnitId`.
+    Exploring { scout_id: UnitId },
+    /// Scout has discovered a player civilization and is returning to camp.
+    Returning { scout_id: UnitId, discovered_civ: CivId },
+    /// Scout has returned to camp. The camp may now generate combat units
+    /// at the full boldness rate. `discovered_civs` tracks which players
+    /// the camp is aware of.
+    Returned { discovered_civs: Vec<CivId> },
+}
+
+/// How a player has interacted with a barbarian clan (Clans mode).
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum ClanInteraction {
+    /// The player hired a unit. Includes the turn the hire occurred for cooldown.
+    Hired { turn: u32 },
+    /// The player bribed the clan not to attack. Active until `expires_turn`.
+    Bribed { expires_turn: u32 },
+    /// The player incited the clan against a target. Active until `expires_turn`.
+    Incited { target: CivId, expires_turn: u32 },
+}
+
+/// A barbarian camp on the world map.
+#[derive(Debug, Clone)]
+pub struct BarbarianCamp {
+    pub id: BarbarianCampId,
+    pub coord: HexCoord,
+    /// The CivId representing the barbarian faction that owns this camp's units.
+    pub owner: CivId,
+    /// Turn on which the camp was placed.
+    pub spawned_turn: u32,
+    /// Current state of the camp's scout.
+    pub scout_state: ScoutState,
+    /// Combat units generated by this camp (tracked for despawn on camp destruction).
+    pub spawned_units: Vec<UnitId>,
+    /// Number of combat units spawned so far.
+    pub units_spawned_count: u32,
+    /// Boldness accumulator. A unit spawns when boldness >= 10.
+    /// Increases each turn (+2 for triggered camps, +1 for untriggered),
+    /// and responds to combat events (+15 on kill, -10 on unit lost, etc.).
+    pub boldness: i32,
+
+    // ── Barbarian Clans mode fields (ignored when clans mode is off) ─────
+    /// Clan type. `None` when barbarian clans mode is disabled.
+    pub clan_type: Option<ClanType>,
+    /// Per-player interactions (hire / bribe / incite) in clans mode.
+    pub clan_interactions: Vec<(CivId, ClanInteraction)>,
+    /// Accumulated "conversion progress" toward becoming a city-state.
+    /// Bribe: +8, Hire: +5, Incite: -5. Each turn: food yield of nearby
+    /// unowned tiles (with 50% chance). Threshold: 120.
+    pub conversion_progress: i32,
+    /// Whether this camp has already converted to a city-state.
+    pub converted: bool,
+}
+
+/// Configuration for the barbarian system, stored in `GameState`.
+/// Default values match Civ VI's `GlobalParameters.xml`.
+#[derive(Debug, Clone)]
+pub struct BarbarianConfig {
+    /// Whether barbarians are enabled at all.
+    pub enabled: bool,
+    /// Whether the Barbarian Clans game mode is active.
+    pub clans_mode: bool,
+    /// Minimum distance from any city center for camp spawning.
+    /// Civ VI: `BARBARIAN_CAMP_MINIMUM_DISTANCE_CITY` = 4.
+    pub min_distance_from_city: u32,
+    /// Minimum distance between barbarian camps.
+    /// Civ VI: `BARBARIAN_CAMP_MINIMUM_DISTANCE_ANOTHER_CAMP` = 7.
+    pub min_distance_between_camps: u32,
+    /// Maximum number of camps per major civilization on the map.
+    /// Civ VI: `BARBARIAN_CAMP_MAX_PER_MAJOR_CIV` = 3.
+    pub max_camps_per_major_civ: u32,
+    /// Per-tile probability of spawning a camp each turn (0.0–1.0).
+    /// Civ VI: `BARBARIAN_CAMP_ODDS_OF_NEW_CAMP_SPAWNING` ≈ 0.02 (2%).
+    pub spawn_chance_per_tile: f32,
+
+    // ── Boldness parameters ──────────────────────────────────────────────
+    /// Boldness gained per turn for triggered camps.
+    /// Civ VI: `BARBARIAN_BOLDNESS_PER_TURN` = 2.
+    pub boldness_per_turn: i32,
+    /// Boldness gained when a barbarian unit kills a player unit.
+    /// Civ VI: `BARBARIAN_BOLDNESS_PER_KILL` = 15.
+    pub boldness_per_kill: i32,
+    /// Boldness lost when a barbarian unit is killed.
+    /// Civ VI: `BARBARIAN_BOLDNESS_PER_UNIT_LOST` = -10.
+    pub boldness_per_unit_lost: i32,
+    /// Boldness lost when a barbarian scout is killed.
+    /// Civ VI: `BARBARIAN_BOLDNESS_PER_SCOUT_LOST` = -5.
+    pub boldness_per_scout_lost: i32,
+    /// Boldness lost when the camp is attacked.
+    /// Civ VI: `BARBARIAN_BOLDNESS_PER_CAMP_ATTACK` = -30.
+    pub boldness_per_camp_attack: i32,
+    /// Boldness threshold to spawn a unit.
+    pub boldness_spawn_threshold: i32,
+
+    // ── Clans mode parameters ────────────────────────────────────────────
+    /// Gold cost to hire a unit from a camp (Clans mode).
+    pub hire_cost: u32,
+    /// Cooldown in turns after hiring before hiring again.
+    /// Civ VI: 15 turns.
+    pub hire_cooldown: u32,
+    /// Gold cost to bribe a clan not to attack.
+    pub bribe_cost: u32,
+    /// Duration of a bribe in turns. Civ VI: 20 turns.
+    pub bribe_duration: u32,
+    /// Gold cost to incite a clan against another player.
+    pub incite_cost: u32,
+    /// Duration of an incitement in turns.
+    pub incite_duration: u32,
+    /// Conversion points granted by a hire action. Civ VI: +5.
+    pub hire_conversion_points: i32,
+    /// Conversion points granted by a bribe action. Civ VI: +8.
+    pub bribe_conversion_points: i32,
+    /// Conversion points deducted by an incite action. Civ VI: -5.
+    pub incite_conversion_points: i32,
+    /// Conversion point threshold to become a city-state.
+    /// Civ VI: `BARBARIAN_CLANS_CIV_CONVERSION_POINTS_STANDARD` = 120.
+    pub conversion_threshold: i32,
+    /// Probability each turn that food-based conversion progress advances.
+    /// Civ VI: `BARBARIAN_CLANS_CIV_CONVERSION_INCREMENT_CHANCE` = 0.50.
+    pub conversion_increment_chance: f32,
+    /// Gold reward for clearing a barbarian camp.
+    pub camp_clear_gold_reward: u32,
+}
+
+impl Default for BarbarianConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            clans_mode: false,
+            min_distance_from_city: 4,
+            min_distance_between_camps: 7,
+            max_camps_per_major_civ: 3,
+            spawn_chance_per_tile: 0.02,
+            boldness_per_turn: 2,
+            boldness_per_kill: 15,
+            boldness_per_unit_lost: -10,
+            boldness_per_scout_lost: -5,
+            boldness_per_camp_attack: -30,
+            boldness_spawn_threshold: 10,
+            hire_cost: 100,
+            hire_cooldown: 15,
+            bribe_cost: 75,
+            bribe_duration: 20,
+            incite_cost: 50,
+            incite_duration: 15,
+            hire_conversion_points: 5,
+            bribe_conversion_points: 8,
+            incite_conversion_points: -5,
+            conversion_threshold: 120,
+            conversion_increment_chance: 0.50,
+            camp_clear_gold_reward: 50,
+        }
+    }
+}
+
+impl BarbarianCamp {
+    pub fn new(
+        id: BarbarianCampId,
+        coord: HexCoord,
+        owner: CivId,
+        spawned_turn: u32,
+        clan_type: Option<ClanType>,
+    ) -> Self {
+        Self {
+            id,
+            coord,
+            owner,
+            spawned_turn,
+            scout_state: ScoutState::NotSpawned,
+            spawned_units: Vec::new(),
+            units_spawned_count: 0,
+            boldness: 0,
+            clan_type,
+            clan_interactions: Vec::new(),
+            conversion_progress: 0,
+            converted: false,
+        }
+    }
+
+    /// Returns true if the scout has reported back (camp is "triggered").
+    pub fn is_triggered(&self) -> bool {
+        matches!(self.scout_state, ScoutState::Returned { .. })
+    }
+
+    /// Returns the unit type this camp should produce, based on clan type.
+    /// Falls back to "Warrior" for base barbarians.
+    pub fn preferred_unit_type(&self) -> &'static str {
+        match self.clan_type {
+            Some(ClanType::Flatland) | Some(ClanType::Hills) | None => "Warrior",
+            Some(ClanType::Woodland) | Some(ClanType::Jungle) => "Archer",
+            Some(ClanType::Rover) | Some(ClanType::Chariot) => "Horseman",
+            Some(ClanType::Seafaring) => "Galley",
+        }
+    }
+
+    /// Returns the city-state type this camp would convert into.
+    pub fn conversion_city_state_type(&self) -> super::city_state::CityStateType {
+        use super::city_state::CityStateType;
+        match self.clan_type {
+            Some(ClanType::Flatland) => CityStateType::Militaristic,
+            Some(ClanType::Woodland) => CityStateType::Scientific,
+            Some(ClanType::Hills) | Some(ClanType::Seafaring) => CityStateType::Industrial,
+            Some(ClanType::Rover) => CityStateType::Trade,
+            Some(ClanType::Chariot) => CityStateType::Cultural,
+            Some(ClanType::Jungle) => CityStateType::Religious,
+            None => CityStateType::Militaristic,
+        }
+    }
+
+    /// Check if a player has an active bribe on this camp.
+    pub fn is_bribed_by(&self, civ: CivId, current_turn: u32) -> bool {
+        self.clan_interactions.iter().any(|(c, interaction)| {
+            *c == civ && matches!(interaction, ClanInteraction::Bribed { expires_turn } if *expires_turn > current_turn)
+        })
+    }
+
+    /// Check if this camp has been incited against a specific player.
+    pub fn is_incited_against(&self, target: CivId, current_turn: u32) -> bool {
+        self.clan_interactions.iter().any(|(_, interaction)| {
+            matches!(interaction, ClanInteraction::Incited { target: t, expires_turn } if *t == target && *expires_turn > current_turn)
+        })
+    }
+
+    /// Check if a player can hire from this camp (not on cooldown).
+    pub fn can_hire(&self, civ: CivId, current_turn: u32, cooldown: u32) -> bool {
+        !self.clan_interactions.iter().any(|(c, interaction)| {
+            *c == civ && matches!(interaction, ClanInteraction::Hired { turn } if current_turn < *turn + cooldown)
+        })
+    }
+
+    /// The camp's name for display.
+    pub fn display_name(&self) -> &'static str {
+        match self.clan_type {
+            Some(ClanType::Flatland) => "Flatland Clan",
+            Some(ClanType::Woodland) => "Woodland Clan",
+            Some(ClanType::Hills) => "Hills Clan",
+            Some(ClanType::Rover) => "Rover Clan",
+            Some(ClanType::Chariot) => "Chariot Clan",
+            Some(ClanType::Jungle) => "Jungle Clan",
+            Some(ClanType::Seafaring) => "Seafaring Clan",
+            None => "Barbarian Camp",
+        }
+    }
+}
