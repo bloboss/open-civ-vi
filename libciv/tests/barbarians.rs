@@ -60,6 +60,7 @@ fn register_scout_type(state: &mut GameState) -> UnitTypeId {
         max_charges: 0,
         exclusive_to: None,
         replaces: None,
+        era: None,
     });
     id
 }
