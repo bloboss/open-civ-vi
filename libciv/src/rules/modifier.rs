@@ -118,6 +118,14 @@ pub enum Condition {
     TileHasResourceOfCategory(ResourceCategory),
     /// Tile has the given feature (Marsh, Oasis, Floodplain, etc.).
     TileHasFeature(BuiltinFeature),
+    /// Tile has appeal >= the given threshold (Charming = 2, Breathtaking = 4).
+    TileMinAppeal(i32),
+
+    // ── Production-queue conditions ─────────────────────────────────────
+    /// City is producing a military unit (Combat/Support) of the given era.
+    ProducingMilitaryUnitOfEra(crate::AgeType),
+    /// City is producing a wonder of the given era.
+    ProducingWonderOfEra(crate::AgeType),
 
     // ── Adjacency-counting conditions (scale by count of matching neighbors) ──
     /// Multiply by number of adjacent tiles with the given terrain type.
@@ -189,6 +197,47 @@ impl<'a> ConditionContext<'a> {
     pub fn for_civ(civ_id: CivId, state: &'a crate::game::state::GameState) -> Self {
         Self { civ_id, state, tile: None, unit_id: None, city_id: None }
     }
+}
+
+/// Compute the appeal of a tile based on adjacent terrain, features, and districts.
+/// Charming = 2+, Breathtaking = 4+.
+pub fn compute_tile_appeal(coord: libhexgrid::coord::HexCoord, state: &crate::game::state::GameState) -> i32 {
+    use libhexgrid::board::HexBoard;
+    let mut appeal: i32 = 0;
+    for nb in state.board.neighbors(coord) {
+        if let Some(tile) = state.board.tile(nb) {
+            // Terrain bonuses.
+            match tile.terrain {
+                BuiltinTerrain::Mountain => appeal += 1,
+                BuiltinTerrain::Coast    => appeal += 1,
+                _ => {}
+            }
+            // Feature bonuses/penalties.
+            match tile.feature {
+                Some(BuiltinFeature::Forest) | Some(BuiltinFeature::Oasis) => appeal += 1,
+                Some(BuiltinFeature::Rainforest) | Some(BuiltinFeature::Marsh)
+                | Some(BuiltinFeature::Floodplain) => appeal -= 1,
+                _ => {}
+            }
+        }
+        // District penalties.
+        for pd in &state.placed_districts {
+            if pd.coord == nb {
+                match pd.district_type {
+                    crate::civ::district::BuiltinDistrict::Encampment
+                    | crate::civ::district::BuiltinDistrict::IndustrialZone => appeal -= 1,
+                    _ => {}
+                }
+            }
+        }
+    }
+    // Natural wonder adjacency.
+    if let Some(tile) = state.board.tile(coord)
+        && tile.natural_wonder.is_some()
+    {
+        appeal += 2;
+    }
+    appeal
 }
 
 /// Evaluate a condition against the given context.
@@ -409,6 +458,46 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
         }
         Condition::CityHasWorshipBuilding => {
             // Stub — worship building system not yet implemented.
+            ConditionResult::Fail
+        }
+        Condition::TileMinAppeal(threshold) => {
+            if let Some(coord) = ctx.tile {
+                let appeal = compute_tile_appeal(coord, ctx.state);
+                if appeal >= *threshold {
+                    return ConditionResult::Pass;
+                }
+            }
+            ConditionResult::Fail
+        }
+        Condition::ProducingMilitaryUnitOfEra(era) => {
+            if let Some(city_id) = ctx.city_id {
+                if let Some(city) = ctx.state.cities.iter().find(|c| c.id == city_id) {
+                    if let Some(crate::civ::ProductionItem::Unit(utid)) = city.production_queue.front() {
+                        if let Some(utd) = ctx.state.unit_type_defs.iter().find(|u| u.id == *utid) {
+                            if matches!(utd.category, crate::UnitCategory::Combat | crate::UnitCategory::Support)
+                                && utd.era == Some(*era)
+                            {
+                                return ConditionResult::Pass;
+                            }
+                        }
+                    }
+                }
+            }
+            ConditionResult::Fail
+        }
+        Condition::ProducingWonderOfEra(era) => {
+            if let Some(city_id) = ctx.city_id {
+                if let Some(city) = ctx.state.cities.iter().find(|c| c.id == city_id) {
+                    if let Some(crate::civ::ProductionItem::Wonder(wid)) = city.production_queue.front() {
+                        // Check wonder era via wonder_defs if available.
+                        if let Some(wdef) = ctx.state.wonder_defs.iter().find(|w| w.id == *wid) {
+                            if wdef.era == Some(*era) {
+                                return ConditionResult::Pass;
+                            }
+                        }
+                    }
+                }
+            }
             ConditionResult::Fail
         }
         Condition::TileHasAnyImprovement => {

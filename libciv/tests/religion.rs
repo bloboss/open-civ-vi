@@ -560,7 +560,7 @@ fn purchase_missionary_with_faith() {
         siege_bonus: 0,
         max_charges: 0,
         exclusive_to: None,
-        replaces: None,
+        replaces: None, era: None,
     });
 
     // Missionary requires a Shrine building.
@@ -608,7 +608,7 @@ fn purchase_with_insufficient_faith() {
         siege_bonus: 0,
         max_charges: 0,
         exclusive_to: None,
-        replaces: None,
+        replaces: None, era: None,
     });
 
     // No extra faith (founding spent the 100 we gave, leaving whatever is left).
@@ -1168,4 +1168,205 @@ fn god_of_craftsmen_fails_unimproved_strategic() {
         .expect("God of Craftsmen should exist");
     let cond = belief.modifiers[0].condition.as_ref().expect("should have condition");
     assert_eq!(evaluate_condition(cond, &ctx), ConditionResult::Fail);
+}
+
+// ===========================================================================
+// Appeal, era, and production queue condition tests
+// ===========================================================================
+
+use libciv::rules::modifier::compute_tile_appeal;
+use libciv::AgeType;
+
+#[test]
+fn appeal_increases_from_adjacent_mountains() {
+    let mut s = build_scenario();
+    let coord = HexCoord::from_qr(6, 4);
+    let neighbors = s.state.board.neighbors(coord);
+
+    // Set 2 neighbors to Mountain.
+    for &nb in &neighbors[..2] {
+        set_terrain(&mut s.state, nb, BuiltinTerrain::Mountain);
+    }
+
+    let appeal = compute_tile_appeal(coord, &s.state);
+    assert_eq!(appeal, 2, "2 adjacent mountains = +2 appeal");
+}
+
+#[test]
+fn appeal_decreases_from_adjacent_marsh() {
+    let mut s = build_scenario();
+    let coord = HexCoord::from_qr(6, 4);
+    let neighbors = s.state.board.neighbors(coord);
+
+    // Set 3 neighbors to have Marsh feature.
+    for &nb in &neighbors[..3] {
+        set_feature(&mut s.state, nb, BuiltinFeature::Marsh);
+    }
+
+    let appeal = compute_tile_appeal(coord, &s.state);
+    assert_eq!(appeal, -3, "3 adjacent marshes = -3 appeal");
+}
+
+#[test]
+fn appeal_mixed_positive_and_negative() {
+    let mut s = build_scenario();
+    let coord = HexCoord::from_qr(6, 4);
+    let neighbors = s.state.board.neighbors(coord);
+
+    // 1 Mountain (+1), 1 Forest (+1), 1 Rainforest (-1) = net +1
+    set_terrain(&mut s.state, neighbors[0], BuiltinTerrain::Mountain);
+    set_feature(&mut s.state, neighbors[1], BuiltinFeature::Forest);
+    set_feature(&mut s.state, neighbors[2], BuiltinFeature::Rainforest);
+
+    let appeal = compute_tile_appeal(coord, &s.state);
+    assert_eq!(appeal, 1, "Mountain + Forest - Rainforest = +1");
+}
+
+#[test]
+fn tile_min_appeal_condition_charming() {
+    let mut s = build_scenario();
+    let coord = HexCoord::from_qr(6, 4);
+    let neighbors = s.state.board.neighbors(coord);
+
+    // Set 2 Mountains → appeal 2 (Charming threshold).
+    set_terrain(&mut s.state, neighbors[0], BuiltinTerrain::Mountain);
+    set_terrain(&mut s.state, neighbors[1], BuiltinTerrain::Mountain);
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id, state: &s.state,
+        tile: Some(coord), unit_id: None, city_id: None,
+    };
+
+    // Charming (2+) should pass.
+    assert_eq!(
+        evaluate_condition(&Condition::TileMinAppeal(2), &ctx),
+        ConditionResult::Pass,
+    );
+    // Breathtaking (4+) should fail.
+    assert_eq!(
+        evaluate_condition(&Condition::TileMinAppeal(4), &ctx),
+        ConditionResult::Fail,
+    );
+}
+
+#[test]
+fn earth_goddess_belief_has_appeal_condition() {
+    let s = build_scenario();
+    let belief = s.state.belief_defs.iter()
+        .find(|b| b.name == "Earth Goddess")
+        .expect("Earth Goddess should exist");
+    assert_eq!(belief.modifiers.len(), 1);
+    assert_eq!(
+        belief.modifiers[0].condition,
+        Some(Condition::TileMinAppeal(2)),
+    );
+}
+
+#[test]
+fn god_of_the_forge_belief_has_era_condition() {
+    let s = build_scenario();
+    let belief = s.state.belief_defs.iter()
+        .find(|b| b.name == "God of the Forge")
+        .expect("God of the Forge should exist");
+    assert_eq!(belief.modifiers.len(), 1);
+    let cond = belief.modifiers[0].condition.as_ref().expect("should have condition");
+    assert!(matches!(cond, Condition::Or(_, _)));
+}
+
+#[test]
+fn monument_to_the_gods_belief_has_wonder_era_condition() {
+    let s = build_scenario();
+    let belief = s.state.belief_defs.iter()
+        .find(|b| b.name == "Monument to the Gods")
+        .expect("Monument to the Gods should exist");
+    assert_eq!(belief.modifiers.len(), 1);
+    let cond = belief.modifiers[0].condition.as_ref().expect("should have condition");
+    assert!(matches!(cond, Condition::Or(_, _)));
+}
+
+#[test]
+fn producing_military_unit_of_era_passes() {
+    let mut s = build_scenario();
+
+    // Register a warrior unit type with era = Ancient.
+    let warrior_type_id = libciv::UnitTypeId::from_ulid(s.state.id_gen.next_ulid());
+    s.state.unit_type_defs.push(libciv::game::state::UnitTypeDef {
+        id: warrior_type_id,
+        name: "TestWarrior",
+        production_cost: 40,
+        max_movement: 200,
+        combat_strength: Some(20),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        range: 0,
+        vision_range: 2,
+        can_found_city: false,
+        resource_cost: None,
+        siege_bonus: 0,
+        max_charges: 0,
+        exclusive_to: None,
+        replaces: None,
+        era: Some(AgeType::Ancient),
+    });
+
+    // Set Rome's production queue to produce this warrior.
+    if let Some(city) = s.state.cities.iter_mut().find(|c| c.id == s.rome_city) {
+        city.production_queue.push_back(libciv::civ::ProductionItem::Unit(warrior_type_id));
+    }
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id, state: &s.state,
+        tile: None, unit_id: None, city_id: Some(s.rome_city),
+    };
+
+    assert_eq!(
+        evaluate_condition(&Condition::ProducingMilitaryUnitOfEra(AgeType::Ancient), &ctx),
+        ConditionResult::Pass,
+    );
+    // Wrong era should fail.
+    assert_eq!(
+        evaluate_condition(&Condition::ProducingMilitaryUnitOfEra(AgeType::Medieval), &ctx),
+        ConditionResult::Fail,
+    );
+}
+
+#[test]
+fn producing_military_unit_fails_for_civilian() {
+    let mut s = build_scenario();
+
+    // Register a settler (Civilian) with era = Ancient.
+    let settler_type_id = libciv::UnitTypeId::from_ulid(s.state.id_gen.next_ulid());
+    s.state.unit_type_defs.push(libciv::game::state::UnitTypeDef {
+        id: settler_type_id,
+        name: "TestSettler",
+        production_cost: 80,
+        max_movement: 200,
+        combat_strength: None,
+        domain: UnitDomain::Land,
+        category: UnitCategory::Civilian,
+        range: 0,
+        vision_range: 2,
+        can_found_city: true,
+        resource_cost: None,
+        siege_bonus: 0,
+        max_charges: 0,
+        exclusive_to: None,
+        replaces: None,
+        era: Some(AgeType::Ancient),
+    });
+
+    if let Some(city) = s.state.cities.iter_mut().find(|c| c.id == s.rome_city) {
+        city.production_queue.push_back(libciv::civ::ProductionItem::Unit(settler_type_id));
+    }
+
+    let ctx = ConditionContext {
+        civ_id: s.rome_id, state: &s.state,
+        tile: None, unit_id: None, city_id: Some(s.rome_city),
+    };
+
+    // Settler is Civilian, not Combat/Support — should fail.
+    assert_eq!(
+        evaluate_condition(&Condition::ProducingMilitaryUnitOfEra(AgeType::Ancient), &ctx),
+        ConditionResult::Fail,
+    );
 }

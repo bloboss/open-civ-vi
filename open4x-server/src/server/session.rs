@@ -75,19 +75,19 @@ pub fn build_server_session(
         UnitTypeDef { id: warrior_type_id, name: "warrior", production_cost: 40,
                       max_movement: 200, combat_strength: Some(20),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None },
         UnitTypeDef { id: settler_type_id, name: "settler", production_cost: 80,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: true, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None },
+                      range: 0, vision_range: 2, can_found_city: true, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None },
         UnitTypeDef { id: builder_type_id, name: "builder", production_cost: 50,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None },
         UnitTypeDef { id: trader_type_id, name: "trader", production_cost: 40,
                       max_movement: 200, combat_strength: None,
                       domain: UnitDomain::Land, category: UnitCategory::Trader,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None },
+                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None },
     ]);
 
     // ── Creator's civilization ────────────────────────────────────────────

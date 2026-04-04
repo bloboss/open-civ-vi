@@ -145,7 +145,7 @@ beliefs.push(BuiltinBelief {
             TargetSelector::AllTiles,
             EffectType::YieldFlat(YieldType::Faith, 1),
             StackingRule::Additive,
-        ),
+        ).with_condition(Condition::TileMinAppeal(2)), // Charming = 2+
     ],
 });
 
@@ -175,7 +175,10 @@ beliefs.push(BuiltinBelief {
             TargetSelector::ProductionQueue,
             EffectType::ProductionPercent(25),
             StackingRule::Additive,
-        ),
+        ).with_condition(Condition::Or(
+            Box::new(Condition::ProducingMilitaryUnitOfEra(crate::AgeType::Ancient)),
+            Box::new(Condition::ProducingMilitaryUnitOfEra(crate::AgeType::Classical)),
+        )),
     ],
 });
 
@@ -240,7 +243,10 @@ beliefs.push(BuiltinBelief {
             TargetSelector::ProductionQueue,
             EffectType::ProductionPercent(15),
             StackingRule::Additive,
-        ),
+        ).with_condition(Condition::Or(
+            Box::new(Condition::ProducingWonderOfEra(crate::AgeType::Ancient)),
+            Box::new(Condition::ProducingWonderOfEra(crate::AgeType::Classical)),
+        )),
     ],
 });
 
