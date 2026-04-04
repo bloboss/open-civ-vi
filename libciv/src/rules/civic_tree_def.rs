@@ -4,12 +4,15 @@
 // that evaluates to `CivicRefs`.
 {
 // ── Generate IDs in a fixed order (never reorder) ────────────────────────────
-let code_of_laws_id  = CivicId::from_ulid(ids.next_ulid());
-let craftsmanship_id = CivicId::from_ulid(ids.next_ulid());
-let foreign_trade_id = CivicId::from_ulid(ids.next_ulid());
-let early_empire_id  = CivicId::from_ulid(ids.next_ulid());
-let mysticism_id     = CivicId::from_ulid(ids.next_ulid());
-let unreachable_id   = CivicId::from_ulid(ids.next_ulid());
+let code_of_laws_id       = CivicId::from_ulid(ids.next_ulid());
+let craftsmanship_id      = CivicId::from_ulid(ids.next_ulid());
+let foreign_trade_id      = CivicId::from_ulid(ids.next_ulid());
+let early_empire_id       = CivicId::from_ulid(ids.next_ulid());
+let mysticism_id          = CivicId::from_ulid(ids.next_ulid());
+let military_tradition_id = CivicId::from_ulid(ids.next_ulid());
+let state_workforce_id    = CivicId::from_ulid(ids.next_ulid());
+let theology_id           = CivicId::from_ulid(ids.next_ulid());
+let unreachable_id        = CivicId::from_ulid(ids.next_ulid());
 
 // ── Node definitions ──────────────────────────────────────────────────────────
 
@@ -47,7 +50,7 @@ let early_empire = CivicNode {
     id:                      early_empire_id,
     name:                    "Early Empire",
     cost:                    70,
-    prerequisites:           vec![craftsmanship_id, foreign_trade_id],
+    prerequisites:           vec![foreign_trade_id],
     effects:                 vec![UnlockGovernment("Autocracy"), UnlockPolicy("Urban Planning")],
     inspiration_description: "Reach a population of 6.",
     inspiration_effects:     vec![],
@@ -57,9 +60,42 @@ let mysticism = CivicNode {
     id:                      mysticism_id,
     name:                    "Mysticism",
     cost:                    50,
-    prerequisites:           vec![code_of_laws_id],
+    prerequisites:           vec![foreign_trade_id],
     effects:                 vec![UnlockPolicy("Revelation"), UnlockBuilding("Temple")],
     inspiration_description: "Found a pantheon.",
+    inspiration_effects:     vec![],
+};
+
+let military_tradition = CivicNode {
+    id:                      military_tradition_id,
+    name:                    "Military Tradition",
+    cost:                    50,
+    prerequisites:           vec![craftsmanship_id],
+    effects:                 vec![UnlockPolicy("Strategos")],
+    inspiration_description: "Clear a barbarian outpost.",
+    inspiration_effects:     vec![],
+};
+
+let state_workforce = CivicNode {
+    id:                      state_workforce_id,
+    name:                    "State Workforce",
+    cost:                    70,
+    prerequisites:           vec![craftsmanship_id],
+    effects:                 vec![UnlockPolicy("Corvée")],
+    inspiration_description: "Build a district.",
+    inspiration_effects:     vec![],
+};
+
+// Theology is a Classical-era civic (XML: CIVIC_THEOLOGY, cost 120,
+// prereqs: Drama & Poetry + Mysticism). Drama & Poetry is not yet in the
+// tree (P1), so only Mysticism is listed as a prerequisite for now.
+let theology = CivicNode {
+    id:                      theology_id,
+    name:                    "Theology",
+    cost:                    120,
+    prerequisites:           vec![mysticism_id], // TODO(P1): add Drama & Poetry prereq
+    effects:                 vec![UnlockUnit("Missionary"), UnlockUnit("Apostle")],
+    inspiration_description: "Found a religion.",
     inspiration_effects:     vec![],
 };
 
@@ -82,16 +118,22 @@ tree.add_node(craftsmanship);
 tree.add_node(foreign_trade);
 tree.add_node(early_empire);
 tree.add_node(mysticism);
+tree.add_node(military_tradition);
+tree.add_node(state_workforce);
+tree.add_node(theology);
 tree.add_node(unreachable);
 
 // ── Return named ID handles ───────────────────────────────────────────────────
 
 CivicRefs {
-    code_of_laws:  code_of_laws_id,
-    craftsmanship: craftsmanship_id,
-    foreign_trade: foreign_trade_id,
-    early_empire:  early_empire_id,
-    mysticism:     mysticism_id,
-    unreachable:   unreachable_id,
+    code_of_laws:       code_of_laws_id,
+    craftsmanship:      craftsmanship_id,
+    foreign_trade:      foreign_trade_id,
+    early_empire:       early_empire_id,
+    mysticism:          mysticism_id,
+    military_tradition: military_tradition_id,
+    state_workforce:    state_workforce_id,
+    theology:           theology_id,
+    unreachable:        unreachable_id,
 }
 }

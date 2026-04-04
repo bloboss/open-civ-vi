@@ -2,16 +2,21 @@ use std::io::{self, BufRead, Write};
 
 use clap::{Parser, Subcommand};
 use libciv::{
-    all_scores, CityId, CivId, GameState, GameStateDiff, DefaultRulesEngine, RulesEngine,
-    ScoreVictory, TurnEngine, UnitCategory, UnitDomain, UnitId, UnitTypeId,
+    all_scores, BarbarianCampId, BeliefId, CityId, CivId, GameState, GameStateDiff,
+    DefaultRulesEngine, GreatPersonType, RulesEngine, ScoreVictory,
+    TurnEngine, UnitCategory, UnitDomain, UnitId, UnitTypeId,
 };
+use libciv::game::FaithPurchaseItem;
 use libciv::ai::{Agent, HeuristicAgent};
 use libciv::civ::{Agenda, BasicUnit, City, Civilization, Leader, ProductionItem, TechProgress, Unit};
+use libciv::civ::district::BuiltinDistrict;
+use libciv::civ::great_people::{recruitment_threshold, next_candidate_name, GP_PATRONAGE_GOLD_PER_POINT};
 use libciv::game::{AttackType, RulesError, StateDelta, recalculate_visibility};
 use libciv::game::state::UnitTypeDef;
 use libciv::visualize::Visualizer;
 use libciv::world::improvement::BuiltinImprovement;
 use libciv::world::mapgen::{MapGenConfig, generate as mapgen_generate};
+use libciv::world::road::{AncientRoad, BuiltinRoad};
 use libciv::world::tile::WorldTile;
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
@@ -172,7 +177,7 @@ fn build_session() -> Session {
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
                       range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None },
         UnitTypeDef { id: slinger_type_id, name: "slinger", production_cost: 35,
-                      max_movement: 200, combat_strength: Some(10),
+                      max_movement: 200, combat_strength: Some(15),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
                       range: 2, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None },
         UnitTypeDef { id: trader_type_id, name: "trader", production_cost: 40,
@@ -382,7 +387,7 @@ fn build_ai_demo(seed: u64) -> AiDemo {
                       domain: UnitDomain::Land, category: UnitCategory::Civilian,
                       range: 0, vision_range: 2, can_found_city: true, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None },
         UnitTypeDef { id: slinger_type, name: "slinger", production_cost: 35,
-                      max_movement: 200, combat_strength: Some(10),
+                      max_movement: 200, combat_strength: Some(15),
                       domain: UnitDomain::Land, category: UnitCategory::Combat,
                       range: 2, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None },
     ]);
@@ -952,6 +957,48 @@ fn run_play() {
 
                 Cmd::Scores => cmd_scores(&session),
 
+                Cmd::District(name, q, r) => cmd_district(&mut session, &rules, &name, q, r),
+
+                Cmd::Road(q, r) => cmd_road(&mut session, &rules, q, r),
+
+                Cmd::War(name) => cmd_war(&mut session, &rules, &name),
+
+                Cmd::Peace(name) => cmd_peace(&mut session, &rules, &name),
+
+                Cmd::Government(name) => cmd_government(&mut session, &name),
+
+                Cmd::Pantheon(name) => cmd_pantheon(&mut session, &rules, &name),
+
+                Cmd::Religion(name, b1, b2) => cmd_religion(&mut session, &rules, &name, &b1, &b2),
+
+                Cmd::GreatPeople => cmd_great_people(&session),
+
+                Cmd::Recruit(name) => cmd_recruit(&mut session, &rules, &name),
+
+                Cmd::GovernorAssign(name, idx) => cmd_governor(&mut session, &rules, &name, idx),
+
+                Cmd::Diplomacy => cmd_diplomacy(&session),
+
+                Cmd::Policy(name) => cmd_policy(&mut session, &rules, &name),
+                Cmd::Spread => cmd_spread(&mut session, &rules),
+                Cmd::TheoCombat(q, r) => cmd_theo_combat(&mut session, &rules, q, r),
+                Cmd::Bombard(q, r) => cmd_bombard(&mut session, &rules, q, r),
+                Cmd::Retire(name) => cmd_retire(&mut session, &rules, &name),
+                Cmd::GreatWork(name) => cmd_great_work(&mut session, &rules, &name),
+                Cmd::RecruitFaith(name) => cmd_recruit_faith(&mut session, &rules, &name),
+                Cmd::Evangelize(name) => cmd_evangelize(&mut session, &rules, &name),
+                Cmd::Inquisition => cmd_inquisition(&mut session, &rules),
+                Cmd::RemoveHeresy => cmd_remove_heresy(&mut session, &rules),
+                Cmd::GuruHeal => cmd_guru_heal(&mut session, &rules),
+                Cmd::ClaimTile(q, r) => cmd_claim_tile(&mut session, &rules, q, r),
+                Cmd::ReassignTile(q, r, idx) => cmd_reassign_tile(&mut session, &rules, q, r, idx),
+                Cmd::SendTrader(q, r) => cmd_send_trader(&mut session, &rules, q, r),
+                Cmd::BarbHire(q, r) => cmd_barb_hire(&mut session, &rules, q, r),
+                Cmd::BarbBribe(q, r) => cmd_barb_bribe(&mut session, &rules, q, r),
+                Cmd::BarbIncite(q, r, target) => cmd_barb_incite(&mut session, &rules, q, r, &target),
+                Cmd::FaithBuy(name) => cmd_faith_buy(&mut session, &rules, &name),
+                Cmd::GovernorPromote(name, promo) => cmd_governor_promote(&mut session, &rules, &name, &promo),
+
                 Cmd::EndTurn => break,
 
                 Cmd::Quit => {
@@ -1028,6 +1075,36 @@ enum Cmd {
     Trade(i32, i32),
     Routes,
     Scores,
+    District(String, i32, i32),
+    Road(i32, i32),
+    War(String),
+    Peace(String),
+    Government(String),
+    Pantheon(String),
+    Religion(String, String, String),
+    GreatPeople,
+    Recruit(String),
+    GovernorAssign(String, usize),
+    GovernorPromote(String, String),
+    Diplomacy,
+    Policy(String),
+    Spread,
+    TheoCombat(i32, i32),
+    Bombard(i32, i32),
+    Retire(String),
+    GreatWork(String),
+    RecruitFaith(String),
+    Evangelize(String),
+    Inquisition,
+    RemoveHeresy,
+    GuruHeal,
+    ClaimTile(i32, i32),
+    ReassignTile(i32, i32, usize),
+    SendTrader(i32, i32),
+    BarbHire(i32, i32),
+    BarbBribe(i32, i32),
+    BarbIncite(i32, i32, String),
+    FaithBuy(String),
     Unknown(String),
 }
 
@@ -1085,6 +1162,70 @@ fn parse_cmd(raw: &str) -> Cmd {
         }
         ["routes" | "rt"] => Cmd::Routes,
         ["scores" | "sc"] => Cmd::Scores,
+        ["district" | "dist", name, q, r] => {
+            parse_coord(q, r)
+                .map(|(q, r)| Cmd::District(name.to_string(), q, r))
+                .unwrap_or(Cmd::Unknown(s.to_string()))
+        }
+        ["road", q, r] => {
+            parse_coord(q, r)
+                .map(|(q, r)| Cmd::Road(q, r))
+                .unwrap_or(Cmd::Unknown(s.to_string()))
+        }
+        ["war", rest @ ..] if !rest.is_empty() => Cmd::War(rest.join(" ")),
+        ["peace", rest @ ..] if !rest.is_empty() => Cmd::Peace(rest.join(" ")),
+        ["government" | "gov", rest @ ..] if !rest.is_empty() => Cmd::Government(rest.join(" ")),
+        ["pantheon", rest @ ..] if !rest.is_empty() => Cmd::Pantheon(rest.join(" ")),
+        ["religion" | "rel", name, b1, b2] => Cmd::Religion(name.to_string(), b1.to_string(), b2.to_string()),
+        ["great-people" | "gp"] => Cmd::GreatPeople,
+        ["recruit", rest @ ..] if !rest.is_empty() => Cmd::Recruit(rest.join(" ")),
+        ["governor", name, idx] => {
+            idx.parse::<usize>().ok()
+                .map(|i| Cmd::GovernorAssign(name.to_string(), i))
+                .unwrap_or(Cmd::Unknown(s.to_string()))
+        }
+        ["diplomacy" | "diplo"] => Cmd::Diplomacy,
+        ["policy", rest @ ..] if !rest.is_empty() => Cmd::Policy(rest.join(" ")),
+        ["spread"] => Cmd::Spread,
+        ["theo-combat" | "tc", q, r] => {
+            parse_coord(q, r).map(|(q, r)| Cmd::TheoCombat(q, r)).unwrap_or(Cmd::Unknown(s.to_string()))
+        }
+        ["bombard", q, r] => {
+            parse_coord(q, r).map(|(q, r)| Cmd::Bombard(q, r)).unwrap_or(Cmd::Unknown(s.to_string()))
+        }
+        ["retire", rest @ ..] if !rest.is_empty() => Cmd::Retire(rest.join(" ")),
+        ["great-work" | "gw", rest @ ..] if !rest.is_empty() => Cmd::GreatWork(rest.join(" ")),
+        ["recruit-faith" | "rf", rest @ ..] if !rest.is_empty() => Cmd::RecruitFaith(rest.join(" ")),
+        ["evangelize", rest @ ..] if !rest.is_empty() => Cmd::Evangelize(rest.join(" ")),
+        ["inquisition"] => Cmd::Inquisition,
+        ["remove-heresy" | "rh"] => Cmd::RemoveHeresy,
+        ["guru-heal" | "gh"] => Cmd::GuruHeal,
+        ["claim", q, r] => {
+            parse_coord(q, r).map(|(q, r)| Cmd::ClaimTile(q, r)).unwrap_or(Cmd::Unknown(s.to_string()))
+        }
+        ["reassign", q, r, city_idx] => {
+            if let (Some((q, r)), Some(idx)) = (parse_coord(q, r), city_idx.parse::<usize>().ok()) {
+                Cmd::ReassignTile(q, r, idx)
+            } else { Cmd::Unknown(s.to_string()) }
+        }
+        ["send-trader" | "st", q, r] => {
+            parse_coord(q, r).map(|(q, r)| Cmd::SendTrader(q, r)).unwrap_or(Cmd::Unknown(s.to_string()))
+        }
+        ["barb-hire" | "bh", q, r] => {
+            parse_coord(q, r).map(|(q, r)| Cmd::BarbHire(q, r)).unwrap_or(Cmd::Unknown(s.to_string()))
+        }
+        ["barb-bribe" | "bb", q, r] => {
+            parse_coord(q, r).map(|(q, r)| Cmd::BarbBribe(q, r)).unwrap_or(Cmd::Unknown(s.to_string()))
+        }
+        ["barb-incite" | "bi", q, r, rest @ ..] if !rest.is_empty() => {
+            if let Some((q, r)) = parse_coord(q, r) {
+                Cmd::BarbIncite(q, r, rest.join(" "))
+            } else { Cmd::Unknown(s.to_string()) }
+        }
+        ["faith-buy" | "fb", rest @ ..] if !rest.is_empty() => Cmd::FaithBuy(rest.join(" ")),
+        ["governor-promote" | "gp-promote", name, promo] => {
+            Cmd::GovernorPromote(name.to_string(), promo.to_string())
+        }
         _ => Cmd::Unknown(s.to_string()),
     }
 }
@@ -1117,6 +1258,36 @@ fn print_help() {
     println!("    trade <q> <r>      -- establish trade route to city at (q,r)  alias:  tr");
     println!("    routes             -- list active trade routes                 alias:  rt");
     println!("    scores             -- show score leaderboard                   alias:  sc");
+    println!("    district <n> <q> <r>  place a district at (q,r)               alias:  dist");
+    println!("    road <q> <r>       -- build ancient road at (q,r) with builder");
+    println!("    war <civ>          -- declare war on a civilization");
+    println!("    peace <civ>        -- make peace with a civilization");
+    println!("    government <name>  -- adopt a government                       alias:  gov");
+    println!("    pantheon <belief>  -- found a pantheon with a belief");
+    println!("    religion <n> <b1> <b2>  found a religion (needs Great Prophet) alias: rel");
+    println!("    great-people       -- list available great people               alias:  gp");
+    println!("    recruit <type>     -- recruit a great person by type (gold)");
+    println!("    governor <n> <idx> -- assign governor to city index             ");
+    println!("    diplomacy          -- show diplomatic status                    alias:  diplo");
+    println!("    policy <name>      -- assign a policy to a slot");
+    println!("    spread             -- spread religion with selected missionary/apostle");
+    println!("    theo-combat <q> <r>-- theological combat at (q,r)              alias:  tc");
+    println!("    bombard <q> <r>    -- city bombardment at enemy unit");
+    println!("    retire <name>      -- retire a great person by name");
+    println!("    great-work <name>  -- create great work from person            alias:  gw");
+    println!("    recruit-faith <t>  -- recruit great prophet with faith         alias:  rf");
+    println!("    evangelize <belief>-- evangelize belief with apostle");
+    println!("    inquisition        -- launch inquisition with apostle");
+    println!("    remove-heresy      -- remove heresy with inquisitor            alias:  rh");
+    println!("    guru-heal          -- heal nearby religious units               alias:  gh");
+    println!("    claim <q> <r>      -- claim tile for current city");
+    println!("    reassign <q> <r> <n> reassign tile to city n (1-based)");
+    println!("    send-trader <q> <r>-- send trader toward city at (q,r)         alias:  st");
+    println!("    barb-hire <q> <r>  -- hire unit from barb camp at (q,r)        alias:  bh");
+    println!("    barb-bribe <q> <r> -- bribe barb camp at (q,r)                 alias:  bb");
+    println!("    barb-incite <q> <r> <civ> incite camp vs civ                   alias:  bi");
+    println!("    faith-buy <name>   -- purchase unit/building with faith         alias:  fb");
+    println!("    governor-promote <g> <p> promote governor                       alias:  gp-promote");
     println!("    end                -- end turn                         aliases: e, next, n");
     println!("    quit               -- exit                             alias:  exit");
     println!("    help               -- this message                     aliases: h, ?");
@@ -1438,25 +1609,37 @@ fn cmd_unassign(session: &mut Session, q: i32, r: i32) {
         q, r, city.name, city.worked_tiles.len());
 }
 
-/// Queue a unit for production by name (case-insensitive).
+/// Queue a unit or building for production by name (case-insensitive).
 fn cmd_build(session: &mut Session, name: &str) {
     let key = name.trim().to_lowercase();
-    let def_idx = session.state.unit_type_defs.iter().position(|d| d.name == key);
-    match def_idx {
-        None => {
-            let available: Vec<&str> = session.state.unit_type_defs.iter().map(|d| d.name).collect();
-            println!("  [error] Unknown unit {:?}. Available: {}", key, available.join(", "));
-        }
-        Some(idx) => {
-            let type_id  = session.state.unit_type_defs[idx].id;
-            let def_name = session.state.unit_type_defs[idx].name;
-            let def_cost = session.state.unit_type_defs[idx].production_cost;
-            let city_id  = session.city_ids[session.current_city];
-            let city = session.state.cities.iter_mut().find(|c| c.id == city_id).unwrap();
-            city.production_queue.push_back(ProductionItem::Unit(type_id));
-            println!("  Queued: {} ({} prod) in {}", capitalize(def_name), def_cost, city.name);
-        }
+
+    // Try unit types first.
+    if let Some(idx) = session.state.unit_type_defs.iter().position(|d| d.name == key) {
+        let type_id  = session.state.unit_type_defs[idx].id;
+        let def_name = session.state.unit_type_defs[idx].name;
+        let def_cost = session.state.unit_type_defs[idx].production_cost;
+        let city_id  = session.city_ids[session.current_city];
+        let city = session.state.cities.iter_mut().find(|c| c.id == city_id).unwrap();
+        city.production_queue.push_back(ProductionItem::Unit(type_id));
+        println!("  Queued: {} ({} prod) in {}", capitalize(def_name), def_cost, city.name);
+        return;
     }
+
+    // Try building defs.
+    if let Some(idx) = session.state.building_defs.iter().position(|d| d.name.to_lowercase() == key) {
+        let bld_id   = session.state.building_defs[idx].id;
+        let bld_name = session.state.building_defs[idx].name;
+        let bld_cost = session.state.building_defs[idx].cost;
+        let city_id  = session.city_ids[session.current_city];
+        let city = session.state.cities.iter_mut().find(|c| c.id == city_id).unwrap();
+        city.production_queue.push_back(ProductionItem::Building(bld_id));
+        println!("  Queued: {} ({} prod) in {}", capitalize(bld_name), bld_cost, city.name);
+        return;
+    }
+
+    let mut available: Vec<&str> = session.state.unit_type_defs.iter().map(|d| d.name).collect();
+    available.extend(session.state.building_defs.iter().map(|d| d.name));
+    println!("  [error] Unknown unit/building {:?}. Available: {}", key, available.join(", "));
 }
 
 /// Cancel (pop) the front production item and reset stored production.
@@ -1598,6 +1781,323 @@ fn cmd_scores(session: &Session) {
     hline_end();
 }
 
+/// Place a district on a tile for the current city.
+fn cmd_district(session: &mut Session, rules: &DefaultRulesEngine, name: &str, q: i32, r: i32) {
+    let coord = HexCoord::from_qr(q, r);
+    let city_id = session.city_ids[session.current_city];
+    let district = match name.to_ascii_lowercase().replace(' ', "_").as_str() {
+        "campus"                                        => BuiltinDistrict::Campus,
+        "theater_square" | "theatersquare" | "theater"  => BuiltinDistrict::TheaterSquare,
+        "commercial_hub" | "commercialhub" | "commercial" => BuiltinDistrict::CommercialHub,
+        "harbor"                                        => BuiltinDistrict::Harbor,
+        "holy_site" | "holysite" | "holy"               => BuiltinDistrict::HolySite,
+        "encampment"                                    => BuiltinDistrict::Encampment,
+        "industrial_zone" | "industrialzone" | "industrial" => BuiltinDistrict::IndustrialZone,
+        "entertainment_complex" | "entertainmentcomplex" | "entertainment" => BuiltinDistrict::EntertainmentComplex,
+        "aqueduct"                                      => BuiltinDistrict::Aqueduct,
+        "water_park" | "waterpark"                      => BuiltinDistrict::WaterPark,
+        _ => {
+            println!("  [error] Unknown district '{name}'.");
+            println!("  Valid: campus, theater_square, commercial_hub, harbor, holy_site,");
+            println!("         encampment, industrial_zone, entertainment_complex, aqueduct, water_park");
+            return;
+        }
+    };
+    match rules.place_district(&mut session.state, city_id, district, coord) {
+        Ok(diff) => {
+            for delta in &diff.deltas {
+                if let StateDelta::DistrictBuilt { coord, .. } = delta {
+                    println!("  District placed at {}!", fmtc(*coord));
+                }
+            }
+        }
+        Err(e) => println!("  [error] {e}"),
+    }
+}
+
+/// Build an ancient road on a tile using the selected builder.
+fn cmd_road(session: &mut Session, rules: &DefaultRulesEngine, q: i32, r: i32) {
+    let Some(uid) = session.selected_unit else {
+        println!("  [error] No unit selected. Use 'select <q> <r>'.");
+        return;
+    };
+    let Some(unit) = session.state.unit(uid) else {
+        println!("  [error] Selected unit no longer exists.");
+        return;
+    };
+    let type_name = unit_type_name(session, unit.unit_type());
+    if type_name != "builder" {
+        println!("  [error] Selected unit is a {type_name}, not a builder.");
+        return;
+    }
+    let coord = HexCoord::from_qr(q, r);
+    match rules.place_road(&mut session.state, uid, coord, BuiltinRoad::Ancient(AncientRoad)) {
+        Ok(diff) => {
+            for delta in &diff.deltas {
+                if let StateDelta::RoadPlaced { coord, .. } = delta {
+                    println!("  Ancient road built at {}!", fmtc(*coord));
+                }
+            }
+        }
+        Err(e) => println!("  [error] {e}"),
+    }
+}
+
+/// Declare war on a named civilization.
+fn cmd_war(session: &mut Session, rules: &DefaultRulesEngine, name: &str) {
+    let name_lower = name.to_ascii_lowercase();
+    let target = session.state.civilizations.iter()
+        .find(|c| c.name.to_ascii_lowercase() == name_lower && c.id != session.civ_id)
+        .map(|c| (c.id, c.name));
+    let Some((target_id, target_name)) = target else {
+        println!("  [error] Unknown or own civilization '{name}'.");
+        return;
+    };
+    match rules.declare_war(&mut session.state, session.civ_id, target_id) {
+        Ok(_) => println!("  War declared on {target_name}!"),
+        Err(e) => println!("  [error] {e}"),
+    }
+}
+
+/// Make peace with a named civilization.
+fn cmd_peace(session: &mut Session, rules: &DefaultRulesEngine, name: &str) {
+    let name_lower = name.to_ascii_lowercase();
+    let target = session.state.civilizations.iter()
+        .find(|c| c.name.to_ascii_lowercase() == name_lower && c.id != session.civ_id)
+        .map(|c| (c.id, c.name));
+    let Some((target_id, target_name)) = target else {
+        println!("  [error] Unknown or own civilization '{name}'.");
+        return;
+    };
+    match rules.make_peace(&mut session.state, session.civ_id, target_id) {
+        Ok(_) => println!("  Peace made with {target_name}."),
+        Err(e) => println!("  [error] {e}"),
+    }
+}
+
+/// Adopt a government by name (direct state mutation — no RulesEngine method exists).
+fn cmd_government(session: &mut Session, name: &str) {
+    let name_lower = name.to_ascii_lowercase();
+    let found = session.state.governments.iter()
+        .find(|g| g.name.to_ascii_lowercase() == name_lower)
+        .map(|g| (g.id, g.name));
+    let Some((_gov_id, gov_name)) = found else {
+        let available: Vec<&str> = session.state.governments.iter().map(|g| g.name).collect();
+        if available.is_empty() {
+            println!("  [error] No governments registered.");
+        } else {
+            println!("  [error] Unknown government '{name}'. Available: {}", available.join(", "));
+        }
+        return;
+    };
+    let civ = session.state.civilizations.iter_mut()
+        .find(|c| c.id == session.civ_id).unwrap();
+    civ.current_government_name = Some(gov_name);
+    println!("  Adopted government: {gov_name}");
+}
+
+/// Found a pantheon with the named belief.
+fn cmd_pantheon(session: &mut Session, rules: &DefaultRulesEngine, name: &str) {
+    let name_lower = name.to_ascii_lowercase();
+    let found = session.state.belief_defs.iter()
+        .find(|b| b.name.to_ascii_lowercase() == name_lower)
+        .map(|b| (b.id, b.name));
+    let Some((belief_id, belief_name)) = found else {
+        let available: Vec<&str> = session.state.belief_defs.iter().map(|b| b.name).collect();
+        if available.is_empty() {
+            println!("  [error] No beliefs registered.");
+        } else {
+            println!("  [error] Unknown belief '{name}'. Available: {}", available.join(", "));
+        }
+        return;
+    };
+    match rules.found_pantheon(&mut session.state, session.civ_id, belief_id) {
+        Ok(_) => println!("  Pantheon founded with belief: {belief_name}!"),
+        Err(e) => println!("  [error] {e}"),
+    }
+}
+
+/// Found a religion using the selected Great Prophet unit.
+fn cmd_religion(session: &mut Session, rules: &DefaultRulesEngine, name: &str, b1: &str, b2: &str) {
+    let Some(uid) = session.selected_unit else {
+        println!("  [error] No unit selected. Select a Great Prophet with 'select <q> <r>'.");
+        return;
+    };
+
+    let find_belief = |s: &str| -> Option<(BeliefId, &'static str)> {
+        let lower = s.to_ascii_lowercase();
+        session.state.belief_defs.iter()
+            .find(|b| b.name.to_ascii_lowercase() == lower)
+            .map(|b| (b.id, b.name))
+    };
+
+    let Some((bid1, _)) = find_belief(b1) else {
+        println!("  [error] Unknown belief '{b1}'.");
+        return;
+    };
+    let Some((bid2, _)) = find_belief(b2) else {
+        println!("  [error] Unknown belief '{b2}'.");
+        return;
+    };
+
+    match rules.found_religion(&mut session.state, uid, name.to_string(), vec![bid1, bid2]) {
+        Ok(_) => {
+            println!("  Religion '{}' founded!", name);
+            session.selected_unit = None;
+        }
+        Err(e) => println!("  [error] {e}"),
+    }
+}
+
+/// List available great people and their recruitment costs.
+fn cmd_great_people(session: &Session) {
+    let state = &session.state;
+    let civ = state.civilizations.iter().find(|c| c.id == session.civ_id).unwrap();
+
+    println!("  Great People:");
+    let types = [
+        GreatPersonType::General,
+        GreatPersonType::Admiral,
+        GreatPersonType::Engineer,
+        GreatPersonType::Merchant,
+        GreatPersonType::Scientist,
+        GreatPersonType::Writer,
+        GreatPersonType::Artist,
+        GreatPersonType::Musician,
+        GreatPersonType::Prophet,
+    ];
+    let mut any = false;
+    for gpt in &types {
+        let threshold = recruitment_threshold(*gpt, state);
+        let current = civ.great_person_points.get(gpt).copied().unwrap_or(0);
+        if let Some(candidate) = next_candidate_name(*gpt, state) {
+            let gold_cost = threshold.saturating_sub(current) * GP_PATRONAGE_GOLD_PER_POINT;
+            println!("    {:10}  {:<20}  points: {}/{}  recruit cost: {} gold",
+                format!("{:?}", gpt), candidate, current, threshold, gold_cost);
+            any = true;
+        }
+    }
+    if !any {
+        println!("    (no great people available)");
+    }
+
+    // List already recruited great people.
+    let owned: Vec<_> = state.great_people.iter()
+        .filter(|gp| gp.owner == Some(session.civ_id))
+        .collect();
+    if !owned.is_empty() {
+        println!();
+        println!("  Recruited:");
+        for gp in &owned {
+            let status = if gp.is_retired { " [retired]" } else { "" };
+            println!("    {:?} -- {}{}", gp.person_type, gp.name, status);
+        }
+    }
+}
+
+/// Recruit a great person by type (spending gold).
+fn cmd_recruit(session: &mut Session, rules: &DefaultRulesEngine, type_name: &str) {
+    let person_type = match type_name.to_ascii_lowercase().as_str() {
+        "general"   => GreatPersonType::General,
+        "admiral"   => GreatPersonType::Admiral,
+        "engineer"  => GreatPersonType::Engineer,
+        "merchant"  => GreatPersonType::Merchant,
+        "scientist" => GreatPersonType::Scientist,
+        "writer"    => GreatPersonType::Writer,
+        "artist"    => GreatPersonType::Artist,
+        "musician"  => GreatPersonType::Musician,
+        "prophet"   => GreatPersonType::Prophet,
+        _ => {
+            println!("  [error] Unknown type '{type_name}'.");
+            println!("  Valid: general, admiral, engineer, merchant, scientist, writer, artist, musician, prophet");
+            return;
+        }
+    };
+    match rules.recruit_great_person(&mut session.state, session.civ_id, person_type) {
+        Ok(diff) => {
+            for delta in &diff.deltas {
+                if let StateDelta::GreatPersonPatronized { great_person, gold_spent, .. } = delta {
+                    let name = session.state.great_people.iter()
+                        .find(|gp| gp.id == *great_person)
+                        .map(|gp| gp.name)
+                        .unwrap_or("?");
+                    println!("  Recruited {} for {} gold!", name, gold_spent);
+                }
+            }
+        }
+        Err(e) => println!("  [error] {e}"),
+    }
+}
+
+/// Assign a governor to a city by name and city index.
+fn cmd_governor(session: &mut Session, rules: &DefaultRulesEngine, name: &str, city_idx: usize) {
+    if city_idx == 0 || city_idx > session.city_ids.len() {
+        println!("  [error] City index out of range (1-{}).", session.city_ids.len());
+        return;
+    }
+    let city_id = session.city_ids[city_idx - 1];
+    let name_lower = name.to_ascii_lowercase();
+    let governor = session.state.governors.iter()
+        .find(|g| g.def_name.to_ascii_lowercase() == name_lower && g.owner == session.civ_id)
+        .map(|g| g.id);
+    let Some(governor_id) = governor else {
+        let available: Vec<&str> = session.state.governors.iter()
+            .filter(|g| g.owner == session.civ_id)
+            .map(|g| g.def_name)
+            .collect();
+        if available.is_empty() {
+            println!("  [error] No governors available. Earn governor titles first.");
+        } else {
+            println!("  [error] Unknown governor '{name}'. Available: {}", available.join(", "));
+        }
+        return;
+    };
+    match rules.assign_governor(&mut session.state, governor_id, city_id) {
+        Ok(_) => {
+            let city_name = session.state.cities.iter()
+                .find(|c| c.id == city_id)
+                .map(|c| c.name.as_str())
+                .unwrap_or("?");
+            println!("  Governor {name} assigned to {city_name}.");
+        }
+        Err(e) => println!("  [error] {e}"),
+    }
+}
+
+/// Show diplomatic status with all known civilizations.
+fn cmd_diplomacy(session: &Session) {
+    let state = &session.state;
+    let civ_id = session.civ_id;
+
+    let other_civs: Vec<_> = state.civilizations.iter()
+        .filter(|c| c.id != civ_id)
+        .collect();
+
+    if other_civs.is_empty() {
+        println!("  No other civilizations known.");
+        return;
+    }
+
+    println!("  Diplomatic Status:");
+    for other in &other_civs {
+        let relation = state.diplomatic_relations.iter()
+            .find(|r| (r.civ_a == civ_id && r.civ_b == other.id)
+                   || (r.civ_b == civ_id && r.civ_a == other.id));
+        let (status_str, war_turns) = match relation {
+            Some(rel) => {
+                let war_info = if rel.turns_at_war > 0 {
+                    format!("  (at war for {} turns)", rel.turns_at_war)
+                } else {
+                    String::new()
+                };
+                (format!("{:?}", rel.status), war_info)
+            }
+            None => ("No contact".to_string(), String::new()),
+        };
+        println!("    {:<12}  {}{}", other.name, status_str, war_turns);
+    }
+}
+
 // ── Turn header ───────────────────────────────────────────────────────────────
 
 fn print_turn_header(session: &Session, rules: &DefaultRulesEngine) {
@@ -1719,7 +2219,12 @@ fn queue_front_info(session: &Session) -> (Option<&'static str>, Option<u32>) {
                 None      => (Some("?"), None),
             }
         }
-        Some(ProductionItem::Building(_))  => (Some("building"), None),
+        Some(ProductionItem::Building(bid)) => {
+            match session.state.building_defs.iter().find(|d| d.id == *bid) {
+                Some(def) => (Some(def.name), Some(def.cost)),
+                None      => (Some("building"), None),
+            }
+        }
         Some(ProductionItem::District(_))  => (Some("district"), None),
         Some(ProductionItem::Wonder(_))    => (Some("wonder"), None),
     }
@@ -1734,7 +2239,12 @@ fn queue_item_display(session: &Session, item: &ProductionItem) -> (String, Stri
                 None      => ("? unit".to_string(), "(? prod)".to_string()),
             }
         }
-        ProductionItem::Building(_) => ("building".to_string(), "(? prod)".to_string()),
+        ProductionItem::Building(bid) => {
+            match session.state.building_defs.iter().find(|d| d.id == *bid) {
+                Some(def) => (def.name.to_string(), format!("({} prod)", def.cost)),
+                None      => ("building".to_string(), "(? prod)".to_string()),
+            }
+        }
         ProductionItem::District(_) => ("district".to_string(), "(? prod)".to_string()),
         ProductionItem::Wonder(_)   => ("wonder".to_string(),   "(? prod)".to_string()),
     }
@@ -1970,5 +2480,376 @@ fn read_line() -> Option<String> {
         Ok(0) => None,
         Ok(_) => Some(line),
         Err(_) => None,
+    }
+}
+
+// ── Remaining command handlers (covers all RulesEngine methods) ──────────────
+
+fn cmd_policy(session: &mut Session, rules: &DefaultRulesEngine, name: &str) {
+    let name_lower = name.to_ascii_lowercase();
+    let found = session.state.policies.iter()
+        .find(|p| p.name.to_ascii_lowercase() == name_lower)
+        .map(|p| p.id);
+    match found {
+        None => println!("  [error] Unknown policy '{name}'."),
+        Some(pid) => match rules.assign_policy(&mut session.state, session.civ_id, pid) {
+            Ok(diff) => {
+                for delta in &diff.deltas {
+                    if let StateDelta::PolicyAssigned { .. } = delta {
+                        println!("  Policy '{name}' assigned.");
+                    }
+                }
+            }
+            Err(e) => println!("  [error] {e}"),
+        }
+    }
+}
+
+fn cmd_spread(session: &mut Session, rules: &DefaultRulesEngine) {
+    let Some(uid) = session.selected_unit else {
+        println!("  [error] No unit selected.");
+        return;
+    };
+    match rules.spread_religion(&mut session.state, uid) {
+        Ok(diff) => {
+            for delta in &diff.deltas {
+                if let StateDelta::ReligionSpread { city, followers_added, .. } = delta {
+                    println!("  Religion spread to city {:?}: +{followers_added} followers.", city);
+                }
+                if let StateDelta::UnitDestroyed { .. } = delta {
+                    println!("  Unit exhausted (no charges left).");
+                    session.selected_unit = None;
+                }
+            }
+        }
+        Err(e) => println!("  [error] {e}"),
+    }
+}
+
+fn cmd_theo_combat(session: &mut Session, rules: &DefaultRulesEngine, q: i32, r: i32) {
+    let target_coord = HexCoord::from_qr(q, r);
+    let Some(uid) = session.selected_unit else {
+        println!("  [error] No unit selected.");
+        return;
+    };
+    let defender = session.state.units.iter()
+        .find(|u| u.coord() == target_coord && u.owner != session.civ_id && u.category == UnitCategory::Religious)
+        .map(|u| u.id);
+    match defender {
+        None => println!("  [error] No enemy religious unit at {}.", fmtc(target_coord)),
+        Some(def_id) => match rules.theological_combat(&mut session.state, uid, def_id) {
+            Ok(diff) => {
+                for delta in &diff.deltas {
+                    if let StateDelta::TheologicalCombat { attacker_damage, defender_damage, .. } = delta {
+                        println!("  [Theological] dealt {defender_damage} dmg, took {attacker_damage} dmg");
+                    }
+                    if let StateDelta::UnitDestroyed { .. } = delta {
+                        println!("  Unit destroyed!");
+                    }
+                }
+                if session.state.unit(uid).is_none() { session.selected_unit = None; }
+            }
+            Err(e) => println!("  [error] {e}"),
+        }
+    }
+}
+
+fn cmd_bombard(session: &mut Session, rules: &DefaultRulesEngine, q: i32, r: i32) {
+    let target_coord = HexCoord::from_qr(q, r);
+    let city_id = session.city_ids[session.current_city];
+    let defender = session.state.units.iter()
+        .find(|u| u.coord() == target_coord && u.owner != session.civ_id)
+        .map(|u| u.id);
+    match defender {
+        None => println!("  [error] No enemy unit at {}.", fmtc(target_coord)),
+        Some(def_id) => match rules.city_bombard(&mut session.state, city_id, def_id) {
+            Ok(diff) => {
+                for delta in &diff.deltas {
+                    if let StateDelta::UnitAttacked { defender_damage, .. } = delta {
+                        println!("  City bombardment dealt {defender_damage} damage.");
+                    }
+                    if let StateDelta::UnitDestroyed { .. } = delta {
+                        println!("  Enemy unit destroyed!");
+                    }
+                }
+            }
+            Err(e) => println!("  [error] {e}"),
+        }
+    }
+}
+
+fn cmd_retire(session: &mut Session, rules: &DefaultRulesEngine, name: &str) {
+    let name_lower = name.to_ascii_lowercase();
+    let found = session.state.great_people.iter()
+        .find(|gp| gp.name.to_ascii_lowercase() == name_lower && gp.owner == Some(session.civ_id) && !gp.is_retired)
+        .map(|gp| gp.id);
+    match found {
+        None => println!("  [error] No active great person named '{name}' owned by you."),
+        Some(gp_id) => match rules.retire_great_person(&mut session.state, gp_id) {
+            Ok(_) => println!("  Great person '{name}' retired."),
+            Err(e) => println!("  [error] {e}"),
+        }
+    }
+}
+
+fn cmd_great_work(session: &mut Session, rules: &DefaultRulesEngine, name: &str) {
+    let name_lower = name.to_ascii_lowercase();
+    let found = session.state.great_people.iter()
+        .find(|gp| gp.name.to_ascii_lowercase() == name_lower && gp.owner == Some(session.civ_id) && !gp.is_retired)
+        .map(|gp| gp.id);
+    match found {
+        None => println!("  [error] No active great person named '{name}' owned by you."),
+        Some(gp_id) => match rules.create_great_work(&mut session.state, gp_id) {
+            Ok(diff) => {
+                for delta in &diff.deltas {
+                    if let StateDelta::GreatWorkCreated { work_name, city, .. } = delta {
+                        println!("  Great Work '{work_name}' created in city {:?}!", city);
+                    }
+                }
+            }
+            Err(e) => println!("  [error] {e}"),
+        }
+    }
+}
+
+fn cmd_recruit_faith(session: &mut Session, rules: &DefaultRulesEngine, type_name: &str) {
+    let person_type = match type_name.to_ascii_lowercase().as_str() {
+        "prophet" => GreatPersonType::Prophet,
+        _ => {
+            println!("  [error] Faith recruitment only works for 'prophet'.");
+            return;
+        }
+    };
+    match rules.recruit_great_person_with_faith(&mut session.state, session.civ_id, person_type) {
+        Ok(diff) => {
+            for delta in &diff.deltas {
+                if let StateDelta::GreatPersonRecruited { .. } = delta {
+                    println!("  Great Prophet recruited with faith!");
+                }
+            }
+        }
+        Err(e) => println!("  [error] {e}"),
+    }
+}
+
+fn cmd_evangelize(session: &mut Session, rules: &DefaultRulesEngine, belief_name: &str) {
+    let Some(uid) = session.selected_unit else {
+        println!("  [error] No unit selected (must be an Apostle).");
+        return;
+    };
+    let name_lower = belief_name.to_ascii_lowercase();
+    let found = session.state.belief_defs.iter()
+        .find(|b| b.name.to_ascii_lowercase() == name_lower)
+        .map(|b| b.id);
+    match found {
+        None => println!("  [error] Unknown belief '{belief_name}'."),
+        Some(belief_id) => match rules.evangelize_belief(&mut session.state, uid, belief_id) {
+            Ok(_) => println!("  Belief '{belief_name}' evangelized."),
+            Err(e) => println!("  [error] {e}"),
+        }
+    }
+}
+
+fn cmd_inquisition(session: &mut Session, rules: &DefaultRulesEngine) {
+    let Some(uid) = session.selected_unit else {
+        println!("  [error] No unit selected (must be an Apostle).");
+        return;
+    };
+    match rules.launch_inquisition(&mut session.state, uid) {
+        Ok(_) => {
+            println!("  Inquisition launched. Inquisitors can now be purchased.");
+            session.selected_unit = None;
+        }
+        Err(e) => println!("  [error] {e}"),
+    }
+}
+
+fn cmd_remove_heresy(session: &mut Session, rules: &DefaultRulesEngine) {
+    let Some(uid) = session.selected_unit else {
+        println!("  [error] No unit selected (must be an Inquisitor).");
+        return;
+    };
+    match rules.remove_heresy(&mut session.state, uid) {
+        Ok(diff) => {
+            for delta in &diff.deltas {
+                if let StateDelta::HeresyRemoved { followers_removed, .. } = delta {
+                    println!("  Removed {followers_removed} foreign followers.");
+                }
+                if let StateDelta::UnitDestroyed { .. } = delta {
+                    println!("  Inquisitor exhausted.");
+                    session.selected_unit = None;
+                }
+            }
+        }
+        Err(e) => println!("  [error] {e}"),
+    }
+}
+
+fn cmd_guru_heal(session: &mut Session, rules: &DefaultRulesEngine) {
+    let Some(uid) = session.selected_unit else {
+        println!("  [error] No unit selected (must be a Guru).");
+        return;
+    };
+    match rules.guru_heal(&mut session.state, uid) {
+        Ok(diff) => {
+            for delta in &diff.deltas {
+                if let StateDelta::ReligiousUnitsHealed { healed_count, .. } = delta {
+                    println!("  Healed {healed_count} nearby religious units.");
+                }
+                if let StateDelta::UnitDestroyed { .. } = delta {
+                    println!("  Guru exhausted.");
+                    session.selected_unit = None;
+                }
+            }
+        }
+        Err(e) => println!("  [error] {e}"),
+    }
+}
+
+fn cmd_claim_tile(session: &mut Session, rules: &DefaultRulesEngine, q: i32, r: i32) {
+    let coord = HexCoord::from_qr(q, r);
+    let city_id = session.city_ids[session.current_city];
+    match rules.claim_tile(&mut session.state, city_id, coord, false) {
+        Ok(diff) => {
+            if diff.is_empty() {
+                println!("  Tile already owned by you.");
+            } else {
+                println!("  Tile {} claimed.", fmtc(coord));
+            }
+        }
+        Err(e) => println!("  [error] {e}"),
+    }
+}
+
+fn cmd_reassign_tile(session: &mut Session, rules: &DefaultRulesEngine, q: i32, r: i32, city_idx: usize) {
+    let coord = HexCoord::from_qr(q, r);
+    let from_city = session.city_ids[session.current_city];
+    if city_idx == 0 || city_idx > session.city_ids.len() {
+        println!("  [error] City index out of range (1-{}).", session.city_ids.len());
+        return;
+    }
+    let to_city = session.city_ids[city_idx - 1];
+    match rules.reassign_tile(&mut session.state, from_city, to_city, coord) {
+        Ok(diff) => {
+            if diff.is_empty() {
+                println!("  Tile already belongs to that city.");
+            } else {
+                println!("  Tile {} reassigned to city {}.", fmtc(coord), city_idx);
+            }
+        }
+        Err(e) => println!("  [error] {e}"),
+    }
+}
+
+fn cmd_send_trader(session: &mut Session, rules: &DefaultRulesEngine, q: i32, r: i32) {
+    let dest_coord = HexCoord::from_qr(q, r);
+    let Some(uid) = session.selected_unit else {
+        println!("  [error] No unit selected. Select a trader.");
+        return;
+    };
+    let dest = session.state.cities.iter()
+        .find(|c| c.coord == dest_coord)
+        .map(|c| c.id);
+    match dest {
+        None => println!("  [error] No city at {}.", fmtc(dest_coord)),
+        Some(dest_id) => match rules.assign_trade_route(&mut session.state, uid, dest_id) {
+            Ok(_) => println!("  Trader assigned to move toward {}.", fmtc(dest_coord)),
+            Err(e) => println!("  [error] {e}"),
+        }
+    }
+}
+
+fn find_camp_at(state: &GameState, q: i32, r: i32) -> Option<BarbarianCampId> {
+    let coord = HexCoord::from_qr(q, r);
+    state.barbarian_camps.iter()
+        .find(|c| c.coord == coord)
+        .map(|c| c.id)
+}
+
+fn cmd_barb_hire(session: &mut Session, rules: &DefaultRulesEngine, q: i32, r: i32) {
+    match find_camp_at(&session.state, q, r) {
+        None => println!("  [error] No barbarian camp at ({q},{r})."),
+        Some(camp_id) => match rules.hire_from_barbarian_camp(&mut session.state, camp_id, session.civ_id) {
+            Ok(diff) => {
+                for delta in &diff.deltas {
+                    if let StateDelta::BarbarianClanHired { gold_spent, .. } = delta {
+                        println!("  Hired unit from camp for {gold_spent} gold.");
+                    }
+                }
+            }
+            Err(e) => println!("  [error] {e}"),
+        }
+    }
+}
+
+fn cmd_barb_bribe(session: &mut Session, rules: &DefaultRulesEngine, q: i32, r: i32) {
+    match find_camp_at(&session.state, q, r) {
+        None => println!("  [error] No barbarian camp at ({q},{r})."),
+        Some(camp_id) => match rules.bribe_barbarian_camp(&mut session.state, camp_id, session.civ_id) {
+            Ok(diff) => {
+                for delta in &diff.deltas {
+                    if let StateDelta::BarbarianClanBribed { gold_spent, .. } = delta {
+                        println!("  Camp bribed for {gold_spent} gold.");
+                    }
+                }
+            }
+            Err(e) => println!("  [error] {e}"),
+        }
+    }
+}
+
+fn cmd_barb_incite(session: &mut Session, rules: &DefaultRulesEngine, q: i32, r: i32, target_name: &str) {
+    let target_lower = target_name.to_ascii_lowercase();
+    let target = session.state.civilizations.iter()
+        .find(|c| c.name.to_ascii_lowercase() == target_lower && c.id != session.civ_id)
+        .map(|c| c.id);
+    let Some(target_id) = target else {
+        println!("  [error] Unknown civilization '{target_name}'.");
+        return;
+    };
+    match find_camp_at(&session.state, q, r) {
+        None => println!("  [error] No barbarian camp at ({q},{r})."),
+        Some(camp_id) => match rules.incite_barbarian_camp(&mut session.state, camp_id, session.civ_id, target_id) {
+            Ok(diff) => {
+                for delta in &diff.deltas {
+                    if let StateDelta::BarbarianClanIncited { gold_spent, .. } = delta {
+                        println!("  Camp incited against {target_name} for {gold_spent} gold.");
+                    }
+                }
+            }
+            Err(e) => println!("  [error] {e}"),
+        }
+    }
+}
+
+fn cmd_faith_buy(session: &mut Session, rules: &DefaultRulesEngine, name: &str) {
+    let city_id = session.city_ids[session.current_city];
+    let item = FaithPurchaseItem::Unit(string_to_static(name));
+    match rules.purchase_with_faith(&mut session.state, session.civ_id, city_id, item) {
+        Ok(_) => println!("  Purchased '{name}' with faith."),
+        Err(e) => println!("  [error] {e}"),
+    }
+}
+
+/// Leak a String into a &'static str for FaithPurchaseItem.
+/// Safe for a CLI that runs once; the allocation lives until process exit.
+fn string_to_static(s: &str) -> &'static str {
+    Box::leak(s.to_string().into_boxed_str())
+}
+
+fn cmd_governor_promote(session: &mut Session, rules: &DefaultRulesEngine, gov_name: &str, promo_name: &str) {
+    let name_lower = gov_name.to_ascii_lowercase();
+    let found = session.state.governors.iter()
+        .find(|g| g.def_name.to_ascii_lowercase() == name_lower && g.owner == session.civ_id)
+        .map(|g| g.id);
+    match found {
+        None => println!("  [error] Governor '{gov_name}' not found or not owned by you."),
+        Some(gid) => {
+            let promo_static = string_to_static(promo_name);
+            match rules.promote_governor(&mut session.state, gid, promo_static) {
+                Ok(_) => println!("  Governor '{gov_name}' promoted with '{promo_name}'."),
+                Err(e) => println!("  [error] {e}"),
+            }
+        }
     }
 }

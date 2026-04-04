@@ -10,8 +10,10 @@ pub enum BuiltinFeature {
     Rainforest,
     Marsh,
     Floodplain,
+    /// NOTE: Reef is a Gathering Storm feature, not in the Civ VI base game.
     Reef,
     Ice,
+    /// NOTE: Volcanic Soil is a Gathering Storm feature, not in the Civ VI base game.
     VolcanicSoil,
     Oasis,
 }

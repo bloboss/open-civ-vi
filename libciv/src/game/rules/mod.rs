@@ -1082,8 +1082,10 @@ mod tests {
 
         // Without "Bronze Working": resource yields suppressed.
         let yields_no_tech = engine.compute_yields(&state, civ_id);
-        // Grassland base = 2 food, 0 production. Iron adds 1 production but is gated.
-        assert_eq!(yields_no_tech.production, 0, "Iron production must be suppressed without Bronze Working");
+        // Grassland base = 2 food, 0 science + 1 base science per city.
+        // Iron adds 1 science but is gated by reveal tech.
+        let base_science_per_city = 1;
+        assert_eq!(yields_no_tech.science, base_science_per_city, "Iron science must be suppressed without Bronze Working");
 
         // "Grant" the civ a fake tech named "Bronze Working" by pushing a fake TechId.
         // Use a TechId whose node in the tech tree has name = "Bronze Working".
@@ -1105,7 +1107,7 @@ mod tests {
             .researched_techs.push(tech_id);
 
         let yields_with_tech = engine.compute_yields(&state, civ_id);
-        assert_eq!(yields_with_tech.production, 1, "Iron production visible after Bronze Working");
+        assert_eq!(yields_with_tech.science, base_science_per_city + 1, "Iron science visible after Bronze Working");
     }
 
     // ── advance_turn tests ────────────────────────────────────────────────────

@@ -16,6 +16,9 @@ pub trait NaturalWonder: std::fmt::Debug + Send + Sync {
 
 // ── 5 built-in natural wonders ────────────────────────────────────────────────
 
+/// NOTE: Krakatoa is **not** in the Civ VI base game — it was added in DLC.
+/// Retained for backward compatibility; tag with `is_base_game: false` if a
+/// content-gating flag is added later.
 #[derive(Debug, Clone, Copy)]
 pub struct Krakatoa { pub id: NaturalWonderId }
 impl NaturalWonder for Krakatoa {
@@ -29,6 +32,7 @@ impl NaturalWonder for Krakatoa {
     fn impassable(&self) -> bool { true }
 }
 
+/// NOTE: Grand Mesa is **not** in the Civ VI base game — it was added in DLC.
 #[derive(Debug, Clone, Copy)]
 pub struct GrandMesa { pub id: NaturalWonderId }
 impl NaturalWonder for GrandMesa {
@@ -51,13 +55,15 @@ impl NaturalWonder for CliffsOfDover {
     fn appeal_bonus(&self) -> i32 { 4 }
     fn yield_bonus(&self) -> YieldBundle {
         YieldBundle::new()
-            .with(crate::YieldType::Culture, 2)
-            .with(crate::YieldType::Gold, 1)
+            .with(crate::YieldType::Food, 2)
+            .with(crate::YieldType::Culture, 3)
+            .with(crate::YieldType::Gold, 3)
     }
     fn movement_cost(&self) -> MovementCost { MovementCost::Impassable }
     fn impassable(&self) -> bool { true }
 }
 
+/// NOTE: Uluru is **not** in the Civ VI base game — it was added in DLC.
 #[derive(Debug, Clone, Copy)]
 pub struct UluruAyersRock { pub id: NaturalWonderId }
 impl NaturalWonder for UluruAyersRock {

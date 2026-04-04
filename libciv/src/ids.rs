@@ -77,7 +77,6 @@ pub struct TechRefs {
     pub bronze_working:   TechId,
     pub the_wheel:        TechId,
     pub masonry:          TechId,
-    pub theology:         TechId,
     /// Sentinel: self-referential prereq → `prerequisites_met()` always returns false.
     pub unreachable:      TechId,
 }
@@ -85,11 +84,14 @@ pub struct TechRefs {
 /// Named handles to every built-in civic ID, produced alongside the CivicTree.
 #[derive(Debug, Clone, Copy)]
 pub struct CivicRefs {
-    pub code_of_laws:  CivicId,
-    pub craftsmanship: CivicId,
-    pub foreign_trade: CivicId,
-    pub early_empire:  CivicId,
-    pub mysticism:     CivicId,
+    pub code_of_laws:         CivicId,
+    pub craftsmanship:        CivicId,
+    pub foreign_trade:        CivicId,
+    pub early_empire:         CivicId,
+    pub mysticism:            CivicId,
+    pub military_tradition:   CivicId,
+    pub state_workforce:      CivicId,
+    pub theology:             CivicId,
     /// Sentinel: self-referential prereq → `prerequisites_met()` always returns false.
-    pub unreachable:   CivicId,
+    pub unreachable:          CivicId,
 }

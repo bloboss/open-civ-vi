@@ -2,7 +2,34 @@
 
 ## Current Status
 
-The engine has 200+ passing integration tests across 21 test files. Core gameplay is functional end-to-end: map generation, city founding, unit movement, combat, research, production, trade, cultural borders, loyalty, era scoring, tourism, and victory conditions all work.
+The engine has **461 passing integration tests** across 28+ test files. Core gameplay
+is functional end-to-end: map generation, city founding, unit movement, combat,
+research, production, trade, cultural borders, loyalty, era scoring, tourism,
+religion, great people, barbarian clans, promotions, and victory conditions all work.
+
+The civsim TUI exposes **all 36 RulesEngine methods** as interactive commands
+(100% API coverage). Full-game integration tests exercise every major subsystem
+in combined scenarios.
+
+### Civ VI Parity Progress (2026-04-04)
+
+See [parity.md](parity.md) for full details.
+
+| Phase | Status | Notes |
+|---|---|---|
+| P0 Value Fixes | **DONE** | Resource yields, tech/civic prereqs, reveal techs |
+| P1 Tech/Civic Trees | **CRITICAL PATH** | 12/67 techs, 8/50 civics (Ancient only) |
+| P2 Resources | **DONE** | 10 bonus + 24 luxury + 7 strategic = 41 total |
+| P3 Natural Wonders | **DONE** | 15 wonders (12 base + 3 DLC) |
+| P4 Improvements | **DONE** | 15 standard + 9 unique = 24 total |
+| P5 Districts | **Partial** | Districts done (16+4 UQ); ~60 buildings remain |
+| P6 Units | **~75%** | 71/98 unit type defs |
+| P7 World Wonders | Not started | 0/29 |
+| P8 Gov/Policies | Not started | 2/10 governments, 4/113 policies |
+| P9 Civilizations | Not started | 8/19 base-game civs |
+| P10 Promotions | **~97%** | 118/122 across 16 classes |
+| P11 City-States | Not started | 0/24 concrete |
+| P12 Great People | Partial | ~72/177 individuals |
 
 ## Completed Systems
 
@@ -24,13 +51,17 @@ The engine has 200+ passing integration tests across 21 test files. Core gamepla
 | Diplomacy | via gameplay tests | War/peace, grievances, status changes |
 | Natural wonders | 3 tests | Yields, movement cost, appeal |
 | LOS & elevation | 2 tests | Cliff blocking, gradual transition |
-| AI agent | 9 tests | Production, movement, determinism, multi-turn stability |
-| Great people | 6 tests | Retirement effects, combat modifier integration |
+| AI agent | 14 tests | Production, movement, determinism, multi-turn stability, simulation |
+| Great people | 22 tests | Points, recruitment, patronage (gold/faith), retirement |
+| Governors | 17 tests | Assignment, establishment timer, promotions, loyalty bonus |
 | Era score | 11 tests | Historic moments, era advancement, age determination |
 | Loyalty | 13 tests | Pressure, revolt, occupation penalty, governor bonus |
 | Tourism & culture | 15 tests | Accumulation, great works, dominance, cultural victory |
 | Victory conditions | 8 tests | Score, culture, domination |
 | Civ abilities | 13 tests | Rome, Babylon, Greece, Germany, unique units/districts/improvements |
+| Religion | 55 tests | Pantheon, founding, spread, theological combat, inquisition |
+| Barbarians | 20 tests | Camps, scouts, clans (hire/bribe/incite), conversion |
+| Full-game integration | 9 tests | 50-turn games, all-systems combined scenarios |
 | Multiplayer server | -- | WebSocket, auth, game rooms, fog-of-war projection |
 | WASM frontend | -- | Leptos app, hex renderer, WebSocket client |
 

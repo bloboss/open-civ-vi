@@ -17,50 +17,51 @@ means the item does not exist in Rust at all.
 
 ## Summary Matrix
 
-| Category | Implemented | Civ VI Base | Missing | Wrong Values | Detail Doc |
+> **Last updated**: 2026-04-04 — after P0 fixes and P2/P3/P4/P5(districts)/P6/P10 content drops.
+
+| Category | Implemented | Civ VI Base | Missing | Status | Detail Doc |
 |---|---|---|---|---|---|
-| Terrains | 8 base types | 15 land + 2 water | ~0 (arch. difference) | 0 | — |
-| Features | 8 | 6 | 0 (+2 non-base) | 0 | — |
-| Natural Wonders | 5 | 12 | 9 | 2 | [content](parity-content.md#natural-wonders) |
-| Bonus Resources | 8 | 10 | 2 | 0 | [content](parity-content.md#resources) |
-| Luxury Resources | 8 | 24 | 16 | 4 | [values](parity-values.md#resource-yields) |
-| Strategic Resources | 7 | 7 | 0 | 3 | [values](parity-values.md#resource-yields) |
-| Improvements (std) | 12 | 15 | 3 | 1 | [content](parity-content.md#improvements) |
-| Unique Improvements | 2 | 9 | 7 | 0 | [content](parity-content.md#unique-improvements) |
-| Technologies | 12 (Ancient) | 67 (8 eras) | 56 | 2 | [trees](parity-trees.md#technologies) |
-| Civics | 5 (Ancient) | 50 (8 eras) | 46 | 2 | [trees](parity-trees.md#civics) |
-| Districts | 12 | 13 std + 8 UQ | 4 std, 6 UQ | 4 prereqs | [content](parity-content.md#districts) |
-| Buildings | ~6 | 66 | ~60 | — | [content](parity-content.md#buildings) |
-| World Wonders | 0 | 29 | 29 | — | [content](parity-content.md#world-wonders) |
-| Units (generic) | 5 | 77 | 72 | 1 | [content](parity-content.md#units) |
-| Units (unique) | 8 | 21 | 13 | 2 | [content](parity-content.md#unique-units) |
-| Civilizations | 8 | 19 | 11 | 1 (Babylon=DLC) | [systems](parity-systems.md#civilizations) |
-| Governments | 2 | 10 | 8 | — | [systems](parity-systems.md#governments) |
-| Policies | 4 | 113 | 109 | — | [systems](parity-systems.md#policies) |
-| Promotions | 0 | 122 | 122 | — | [systems](parity-systems.md#promotions) |
-| City-States | 0 | 24 | 24 | — | [systems](parity-systems.md#city-states) |
-| Great People | ~72 | ~177 | ~105 | — | [systems](parity-systems.md#great-people) |
+| Terrains | 8 base types | 15 land + 2 water | ~0 (arch. diff) | **Done** | — |
+| Features | 8 | 6 | 0 (+2 GS) | **Done** | — |
+| Natural Wonders | 15 (12 base + 3 DLC) | 12 | 0 | **P3 Done** | [content](parity-content.md#natural-wonders) |
+| Bonus Resources | 10 | 10 | 0 | **P2 Done** | [content](parity-content.md#resources) |
+| Luxury Resources | 24 | 24 | 0 | **P2 Done** | [values](parity-values.md#resource-yields) |
+| Strategic Resources | 7 | 7 | 0 | **P0+P2 Done** | [values](parity-values.md#resource-yields) |
+| Improvements (std) | 15 | 15 | 0 | **P4 Done** | [content](parity-content.md#improvements) |
+| Unique Improvements | 9 | 9 | 0 | **P4 Done** | [content](parity-content.md#unique-improvements) |
+| Technologies | 12 (Ancient) | 67 (8 eras) | 55 | **P1 Blocked** | [trees](parity-trees.md#technologies) |
+| Civics | 8 (Ancient + Theology) | 50 (8 eras) | 42 | **P1 Blocked** | [trees](parity-trees.md#civics) |
+| Districts | 16 std + 4 UQ | 13 std + 8 UQ | 0 std, 4 UQ | **P5 Districts Done** | [content](parity-content.md#districts) |
+| Buildings | ~6 | 66 | ~60 | **P5 Blocked (P1)** | [content](parity-content.md#buildings) |
+| World Wonders | 0 | 29 | 29 | **P7 Not started** | [content](parity-content.md#world-wonders) |
+| Units | 71 (incl. unique) | 77 + 21 UQ | ~27 | **P6 ~75%** | [content](parity-content.md#units) |
+| Civilizations | 8 | 19 | 11 | **P9 Not started** | [systems](parity-systems.md#civilizations) |
+| Governments | 2 | 10 | 8 | **P8 Not started** | [systems](parity-systems.md#governments) |
+| Policies | 4 | 113 | 109 | **P8 Not started** | [systems](parity-systems.md#policies) |
+| Promotions | 118 (16 classes) | 122 | ~4 | **P10 ~97%** | [systems](parity-systems.md#promotions) |
+| City-States | 0 | 24 | 24 | **P11 Not started** | [systems](parity-systems.md#city-states) |
+| Great People | ~72 | ~177 | ~105 | **P12 Partial** | [systems](parity-systems.md#great-people) |
 
 ## Implementation Phases
 
 Each phase is an independently dispatchable unit of work. Dependencies between
 phases are shown in the graph below.
 
-| Phase | Title | Scope | Est. Effort |
+| Phase | Title | Scope | Status |
 |---|---|---|---|
-| **P0** | [Fix Value Discrepancies](parity-values.md) | 15 yield/cost/prereq corrections in existing code | S |
-| **P1** | [Complete Tech & Civic Trees](parity-trees.md) | Add 56 techs + 46 civics across 7 eras | L |
-| **P2** | [Missing Resources](parity-content.md#resources) | 2 bonus + 16 luxury resources; enum + yields | M |
-| **P3** | [Missing Natural Wonders](parity-content.md#natural-wonders) | 9 natural wonders with yields | M |
-| **P4** | [Standard Improvements](parity-content.md#improvements) | Oil Well, Offshore Rig, Beach Resort + 7 UQ improvements | M |
-| **P5** | [Districts & Buildings](parity-content.md#districts) | 4 missing districts, fix 4 prereqs, ~60 buildings | XL |
-| **P6** | [Units](parity-content.md#units) | ~72 generic + 13 unique unit type defs | XL |
-| **P7** | [World Wonders](parity-content.md#world-wonders) | 29 wonder definitions | L |
-| **P8** | [Governments & Policies](parity-systems.md#governments) | 8 governments + 109 policies | L |
-| **P9** | [Civilizations & Leaders](parity-systems.md#civilizations) | 11 missing civs with abilities + UQ units/buildings | XL |
-| **P10** | [Promotions](parity-systems.md#promotions) | 122 promotions across 16 classes | L |
-| **P11** | [City-States](parity-systems.md#city-states) | 24 city-states with types and bonuses | M |
-| **P12** | [Great People Expansion](parity-systems.md#great-people) | ~105 missing individuals across all types | L |
+| ~~P0~~ | ~~[Fix Value Discrepancies](parity-values.md)~~ | ~~15 yield/cost/prereq corrections~~ | **DONE** |
+| **P1** | [Complete Tech & Civic Trees](parity-trees.md) | Add 55 techs + 42 civics across 7 eras | **CRITICAL PATH** |
+| ~~P2~~ | ~~[Missing Resources](parity-content.md#resources)~~ | ~~2 bonus + 16 luxury resources~~ | **DONE** |
+| ~~P3~~ | ~~[Missing Natural Wonders](parity-content.md#natural-wonders)~~ | ~~10 natural wonders with yields~~ | **DONE** |
+| ~~P4~~ | ~~[Standard Improvements](parity-content.md#improvements)~~ | ~~3 std + 9 UQ improvements~~ | **DONE** |
+| **P5** | [Districts & Buildings](parity-content.md#districts) | Districts done; ~60 buildings remain (blocked by P1) | **Partial** |
+| **P6** | [Units](parity-content.md#units) | 71/98 done; ~27 remaining | **~75%** |
+| **P7** | [World Wonders](parity-content.md#world-wonders) | 29 wonder definitions | Not started |
+| **P8** | [Governments & Policies](parity-systems.md#governments) | 8 governments + 109 policies | Not started |
+| **P9** | [Civilizations & Leaders](parity-systems.md#civilizations) | 11 missing civs with abilities | Not started |
+| ~~P10~~ | ~~[Promotions](parity-systems.md#promotions)~~ | ~~118/122 promotions (16 classes)~~ | **~97% DONE** |
+| **P11** | [City-States](parity-systems.md#city-states) | 24 city-states with types and bonuses | Not started |
+| **P12** | [Great People Expansion](parity-systems.md#great-people) | ~105 missing individuals across all types | Not started |
 
 ## Dependency Graph
 
@@ -159,16 +160,17 @@ digraph parity_phases {
 - **Red (P9)**: Civilizations are last because each civ's unique abilities,
   units, and buildings reference items from nearly every other phase.
 
-### Parallel dispatch guide
+### Parallel dispatch guide (updated 2026-04-04)
 
-Agents can be dispatched concurrently for phases that share no edge:
+Completed phases (P0, P2, P3, P4, P10) are struck through. Remaining work:
 
 | Wave | Phases | Notes |
 |---|---|---|
-| 1 | P0 | Must complete first |
-| 2 | P1, P2, P3 | All independent; P1 is the critical path |
-| 3 | P4 | Needs P2 |
-| 4 | P5, P8 | P5 needs P1; P8 needs P1 |
-| 5 | P6, P7 | Both need P5 |
-| 6 | P10, P11, P12 | Need P6/P5 |
-| 7 | P9 | Needs P5, P6, P8 |
+| ~~1~~ | ~~P0~~ | **DONE** |
+| ~~2a~~ | ~~P2, P3~~ | **DONE** |
+| 2b | **P1** | **CRITICAL PATH** — all remaining phases depend on this |
+| ~~3~~ | ~~P4~~ | **DONE** |
+| 4 | P5 (buildings), P8 | Both need P1 tech/civic tree; can run in parallel |
+| 5 | P6 (remaining ~27 units), P7 | P7 needs P5 buildings; P6 can run independently |
+| 6 | P11, P12 | Need P5/P6 |
+| 7 | P9 | Needs P5, P6, P8 (last because civs reference everything) |

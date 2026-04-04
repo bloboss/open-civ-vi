@@ -137,7 +137,8 @@ impl BuiltinDistrict {
                 requires_land:      true,
                 requires_water:     false,
                 forbidden_terrains: &[BuiltinTerrain::Mountain],
-                // "Currency" is not yet in the tech tree — use unreachable sentinel.
+                // TODO(P1): prereq is Currency (Classical tech, cost 120). Use unreachable
+                // until the Classical-era tech tree is added.
                 required_tech:      Some(tech_refs.unreachable),
                 required_civic:     None,
             },
@@ -145,6 +146,8 @@ impl BuiltinDistrict {
                 requires_land:      false,
                 requires_water:     true,
                 forbidden_terrains: &[],
+                // TODO(P1): prereq is Celestial Navigation (Classical tech, cost 120).
+                // Using Sailing as the closest available Ancient-era tech until P1.
                 required_tech:      Some(tech_refs.sailing),
                 required_civic:     None,
             },
@@ -166,7 +169,8 @@ impl BuiltinDistrict {
                 requires_land:      true,
                 requires_water:     false,
                 forbidden_terrains: &[BuiltinTerrain::Mountain],
-                // "Apprenticeship" is not yet in the tech tree — use unreachable sentinel.
+                // TODO(P1): prereq is Apprenticeship (Medieval tech, cost 300). Use unreachable
+                // until the Medieval-era tech tree is added.
                 required_tech:      Some(tech_refs.unreachable),
                 required_civic:     None,
             },
@@ -175,7 +179,9 @@ impl BuiltinDistrict {
                 requires_water:     false,
                 forbidden_terrains: &[BuiltinTerrain::Mountain],
                 required_tech:      None,
-                required_civic:     Some(civic_refs.early_empire),
+                // TODO(P1): prereq is Games & Recreation (Classical civic, cost 110).
+                // Using unreachable until the Classical-era civic tree is added.
+                required_civic:     Some(civic_refs.unreachable),
             },
             BuiltinDistrict::WaterPark => DistrictRequirements {
                 requires_land:      false,
@@ -188,6 +194,8 @@ impl BuiltinDistrict {
                 requires_land:      true,
                 requires_water:     false,
                 forbidden_terrains: &[BuiltinTerrain::Mountain],
+                // TODO(P1): prereq is Engineering (Classical tech, cost 200).
+                // Using Masonry as the closest available Ancient-era tech until P1.
                 required_tech:      Some(tech_refs.masonry),
                 required_civic:     None,
             },

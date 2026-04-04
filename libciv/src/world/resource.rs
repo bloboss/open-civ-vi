@@ -160,20 +160,14 @@ impl BuiltinResource {
             BuiltinResource::Wine     => YieldBundle::new()
                 .with(crate::YieldType::Food, 1)
                 .with(crate::YieldType::Gold, 1),
-            BuiltinResource::Silk     => YieldBundle::new().with(crate::YieldType::Gold, 3),
-            BuiltinResource::Spices   => YieldBundle::new()
-                .with(crate::YieldType::Food, 1)
-                .with(crate::YieldType::Gold, 1),
-            BuiltinResource::Incense  => YieldBundle::new()
-                .with(crate::YieldType::Faith, 1)
-                .with(crate::YieldType::Gold, 1),
+            BuiltinResource::Silk     => YieldBundle::new().with(crate::YieldType::Culture, 1),
+            BuiltinResource::Spices   => YieldBundle::new().with(crate::YieldType::Food, 2),
+            BuiltinResource::Incense  => YieldBundle::new().with(crate::YieldType::Faith, 1),
             BuiltinResource::Cotton   => YieldBundle::new().with(crate::YieldType::Gold, 3),
             BuiltinResource::Ivory    => YieldBundle::new()
                 .with(crate::YieldType::Production, 1)
                 .with(crate::YieldType::Gold, 1),
-            BuiltinResource::Sugar    => YieldBundle::new()
-                .with(crate::YieldType::Food, 2)
-                .with(crate::YieldType::Gold, 1),
+            BuiltinResource::Sugar    => YieldBundle::new().with(crate::YieldType::Food, 2),
             BuiltinResource::Salt     => YieldBundle::new()
                 .with(crate::YieldType::Food, 1)
                 .with(crate::YieldType::Gold, 1),
@@ -199,8 +193,10 @@ impl BuiltinResource {
             BuiltinResource::Whales   => YieldBundle::new()
                 .with(crate::YieldType::Gold, 1)
                 .with(crate::YieldType::Production, 1),
-            BuiltinResource::Horses   => YieldBundle::new().with(crate::YieldType::Production, 1),
-            BuiltinResource::Iron     => YieldBundle::new().with(crate::YieldType::Production, 1),
+            BuiltinResource::Horses   => YieldBundle::new()
+                .with(crate::YieldType::Food, 1)
+                .with(crate::YieldType::Production, 1),
+            BuiltinResource::Iron     => YieldBundle::new().with(crate::YieldType::Science, 1),
             BuiltinResource::Coal     => YieldBundle::new().with(crate::YieldType::Production, 2),
             BuiltinResource::Oil      => YieldBundle::new().with(crate::YieldType::Production, 3),
             BuiltinResource::Aluminum => YieldBundle::new().with(crate::YieldType::Science, 1),
@@ -217,10 +213,10 @@ impl BuiltinResource {
             BuiltinResource::Horses   => Some("Animal Husbandry"),
             BuiltinResource::Iron     => Some("Bronze Working"),
             BuiltinResource::Coal     => Some("Industrialization"),
-            BuiltinResource::Oil      => Some("Refining"),
-            BuiltinResource::Aluminum => Some("Refining"),
+            BuiltinResource::Oil      => Some("Steel"),
+            BuiltinResource::Aluminum => Some("Radio"),
             BuiltinResource::Niter    => Some("Military Engineering"),
-            BuiltinResource::Uranium  => Some("Nuclear Fission"),
+            BuiltinResource::Uranium  => Some("Combined Arms"),
             _ => None,
         }
     }

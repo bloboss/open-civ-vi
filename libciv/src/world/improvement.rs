@@ -129,7 +129,7 @@ impl BuiltinImprovement {
         match self {
             BuiltinImprovement::Farm        => YieldBundle::new().with(YieldType::Food, 1),
             BuiltinImprovement::Mine        => YieldBundle::new().with(YieldType::Production, 1),
-            BuiltinImprovement::LumberMill  => YieldBundle::new().with(YieldType::Production, 2),
+            BuiltinImprovement::LumberMill  => YieldBundle::new().with(YieldType::Production, 1),
             BuiltinImprovement::TradingPost => YieldBundle::new().with(YieldType::Gold, 1),
             BuiltinImprovement::Fort         => YieldBundle::new(),
             BuiltinImprovement::Airstrip     => YieldBundle::new(),
@@ -140,7 +140,7 @@ impl BuiltinImprovement {
             BuiltinImprovement::FishingBoats => YieldBundle::new().with(YieldType::Food, 1),
             BuiltinImprovement::Pasture      => YieldBundle::new().with(YieldType::Production, 1),
             BuiltinImprovement::Sphinx          => YieldBundle::new().with(YieldType::Culture, 1).with(YieldType::Faith, 1),
-            BuiltinImprovement::Stepwell        => YieldBundle::new().with(YieldType::Food, 1).with(YieldType::Housing, 1),
+            BuiltinImprovement::Stepwell        => YieldBundle::new().with(YieldType::Food, 1).with(YieldType::Housing, 2),
             BuiltinImprovement::OilWell         => YieldBundle::new().with(YieldType::Production, 2),
             BuiltinImprovement::OffshoreOilRig  => YieldBundle::new().with(YieldType::Production, 2),
             BuiltinImprovement::BeachResort     => YieldBundle::new().with(YieldType::Gold, 1),
