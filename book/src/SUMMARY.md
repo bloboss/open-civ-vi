@@ -64,3 +64,8 @@
 - [Replay Viewer](./roadmap/phase6-replay-viewer.md)
 - [RL Training Harness](./roadmap/phase6-rl-training-harness.md)
 - [Performance](./roadmap/phase6-performance.md)
+- [Civ VI Parity Report](./roadmap/parity.md)
+  - [P0 — Value Discrepancies](./roadmap/parity-values.md)
+  - [P1 — Tech & Civic Trees](./roadmap/parity-trees.md)
+  - [P2–P7 — Missing Content](./roadmap/parity-content.md)
+  - [P8–P12 — System Gaps](./roadmap/parity-systems.md)
