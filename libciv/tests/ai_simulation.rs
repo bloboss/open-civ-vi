@@ -140,10 +140,12 @@ fn ai_game_state_consistency() {
 
     let civ_ids: Vec<_> = s.state.civilizations.iter().map(|c| c.id).collect();
 
-    // All units must have a valid owner.
+    // All units must have a valid owner (including the barbarian virtual faction).
     for unit in &s.state.units {
+        let is_known_civ = civ_ids.contains(&unit.owner);
+        let is_barbarian = s.state.barbarian_civ == Some(unit.owner);
         assert!(
-            civ_ids.contains(&unit.owner),
+            is_known_civ || is_barbarian,
             "unit {:?} has owner {:?} which is not a known civ",
             unit.id, unit.owner
         );

@@ -58,16 +58,14 @@ pub(crate) fn process_barbarian_turn(state: &mut GameState, diff: &mut GameState
 fn spawn_camps(state: &mut GameState, diff: &mut GameStateDiff) {
     let config = &state.barbarian_config;
     let current_camps = state.barbarian_camps.iter().filter(|c| !c.converted).count();
-    if current_camps >= config.max_camps {
-        return;
-    }
-    // Only attempt spawns every N turns.
-    if !state.turn.is_multiple_of(config.spawn_interval) {
+    let max_camps = config.max_camps_per_major_civ * (state.civilizations.len() as u32).max(1);
+    if current_camps >= max_camps as usize {
         return;
     }
 
     let min_city_dist = config.min_distance_from_city;
     let min_camp_dist = config.min_distance_between_camps;
+    let spawn_chance = config.spawn_chance_per_tile;
     let clans_mode = config.clans_mode;
 
     // Collect city coords and existing camp coords.
@@ -77,7 +75,12 @@ fn spawn_camps(state: &mut GameState, diff: &mut GameStateDiff) {
         .map(|c| c.coord)
         .collect();
 
-    // Find candidate tiles: land, unclaimed, far from cities and other camps.
+    // Collect visible tiles from all player civs for fog-of-war check.
+    let visible_to_players: std::collections::HashSet<HexCoord> = state.civilizations.iter()
+        .flat_map(|civ| civ.visible_tiles.iter().copied())
+        .collect();
+
+    // Find candidate tiles: land, unclaimed, in fog-of-war, far from cities and other camps.
     let all_coords = state.board.all_coords();
     let mut candidates: Vec<HexCoord> = Vec::new();
     for coord in &all_coords {
@@ -91,6 +94,10 @@ fn spawn_camps(state: &mut GameState, diff: &mut GameStateDiff) {
         }
         // Must be unclaimed.
         if tile.owner.is_some() {
+            continue;
+        }
+        // Must be in fog-of-war (not visible to any player civ).
+        if visible_to_players.contains(coord) {
             continue;
         }
         // Distance from cities.
@@ -112,16 +119,27 @@ fn spawn_camps(state: &mut GameState, diff: &mut GameStateDiff) {
         return;
     }
 
-    // Pick a deterministic candidate using the RNG.
-    let idx = (state.id_gen.next_f32() * candidates.len() as f32) as usize;
-    let idx = idx.min(candidates.len() - 1);
-    let coord = candidates[idx];
+    // Probabilistic spawning: each candidate tile has spawn_chance_per_tile probability.
+    // We pick among candidates that pass the roll.
+    let mut spawnable: Vec<HexCoord> = Vec::new();
+    for &coord in &candidates {
+        if state.id_gen.next_f32() < spawn_chance {
+            spawnable.push(coord);
+        }
+    }
+    if spawnable.is_empty() {
+        return;
+    }
+
+    // Pick one from the spawnable set.
+    let idx = (state.id_gen.next_f32() * spawnable.len() as f32) as usize;
+    let idx = idx.min(spawnable.len() - 1);
+    let coord = spawnable[idx];
 
     let barb_civ = state.barbarian_civ.unwrap();
     let camp_id = state.id_gen.next_barbarian_camp_id();
 
     let clan_type = if clans_mode {
-        // Assign a clan type based on terrain and randomness.
         let tile = state.board.tile(coord).unwrap();
         let roll = state.id_gen.next_f32();
         Some(pick_clan_type(tile.terrain, roll))
@@ -137,17 +155,19 @@ fn spawn_camps(state: &mut GameState, diff: &mut GameStateDiff) {
 fn pick_clan_type(terrain: BuiltinTerrain, roll: f32) -> ClanType {
     match terrain {
         BuiltinTerrain::Plains | BuiltinTerrain::Grassland => {
-            if roll < 0.3 { ClanType::Melee }
-            else if roll < 0.6 { ClanType::Ranged }
-            else if roll < 0.85 { ClanType::Cavalry }
-            else { ClanType::Siege }
+            if roll < 0.4 { ClanType::Flatland }
+            else if roll < 0.7 { ClanType::Rover }
+            else { ClanType::Chariot }
         }
         BuiltinTerrain::Desert | BuiltinTerrain::Tundra | BuiltinTerrain::Snow => {
-            if roll < 0.5 { ClanType::Melee }
-            else if roll < 0.8 { ClanType::Ranged }
-            else { ClanType::Cavalry }
+            if roll < 0.5 { ClanType::Hills }
+            else { ClanType::Flatland }
         }
-        _ => ClanType::Melee,
+        _ => {
+            if roll < 0.4 { ClanType::Woodland }
+            else if roll < 0.7 { ClanType::Jungle }
+            else { ClanType::Seafaring }
+        }
     }
 }
 
@@ -205,6 +225,45 @@ fn spawn_scouts(state: &mut GameState, diff: &mut GameStateDiff) {
 
         diff.push(StateDelta::BarbarianScoutSpawned { camp: camp_id, scout: unit_id, coord });
         diff.push(StateDelta::UnitCreated { unit: unit_id, coord, owner: barb_civ });
+
+        // Also spawn a melee defender unit at the camp.
+        let defender_def = state.unit_type_defs.iter()
+            .find(|d| d.name.eq_ignore_ascii_case("Warrior"))
+            .cloned();
+
+        if let Some(ddef) = defender_def {
+            let defender_coord = find_spawn_coord(state, coord).unwrap_or(coord);
+            let defender_id = state.id_gen.next_unit_id();
+            state.units.push(BasicUnit {
+                id: defender_id,
+                unit_type: ddef.id,
+                owner: barb_civ,
+                coord: defender_coord,
+                domain: ddef.domain,
+                category: ddef.category,
+                movement_left: ddef.max_movement,
+                max_movement: ddef.max_movement,
+                combat_strength: ddef.combat_strength,
+                promotions: Vec::new(),
+                health: 100,
+                range: ddef.range,
+                vision_range: ddef.vision_range,
+                charges: None,
+                trade_origin: None,
+                trade_destination: None,
+                religion_id: None,
+                spread_charges: None,
+                religious_strength: None,
+            });
+
+            if let Some(camp) = state.barbarian_camps.iter_mut().find(|c| c.id == camp_id) {
+                camp.spawned_units.push(defender_id);
+                camp.units_spawned_count += 1;
+            }
+
+            diff.push(StateDelta::BarbarianUnitGenerated { camp: camp_id, unit: defender_id, coord: defender_coord });
+            diff.push(StateDelta::UnitCreated { unit: defender_id, coord: defender_coord, owner: barb_civ });
+        }
     }
 }
 
@@ -277,7 +336,6 @@ fn move_and_check_scouts(state: &mut GameState, diff: &mut GameStateDiff) {
                     camp.scout_state = ScoutState::Returned {
                         discovered_civs: vec![discovered_civ],
                     };
-                    camp.turns_since_scout_returned = 0;
                 }
                 diff.push(StateDelta::BarbarianScoutReturned { camp: info.camp_id });
             }
@@ -338,35 +396,46 @@ fn generate_combat_units(state: &mut GameState, diff: &mut GameStateDiff) {
         Some(c) => c,
         None => return,
     };
-    let interval = state.barbarian_config.unit_generation_interval;
+    let boldness_per_turn = state.barbarian_config.boldness_per_turn;
+    let threshold = state.barbarian_config.boldness_spawn_threshold;
 
-    // Collect camps ready to generate.
+    // Collect camp info to avoid borrow conflicts.
     struct GenInfo {
         camp_id: BarbarianCampId,
         coord: HexCoord,
         preferred_unit: &'static str,
-        turns_since: u32,
+        triggered: bool,
     }
 
     let gen_infos: Vec<GenInfo> = state.barbarian_camps.iter()
-        .filter(|c| !c.converted && c.can_generate_units())
+        .filter(|c| !c.converted)
         .map(|c| GenInfo {
             camp_id: c.id,
             coord: c.coord,
             preferred_unit: c.preferred_unit_type(),
-            turns_since: c.turns_since_scout_returned,
+            triggered: c.is_triggered(),
         })
         .collect();
 
     for info in gen_infos {
-        // Increment turns_since_scout_returned.
+        // Increment boldness: +2/turn for triggered camps, +1/turn for untriggered.
+        let increment = if info.triggered { boldness_per_turn } else { (boldness_per_turn / 2).max(1) };
         if let Some(camp) = state.barbarian_camps.iter_mut().find(|c| c.id == info.camp_id) {
-            camp.turns_since_scout_returned += 1;
+            camp.boldness += increment;
         }
 
-        // Generate on interval.
-        if info.turns_since % interval != 0 {
+        // Check if boldness >= threshold → spawn a unit.
+        let boldness = state.barbarian_camps.iter()
+            .find(|c| c.id == info.camp_id)
+            .map(|c| c.boldness)
+            .unwrap_or(0);
+        if boldness < threshold {
             continue;
+        }
+
+        // Reset boldness after spawning.
+        if let Some(camp) = state.barbarian_camps.iter_mut().find(|c| c.id == info.camp_id) {
+            camp.boldness = 0;
         }
 
         // Find unit type def.
@@ -443,44 +512,55 @@ fn find_spawn_coord(state: &GameState, center: HexCoord) -> Option<HexCoord> {
 
 fn advance_conversion(state: &mut GameState, diff: &mut GameStateDiff) {
     let config = state.barbarian_config.clone();
-    let current_turn = state.turn;
 
     // Collect camps eligible for conversion progress.
-    let camp_ids: Vec<BarbarianCampId> = state.barbarian_camps.iter()
+    let camp_ids: Vec<(BarbarianCampId, HexCoord)> = state.barbarian_camps.iter()
         .filter(|c| !c.converted && c.clan_type.is_some())
-        .map(|c| c.id)
+        .map(|c| (c.id, c.coord))
         .collect();
 
-    for camp_id in camp_ids {
-        let camp = match state.barbarian_camps.iter_mut().find(|c| c.id == camp_id) {
-            Some(c) => c,
-            None => continue,
-        };
-
-        let mut rate = config.conversion_rate;
-
-        // Bribe bonus: if any player has bribed this camp, add bonus.
-        let has_bribe = camp.clan_interactions.iter().any(|(_, interaction)| {
-            matches!(interaction, ClanInteraction::Bribed { expires_turn } if *expires_turn > current_turn)
-        });
-        if has_bribe {
-            rate += config.bribe_conversion_bonus;
+    for (camp_id, camp_coord) in camp_ids {
+        // Probabilistic advancement: conversion_increment_chance each turn.
+        let roll = state.id_gen.next_f32();
+        if roll >= config.conversion_increment_chance {
+            continue;
         }
 
-        // Incite penalty: if any player has incited this camp, subtract penalty.
-        let has_incite = camp.clan_interactions.iter().any(|(_, interaction)| {
-            matches!(interaction, ClanInteraction::Incited { expires_turn, .. } if *expires_turn > current_turn)
-        });
-        if has_incite {
-            rate = rate.saturating_sub(config.incite_conversion_penalty);
+        // Sum food yields of unowned tiles within radius 2 of camp.
+        let mut food_total = 0i32;
+        // Center tile.
+        if let Some(tile) = state.board.tile(camp_coord)
+            && tile.owner.is_none()
+        {
+            food_total += tile.terrain.base_yields().food;
         }
+        // Rings 1 and 2.
+        for r in 1..=2u32 {
+            for tile_coord in camp_coord.ring(r) {
+                if let Some(tile) = state.board.tile(tile_coord)
+                    && tile.owner.is_none()
+                {
+                    food_total += tile.terrain.base_yields().food;
+                }
+            }
+        }
+        let increment = food_total.max(1); // at least 1
 
-        camp.conversion_progress += rate;
+        if let Some(camp) = state.barbarian_camps.iter_mut().find(|c| c.id == camp_id) {
+            camp.conversion_progress += increment;
+        }
 
         // Check conversion threshold.
-        if camp.conversion_progress >= config.conversion_threshold {
-            let coord = camp.coord;
-            let cs_type = camp.conversion_city_state_type();
+        let progress = state.barbarian_camps.iter()
+            .find(|c| c.id == camp_id)
+            .map(|c| c.conversion_progress)
+            .unwrap_or(0);
+        if progress >= config.conversion_threshold {
+            let coord = camp_coord;
+            let cs_type = state.barbarian_camps.iter()
+                .find(|c| c.id == camp_id)
+                .map(|c| c.conversion_city_state_type())
+                .unwrap_or(CityStateType::Militaristic);
 
             // Validate city-placement rules: no city within 3 tiles.
             let too_close = state.cities.iter().any(|c| coord.distance(&c.coord) < 4);
@@ -488,24 +568,32 @@ fn advance_conversion(state: &mut GameState, diff: &mut GameStateDiff) {
                 continue;
             }
 
-            // Convert!
-            camp.converted = true;
+            // Collect units to remove before mutating.
+            let (units_to_remove, scout_to_remove) = {
+                let camp = state.barbarian_camps.iter().find(|c| c.id == camp_id).unwrap();
+                let units: Vec<UnitId> = camp.spawned_units.clone();
+                let scout = match &camp.scout_state {
+                    ScoutState::Exploring { scout_id } | ScoutState::Returning { scout_id, .. } => Some(*scout_id),
+                    _ => None,
+                };
+                (units, scout)
+            };
+
+            // Mark converted.
+            if let Some(camp) = state.barbarian_camps.iter_mut().find(|c| c.id == camp_id) {
+                camp.converted = true;
+            }
 
             // Remove all barbarian units from this camp.
-            let units_to_remove: Vec<UnitId> = camp.spawned_units.clone();
             for uid in &units_to_remove {
                 state.units.retain(|u| u.id != *uid);
                 diff.push(StateDelta::UnitDestroyed { unit: *uid });
             }
 
             // Also remove any scout.
-            match &camp.scout_state {
-                ScoutState::Exploring { scout_id } | ScoutState::Returning { scout_id, .. } => {
-                    let sid = *scout_id;
-                    state.units.retain(|u| u.id != sid);
-                    diff.push(StateDelta::UnitDestroyed { unit: sid });
-                }
-                _ => {}
+            if let Some(sid) = scout_to_remove {
+                state.units.retain(|u| u.id != sid);
+                diff.push(StateDelta::UnitDestroyed { unit: sid });
             }
 
             // Create city-state civ and city.
@@ -628,9 +716,10 @@ pub(crate) fn hire_from_camp(
     });
     diff.push(StateDelta::UnitCreated { unit: unit_id, coord: spawn, owner: civ_id });
 
-    // Record interaction.
+    // Record interaction and apply one-shot conversion points.
     if let Some(camp) = state.barbarian_camps.iter_mut().find(|c| c.id == camp_id) {
         camp.clan_interactions.push((civ_id, ClanInteraction::Hired { turn: state.turn }));
+        camp.conversion_progress += config.hire_conversion_points;
     }
 
     diff.push(StateDelta::BarbarianClanHired {
@@ -674,9 +763,10 @@ pub(crate) fn bribe_camp(
     }
     diff.push(StateDelta::GoldChanged { civ: civ_id, delta: -(bribe_cost as i32) });
 
-    // Record interaction.
+    // Record interaction and apply one-shot conversion points.
     if let Some(camp) = state.barbarian_camps.iter_mut().find(|c| c.id == camp_id) {
         camp.clan_interactions.push((civ_id, ClanInteraction::Bribed { expires_turn: expires }));
+        camp.conversion_progress += config.bribe_conversion_points;
     }
 
     diff.push(StateDelta::BarbarianClanBribed { camp: camp_id, civ: civ_id, gold_spent: bribe_cost });
@@ -728,9 +818,10 @@ pub(crate) fn incite_camp(
     }
     diff.push(StateDelta::GoldChanged { civ: civ_id, delta: -(incite_cost as i32) });
 
-    // Record interaction.
+    // Record interaction and apply one-shot conversion points.
     if let Some(camp) = state.barbarian_camps.iter_mut().find(|c| c.id == camp_id) {
         camp.clan_interactions.push((civ_id, ClanInteraction::Incited { target, expires_turn: expires }));
+        camp.conversion_progress += config.incite_conversion_points;
     }
 
     diff.push(StateDelta::BarbarianClanIncited {
@@ -773,6 +864,15 @@ pub(crate) fn clear_camp(
     {
         state.units.retain(|u| u.id != sid);
         diff.push(StateDelta::UnitDestroyed { unit: sid });
+    }
+
+    // Grant gold reward for clearing the camp.
+    let reward = state.barbarian_config.camp_clear_gold_reward;
+    if reward > 0 {
+        if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == cleared_by) {
+            civ.gold += reward as i32;
+        }
+        diff.push(StateDelta::GoldChanged { civ: cleared_by, delta: reward as i32 });
     }
 
     diff.push(StateDelta::BarbarianCampDestroyed { camp: camp_id, coord, cleared_by });

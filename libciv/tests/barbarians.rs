@@ -4,10 +4,10 @@ mod common;
 
 use libciv::{
     BarbarianCampId, CivId, DefaultRulesEngine, GameState, GameStateDiff,
-    RulesEngine, TurnEngine, UnitCategory, UnitDomain, UnitId, UnitTypeId,
+    RulesEngine, UnitCategory, UnitDomain, UnitTypeId,
 };
-use libciv::civ::{BasicUnit, City, CityKind, Civilization};
-use libciv::civ::barbarian::{BarbarianCamp, BarbarianConfig, ClanType, ScoutState};
+use libciv::civ::{BasicUnit, CityKind};
+use libciv::civ::barbarian::{BarbarianCamp, ClanType, ScoutState};
 use libciv::game::{recalculate_visibility, StateDelta};
 use libciv::game::state::UnitTypeDef;
 use libhexgrid::coord::HexCoord;
@@ -18,11 +18,12 @@ use libhexgrid::coord::HexCoord;
 
 fn enable_barbarians(state: &mut GameState) {
     state.barbarian_config.enabled = true;
-    state.barbarian_config.spawn_interval = 1; // spawn every turn for testing
     state.barbarian_config.min_distance_from_city = 3;
     state.barbarian_config.min_distance_between_camps = 3;
-    state.barbarian_config.max_camps = 4;
-    state.barbarian_config.unit_generation_interval = 1;
+    state.barbarian_config.max_camps_per_major_civ = 4;
+    state.barbarian_config.spawn_chance_per_tile = 1.0; // always spawn for testing
+    state.barbarian_config.boldness_per_turn = 2;
+    state.barbarian_config.boldness_spawn_threshold = 1; // spawn quickly for tests
 }
 
 fn enable_clans_mode(state: &mut GameState) {
@@ -35,9 +36,10 @@ fn enable_clans_mode(state: &mut GameState) {
     state.barbarian_config.incite_cost = 30;
     state.barbarian_config.incite_duration = 8;
     state.barbarian_config.conversion_threshold = 20;
-    state.barbarian_config.conversion_rate = 5;
-    state.barbarian_config.bribe_conversion_bonus = 3;
-    state.barbarian_config.incite_conversion_penalty = 2;
+    state.barbarian_config.hire_conversion_points = 5;
+    state.barbarian_config.bribe_conversion_points = 8;
+    state.barbarian_config.incite_conversion_points = -5;
+    state.barbarian_config.conversion_increment_chance = 1.0; // always advance for testing
 }
 
 fn register_scout_type(state: &mut GameState) -> UnitTypeId {
@@ -227,7 +229,7 @@ fn clans_hire_unit_from_camp() {
 
     // Place a clan camp.
     let camp_coord = HexCoord::from_qr(0, 0);
-    let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Melee));
+    let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Flatland));
 
     let rules = DefaultRulesEngine;
     let diff = rules.hire_from_barbarian_camp(&mut s.state, camp_id, s.rome_id)
@@ -255,7 +257,7 @@ fn clans_hire_cooldown() {
     s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap().gold = 500;
 
     let camp_coord = HexCoord::from_qr(0, 0);
-    let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Melee));
+    let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Flatland));
 
     let rules = DefaultRulesEngine;
     rules.hire_from_barbarian_camp(&mut s.state, camp_id, s.rome_id).unwrap();
@@ -274,7 +276,7 @@ fn clans_bribe_camp() {
     s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap().gold = 200;
 
     let camp_coord = HexCoord::from_qr(0, 0);
-    let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Ranged));
+    let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Woodland));
 
     let rules = DefaultRulesEngine;
     let diff = rules.bribe_barbarian_camp(&mut s.state, camp_id, s.rome_id)
@@ -299,7 +301,7 @@ fn clans_incite_camp() {
     s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap().gold = 200;
 
     let camp_coord = HexCoord::from_qr(0, 0);
-    let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Cavalry));
+    let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Rover));
 
     let rules = DefaultRulesEngine;
     let diff = rules.incite_barbarian_camp(&mut s.state, camp_id, s.rome_id, s.babylon_id)
@@ -323,7 +325,7 @@ fn clans_incite_self_fails() {
 
     s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap().gold = 200;
 
-    let camp_id = place_camp(&mut s.state, HexCoord::from_qr(0, 0), Some(ClanType::Melee));
+    let camp_id = place_camp(&mut s.state, HexCoord::from_qr(0, 0), Some(ClanType::Flatland));
 
     let rules = DefaultRulesEngine;
     let result = rules.incite_barbarian_camp(&mut s.state, camp_id, s.rome_id, s.rome_id);
@@ -339,7 +341,7 @@ fn clans_insufficient_gold_hire() {
     // Rome has no gold.
     s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap().gold = 0;
 
-    let camp_id = place_camp(&mut s.state, HexCoord::from_qr(0, 0), Some(ClanType::Melee));
+    let camp_id = place_camp(&mut s.state, HexCoord::from_qr(0, 0), Some(ClanType::Flatland));
 
     let rules = DefaultRulesEngine;
     let result = rules.hire_from_barbarian_camp(&mut s.state, camp_id, s.rome_id);
@@ -373,14 +375,16 @@ fn clans_camp_converts_to_city_state() {
 
     // Place a clan camp far from all cities.
     let camp_coord = HexCoord::from_qr(0, 0);
-    let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Melee));
+    let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Flatland));
 
     // Fast-forward conversion by setting progress close to threshold.
+    // With conversion_increment_chance = 1.0, food yield of surrounding tiles
+    // (at least 1 per turn) will push it over the threshold of 20.
     s.state.barbarian_camps.iter_mut()
         .find(|c| c.id == camp_id).unwrap()
-        .conversion_progress = 15; // threshold is 20, rate is 5
+        .conversion_progress = 19;
 
-    // Advance turn — conversion should complete (15 + 5 = 20 >= 20).
+    // Advance turn — conversion should complete (19 + food_yield >= 20).
     let diff = advance_turn(&mut s.state);
 
     let converted = diff.deltas.iter().any(|d| matches!(d, StateDelta::BarbarianCampConverted { .. }));
@@ -404,18 +408,22 @@ fn clans_bribe_accelerates_conversion() {
     register_scout_type(&mut s.state);
 
     let camp_coord = HexCoord::from_qr(0, 0);
-    let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Ranged));
+    let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Woodland));
 
     // Bribe the camp.
     s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap().gold = 200;
     let rules = DefaultRulesEngine;
     rules.bribe_barbarian_camp(&mut s.state, camp_id, s.rome_id).unwrap();
 
-    // Advance turn — conversion_progress should increase by rate(5) + bribe_bonus(3) = 8.
+    // Bribe immediately grants +8 conversion points.
+    let camp = s.state.barbarian_camp(camp_id).unwrap();
+    assert_eq!(camp.conversion_progress, 8, "expected +8 one-shot bribe conversion points");
+
+    // Advance turn — food-yield-based progress also advances.
     advance_turn(&mut s.state);
 
     let camp = s.state.barbarian_camp(camp_id).unwrap();
-    assert_eq!(camp.conversion_progress, 8, "expected base(5) + bribe_bonus(3) = 8");
+    assert!(camp.conversion_progress > 8, "expected food-yield progress on top of bribe points");
 }
 
 #[test]
@@ -425,18 +433,22 @@ fn clans_incite_slows_conversion() {
     register_scout_type(&mut s.state);
 
     let camp_coord = HexCoord::from_qr(0, 0);
-    let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Cavalry));
+    let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Rover));
 
     // Incite the camp.
     s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap().gold = 200;
     let rules = DefaultRulesEngine;
     rules.incite_barbarian_camp(&mut s.state, camp_id, s.rome_id, s.babylon_id).unwrap();
 
-    // Advance turn — conversion_progress should increase by rate(5) - incite_penalty(2) = 3.
+    // Incite immediately deducts -5 conversion points.
+    let camp = s.state.barbarian_camp(camp_id).unwrap();
+    assert_eq!(camp.conversion_progress, -5, "expected -5 one-shot incite conversion points");
+
+    // Advance turn — food-yield-based progress also advances.
     advance_turn(&mut s.state);
 
     let camp = s.state.barbarian_camp(camp_id).unwrap();
-    assert_eq!(camp.conversion_progress, 3, "expected base(5) - incite_penalty(2) = 3");
+    assert!(camp.conversion_progress > -5, "expected food-yield progress to offset incite penalty");
 }
 
 #[test]
@@ -447,7 +459,7 @@ fn clans_conversion_respects_city_placement_rules() {
 
     // Place camp very close to Rome's capital at (3,3) — within 3 tiles.
     let camp_coord = HexCoord::from_qr(4, 3);
-    let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Melee));
+    let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Flatland));
 
     // Set conversion past threshold.
     s.state.barbarian_camps.iter_mut()

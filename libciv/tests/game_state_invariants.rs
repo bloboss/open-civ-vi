@@ -30,10 +30,12 @@ fn advance_turn_does_not_lose_units() {
         }
     }
 
-    assert_eq!(
-        s.state.units.len(),
-        units_before,
-        "units must not be silently dropped by advance_turn (no combat occurred)"
+    // Unit count may increase (barbarian spawns) but original player units must
+    // not be silently removed (no combat occurred).
+    assert!(
+        s.state.units.len() >= units_before,
+        "units must not be silently dropped by advance_turn (no combat occurred): had {}, now {}",
+        units_before, s.state.units.len()
     );
 }
 
