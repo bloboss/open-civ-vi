@@ -92,6 +92,21 @@ pub enum BuiltinImprovement {
     RomanFort,
     /// Sumerian unique improvement.
     Ziggurat,
+    // ── Gathering Storm improvements ──────────────────────────────────────
+    /// Renewable energy — generates 2 power.
+    SolarFarm,
+    /// Renewable energy — generates 2 power.
+    WindFarm,
+    /// Renewable energy (sea tile) — generates 2 power.
+    OffshoreWindFarm,
+    /// Renewable energy (geothermal fissure) — generates 4 power.
+    GeothermalPlant,
+    /// Ocean habitation improvement.
+    Seastead,
+    /// Allows crossing mountain tiles.
+    MountainTunnel,
+    /// Tourism improvement on snow/tundra.
+    SkiResort,
 }
 
 impl BuiltinImprovement {
@@ -121,6 +136,13 @@ impl BuiltinImprovement {
             BuiltinImprovement::Mission         => "Mission",
             BuiltinImprovement::RomanFort       => "Roman Fort",
             BuiltinImprovement::Ziggurat        => "Ziggurat",
+            BuiltinImprovement::SolarFarm       => "Solar Farm",
+            BuiltinImprovement::WindFarm        => "Wind Farm",
+            BuiltinImprovement::OffshoreWindFarm => "Offshore Wind Farm",
+            BuiltinImprovement::GeothermalPlant => "Geothermal Plant",
+            BuiltinImprovement::Seastead        => "Seastead",
+            BuiltinImprovement::MountainTunnel  => "Mountain Tunnel",
+            BuiltinImprovement::SkiResort       => "Ski Resort",
         }
     }
 
@@ -151,6 +173,13 @@ impl BuiltinImprovement {
             BuiltinImprovement::Mission         => YieldBundle::new().with(YieldType::Faith, 2),
             BuiltinImprovement::RomanFort       => YieldBundle::new(),
             BuiltinImprovement::Ziggurat        => YieldBundle::new().with(YieldType::Science, 2),
+            BuiltinImprovement::SolarFarm       => YieldBundle::new().with(YieldType::Production, 2),
+            BuiltinImprovement::WindFarm        => YieldBundle::new().with(YieldType::Production, 2),
+            BuiltinImprovement::OffshoreWindFarm => YieldBundle::new().with(YieldType::Production, 2),
+            BuiltinImprovement::GeothermalPlant => YieldBundle::new().with(YieldType::Science, 2).with(YieldType::Production, 1),
+            BuiltinImprovement::Seastead        => YieldBundle::new().with(YieldType::Food, 2).with(YieldType::Housing, 1),
+            BuiltinImprovement::MountainTunnel  => YieldBundle::new(),
+            BuiltinImprovement::SkiResort       => YieldBundle::new().with(YieldType::Tourism, 1),
         }
     }
 
@@ -180,6 +209,13 @@ impl BuiltinImprovement {
             BuiltinImprovement::Mission         => 5,
             BuiltinImprovement::RomanFort       => 10,
             BuiltinImprovement::Ziggurat        => 5,
+            BuiltinImprovement::SolarFarm       => 5,
+            BuiltinImprovement::WindFarm        => 5,
+            BuiltinImprovement::OffshoreWindFarm => 5,
+            BuiltinImprovement::GeothermalPlant => 5,
+            BuiltinImprovement::Seastead        => 5,
+            BuiltinImprovement::MountainTunnel  => 5,
+            BuiltinImprovement::SkiResort       => 5,
         }
     }
 
@@ -473,6 +509,91 @@ impl BuiltinImprovement {
                 conditional_features: &[],
                 required_resource:    None,
                 required_tech:        None, // No tech required
+                required_civic:       None,
+                proximity:            None,
+            },
+            // ── Gathering Storm improvements ─────────────────────────────────
+            BuiltinImprovement::SolarFarm => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::Flat,
+                blocked_terrains:     &[],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        Some(tech_refs.unreachable),
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::WindFarm => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::Flat,
+                blocked_terrains:     &[],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        Some(tech_refs.unreachable),
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::OffshoreWindFarm => ImprovementRequirements {
+                requires_land:        false,
+                requires_water:       true,
+                elevation:            ElevationReq::Any,
+                blocked_terrains:     &[],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        Some(tech_refs.unreachable),
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::GeothermalPlant => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::Any,
+                blocked_terrains:     &[],
+                required_feature:     Some(BuiltinFeature::VolcanicSoil),
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        Some(tech_refs.unreachable),
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::Seastead => ImprovementRequirements {
+                requires_land:        false,
+                requires_water:       true,
+                elevation:            ElevationReq::Any,
+                blocked_terrains:     &[],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        Some(tech_refs.unreachable),
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::MountainTunnel => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::Any,
+                blocked_terrains:     &[],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        Some(tech_refs.unreachable),
+                required_civic:       None,
+                proximity:            None,
+            },
+            BuiltinImprovement::SkiResort => ImprovementRequirements {
+                requires_land:        true,
+                requires_water:       false,
+                elevation:            ElevationReq::Any,
+                blocked_terrains:     &[BuiltinTerrain::Grassland, BuiltinTerrain::Plains, BuiltinTerrain::Desert, BuiltinTerrain::Coast, BuiltinTerrain::Ocean, BuiltinTerrain::Mountain],
+                required_feature:     None,
+                conditional_features: &[],
+                required_resource:    None,
+                required_tech:        Some(tech_refs.unreachable),
                 required_civic:       None,
                 proximity:            None,
             },

@@ -8,7 +8,8 @@ libhexgrid = { path = "../libhexgrid" }
 ulid = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true, optional = true }
+serde_json = { version = "1", optional = true }
 
 [features]
 default = []
-serde = ["dep:serde", "libhexgrid/serde"]
+serde = ["dep:serde", "dep:serde_json", "libhexgrid/serde"]

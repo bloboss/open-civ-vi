@@ -34,6 +34,7 @@ pub fn build_city_report(view: &GameView) -> Vec<CityReportRow> {
                     .unwrap_or_else(|| "Building".into()),
                 ProductionItemView::District(d) => format!("{d:?}"),
                 ProductionItemView::Wonder(_) => "Wonder".into(),
+                ProductionItemView::Project(_) => "Project".into(),
             });
             CityReportRow {
                 id: c.id,

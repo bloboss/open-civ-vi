@@ -12,6 +12,7 @@ use super::wonder::BuiltinNaturalWonder;
 
 /// The concrete tile type for the world map.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct WorldTile {
     pub coord: HexCoord,
     pub terrain: BuiltinTerrain,
@@ -28,6 +29,14 @@ pub struct WorldTile {
     pub natural_wonder: Option<BuiltinNaturalWonder>,
     /// Owning civilization (None = unclaimed).
     pub owner: Option<crate::CivId>,
+    /// Coastal lowland elevation category (1, 2, or 3 meters above sea level).
+    /// `None` means this tile is not a coastal lowland. Tagged during mapgen or
+    /// manually for testing.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub coastal_lowland: Option<u8>,
+    /// True if this tile has been submerged by sea level rise.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub submerged: bool,
 }
 
 impl WorldTile {
@@ -44,6 +53,8 @@ impl WorldTile {
             rivers: Vec::new(),
             natural_wonder: None,
             owner: None,
+            coastal_lowland: None,
+            submerged: false,
         }
     }
 

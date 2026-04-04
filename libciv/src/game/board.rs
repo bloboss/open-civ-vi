@@ -11,6 +11,7 @@ use crate::world::tile::WorldTile;
 
 /// Concrete hex board for the world map.
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct WorldBoard {
     pub width: u32,
     pub height: u32,

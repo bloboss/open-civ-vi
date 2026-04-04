@@ -5,11 +5,11 @@
 /// - CultureVictory condition
 mod common;
 
-use libciv::{CivId, CultureVictory, DefaultRulesEngine, GameStateDiff};
+use libciv::{BuiltinVictoryCondition, CivId, DefaultRulesEngine, GameStateDiff};
 use libciv::civ::tourism::{
     compute_tourism, domestic_tourists, has_cultural_dominance, WonderTourism,
 };
-use libciv::game::{RulesEngine, StateDelta, VictoryCondition};
+use libciv::game::{RulesEngine, StateDelta};
 
 // ---------------------------------------------------------------------------
 // Lifetime culture accumulation
@@ -213,7 +213,7 @@ fn cultural_dominance_fails_if_tied() {
 fn culture_victory_not_won_without_dominance() {
     let mut s = common::build_scenario();
     let vid = s.state.id_gen.next_victory_id();
-    let cv = CultureVictory { id: vid };
+    let cv = BuiltinVictoryCondition::Culture { id: vid };
 
     let progress = cv.check_progress(s.rome_id, &s.state);
     assert!(!progress.is_won());
@@ -236,7 +236,7 @@ fn culture_victory_won_with_dominance() {
         .tourism_accumulated.insert(s.babylon_id, 2);
 
     let vid = s.state.id_gen.next_victory_id();
-    let cv = CultureVictory { id: vid };
+    let cv = BuiltinVictoryCondition::Culture { id: vid };
 
     let progress = cv.check_progress(s.rome_id, &s.state);
     assert!(progress.is_won());
@@ -260,7 +260,7 @@ fn culture_victory_triggers_game_over_in_advance_turn() {
 
     // Register a CultureVictory condition.
     let vid = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(CultureVictory { id: vid }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Culture { id: vid });
 
     let diff = rules.advance_turn(&mut s.state);
 
@@ -290,7 +290,7 @@ fn culture_victory_end_to_end_via_tourism_accumulation() {
 
     // Register culture victory.
     let vid = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(CultureVictory { id: vid }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Culture { id: vid });
 
     // Advance several turns — Babylon accumulates culture each turn (defense),
     // but Rome pushes 200 tourism/turn which should overwhelm it.

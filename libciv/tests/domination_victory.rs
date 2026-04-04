@@ -3,13 +3,13 @@
 mod common;
 
 use libciv::{
-    CivId, CultureVictory, DefaultRulesEngine, DominationVictory,
-    GameState, RulesEngine, ScoreVictory,
+    BuiltinVictoryCondition, CivId, DefaultRulesEngine,
+    GameState, RulesEngine,
     UnitCategory, UnitDomain, UnitId, UnitTypeId,
 };
 use libciv::civ::{BasicUnit, City};
 use libciv::civ::great_works::{GreatWorkSlot, GreatWorkSlotType};
-use libciv::game::victory::{VictoryCondition, VictoryKind};
+use libciv::game::victory::VictoryKind;
 use libciv::game::StateDelta;
 use libhexgrid::coord::HexCoord;
 
@@ -105,7 +105,7 @@ fn test_domination_victory_fires_on_all_capitals_captured() {
 
     // Register domination victory.
     let vid = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(DominationVictory { id: vid }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Domination { id: vid });
 
     // Capture Babylon's capital: remove defender, place strong attacker.
     s.state.units.retain(|u| u.id != s.babylon_warrior);
@@ -132,7 +132,7 @@ fn test_domination_victory_not_fired_if_capitals_remain() {
     let rome_id = s.rome_id;
 
     let vid = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(DominationVictory { id: vid }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Domination { id: vid });
 
     // Don't capture Babylon's capital.
     advance_turn(&mut s);
@@ -146,7 +146,7 @@ fn test_domination_progress_tracking() {
     let rome_id = s.rome_id;
 
     let vid = s.state.id_gen.next_victory_id();
-    let vc = DominationVictory { id: vid };
+    let vc = BuiltinVictoryCondition::Domination { id: vid };
 
     // Before capture: 0 of 1 foreign capitals controlled.
     let progress = vc.check_progress(rome_id, &s.state);
@@ -166,7 +166,7 @@ fn test_score_victory_fires_at_turn_limit() {
 
     // Register score victory with turn limit = 5.
     let vid = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(ScoreVictory { id: vid, turn_limit: 5 }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Score { id: vid, turn_limit: 5 });
 
     // Advance 5 turns.
     for _ in 0..5 {
@@ -184,7 +184,7 @@ fn test_score_victory_not_before_limit() {
     let mut s = build_scenario();
 
     let vid = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(ScoreVictory { id: vid, turn_limit: 10 }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Score { id: vid, turn_limit: 10 });
 
     for _ in 0..5 {
         advance_turn(&mut s);
@@ -204,7 +204,7 @@ fn test_culture_victory_requires_tourism_exceeding_all() {
     let babylon_id = s.babylon_id;
 
     let vid = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(CultureVictory { id: vid }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Culture { id: vid });
 
     // Give Rome great work slots and works to generate tourism.
     // 6 great works → 18 tourism (well above any domestic culture from 1 turn).
@@ -253,7 +253,7 @@ fn test_culture_victory_blocked_when_opponent_culture_higher() {
     let babylon_id = s.babylon_id;
 
     let vid = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(CultureVictory { id: vid }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Culture { id: vid });
 
     // Rome has some tourism but Babylon has massive domestic culture.
     if let Some(civ) = s.state.civilizations.iter_mut().find(|c| c.id == rome_id) {
@@ -281,9 +281,9 @@ fn test_immediate_win_takes_priority_over_turn_limit() {
 
     // Register both domination (ImmediateWin) and score (TurnLimit at turn 3).
     let vid1 = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(DominationVictory { id: vid1 }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Domination { id: vid1 });
     let vid2 = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(ScoreVictory { id: vid2, turn_limit: 3 }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Score { id: vid2, turn_limit: 3 });
 
     // Capture Babylon's capital on turn 2.
     advance_turn(&mut s);
@@ -342,16 +342,8 @@ fn test_domination_three_civs_requires_both_capitals() {
     // Add a third civ: Egypt.
     let egypt_id = s.state.id_gen.next_civ_id();
     s.state.civilizations.push(
-        libciv::civ::Civilization::new(egypt_id, "Egypt", "Egyptian", {
-            struct A;
-            impl std::fmt::Debug for A { fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { write!(f, "A") } }
-            impl libciv::civ::Agenda for A {
-                fn name(&self) -> &'static str { "A" }
-                fn description(&self) -> &'static str { "A" }
-                fn attitude(&self, _: CivId) -> i32 { 0 }
-            }
-            libciv::civ::Leader { name: "Cleopatra", civ_id: egypt_id, abilities: Vec::new(), agenda: Box::new(A) }
-        })
+        libciv::civ::Civilization::new(egypt_id, "Egypt", "Egyptian",
+            libciv::civ::Leader { name: "Cleopatra", civ_id: egypt_id, agenda: libciv::civ::BuiltinAgenda::Default })
     );
     let egypt_city_id = s.state.id_gen.next_city_id();
     let mut egypt_city = City::new(egypt_city_id, "Thebes".into(), egypt_id, HexCoord::from_qr(7, 6));
@@ -362,10 +354,10 @@ fn test_domination_three_civs_requires_both_capitals() {
 
     // Register domination.
     let vid = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(DominationVictory { id: vid }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Domination { id: vid });
 
     // Check progress: Rome needs 2 foreign capitals.
-    let vc = DominationVictory { id: vid };
+    let vc = BuiltinVictoryCondition::Domination { id: vid };
     let p = vc.check_progress(rome_id, &s.state);
     assert_eq!(p.target, 2, "Rome needs to capture 2 foreign capitals");
     assert_eq!(p.current, 0);

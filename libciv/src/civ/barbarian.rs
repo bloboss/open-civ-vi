@@ -94,6 +94,7 @@ pub enum ClanInteraction {
 
 /// A barbarian camp on the world map.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BarbarianCamp {
     pub id: BarbarianCampId,
     pub coord: HexCoord,
@@ -128,6 +129,7 @@ pub struct BarbarianCamp {
 /// Configuration for the barbarian system, stored in `GameState`.
 /// Default values match Civ VI's `GlobalParameters.xml`.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BarbarianConfig {
     /// Whether barbarians are enabled at all.
     pub enabled: bool,

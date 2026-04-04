@@ -113,16 +113,21 @@ impl HeuristicAgent {
         };
 
         // Pick the best producible unit type: highest-cost combat unit, or any unit.
+        // Respects tech gating and civ-exclusive restrictions.
         let best_unit_type = {
+            use crate::game::production_helpers::available_unit_defs;
+            let available = available_unit_defs(state, self.civ_id);
+
             // Collect combat units first.
-            let mut candidates: Vec<_> = state.unit_type_defs
+            let mut candidates: Vec<_> = available
                 .iter()
                 .filter(|d| d.category == UnitCategory::Combat)
+                .copied()
                 .collect();
 
             if candidates.is_empty() {
-                // Fall back to any unit type.
-                candidates = state.unit_type_defs.iter().collect();
+                // Fall back to any available unit type.
+                candidates = available;
             }
 
             // Deterministic sort: highest production_cost first; ties by name.
@@ -242,26 +247,18 @@ mod tests {
     use super::*;
     use libhexgrid::coord::HexCoord;
     use crate::{GameState, UnitDomain, UnitCategory, UnitTypeId};
-    use crate::civ::{BasicUnit, City, Civilization, Leader, Agenda};
+    use crate::civ::{BasicUnit, City, Civilization, Leader, BuiltinAgenda};
     use crate::game::state::UnitTypeDef;
 
-    // Minimal Agenda stub
-    #[derive(Debug)]
-    struct NoOpAgenda;
-
-    impl Agenda for NoOpAgenda {
-        fn name(&self) -> &'static str { "Neutral" }
-        fn description(&self) -> &'static str { "" }
-        fn attitude(&self, _: CivId) -> i32 { 0 }
-    }
-
     fn stub_leader(name: &'static str, civ_id: CivId) -> Leader {
-        Leader { name, civ_id, abilities: Vec::new(), agenda: Box::new(NoOpAgenda) }
+        Leader { name, civ_id, agenda: BuiltinAgenda::Default }
     }
 
     /// Build a minimal state with one civ and one unit.
     fn minimal_state() -> (GameState, CivId, UnitId, UnitTypeId) {
         let mut state = GameState::new(1, 10, 10);
+        // Clear builtin unit_type_defs so tests control the exact registry.
+        state.unit_type_defs.clear();
 
         let warrior_type = UnitTypeId::from_ulid(state.id_gen.next_ulid());
         state.unit_type_defs.push(UnitTypeDef {
@@ -272,9 +269,10 @@ mod tests {
         });
 
         let civ_id = state.id_gen.next_civ_id();
-        state.civilizations.push(
-            Civilization::new(civ_id, "Rome", "Roman", stub_leader("Caesar", civ_id))
-        );
+        let mut civ = Civilization::new(civ_id, "Rome", "Roman", stub_leader("Caesar", civ_id));
+        // Unlock the test's custom unit so it passes production gating.
+        civ.unlocked_units.push("warrior");
+        state.civilizations.push(civ);
 
         let unit_id = state.id_gen.next_unit_id();
         state.units.push(BasicUnit {
@@ -389,6 +387,10 @@ mod tests {
             max_movement: 200, combat_strength: Some(35),
             range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None,
         });
+        // Unlock the new unit so it passes production gating.
+        state.civilizations.iter_mut()
+            .find(|c| c.id == civ_id).unwrap()
+            .unlocked_units.push("legionary");
         let _ = warrior_type; // lower cost; should not be chosen
 
         let city_id = state.id_gen.next_city_id();
@@ -497,16 +499,8 @@ mod tests {
 
             let civ_id = state.id_gen.next_civ_id();
             state.civilizations.push(
-                Civilization::new(civ_id, "Rome", "Roman", {
-                    #[derive(Debug)]
-                    struct NoOp;
-                    impl Agenda for NoOp {
-                        fn name(&self) -> &'static str { "" }
-                        fn description(&self) -> &'static str { "" }
-                        fn attitude(&self, _: CivId) -> i32 { 0 }
-                    }
-                    Leader { name: "Caesar", civ_id, abilities: Vec::new(), agenda: Box::new(NoOp) }
-                })
+                Civilization::new(civ_id, "Rome", "Roman",
+                    Leader { name: "Caesar", civ_id, agenda: BuiltinAgenda::Default })
             );
 
             let unit_id = state.id_gen.next_unit_id();

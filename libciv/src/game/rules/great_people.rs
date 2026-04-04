@@ -10,6 +10,7 @@ use super::super::state::GameState;
 
 /// Sum combat strength bonuses from retired great persons for a given civ and
 /// unit domain. Returns the total flat CS bonus.
+#[allow(dead_code)]
 pub(crate) fn great_person_cs_bonus(state: &GameState, civ_id: CivId, domain: crate::UnitDomain) -> u32 {
     let civ = match state.civ(civ_id) {
         Some(c) => c,

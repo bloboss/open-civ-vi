@@ -1,4 +1,4 @@
-//! Static definitions for all 24 base-game city-states.
+//! Static definitions for all 33 city-states (24 base-game + 9 Gathering Storm).
 
 use crate::civ::city_state::CityStateType;
 use crate::rules::modifier::*;
@@ -449,6 +449,120 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             envoy_3_modifiers: militaristic_envoy_3("Valletta"),
             envoy_6_modifiers: militaristic_envoy_6("Valletta"),
         },
+
+        // ── Gathering Storm city-states ────────────────────────────────
+
+        // ── GS Militaristic ────────────────────────────────────────────
+        CityStateDef {
+            name: "Akkad",
+            state_type: CityStateType::Militaristic,
+            suzerain_bonus_description: "Melee class units gain +5 Combat Strength",
+            suzerain_modifiers: vec![
+                Modifier::new(
+                    ModifierSource::Custom("Akkad"),
+                    TargetSelector::Global,
+                    EffectType::CombatStrengthFlat(5),
+                    StackingRule::Additive,
+                ),
+            ],
+            envoy_1_modifiers: militaristic_envoy_1("Akkad"),
+            envoy_3_modifiers: militaristic_envoy_3("Akkad"),
+            envoy_6_modifiers: militaristic_envoy_6("Akkad"),
+        },
+        CityStateDef {
+            name: "Ngazargamu",
+            state_type: CityStateType::Militaristic,
+            suzerain_bonus_description: "+20% combat XP for mounted units",
+            // Complex effect: XP bonus for specific unit class; no direct modifier.
+            suzerain_modifiers: vec![],
+            envoy_1_modifiers: militaristic_envoy_1("Ngazargamu"),
+            envoy_3_modifiers: militaristic_envoy_3("Ngazargamu"),
+            envoy_6_modifiers: militaristic_envoy_6("Ngazargamu"),
+        },
+
+        // ── GS Scientific ──────────────────────────────────────────────
+        CityStateDef {
+            name: "Bologna",
+            state_type: CityStateType::Scientific,
+            suzerain_bonus_description: "+1 Great Person point per district",
+            suzerain_modifiers: vec![
+                suzerain_yield_flat("Bologna", YieldType::GreatPersonPoints, 1),
+            ],
+            envoy_1_modifiers: scientific_envoy_1("Bologna"),
+            envoy_3_modifiers: scientific_envoy_3("Bologna"),
+            envoy_6_modifiers: scientific_envoy_6("Bologna"),
+        },
+        CityStateDef {
+            name: "Fez",
+            state_type: CityStateType::Scientific,
+            suzerain_bonus_description: "+20 Science when you convert a city for the first time",
+            // Complex effect: one-shot science grant on conversion; no direct modifier.
+            suzerain_modifiers: vec![],
+            envoy_1_modifiers: scientific_envoy_1("Fez"),
+            envoy_3_modifiers: scientific_envoy_3("Fez"),
+            envoy_6_modifiers: scientific_envoy_6("Fez"),
+        },
+
+        // ── GS Trade ───────────────────────────────────────────────────
+        CityStateDef {
+            name: "Cahokia",
+            state_type: CityStateType::Trade,
+            suzerain_bonus_description: "Free unique Cahokia Mounds improvement",
+            // Complex effect: unlocks unique improvement; no direct modifier.
+            suzerain_modifiers: vec![],
+            envoy_1_modifiers: trade_envoy_1("Cahokia"),
+            envoy_3_modifiers: trade_envoy_3("Cahokia"),
+            envoy_6_modifiers: trade_envoy_6("Cahokia"),
+        },
+
+        // ── GS Industrial ──────────────────────────────────────────────
+        CityStateDef {
+            name: "Cardiff",
+            state_type: CityStateType::Industrial,
+            suzerain_bonus_description: "+2 Power from each Harbor building",
+            // Complex effect: power from harbor buildings; approximate with production bonus.
+            suzerain_modifiers: vec![
+                suzerain_yield_flat("Cardiff", YieldType::Production, 2),
+            ],
+            envoy_1_modifiers: industrial_envoy_1("Cardiff"),
+            envoy_3_modifiers: industrial_envoy_3("Cardiff"),
+            envoy_6_modifiers: industrial_envoy_6("Cardiff"),
+        },
+        CityStateDef {
+            name: "Mexico City",
+            state_type: CityStateType::Industrial,
+            suzerain_bonus_description: "+2 Production from each improved tile",
+            suzerain_modifiers: vec![
+                suzerain_yield_flat("Mexico City", YieldType::Production, 2),
+            ],
+            envoy_1_modifiers: industrial_envoy_1("Mexico City"),
+            envoy_3_modifiers: industrial_envoy_3("Mexico City"),
+            envoy_6_modifiers: industrial_envoy_6("Mexico City"),
+        },
+
+        // ── GS Religious ───────────────────────────────────────────────
+        CityStateDef {
+            name: "Nazca",
+            state_type: CityStateType::Religious,
+            suzerain_bonus_description: "Free Nazca Line improvement",
+            // Complex effect: unlocks unique improvement; no direct modifier.
+            suzerain_modifiers: vec![],
+            envoy_1_modifiers: religious_envoy_1("Nazca"),
+            envoy_3_modifiers: religious_envoy_3("Nazca"),
+            envoy_6_modifiers: religious_envoy_6("Nazca"),
+        },
+
+        // ── GS Cultural ────────────────────────────────────────────────
+        CityStateDef {
+            name: "Rapa Nui",
+            state_type: CityStateType::Cultural,
+            suzerain_bonus_description: "Free Moai improvement",
+            // Complex effect: unlocks unique improvement; no direct modifier.
+            suzerain_modifiers: vec![],
+            envoy_1_modifiers: cultural_envoy_1("Rapa Nui"),
+            envoy_3_modifiers: cultural_envoy_3("Rapa Nui"),
+            envoy_6_modifiers: cultural_envoy_6("Rapa Nui"),
+        },
     ]
 }
 
@@ -459,7 +573,7 @@ mod tests {
     #[test]
     fn test_builtin_city_state_defs_count() {
         let defs = builtin_city_state_defs();
-        assert_eq!(defs.len(), 24, "Expected 24 base-game city-state definitions");
+        assert_eq!(defs.len(), 33, "Expected 33 city-state definitions (24 base + 9 GS)");
     }
 
     #[test]
@@ -468,7 +582,7 @@ mod tests {
         let mut names: Vec<&str> = defs.iter().map(|d| d.name).collect();
         names.sort();
         names.dedup();
-        assert_eq!(names.len(), 24, "All city-state names must be unique");
+        assert_eq!(names.len(), 33, "All city-state names must be unique");
     }
 
     #[test]
@@ -481,12 +595,12 @@ mod tests {
         let religious = defs.iter().filter(|d| d.state_type == CityStateType::Religious).count();
         let militaristic = defs.iter().filter(|d| d.state_type == CityStateType::Militaristic).count();
 
-        assert_eq!(trade, 5);
-        assert_eq!(industrial, 4);
-        assert_eq!(scientific, 4);
-        assert_eq!(cultural, 4);
-        assert_eq!(religious, 4);
-        assert_eq!(militaristic, 3);
+        assert_eq!(trade, 6);
+        assert_eq!(industrial, 6);
+        assert_eq!(scientific, 6);
+        assert_eq!(cultural, 5);
+        assert_eq!(religious, 5);
+        assert_eq!(militaristic, 5);
     }
 
     #[test]

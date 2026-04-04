@@ -2,6 +2,7 @@ use crate::{CivId, YieldBundle};
 
 /// The functional category of a city-state, determining its suzerain bonus type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum CityStateType {
     Cultural,
     Industrial,
@@ -19,6 +20,7 @@ pub trait CityStateBonus: std::fmt::Debug {
 
 /// City-state–specific data stored inside a `City` with `CityKind::CityState`.
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CityStateData {
     pub state_type: CityStateType,
     /// The civilization currently holding suzerain status (most influence envoys).

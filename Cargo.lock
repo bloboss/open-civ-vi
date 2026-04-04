@@ -1224,6 +1224,7 @@ dependencies = [
  "libhexgrid",
  "rand",
  "serde",
+ "serde_json",
  "ulid",
 ]
 

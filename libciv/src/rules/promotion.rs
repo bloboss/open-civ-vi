@@ -1,6 +1,7 @@
 //! Unit promotion definitions for all 16 promotion classes.
 
 use crate::PromotionClass;
+use crate::PromotionId;
 use crate::rules::modifier::*;
 use crate::YieldType;
 
@@ -12,6 +13,24 @@ pub struct PromotionDef {
     pub tier: u8,
     pub prerequisites: &'static [&'static str],
     pub modifiers: Vec<Modifier>,
+}
+
+/// A promotion definition with an assigned unique ID, stored in `GameState.promotion_defs`.
+#[derive(Debug, Clone)]
+pub struct RegisteredPromotion {
+    pub id: PromotionId,
+    pub def: PromotionDef,
+}
+
+/// Assigns unique IDs to all builtin promotions and returns them as registered promotions.
+pub fn register_builtin_promotions(id_gen: &mut crate::game::state::IdGenerator) -> Vec<RegisteredPromotion> {
+    builtin_promotions()
+        .into_iter()
+        .map(|def| {
+            let id = PromotionId::from_ulid(id_gen.next_ulid());
+            RegisteredPromotion { id, def }
+        })
+        .collect()
 }
 
 /// Helper to build an unconditional promotion modifier.

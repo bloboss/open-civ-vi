@@ -115,6 +115,13 @@ pub enum BuiltinImprovement {
     Mission,
     RomanFort,
     Ziggurat,
+    SolarFarm,
+    WindFarm,
+    OffshoreWindFarm,
+    GeothermalPlant,
+    Seastead,
+    MountainTunnel,
+    SkiResort,
 }
 
 // ── Roads ────────────────────────────────────────────────────────────────────
@@ -254,6 +261,7 @@ pub enum ProductionItemView {
     Building(BuildingId),
     District(BuiltinDistrict),
     Wonder(WonderId),
+    Project(ProjectId),
 }
 
 // ── Victory ──────────────────────────────────────────────────────────────────

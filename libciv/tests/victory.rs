@@ -3,7 +3,7 @@ mod common;
 
 use libciv::{
     all_scores, compute_score,
-    DefaultRulesEngine, RulesEngine, ScoreVictory,
+    BuiltinVictoryCondition, DefaultRulesEngine, RulesEngine,
 };
 use libciv::game::StateDelta;
 
@@ -44,7 +44,7 @@ fn score_victory_fires_at_turn_limit() {
 
     // Register a ScoreVictory that expires at turn 3.
     let vc_id = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(ScoreVictory { id: vc_id, turn_limit: 3 }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Score { id: vc_id, turn_limit: 3 });
 
     // Advance 2 turns — game should still be running.
     rules.advance_turn(&mut s.state);
@@ -65,7 +65,7 @@ fn score_victory_winner_is_highest_scorer() {
     let mut s = common::build_scenario();
 
     let vc_id = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(ScoreVictory { id: vc_id, turn_limit: 3 }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Score { id: vc_id, turn_limit: 3 });
 
     rules.advance_turn(&mut s.state);
     rules.advance_turn(&mut s.state);
@@ -85,7 +85,7 @@ fn score_victory_condition_name_in_delta() {
     let mut s = common::build_scenario();
 
     let vc_id = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(ScoreVictory { id: vc_id, turn_limit: 1 }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Score { id: vc_id, turn_limit: 1 });
 
     let diff = rules.advance_turn(&mut s.state);
     let delta = diff.deltas.iter().find_map(|d| {
@@ -112,7 +112,7 @@ fn game_over_blocks_further_victory_evaluation() {
     let mut s = common::build_scenario();
 
     let vc_id = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(Box::new(ScoreVictory { id: vc_id, turn_limit: 1 }));
+    s.state.victory_conditions.push(BuiltinVictoryCondition::Score { id: vc_id, turn_limit: 1 });
 
     // First evaluation fires the victory.
     rules.advance_turn(&mut s.state);

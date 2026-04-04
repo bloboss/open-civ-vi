@@ -3,12 +3,12 @@ use std::io::{self, BufRead, Write};
 use clap::{Parser, Subcommand};
 use libciv::{
     all_scores, BarbarianCampId, BeliefId, CityId, CivId, GameState, GameStateDiff,
-    DefaultRulesEngine, GreatPersonType, RulesEngine, ScoreVictory,
+    BuiltinVictoryCondition, DefaultRulesEngine, GreatPersonType, RulesEngine,
     TurnEngine, UnitCategory, UnitDomain, UnitId, UnitTypeId,
 };
 use libciv::game::FaithPurchaseItem;
 use libciv::ai::{Agent, HeuristicAgent};
-use libciv::civ::{Agenda, BasicUnit, City, Civilization, Leader, ProductionItem, TechProgress, Unit};
+use libciv::civ::{BasicUnit, BuiltinAgenda, City, Civilization, Leader, ProductionItem, TechProgress, Unit};
 use libciv::civ::district::BuiltinDistrict;
 use libciv::civ::great_people::{recruitment_threshold, next_candidate_name, GP_PATRONAGE_GOLD_PER_POINT};
 use libciv::game::{AttackType, RulesError, StateDelta, recalculate_visibility};
@@ -64,22 +64,6 @@ enum Command {
     },
     /// Interactive: move your Warrior turn-by-turn
     Play,
-}
-
-// ── Agenda stub ───────────────────────────────────────────────────────────────
-
-struct NoOpAgenda;
-
-impl std::fmt::Debug for NoOpAgenda {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "NoOpAgenda")
-    }
-}
-
-impl Agenda for NoOpAgenda {
-    fn name(&self) -> &'static str { "Expansionist" }
-    fn description(&self) -> &'static str { "Likes open land." }
-    fn attitude(&self, _toward: CivId) -> i32 { 0 }
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -145,8 +129,7 @@ fn build_session() -> Session {
     let leader = Leader {
         name: "Caesar",
         civ_id,
-        abilities: Vec::new(),
-        agenda: Box::new(NoOpAgenda),
+        agenda: BuiltinAgenda::Default,
     };
     state.civilizations.push(Civilization::new(civ_id, "Rome", "Roman", leader));
 
@@ -251,7 +234,7 @@ fn build_session() -> Session {
     state.civilizations.push(Civilization::new(
         babylon_id, "Babylon", "Babylonian",
         Leader { name: "Hammurabi", civ_id: babylon_id,
-                 abilities: Vec::new(), agenda: Box::new(NoOpAgenda) },
+                 agenda: BuiltinAgenda::Default },
     ));
     let babylon_city_id = state.id_gen.next_city_id();
     let mut babylon_city = City::new(babylon_city_id, "Babylon".to_string(),
@@ -395,8 +378,8 @@ fn build_ai_demo(seed: u64) -> AiDemo {
     // ── Rome (west side) ──────────────────────────────────────────────────
     let rome_id = state.id_gen.next_civ_id();
     state.civilizations.push(Civilization::new(rome_id, "Rome", "Roman",
-        Leader { name: "Caesar", civ_id: rome_id, abilities: Vec::new(),
-                 agenda: Box::new(NoOpAgenda) }));
+        Leader { name: "Caesar", civ_id: rome_id,
+                 agenda: BuiltinAgenda::Default }));
 
     let rome_city = state.id_gen.next_city_id();
     let mut rc = City::new(rome_city, "Roma".to_string(), rome_id, rome_city_coord);
@@ -420,8 +403,8 @@ fn build_ai_demo(seed: u64) -> AiDemo {
     // ── Babylon (east side) ───────────────────────────────────────────────
     let babylon_id = state.id_gen.next_civ_id();
     state.civilizations.push(Civilization::new(babylon_id, "Babylon", "Babylonian",
-        Leader { name: "Hammurabi", civ_id: babylon_id, abilities: Vec::new(),
-                 agenda: Box::new(NoOpAgenda) }));
+        Leader { name: "Hammurabi", civ_id: babylon_id,
+                 agenda: BuiltinAgenda::Default }));
 
     let babylon_city = state.id_gen.next_city_id();
     let mut bc = City::new(babylon_city, "Babylon".to_string(), babylon_id, babylon_city_coord);
@@ -445,7 +428,7 @@ fn build_ai_demo(seed: u64) -> AiDemo {
     // ── Victory conditions ────────────────────────────────────────────────
     // Default: score victory at turn 500.
     let score_vc_id = state.id_gen.next_victory_id();
-    state.victory_conditions.push(Box::new(ScoreVictory { id: score_vc_id, turn_limit: 500 }));
+    state.victory_conditions.push(BuiltinVictoryCondition::Score { id: score_vc_id, turn_limit: 500 });
 
     // ── Initial visibility ────────────────────────────────────────────────
     recalculate_visibility(&mut state, rome_id);
@@ -957,6 +940,8 @@ fn run_play() {
 
                 Cmd::Scores => cmd_scores(&session),
 
+                Cmd::Congress => cmd_congress(&session),
+
                 Cmd::District(name, q, r) => cmd_district(&mut session, &rules, &name, q, r),
 
                 Cmd::Road(q, r) => cmd_road(&mut session, &rules, q, r),
@@ -1004,6 +989,31 @@ fn run_play() {
                 Cmd::Quit => {
                     println!("  Goodbye.");
                     return;
+                }
+
+                Cmd::Perform => {
+                    match session.selected_unit {
+                        None => println!("  [error] No unit selected."),
+                        Some(uid) => {
+                            match rules.rock_band_perform(&mut session.state, uid) {
+                                Ok(diff) => {
+                                    for delta in &diff.deltas {
+                                        match delta {
+                                            StateDelta::RockBandPerformed { tourism_gained, .. } => {
+                                                println!("  Rock Band performed! Tourism gained: {tourism_gained}");
+                                            }
+                                            StateDelta::UnitDestroyed { .. } => {
+                                                println!("  Rock Band disbanded!");
+                                                session.selected_unit = None;
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                }
+                                Err(e) => println!("  [error] {e}"),
+                            }
+                        }
+                    }
                 }
 
                 Cmd::Help => print_help(),
@@ -1105,6 +1115,8 @@ enum Cmd {
     BarbBribe(i32, i32),
     BarbIncite(i32, i32, String),
     FaithBuy(String),
+    Congress,
+    Perform,
     Unknown(String),
 }
 
@@ -1162,6 +1174,8 @@ fn parse_cmd(raw: &str) -> Cmd {
         }
         ["routes" | "rt"] => Cmd::Routes,
         ["scores" | "sc"] => Cmd::Scores,
+        ["congress" | "wc"] => Cmd::Congress,
+        ["perform"] => Cmd::Perform,
         ["district" | "dist", name, q, r] => {
             parse_coord(q, r)
                 .map(|(q, r)| Cmd::District(name.to_string(), q, r))
@@ -1258,6 +1272,7 @@ fn print_help() {
     println!("    trade <q> <r>      -- establish trade route to city at (q,r)  alias:  tr");
     println!("    routes             -- list active trade routes                 alias:  rt");
     println!("    scores             -- show score leaderboard                   alias:  sc");
+    println!("    congress           -- show World Congress state                alias:  wc");
     println!("    district <n> <q> <r>  place a district at (q,r)               alias:  dist");
     println!("    road <q> <r>       -- build ancient road at (q,r) with builder");
     println!("    war <civ>          -- declare war on a civilization");
@@ -1612,12 +1627,17 @@ fn cmd_unassign(session: &mut Session, q: i32, r: i32) {
 /// Queue a unit or building for production by name (case-insensitive).
 fn cmd_build(session: &mut Session, name: &str) {
     let key = name.trim().to_lowercase();
+    let civ_id = session.civ_id;
 
-    // Try unit types first.
-    if let Some(idx) = session.state.unit_type_defs.iter().position(|d| d.name == key) {
-        let type_id  = session.state.unit_type_defs[idx].id;
-        let def_name = session.state.unit_type_defs[idx].name;
-        let def_cost = session.state.unit_type_defs[idx].production_cost;
+    // Compute available units and buildings for this civ (tech-gated + replacement).
+    let avail_units = libciv::game::available_unit_defs(&session.state, civ_id);
+    let avail_buildings = libciv::game::available_building_defs(&session.state, civ_id);
+
+    // Try unit types first (case-insensitive match against available units).
+    if let Some(def) = avail_units.iter().find(|d| d.name.to_lowercase() == key) {
+        let type_id  = def.id;
+        let def_name = def.name;
+        let def_cost = def.production_cost;
         let city_id  = session.city_ids[session.current_city];
         let city = session.state.cities.iter_mut().find(|c| c.id == city_id).unwrap();
         city.production_queue.push_back(ProductionItem::Unit(type_id));
@@ -1625,11 +1645,11 @@ fn cmd_build(session: &mut Session, name: &str) {
         return;
     }
 
-    // Try building defs.
-    if let Some(idx) = session.state.building_defs.iter().position(|d| d.name.to_lowercase() == key) {
-        let bld_id   = session.state.building_defs[idx].id;
-        let bld_name = session.state.building_defs[idx].name;
-        let bld_cost = session.state.building_defs[idx].cost;
+    // Try building defs (case-insensitive match against available buildings).
+    if let Some(def) = avail_buildings.iter().find(|d| d.name.to_lowercase() == key) {
+        let bld_id   = def.id;
+        let bld_name = def.name;
+        let bld_cost = def.cost;
         let city_id  = session.city_ids[session.current_city];
         let city = session.state.cities.iter_mut().find(|c| c.id == city_id).unwrap();
         city.production_queue.push_back(ProductionItem::Building(bld_id));
@@ -1637,9 +1657,29 @@ fn cmd_build(session: &mut Session, name: &str) {
         return;
     }
 
-    let mut available: Vec<&str> = session.state.unit_type_defs.iter().map(|d| d.name).collect();
-    available.extend(session.state.building_defs.iter().map(|d| d.name));
-    println!("  [error] Unknown unit/building {:?}. Available: {}", key, available.join(", "));
+    // Try project defs (case-insensitive match).
+    if let Some(def) = session.state.project_defs.iter().find(|d| d.name.to_lowercase() == key) {
+        let proj_id   = def.id;
+        let proj_name = def.name;
+        let proj_cost = def.production_cost;
+        let city_id  = session.city_ids[session.current_city];
+        let city = session.state.cities.iter_mut().find(|c| c.id == city_id).unwrap();
+        city.production_queue.push_back(ProductionItem::Project(proj_id));
+        println!("  Queued: {} ({} prod) in {}", capitalize(proj_name), proj_cost, city.name);
+        return;
+    }
+
+    // Check if the name matches a known unit/building that is locked.
+    let all_unit_match = session.state.unit_type_defs.iter().any(|d| d.name.to_lowercase() == key);
+    let all_bldg_match = session.state.building_defs.iter().any(|d| d.name.to_lowercase() == key);
+    if all_unit_match || all_bldg_match {
+        println!("  [error] {:?} is not yet available (requires tech unlock or is exclusive to another civ).", key);
+    } else {
+        let mut available: Vec<&str> = avail_units.iter().map(|d| d.name).collect();
+        available.extend(avail_buildings.iter().map(|d| d.name));
+        available.extend(session.state.project_defs.iter().map(|d| d.name));
+        println!("  [error] Unknown unit/building {:?}. Available: {}", key, available.join(", "));
+    }
 }
 
 /// Cancel (pop) the front production item and reset stored production.
@@ -1777,6 +1817,32 @@ fn cmd_scores(session: &Session) {
             .unwrap_or("?");
         let marker = if *civ_id == session.civ_id { " <" } else { "" };
         println!("  {:>3}  {:<20}  {:>6}{}", rank + 1, name, score, marker);
+    }
+    hline_end();
+}
+
+/// Show the current World Congress state: next session, VP standings.
+fn cmd_congress(session: &Session) {
+    let wc = &session.state.world_congress;
+    hline("World Congress");
+    println!("  Session interval : every {} turns", wc.session_interval);
+    println!("  Next session     : turn {}", wc.next_session_turn);
+    println!("  Active resolutions: {}", wc.active_resolutions.len());
+    println!();
+    println!("  Diplomatic Victory Points:");
+    if wc.diplomatic_victory_points.is_empty() {
+        println!("    (none yet)");
+    } else {
+        let mut entries: Vec<_> = wc.diplomatic_victory_points.iter().collect();
+        entries.sort_by(|a, b| b.1.cmp(a.1));
+        for (civ_id, vp) in entries {
+            let name = session.state.civilizations.iter()
+                .find(|c| c.id == *civ_id)
+                .map(|c| c.name)
+                .unwrap_or("?");
+            let marker = if *civ_id == session.civ_id { " <" } else { "" };
+            println!("    {:<20}  {} VP{}", name, vp, marker);
+        }
     }
     hline_end();
 }
@@ -2227,6 +2293,12 @@ fn queue_front_info(session: &Session) -> (Option<&'static str>, Option<u32>) {
         }
         Some(ProductionItem::District(_))  => (Some("district"), None),
         Some(ProductionItem::Wonder(_))    => (Some("wonder"), None),
+        Some(ProductionItem::Project(pid)) => {
+            match session.state.project_defs.iter().find(|d| d.id == *pid) {
+                Some(def) => (Some(def.name), Some(def.production_cost)),
+                None      => (Some("project"), None),
+            }
+        }
     }
 }
 
@@ -2247,6 +2319,12 @@ fn queue_item_display(session: &Session, item: &ProductionItem) -> (String, Stri
         }
         ProductionItem::District(_) => ("district".to_string(), "(? prod)".to_string()),
         ProductionItem::Wonder(_)   => ("wonder".to_string(),   "(? prod)".to_string()),
+        ProductionItem::Project(pid) => {
+            match session.state.project_defs.iter().find(|d| d.id == *pid) {
+                Some(def) => (def.name.to_string(), format!("({} prod)", def.production_cost)),
+                None      => ("project".to_string(), "(? prod)".to_string()),
+            }
+        }
     }
 }
 
@@ -2257,6 +2335,7 @@ fn item_name_str(item: ProductionItem) -> String {
         ProductionItem::Building(_) => "building".to_string(),
         ProductionItem::District(_) => "district".to_string(),
         ProductionItem::Wonder(_)   => "wonder".to_string(),
+        ProductionItem::Project(_)  => "project".to_string(),
     }
 }
 

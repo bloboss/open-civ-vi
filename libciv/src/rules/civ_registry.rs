@@ -7,12 +7,14 @@ use crate::rules::modifier::*;
 use crate::rules::unique::*;
 use crate::{PolicyType, UnitCategory, UnitDomain, YieldBundle, YieldType};
 
-/// Return ability bundles for all 19 base-game civilizations.
+/// Return ability bundles for all 27 civilizations (19 base-game + 8 Gathering Storm).
 pub fn all_civ_bundles() -> Vec<CivAbilityBundle> {
     vec![
         rome(), greece(), egypt(), babylon(), germany(), japan(), india(), arabia(),
         america(), brazil(), china(), england(), france(), kongo(), norway(), russia(),
         scythia(), spain(), sumeria(),
+        // Gathering Storm
+        canada(), hungary(), inca(), mali(), maori(), ottoman(), phoenicia(), sweden(),
     ]
 }
 
@@ -173,7 +175,7 @@ pub fn babylon() -> CivAbilityBundle {
             civ: BuiltinCiv::Babylon, name: "palgum", replaces: Some("water_mill"),
             cost: 80, maintenance: 0,
             yields: YieldBundle::new().with(YieldType::Production, 2),
-            requires_district: None, extra_housing: 1,
+            requires_district: None, extra_housing: 1, extra_amenities: 0,
             abilities: vec![],
         }),
         unique_improvement: None,
@@ -264,7 +266,7 @@ pub fn japan() -> CivAbilityBundle {
             cost: 330, maintenance: 2,
             yields: YieldBundle::new().with(YieldType::Production, 3),
             requires_district: Some("Industrial Zone"),
-            extra_housing: 0,
+            extra_housing: 0, extra_amenities: 0,
             abilities: vec![UniqueBuildingAbility::CultureToNearbyWhenPowered(4)],
         }),
         unique_improvement: None,
@@ -379,7 +381,7 @@ pub fn arabia() -> CivAbilityBundle {
             cost: 250, maintenance: 2,
             yields: YieldBundle::new().with(YieldType::Science, 5),
             requires_district: Some("Campus"),
-            extra_housing: 1,
+            extra_housing: 1, extra_amenities: 0,
             abilities: vec![UniqueBuildingAbility::FaithEqualsCampusAdjacency],
         }),
         unique_improvement: None,
@@ -420,7 +422,7 @@ pub fn america() -> CivAbilityBundle {
             cost: 580, maintenance: 3,
             yields: YieldBundle::new().with(YieldType::Culture, 4),
             requires_district: Some("Theater Square"),
-            extra_housing: 0,
+            extra_housing: 0, extra_amenities: 0,
             abilities: vec![],
         }),
         unique_improvement: None,
@@ -634,7 +636,7 @@ pub fn norway() -> CivAbilityBundle {
             cost: 120, maintenance: 2,
             yields: YieldBundle::new().with(YieldType::Faith, 3),
             requires_district: Some("Holy Site"),
-            extra_housing: 0,
+            extra_housing: 0, extra_amenities: 0,
             abilities: vec![],
         }),
         unique_improvement: None,
@@ -801,5 +803,271 @@ pub fn sumeria() -> CivAbilityBundle {
         }),
         on_city_founded: vec![],
         rule_overrides: vec![RuleOverride::BonusOnBarbarianCampCapture],
+    }
+}
+
+// ── Gathering Storm civilizations ───────────────────────────────────────────
+
+pub fn canada() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::Canada, leader: BuiltinLeader::Laurier,
+        civ_name: "Canada", adjective: "Canadian", leader_name: "Wilfrid Laurier",
+        civ_ability_name: "Four Faces of Peace",
+        civ_ability_description: "Cannot declare or be the target of Surprise Wars. +100% diplomatic favor from suzerainties.",
+        leader_ability_name: "The Last Best West",
+        leader_ability_description: "Can build Farms on Tundra tiles. Purchasing Snow and Tundra tiles is 50% cheaper.",
+        civ_modifiers: vec![],
+        leader_modifiers: vec![],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::Canada, name: "mountie", replaces: None,
+            production_cost: 290, domain: UnitDomain::Land, category: UnitCategory::Combat,
+            max_movement: 500, combat_strength: Some(62), ranged_strength: None,
+            range: 0, vision_range: 2, resource_cost: None,
+            abilities: vec![],
+        }),
+        unique_district: None,
+        unique_building: None,
+        unique_improvement: Some(UniqueImprovementDef {
+            civ: BuiltinCiv::Canada, name: "Hockey Rink",
+            base_yields: YieldBundle::new().with(YieldType::Culture, 1),
+            appeal_modifier: 0,
+            adjacency_bonuses: vec![],
+        }),
+        on_city_founded: vec![],
+        rule_overrides: vec![RuleOverride::DiplomaticFavorFromSuzerainties(100)],
+    }
+}
+
+pub fn hungary() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::Hungary, leader: BuiltinLeader::MatthiasCorvinus,
+        civ_name: "Hungary", adjective: "Hungarian", leader_name: "Matthias Corvinus",
+        civ_ability_name: "Pearl of the Danube",
+        civ_ability_description: "+50% Production for buildings and districts built across a river from a City Center.",
+        leader_ability_name: "Raven King",
+        leader_ability_description: "Levied city-state units gain +2 Movement and +5 Combat Strength. It costs 75% less Gold and resources to upgrade levied units.",
+        civ_modifiers: vec![
+            Modifier::new(
+                ModifierSource::CivAbility("Pearl of the Danube"),
+                TargetSelector::ProductionQueue,
+                EffectType::ProductionPercent(50),
+                StackingRule::Additive,
+            ).with_condition(Condition::AdjacentToRiver),
+        ],
+        leader_modifiers: vec![],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::Hungary, name: "huszar", replaces: None,
+            production_cost: 335, domain: UnitDomain::Land, category: UnitCategory::Combat,
+            max_movement: 500, combat_strength: Some(65), ranged_strength: None,
+            range: 0, vision_range: 2,
+            resource_cost: Some((crate::world::resource::BuiltinResource::Horses, 10)),
+            abilities: vec![],
+        }),
+        unique_district: None,
+        unique_building: Some(UniqueBuildingDef {
+            civ: BuiltinCiv::Hungary, name: "thermal_bath", replaces: Some("zoo"),
+            cost: 360, maintenance: 1,
+            yields: YieldBundle::default(),
+            requires_district: Some("Entertainment Complex"),
+            extra_housing: 0, extra_amenities: 2,
+            abilities: vec![],
+        }),
+        unique_improvement: None,
+        on_city_founded: vec![],
+        rule_overrides: vec![RuleOverride::ProductionBonusAcrossRiver(50)],
+    }
+}
+
+pub fn inca() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::Inca, leader: BuiltinLeader::Pachacuti,
+        civ_name: "Inca", adjective: "Incan", leader_name: "Pachacuti",
+        civ_ability_name: "Mit'a",
+        civ_ability_description: "Citizens can work Mountain tiles. Mountain tiles provide +2 Production. Domestic Trade Routes gain +1 Food for every Mountain tile in the origin city.",
+        leader_ability_name: "Qhapaq Nan",
+        leader_ability_description: "Domestic Trade Routes gain +1 Food for every Mountain tile in the origin city.",
+        civ_modifiers: vec![],
+        leader_modifiers: vec![],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::Inca, name: "warakaq", replaces: None,
+            production_cost: 165, domain: UnitDomain::Land, category: UnitCategory::Combat,
+            max_movement: 300, combat_strength: Some(20), ranged_strength: Some(40),
+            range: 1, vision_range: 2, resource_cost: None,
+            abilities: vec![],
+        }),
+        unique_district: None,
+        unique_building: None,
+        unique_improvement: Some(UniqueImprovementDef {
+            civ: BuiltinCiv::Inca, name: "Terrace Farm",
+            base_yields: YieldBundle::new().with(YieldType::Food, 1).with(YieldType::Housing, 2),
+            appeal_modifier: 0,
+            adjacency_bonuses: vec![],
+        }),
+        on_city_founded: vec![],
+        rule_overrides: vec![RuleOverride::CanWorkMountains],
+    }
+}
+
+pub fn mali() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::Mali, leader: BuiltinLeader::MansaMusa,
+        civ_name: "Mali", adjective: "Malian", leader_name: "Mansa Musa",
+        civ_ability_name: "Songs of the Jeli",
+        civ_ability_description: "City Centers gain +1 Faith and +1 Food for every adjacent Desert or Desert Hills tile. Mines receive -1 Production and +4 Gold. -30% Production toward training units and constructing buildings.",
+        leader_ability_name: "Sahel Merchants",
+        leader_ability_description: "International Trade Routes gain +1 Gold for every flat Desert tile in the origin city.",
+        civ_modifiers: vec![],
+        leader_modifiers: vec![],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::Mali, name: "mandekalu_cavalry", replaces: None,
+            production_cost: 220, domain: UnitDomain::Land, category: UnitCategory::Combat,
+            max_movement: 400, combat_strength: Some(55), ranged_strength: None,
+            range: 0, vision_range: 2,
+            resource_cost: Some((crate::world::resource::BuiltinResource::Iron, 10)),
+            abilities: vec![],
+        }),
+        unique_district: Some(UniqueDistrictDef {
+            civ: BuiltinCiv::Mali, name: "Suguba",
+            replaces: BuiltinDistrict::CommercialHub,
+            base_cost: 27, extra_yields: YieldBundle::default(),
+            extra_housing: 0, extra_amenities: 0,
+            placement: None, adjacency_overrides: vec![],
+        }),
+        unique_building: None,
+        unique_improvement: None,
+        on_city_founded: vec![],
+        rule_overrides: vec![RuleOverride::MineGoldBonusProductionMalus { mine_gold: 4, production_percent: -30 }],
+    }
+}
+
+pub fn maori() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::Maori, leader: BuiltinLeader::Kupe,
+        civ_name: "Maori", adjective: "Maori", leader_name: "Kupe",
+        civ_ability_name: "Mana",
+        civ_ability_description: "Unimproved Woods and Rainforest tiles gain +1 Production and +1 Faith. Fishing Boats gain +1 Food. Cannot harvest features or earn Great Writers.",
+        leader_ability_name: "Kupe's Voyage",
+        leader_ability_description: "Start the game in the Ocean. Gain +2 Science and +2 Culture per turn until you settle your first city.",
+        civ_modifiers: vec![],
+        leader_modifiers: vec![],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::Maori, name: "toa", replaces: None,
+            production_cost: 120, domain: UnitDomain::Land, category: UnitCategory::Combat,
+            max_movement: 200, combat_strength: Some(38), ranged_strength: None,
+            range: 0, vision_range: 2, resource_cost: None,
+            abilities: vec![],
+        }),
+        unique_district: None,
+        unique_building: Some(UniqueBuildingDef {
+            civ: BuiltinCiv::Maori, name: "marae", replaces: Some("amphitheater"),
+            cost: 150, maintenance: 1,
+            yields: YieldBundle::new().with(YieldType::Culture, 2),
+            requires_district: Some("Theater Square"),
+            extra_housing: 0, extra_amenities: 0,
+            abilities: vec![],
+        }),
+        unique_improvement: None,
+        on_city_founded: vec![],
+        rule_overrides: vec![RuleOverride::UnimprovedFeatureProductionBonus(2)],
+    }
+}
+
+pub fn ottoman() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::Ottoman, leader: BuiltinLeader::Suleiman,
+        civ_name: "Ottoman", adjective: "Ottoman", leader_name: "Suleiman",
+        civ_ability_name: "Great Turkish Bombard",
+        civ_ability_description: "+50% Production toward siege units. Conquered cities do not lose population. +1 Amenity and +4 Loyalty in conquered cities.",
+        leader_ability_name: "Grand Vizier",
+        leader_ability_description: "Has access to a unique Governor, Ibrahim. The Janissary unique unit is available.",
+        civ_modifiers: vec![
+            Modifier::new(
+                ModifierSource::CivAbility("Great Turkish Bombard"),
+                TargetSelector::ProductionQueue,
+                EffectType::ProductionPercent(50),
+                StackingRule::Additive,
+            ),
+        ],
+        leader_modifiers: vec![],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::Ottoman, name: "barbary_corsair", replaces: None,
+            production_cost: 240, domain: UnitDomain::Sea, category: UnitCategory::Combat,
+            max_movement: 400, combat_strength: Some(40), ranged_strength: Some(50),
+            range: 1, vision_range: 2, resource_cost: None,
+            abilities: vec![],
+        }),
+        unique_district: None,
+        unique_building: Some(UniqueBuildingDef {
+            civ: BuiltinCiv::Ottoman, name: "grand_bazaar", replaces: Some("bank"),
+            cost: 220, maintenance: 0,
+            yields: YieldBundle::default(),
+            requires_district: Some("Commercial Hub"),
+            extra_housing: 0, extra_amenities: 0,
+            abilities: vec![],
+        }),
+        unique_improvement: None,
+        on_city_founded: vec![],
+        rule_overrides: vec![RuleOverride::SiegeProductionAndLoyalty { siege_percent: 50 }],
+    }
+}
+
+pub fn phoenicia() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::Phoenicia, leader: BuiltinLeader::Dido,
+        civ_name: "Phoenicia", adjective: "Phoenician", leader_name: "Dido",
+        civ_ability_name: "Mediterranean Colonies",
+        civ_ability_description: "Starts with the Eureka for Writing. Coastal cities founded by Phoenicia on the same continent as their Capital always have full Loyalty.",
+        leader_ability_name: "Founder of Carthage",
+        leader_ability_description: "Can move the Capital to any city with a Cothon. +1 Trade Route capacity after building the Government Plaza.",
+        civ_modifiers: vec![],
+        leader_modifiers: vec![],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::Phoenicia, name: "bireme", replaces: Some("galley"),
+            production_cost: 65, domain: UnitDomain::Sea, category: UnitCategory::Combat,
+            max_movement: 400, combat_strength: Some(35), ranged_strength: None,
+            range: 0, vision_range: 2, resource_cost: None,
+            abilities: vec![],
+        }),
+        unique_district: Some(UniqueDistrictDef {
+            civ: BuiltinCiv::Phoenicia, name: "Cothon",
+            replaces: BuiltinDistrict::Harbor,
+            base_cost: 27, extra_yields: YieldBundle::default(),
+            extra_housing: 0, extra_amenities: 0,
+            placement: None, adjacency_overrides: vec![],
+        }),
+        unique_building: None,
+        unique_improvement: None,
+        on_city_founded: vec![],
+        rule_overrides: vec![RuleOverride::SameContinentLoyalty],
+    }
+}
+
+pub fn sweden() -> CivAbilityBundle {
+    CivAbilityBundle {
+        civ: BuiltinCiv::Sweden, leader: BuiltinLeader::Kristina,
+        civ_name: "Sweden", adjective: "Swedish", leader_name: "Kristina",
+        civ_ability_name: "Nobel Prize",
+        civ_ability_description: "+50 Diplomatic Favor whenever a Great Person is earned. +50% Great Person points from each type of district.",
+        leader_ability_name: "Minerva of the North",
+        leader_ability_description: "Buildings with at least 3 Great Work slots and Wonders with at least 2 Great Work slots are automatically themed when all their slots are filled.",
+        civ_modifiers: vec![],
+        leader_modifiers: vec![],
+        unique_unit: Some(UniqueUnitDef {
+            civ: BuiltinCiv::Sweden, name: "carolean", replaces: None,
+            production_cost: 250, domain: UnitDomain::Land, category: UnitCategory::Combat,
+            max_movement: 300, combat_strength: Some(55), ranged_strength: None,
+            range: 0, vision_range: 2, resource_cost: None,
+            abilities: vec![],
+        }),
+        unique_district: None,
+        unique_building: None,
+        unique_improvement: Some(UniqueImprovementDef {
+            civ: BuiltinCiv::Sweden, name: "Open-Air Museum",
+            base_yields: YieldBundle::new().with(YieldType::Culture, 2),
+            appeal_modifier: 0,
+            adjacency_bonuses: vec![],
+        }),
+        on_city_founded: vec![],
+        rule_overrides: vec![RuleOverride::DiplomaticFavorOnGreatPerson(50)],
     }
 }

@@ -4,7 +4,10 @@ use crate::game::state::GameState;
 
 /// A built wonder that generates tourism. Registered on `GameState::wonder_tourism`.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(bound(deserialize = "")))]
 pub struct WonderTourism {
+    #[cfg_attr(feature = "serde", serde(with = "crate::serde_static_str"))]
     pub name: &'static str,
     pub owner: CivId,
     pub tourism_per_turn: u32,
@@ -100,25 +103,14 @@ pub fn has_cultural_dominance(state: &GameState, civ_id: CivId) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::civ::civilization::{Leader, Civilization};
-    use crate::civ::Agenda;
+    use crate::civ::civilization::{Leader, Civilization, BuiltinAgenda};
     use ulid::Ulid;
     use std::collections::HashMap;
-
-    struct NoOp;
-    impl std::fmt::Debug for NoOp {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "NoOp") }
-    }
-    impl Agenda for NoOp {
-        fn name(&self) -> &'static str { "noop" }
-        fn description(&self) -> &'static str { "" }
-        fn attitude(&self, _: CivId) -> i32 { 0 }
-    }
 
     fn make_civ(n: u64) -> Civilization {
         let id = CivId::from_ulid(Ulid::from_parts(n, 0));
         Civilization::new(id, "Test", "Test",
-            Leader { name: "L", civ_id: id, abilities: vec![], agenda: Box::new(NoOp) })
+            Leader { name: "L", civ_id: id, agenda: BuiltinAgenda::Default })
     }
 
     #[test]

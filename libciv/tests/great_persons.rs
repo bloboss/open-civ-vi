@@ -418,11 +418,13 @@ fn test_era_gating_filters_candidates() {
         .find(|c| c.id == s.rome_id).unwrap()
         .gold = 10_000;
 
-    // Recruit the first Ancient Scientist (Euclid).
+    // Recruit both Ancient Scientists (Euclid, Pythagoras).
     rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist)
-        .expect("first recruit should succeed");
+        .expect("first recruit should succeed (Euclid)");
+    rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist)
+        .expect("second recruit should succeed (Pythagoras)");
 
-    // The next Scientist (Hypatia) is Classical era. Without era advancement,
+    // The next Scientist (Aryabhata) is Classical era. Without era advancement,
     // it should not be available if we're in Ancient era.
     // Set up eras so the game knows we're in Ancient.
     use libciv::civ::era::Era;
@@ -438,7 +440,7 @@ fn test_era_gating_filters_candidates() {
         s.state.current_era_index = 0;
     }
 
-    // Try to recruit another Scientist -- Hypatia is Classical, should fail.
+    // Try to recruit another Scientist -- remaining candidates are Classical, should fail.
     let result = rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist);
     assert!(
         matches!(result, Err(libciv::game::RulesError::NoGreatPersonAvailable)),
@@ -464,25 +466,13 @@ fn test_competition_consumed_candidate() {
     rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist)
         .expect("Rome should recruit Euclid");
 
-    // Add Classical era so Hypatia becomes available.
-    use libciv::civ::era::Era;
-    let classical_era_id = libciv::EraId::from_ulid(s.state.id_gen.next_ulid());
-    s.state.eras.push(Era {
-        id: classical_era_id,
-        name: "Classical",
-        age: libciv::AgeType::Classical,
-        tech_count: 16,
-        civic_count: 8,
-    });
-    s.state.current_era_index = s.state.eras.len() - 1;
-
-    // Babylon recruits the next Scientist (Hypatia) -- threshold is now 120 (60 + 60).
+    // Babylon recruits the next Scientist (Pythagoras, also Ancient era).
     let result = rules.recruit_great_person(&mut s.state, s.babylon_id, GreatPersonType::Scientist);
-    assert!(result.is_ok(), "Babylon should recruit Hypatia: {result:?}");
+    assert!(result.is_ok(), "Babylon should recruit Pythagoras: {result:?}");
 
-    let hypatia = s.state.great_people.last().unwrap();
-    assert_eq!(hypatia.name, "Hypatia");
-    assert_eq!(hypatia.owner, Some(s.babylon_id));
+    let pythagoras = s.state.great_people.last().unwrap();
+    assert_eq!(pythagoras.name, "Pythagoras");
+    assert_eq!(pythagoras.owner, Some(s.babylon_id));
 }
 
 // ===========================================================================
@@ -506,6 +496,7 @@ fn test_gp_point_modifier_bonus_accumulates() {
         id: policy_id,
         name: "Inspiration",
         policy_type: PolicyType::Economic,
+        prereq_civic: "Mysticism",
         modifiers: vec![
             Modifier::new(
                 ModifierSource::Policy("Inspiration"),
@@ -548,6 +539,7 @@ fn test_gp_point_modifier_only_applies_to_active_types() {
         id: policy_id,
         name: "Patronage",
         policy_type: PolicyType::Economic,
+        prereq_civic: "Code of Laws",
         modifiers: vec![
             Modifier::new(
                 ModifierSource::Policy("Patronage"),
@@ -592,7 +584,7 @@ fn test_medieval_era_great_person_available() {
         .find(|c| c.id == s.rome_id).unwrap()
         .gold = 50_000;
 
-    // Recruit all Ancient + Classical Scientists (Euclid, Hypatia).
+    // Recruit all Ancient + Classical Scientists.
     // First, set up eras so Classical is available.
     let ancient_era_id = libciv::EraId::from_ulid(s.state.id_gen.next_ulid());
     s.state.eras.push(Era {
@@ -612,12 +604,10 @@ fn test_medieval_era_great_person_available() {
     });
     s.state.current_era_index = 1; // Classical
 
-    rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist)
-        .expect("recruit Euclid");
-    rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist)
-        .expect("recruit Hypatia");
+    // Exhaust all Ancient + Classical Scientists (Euclid, Pythagoras, Aryabhata, Hypatia, Aristotle).
+    while rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist).is_ok() {}
 
-    // Now try Medieval -- should fail because we're in Classical era.
+    // Now try again -- should fail because all Ancient + Classical are exhausted.
     let result = rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist);
     assert!(result.is_err(), "Medieval GP should not be available in Classical era");
 
@@ -632,12 +622,12 @@ fn test_medieval_era_great_person_available() {
     });
     s.state.current_era_index = 2; // Medieval
 
-    // Now recruit -- should get Al-Khwarizmi (first Medieval Scientist).
+    // Now recruit -- should get Abu Al-Qasim Al-Zahrawi (first Medieval Scientist).
     let result = rules.recruit_great_person(&mut s.state, s.rome_id, GreatPersonType::Scientist);
     assert!(result.is_ok(), "Medieval GP should be available in Medieval era: {result:?}");
 
     let gp = s.state.great_people.last().unwrap();
-    assert_eq!(gp.name, "Al-Khwarizmi");
+    assert_eq!(gp.name, "Abu Al-Qasim Al-Zahrawi");
     assert_eq!(gp.era, "Medieval");
 }
 

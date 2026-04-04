@@ -55,6 +55,23 @@ pub enum RuleOverride {
     NoGreatProphets,
     /// Ocean travel unlocked early; +50% XP for naval melee (Norway).
     EarlyOceanTravel,
+    // ── Gathering Storm ─────────────────────────────────────────────────────
+    /// +100% diplomatic favor from suzerainties (Canada).
+    DiplomaticFavorFromSuzerainties(i32),
+    /// +50% production for buildings across river from city center (Hungary).
+    ProductionBonusAcrossRiver(i32),
+    /// Citizens can work mountain tiles (Inca).
+    CanWorkMountains,
+    /// Mines +4 Gold, -30% unit/building production (Mali).
+    MineGoldBonusProductionMalus { mine_gold: i32, production_percent: i32 },
+    /// Unimproved features +2 Production (Maori).
+    UnimprovedFeatureProductionBonus(i32),
+    /// +50% siege production, conquered cities no loyalty loss (Ottoman).
+    SiegeProductionAndLoyalty { siege_percent: i32 },
+    /// 100% loyalty in cities on same continent as capital (Phoenicia).
+    SameContinentLoyalty,
+    /// +50 diplomatic favor on great person recruitment (Sweden).
+    DiplomaticFavorOnGreatPerson(i32),
 }
 
 /// All unique components and abilities for a civilization, encoded as data.

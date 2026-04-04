@@ -59,9 +59,12 @@ fn add_building(state: &mut libciv::GameState, city_id: libciv::CityId, name: &'
                 maintenance: 0,
                 yields: libciv::YieldBundle::default(),
                 requires_district: None,
+                prereq_building: None,
+                mutually_exclusive: None,
                 great_work_slots: Vec::new(),
                 exclusive_to: None,
                 replaces: None,
+                power_cost: 0, power_generated: 0, co2_per_turn: 0,
             });
             id
         });

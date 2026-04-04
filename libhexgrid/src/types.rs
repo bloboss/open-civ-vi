@@ -1,5 +1,6 @@
 /// Movement cost for crossing a hex tile or edge.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum MovementCost {
     /// Tiles/edges that cannot be crossed.
     Impassable,
@@ -32,6 +33,7 @@ impl MovementCost {
 /// - `Level(n)` — above-sea-level terrain; higher n = higher ground.
 /// - `High` — impassable mountain peak; always blocks LOS.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Elevation {
     Low,
     Level(u8),
@@ -63,6 +65,7 @@ impl Default for Elevation {
 /// - `Radius(n)`   — can see tiles within n hexes (subject to LOS).
 /// - `Omniscient`  — sees the entire map regardless of distance.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Vision {
     Blind,
     Radius(u8),
@@ -71,6 +74,7 @@ pub enum Vision {
 
 /// Movement profile of a unit — determines which tiles/edges it can cross.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum MovementProfile {
     /// Standard land movement.
     Ground,

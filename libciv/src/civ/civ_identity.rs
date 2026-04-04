@@ -23,6 +23,15 @@ pub enum BuiltinCiv {
     Scythia,
     Spain,
     Sumeria,
+    // ── Gathering Storm ─────────────────────────────────────────────────────
+    Canada,
+    Hungary,
+    Inca,
+    Mali,
+    Maori,
+    Ottoman,
+    Phoenicia,
+    Sweden,
 }
 
 /// Built-in leader identifiers.
@@ -48,4 +57,13 @@ pub enum BuiltinLeader {
     Tomyris,
     Philip,
     Gilgamesh,
+    // ── Gathering Storm ─────────────────────────────────────────────────────
+    Laurier,
+    MatthiasCorvinus,
+    Pachacuti,
+    MansaMusa,
+    Kupe,
+    Suleiman,
+    Dido,
+    Kristina,
 }

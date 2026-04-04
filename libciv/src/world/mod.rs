@@ -1,3 +1,5 @@
+pub mod climate;
+pub mod disaster;
 pub mod edge;
 pub mod feature;
 pub mod improvement;
@@ -8,6 +10,8 @@ pub mod terrain;
 pub mod tile;
 pub mod wonder;
 
+pub use climate::CLIMATE_THRESHOLDS;
+pub use disaster::DisasterKind;
 pub use edge::{BuiltinEdgeFeature, EdgeFeatureDef, WorldEdge};
 pub use feature::BuiltinFeature;
 pub use improvement::{BuiltinImprovement, ElevationReq, ImprovementRequirements, ProximityReq};

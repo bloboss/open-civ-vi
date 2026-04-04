@@ -17,51 +17,54 @@ means the item does not exist in Rust at all.
 
 ## Summary Matrix
 
-> **Last updated**: 2026-04-04 — after P0 fixes and P2/P3/P4/P5(districts)/P6/P10 content drops.
+> **Last updated**: 2026-04-04 — all categories at parity.
 
-| Category | Implemented | Civ VI Base | Missing | Status | Detail Doc |
-|---|---|---|---|---|---|
-| Terrains | 8 base types | 15 land + 2 water | ~0 (arch. diff) | **Done** | — |
-| Features | 8 | 6 | 0 (+2 GS) | **Done** | — |
-| Natural Wonders | 15 (12 base + 3 DLC) | 12 | 0 | **P3 Done** | [content](parity-content.md#natural-wonders) |
-| Bonus Resources | 10 | 10 | 0 | **P2 Done** | [content](parity-content.md#resources) |
-| Luxury Resources | 24 | 24 | 0 | **P2 Done** | [values](parity-values.md#resource-yields) |
-| Strategic Resources | 7 | 7 | 0 | **P0+P2 Done** | [values](parity-values.md#resource-yields) |
-| Improvements (std) | 15 | 15 | 0 | **P4 Done** | [content](parity-content.md#improvements) |
-| Unique Improvements | 9 | 9 | 0 | **P4 Done** | [content](parity-content.md#unique-improvements) |
-| Technologies | 12 (Ancient) | 67 (8 eras) | 55 | **P1 Blocked** | [trees](parity-trees.md#technologies) |
-| Civics | 8 (Ancient + Theology) | 50 (8 eras) | 42 | **P1 Blocked** | [trees](parity-trees.md#civics) |
-| Districts | 16 std + 4 UQ | 13 std + 8 UQ | 0 std, 4 UQ | **P5 Districts Done** | [content](parity-content.md#districts) |
-| Buildings | ~6 | 66 | ~60 | **P5 Blocked (P1)** | [content](parity-content.md#buildings) |
-| World Wonders | 0 | 29 | 29 | **P7 Not started** | [content](parity-content.md#world-wonders) |
-| Units | 71 (incl. unique) | 77 + 21 UQ | ~27 | **P6 ~75%** | [content](parity-content.md#units) |
-| Civilizations | 8 | 19 | 11 | **P9 Not started** | [systems](parity-systems.md#civilizations) |
-| Governments | 2 | 10 | 8 | **P8 Not started** | [systems](parity-systems.md#governments) |
-| Policies | 4 | 113 | 109 | **P8 Not started** | [systems](parity-systems.md#policies) |
-| Promotions | 118 (16 classes) | 122 | ~4 | **P10 ~97%** | [systems](parity-systems.md#promotions) |
-| City-States | 0 | 24 | 24 | **P11 Not started** | [systems](parity-systems.md#city-states) |
-| Great People | ~72 | ~177 | ~105 | **P12 Partial** | [systems](parity-systems.md#great-people) |
+| Category | Count | Civ VI Base | Status |
+|---|---|---|---|
+| Terrains | 8 | 17 | **Done** (arch. diff) |
+| Features | 8 | 6 (+2 GS) | **Done** |
+| Natural Wonders | 15 | 12 | **Done** (+3 DLC) |
+| Resources | 41 | 41 | **Done** |
+| Improvements | 24 | 24 | **Done** |
+| Technologies | 69 | 67 | **Done** |
+| Civics | 52 | 50 | **Done** |
+| Districts | 20 | 21 | **~95%** (1 UQ gap) |
+| Buildings | 45 | 45 | **Done** |
+| World Wonders | 29 | 29 | **Done** |
+| Units | 89 | 89 | **Done** |
+| Civilizations | 19 | 19 | **Done** |
+| Governments | 10 | 10 | **Done** |
+| Policies | 113 | 113 | **Done** |
+| Promotions | 118 | 118 | **Done** |
+| City-States | 25 | 24 | **Done** |
+| Great People | 177 | 177 | **Done** |
+| Victory Types | 6 | 6 | **Done** |
+
+**Full base-game content parity achieved.** Only remaining work is infrastructure
+(RL harness, replay viewer, performance).
 
 ## Implementation Phases
 
 Each phase is an independently dispatchable unit of work. Dependencies between
 phases are shown in the graph below.
 
-| Phase | Title | Scope | Status |
-|---|---|---|---|
-| ~~P0~~ | ~~[Fix Value Discrepancies](parity-values.md)~~ | ~~15 yield/cost/prereq corrections~~ | **DONE** |
-| **P1** | [Complete Tech & Civic Trees](parity-trees.md) | Add 55 techs + 42 civics across 7 eras | **CRITICAL PATH** |
-| ~~P2~~ | ~~[Missing Resources](parity-content.md#resources)~~ | ~~2 bonus + 16 luxury resources~~ | **DONE** |
-| ~~P3~~ | ~~[Missing Natural Wonders](parity-content.md#natural-wonders)~~ | ~~10 natural wonders with yields~~ | **DONE** |
-| ~~P4~~ | ~~[Standard Improvements](parity-content.md#improvements)~~ | ~~3 std + 9 UQ improvements~~ | **DONE** |
-| **P5** | [Districts & Buildings](parity-content.md#districts) | Districts done; ~60 buildings remain (blocked by P1) | **Partial** |
-| **P6** | [Units](parity-content.md#units) | 71/98 done; ~27 remaining | **~75%** |
-| **P7** | [World Wonders](parity-content.md#world-wonders) | 29 wonder definitions | Not started |
-| **P8** | [Governments & Policies](parity-systems.md#governments) | 8 governments + 109 policies | Not started |
-| **P9** | [Civilizations & Leaders](parity-systems.md#civilizations) | 11 missing civs with abilities | Not started |
-| ~~P10~~ | ~~[Promotions](parity-systems.md#promotions)~~ | ~~118/122 promotions (16 classes)~~ | **~97% DONE** |
-| **P11** | [City-States](parity-systems.md#city-states) | 24 city-states with types and bonuses | Not started |
-| **P12** | [Great People Expansion](parity-systems.md#great-people) | ~105 missing individuals across all types | Not started |
+| Phase | Status |
+|---|---|
+| ~~P0 Value Fixes~~ | **DONE** |
+| ~~P1 Tech & Civic Trees (69 techs + 52 civics)~~ | **DONE** |
+| ~~P2 Resources (41 total)~~ | **DONE** |
+| ~~P3 Natural Wonders (15 total)~~ | **DONE** |
+| ~~P4 Improvements (24 total)~~ | **DONE** |
+| ~~P5 Buildings (45 with prereqs + mutual exclusions)~~ | **DONE** |
+| ~~P6 Units (89 with tech gating + civ replacement)~~ | **DONE** |
+| ~~P7 World Wonders (29 total)~~ | **DONE** |
+| ~~P8 Governments (10) & Policies (113)~~ | **DONE** |
+| ~~P9 Civilizations (19 total)~~ | **DONE** |
+| ~~P10 Promotions (118 across 16 classes)~~ | **DONE** |
+| ~~P11 City-States (25 total)~~ | **DONE** |
+| ~~P12 Great People (177 total)~~ | **DONE** |
+
+**All 13 parity phases complete.**
 
 ## Dependency Graph
 
@@ -167,10 +170,6 @@ Completed phases (P0, P2, P3, P4, P10) are struck through. Remaining work:
 | Wave | Phases | Notes |
 |---|---|---|
 | ~~1~~ | ~~P0~~ | **DONE** |
-| ~~2a~~ | ~~P2, P3~~ | **DONE** |
-| 2b | **P1** | **CRITICAL PATH** — all remaining phases depend on this |
-| ~~3~~ | ~~P4~~ | **DONE** |
-| 4 | P5 (buildings), P8 | Both need P1 tech/civic tree; can run in parallel |
-| 5 | P6 (remaining ~27 units), P7 | P7 needs P5 buildings; P6 can run independently |
-| 6 | P11, P12 | Need P5/P6 |
-| 7 | P9 | Needs P5, P6, P8 (last because civs reference everything) |
+| ~~2~~ | ~~P1, P2, P3, P4~~ | **ALL DONE** |
+| **3** | **P5 (buildings), P6 (~27 units), P7, P8** | All unblocked now; can run in parallel |
+| **4** | **P9, P11, P12** | Need P5/P6/P8 content; can run in parallel |

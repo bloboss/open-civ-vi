@@ -1,7 +1,8 @@
 use crate::{
   AgeType, BarbarianCampId, BeliefId, CivId, CityId, GovernorId, GreatPersonId, GreatPersonType,
-  PolicyId, ReligionId, TradeRouteId, UnitId
+  PolicyId, PromotionId, ReligionId, TradeRouteId, UnitId,
 };
+use crate::world::disaster::DisasterKind;
 use crate::civ::DiplomaticStatus;
 use crate::civ::city::WallLevel;
 use crate::civ::district::BuiltinDistrict;
@@ -76,9 +77,18 @@ pub enum StateDelta {
         defender_damage: u32,
     },
 
+    // ── Combat XP and promotions ──────────────────────────────────────────────
+    /// A unit gained combat experience.
+    ExperienceGained { unit: UnitId, amount: u32, new_total: u32 },
+    /// A unit was promoted (gained a promotion ability and healed).
+    UnitPromoted { unit: UnitId, promotion: PromotionId, promotion_name: &'static str },
+
     // ── Fog of war (PHASE3-10.2) ─────────────────────────────────────────────
     /// Tiles newly added to `explored_tiles` this move (not previously explored).
     TilesRevealed { civ: CivId, coords: Vec<HexCoord> },
+
+    /// A civilization explored a tile containing a natural wonder for the first time.
+    NaturalWonderDiscovered { civ: CivId, wonder_name: &'static str, coord: HexCoord },
 
     /// An improvement was placed on a tile.
     ImprovementPlaced { coord: HexCoord, improvement: BuiltinImprovement },
@@ -206,6 +216,21 @@ pub enum StateDelta {
     ReligiousUnitsHealed { healer: UnitId, healed_count: u32 },
 
     // ── Barbarian system ────────────────────────────────────────────────────
+    // ── Science victory ─────────────────────────────────────────────────────
+    /// A civilization completed a science milestone toward Science Victory.
+    ScienceMilestoneCompleted { civ: CivId, milestone: &'static str },
+
+    // ── Diplomatic victory ──────────────────────────────────────────────────
+    /// A civilization's diplomatic favor changed.
+    DiplomaticFavorChanged { civ: CivId, delta: i32 },
+
+    // ── Power & CO2 (GS-1) ──────────────────────────────────────────────
+    /// Global CO2 accumulated this turn from fossil fuel power plants.
+    CO2Accumulated { total: u32 },
+
+    /// A city project was completed.
+    ProjectCompleted { city: CityId, project: &'static str },
+
     /// A barbarian camp was spawned on the map.
     BarbarianCampSpawned { camp: BarbarianCampId, coord: HexCoord },
     /// A barbarian camp was destroyed (cleared by a player unit).
@@ -226,6 +251,25 @@ pub enum StateDelta {
     BarbarianClanIncited { camp: BarbarianCampId, civ: CivId, target: CivId, gold_spent: u32 },
     /// A barbarian camp converted into a city-state (Clans mode).
     BarbarianCampConverted { camp: BarbarianCampId, city: CityId, coord: HexCoord },
+
+    // ── World Congress (GS-3) ────────────────────────────────────────────
+    /// A World Congress session was held; the civ with the most diplomatic
+    /// favor won the session.
+    CongressSessionHeld { winner: CivId },
+    /// A civilization earned diplomatic victory points from a Congress session.
+    DiplomaticVPEarned { civ: CivId, points: u32 },
+
+    // ── Rock Band / Cultural Combat (GS-16) ────────────────────────────
+    /// A Rock Band performed at a foreign city, generating tourism.
+    RockBandPerformed { unit: UnitId, city: CityId, tourism_gained: u32 },
+
+    // ── Climate & Disasters (GS-2) ─────────────────────────────────────
+    /// Global sea level rose to a new stage.
+    SeaLevelRose { new_level: u8 },
+    /// A coastal lowland tile was submerged by rising sea levels.
+    TileSubmerged { coord: HexCoord },
+    /// An environmental disaster occurred on a tile.
+    DisasterOccurred { kind: DisasterKind, coord: HexCoord, severity: u8 },
 }
 
 /// A batch of deltas representing a complete state transition.

@@ -317,6 +317,7 @@ impl AdjacencyContext {
 
 /// A district that has been placed on the map.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PlacedDistrict {
     pub district_type: BuiltinDistrict,
     pub city_id: CityId,

@@ -38,9 +38,12 @@ fn register_monument(s: &mut common::Scenario) -> BuildingId {
         maintenance: 0,
         yields: YieldBundle::new().with(libciv::YieldType::Culture, 2),
         requires_district: None,
+        prereq_building: None,
+        mutually_exclusive: None,
         great_work_slots: vec![],
         exclusive_to: None,
         replaces: None,
+        power_cost: 0, power_generated: 0, co2_per_turn: 0,
     });
     id
 }
