@@ -88,6 +88,15 @@ pub enum Command {
         #[command(subcommand)]
         kind: ListKind,
     },
+    /// Interactive REPL for an existing game file
+    Repl {
+        /// Path to the game state file
+        #[arg(long)]
+        game_file: PathBuf,
+        /// Human player name
+        #[arg(long)]
+        player: String,
+    },
     /// Legacy interactive REPL (backward compat)
     Play,
     /// Legacy demo mode

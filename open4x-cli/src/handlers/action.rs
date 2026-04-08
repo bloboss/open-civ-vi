@@ -165,7 +165,7 @@ fn parse_great_person_type(s: &str) -> Result<GreatPersonType, String> {
 
 // ── Action dispatch ─────────────────────────────────────────────────────────
 
-fn dispatch_action(
+pub(crate) fn dispatch_action(
     rules: &DefaultRulesEngine,
     state: &mut libciv::GameState,
     civ_id: libciv::CivId,
