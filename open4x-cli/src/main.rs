@@ -2,6 +2,7 @@ mod cli;
 mod handlers;
 mod output;
 mod player_view;
+mod repl;
 mod state_io;
 
 use std::io::{self, BufRead, Write};
@@ -69,6 +70,17 @@ fn main() {
             if let Err(e) = handlers::list::handle_list(&game_file, &player, &kind) {
                 eprintln!("Error: {e}");
                 std::process::exit(1);
+            }
+        }
+
+        // ── Interactive REPL ──────────────────────────────────────────────
+        cli::Command::Repl { game_file, player } => {
+            match repl::ReplSession::new(&game_file, &player) {
+                Ok(mut session) => session.run(),
+                Err(e) => {
+                    eprintln!("Error: {e}");
+                    std::process::exit(1);
+                }
             }
         }
 
