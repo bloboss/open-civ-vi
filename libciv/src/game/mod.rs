@@ -29,7 +29,7 @@ pub use victory::{BuiltinVictoryCondition, GameOver, VictoryKind, SCIENCE_MILEST
 pub use visibility::recalculate_visibility;
 pub use apply_delta::{apply_delta, apply_diff};
 pub use production_helpers::{
-    available_unit_defs, available_building_defs,
+    available_unit_defs, available_building_defs, available_buildings_for_city,
     resolve_unit_replacement, resolve_building_replacement,
     can_produce_unit, can_produce_building,
     ALWAYS_AVAILABLE_UNITS, ALWAYS_AVAILABLE_BUILDINGS,

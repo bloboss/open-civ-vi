@@ -6,7 +6,7 @@
 //! replacement (e.g., Rome gets Legion instead of Swordsman).
 
 use crate::game::state::{BuildingDef, GameState, UnitTypeDef};
-use crate::{BuildingId, CivId, UnitTypeId};
+use crate::{BuildingId, CityId, CivId, UnitTypeId};
 
 /// Units that are always available for production without any tech prerequisite.
 pub const ALWAYS_AVAILABLE_UNITS: &[&str] = &[
@@ -96,6 +96,91 @@ pub fn available_building_defs(state: &GameState, civ_id: CivId) -> Vec<&Buildin
 
             civ.unlocked_buildings.contains(&d.name)
                 || ALWAYS_AVAILABLE_BUILDINGS.contains(&d.name)
+        })
+        .collect()
+}
+
+/// Returns the buildings that a specific city can currently produce.
+///
+/// Starts from `available_building_defs` (civ-level tech/exclusivity gating),
+/// then applies per-city constraints:
+/// 1. **Already built**: exclude buildings the city already has.
+/// 2. **District requirement**: exclude if the city lacks the required district
+///    (`"City Center"` is treated as always present).
+/// 3. **Prerequisite building**: exclude if the city lacks the prerequisite.
+/// 4. **Mutual exclusivity**: exclude if the mutually exclusive building exists.
+/// 5. **Already queued**: exclude buildings already in the production queue.
+pub fn available_buildings_for_city<'a>(
+    state: &'a GameState,
+    civ_id: CivId,
+    city_id: CityId,
+) -> Vec<&'a BuildingDef> {
+    let city = match state.cities.iter().find(|c| c.id == city_id) {
+        Some(c) => c,
+        None => return Vec::new(),
+    };
+
+    // Collect names of buildings already in this city for prerequisite/exclusion checks.
+    let built_names: Vec<&str> = city
+        .buildings
+        .iter()
+        .filter_map(|bid| state.building_defs.iter().find(|d| d.id == *bid))
+        .map(|d| d.name)
+        .collect();
+
+    // Collect building IDs already queued for production.
+    let queued_building_ids: Vec<BuildingId> = city
+        .production_queue
+        .iter()
+        .filter_map(|item| {
+            if let crate::civ::ProductionItem::Building(bid) = item {
+                Some(*bid)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // District names present in this city (City Center is always implicit).
+    let district_names: Vec<&str> = std::iter::once("City Center")
+        .chain(city.districts.iter().map(|d| d.name()))
+        .collect();
+
+    available_building_defs(state, civ_id)
+        .into_iter()
+        .filter(|d| {
+            // Already built in this city.
+            if city.buildings.contains(&d.id) {
+                return false;
+            }
+
+            // Already queued.
+            if queued_building_ids.contains(&d.id) {
+                return false;
+            }
+
+            // District requirement.
+            if let Some(req) = d.requires_district {
+                if !district_names.iter().any(|n| n.eq_ignore_ascii_case(req)) {
+                    return false;
+                }
+            }
+
+            // Prerequisite building.
+            if let Some(prereq) = d.prereq_building {
+                if !built_names.iter().any(|n| n.eq_ignore_ascii_case(prereq)) {
+                    return false;
+                }
+            }
+
+            // Mutual exclusivity.
+            if let Some(excl) = d.mutually_exclusive {
+                if built_names.iter().any(|n| n.eq_ignore_ascii_case(excl)) {
+                    return false;
+                }
+            }
+
+            true
         })
         .collect()
 }
@@ -347,5 +432,164 @@ mod tests {
         for &name in ALWAYS_AVAILABLE_BUILDINGS {
             assert!(names.contains(&name), "{name} should be always available");
         }
+    }
+
+    // ── available_buildings_for_city tests ──────────────────────────────
+
+    fn add_city(state: &mut GameState, civ_id: CivId) -> CityId {
+        use crate::civ::city::City;
+        use libhexgrid::coord::HexCoord;
+
+        let city_id = state.id_gen.next_city_id();
+        let city = City::new(city_id, "TestCity".to_string(), civ_id, HexCoord::from_qr(5, 5));
+        state.cities.push(city);
+        city_id
+    }
+
+    #[test]
+    fn city_always_available_buildings_with_implicit_city_center() {
+        let mut state = setup_state();
+        let civ_id = add_civ(&mut state, None);
+        let city_id = add_city(&mut state, civ_id);
+
+        let available = available_buildings_for_city(&state, civ_id, city_id);
+        let names: Vec<&str> = available.iter().map(|d| d.name).collect();
+
+        // Monument and Granary require City Center district, which is implicit.
+        assert!(names.contains(&"Monument"), "Monument should be available (City Center is implicit)");
+        assert!(names.contains(&"Granary"), "Granary should be available (City Center is implicit)");
+    }
+
+    #[test]
+    fn city_excludes_already_built_buildings() {
+        let mut state = setup_state();
+        let civ_id = add_civ(&mut state, None);
+        let city_id = add_city(&mut state, civ_id);
+
+        let monument_id = state.building_defs.iter()
+            .find(|d| d.name == "Monument").unwrap().id;
+
+        // Add Monument to the city's built buildings.
+        state.cities.iter_mut()
+            .find(|c| c.id == city_id).unwrap()
+            .buildings.push(monument_id);
+
+        let available = available_buildings_for_city(&state, civ_id, city_id);
+        let names: Vec<&str> = available.iter().map(|d| d.name).collect();
+        assert!(!names.contains(&"Monument"), "Already built Monument should not appear");
+    }
+
+    #[test]
+    fn city_excludes_buildings_missing_required_district() {
+        let mut state = setup_state();
+        let civ_id = add_civ(&mut state, None);
+        let city_id = add_city(&mut state, civ_id);
+
+        // Unlock Library (requires Campus district).
+        state.civilizations.iter_mut()
+            .find(|c| c.id == civ_id).unwrap()
+            .unlocked_buildings.push("Library");
+
+        let available = available_buildings_for_city(&state, civ_id, city_id);
+        let names: Vec<&str> = available.iter().map(|d| d.name).collect();
+        assert!(!names.contains(&"Library"), "Library should not be available without Campus");
+
+        // Add Campus district to the city.
+        state.cities.iter_mut()
+            .find(|c| c.id == city_id).unwrap()
+            .districts.push(crate::civ::district::BuiltinDistrict::Campus);
+
+        let available = available_buildings_for_city(&state, civ_id, city_id);
+        let names: Vec<&str> = available.iter().map(|d| d.name).collect();
+        assert!(names.contains(&"Library"), "Library should be available with Campus");
+    }
+
+    #[test]
+    fn city_excludes_buildings_missing_prerequisite() {
+        let mut state = setup_state();
+        let civ_id = add_civ(&mut state, None);
+        let city_id = add_city(&mut state, civ_id);
+
+        // Unlock University (requires Library as prereq building + Campus district).
+        let civ = state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap();
+        civ.unlocked_buildings.push("Library");
+        civ.unlocked_buildings.push("University");
+
+        // Add Campus to the city.
+        state.cities.iter_mut()
+            .find(|c| c.id == city_id).unwrap()
+            .districts.push(crate::civ::district::BuiltinDistrict::Campus);
+
+        // Without Library built, University should not be available.
+        let available = available_buildings_for_city(&state, civ_id, city_id);
+        let names: Vec<&str> = available.iter().map(|d| d.name).collect();
+        assert!(names.contains(&"Library"), "Library should be available");
+        assert!(!names.contains(&"University"), "University requires Library");
+
+        // Build Library.
+        let library_id = state.building_defs.iter()
+            .find(|d| d.name == "Library").unwrap().id;
+        state.cities.iter_mut()
+            .find(|c| c.id == city_id).unwrap()
+            .buildings.push(library_id);
+
+        let available = available_buildings_for_city(&state, civ_id, city_id);
+        let names: Vec<&str> = available.iter().map(|d| d.name).collect();
+        assert!(names.contains(&"University"), "University should be available with Library");
+    }
+
+    #[test]
+    fn city_excludes_mutually_exclusive_buildings() {
+        let mut state = setup_state();
+        let civ_id = add_civ(&mut state, None);
+        let city_id = add_city(&mut state, civ_id);
+
+        // Unlock both Barracks and Stable (mutually exclusive).
+        let civ = state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap();
+        civ.unlocked_buildings.push("Barracks");
+        civ.unlocked_buildings.push("Stable");
+
+        // Add Encampment district.
+        state.cities.iter_mut()
+            .find(|c| c.id == city_id).unwrap()
+            .districts.push(crate::civ::district::BuiltinDistrict::Encampment);
+
+        // Both should be available initially.
+        let available = available_buildings_for_city(&state, civ_id, city_id);
+        let names: Vec<&str> = available.iter().map(|d| d.name).collect();
+        assert!(names.contains(&"Barracks"));
+        assert!(names.contains(&"Stable"));
+
+        // Build Barracks — Stable should be excluded.
+        let barracks_id = state.building_defs.iter()
+            .find(|d| d.name == "Barracks").unwrap().id;
+        state.cities.iter_mut()
+            .find(|c| c.id == city_id).unwrap()
+            .buildings.push(barracks_id);
+
+        let available = available_buildings_for_city(&state, civ_id, city_id);
+        let names: Vec<&str> = available.iter().map(|d| d.name).collect();
+        assert!(!names.contains(&"Stable"), "Stable should be excluded (Barracks is mutually exclusive)");
+        // Barracks is already built, so it's also excluded.
+        assert!(!names.contains(&"Barracks"), "Already built Barracks should not appear");
+    }
+
+    #[test]
+    fn city_excludes_queued_buildings() {
+        let mut state = setup_state();
+        let civ_id = add_civ(&mut state, None);
+        let city_id = add_city(&mut state, civ_id);
+
+        let monument_id = state.building_defs.iter()
+            .find(|d| d.name == "Monument").unwrap().id;
+
+        // Queue Monument.
+        state.cities.iter_mut()
+            .find(|c| c.id == city_id).unwrap()
+            .production_queue.push_back(crate::civ::ProductionItem::Building(monument_id));
+
+        let available = available_buildings_for_city(&state, civ_id, city_id);
+        let names: Vec<&str> = available.iter().map(|d| d.name).collect();
+        assert!(!names.contains(&"Monument"), "Queued Monument should not appear in available list");
     }
 }

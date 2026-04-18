@@ -1,6 +1,7 @@
 //! Human-readable formatting for state deltas and queries.
 
 use libciv::game::diff::StateDelta;
+use libciv::game::production_helpers::available_buildings_for_city;
 use libciv::{all_scores, CityId, CivId, GameState, UnitId};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
@@ -209,6 +210,37 @@ pub fn print_cities(state: &GameState, civ_id: CivId, short_ids: &ShortIds<CityI
         println!(
             "{:<16} ({:>3},{:>3}) {:>4} {:<20}",
             c.name, c.coord.q, c.coord.r, c.population, prod_display
+        );
+    }
+}
+
+/// Print available buildings that can be produced in the given city.
+pub fn print_available_buildings(state: &GameState, civ_id: CivId, city_id: CityId) {
+    let city = match state.cities.iter().find(|c| c.id == city_id) {
+        Some(c) => c,
+        None => {
+            println!("  City not found.");
+            return;
+        }
+    };
+
+    let available = available_buildings_for_city(state, civ_id, city_id);
+    if available.is_empty() {
+        println!("  No buildings available for {}.", city.name);
+        return;
+    }
+
+    println!("  Available buildings for {}:", city.name);
+    println!(
+        "  {:<24} {:>6} {:>6}  {}",
+        "Name", "Cost", "Maint", "District"
+    );
+    println!("  {}", "-".repeat(60));
+    for d in &available {
+        let district = d.requires_district.unwrap_or("-");
+        println!(
+            "  {:<24} {:>6} {:>6}  {}",
+            d.name, d.cost, d.maintenance, district
         );
     }
 }

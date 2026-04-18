@@ -281,6 +281,17 @@ impl ReplSession {
             QueryKind::Tile(q, r) => {
                 formatter::print_tile(&self.state, HexCoord::from_qr(*q, *r));
             }
+            QueryKind::BuildList => {
+                if let Some(city_id) = self.current_city_id() {
+                    formatter::print_available_buildings(
+                        &self.state,
+                        self.civ_id,
+                        city_id,
+                    );
+                } else {
+                    println!("  No city selected.");
+                }
+            }
         }
     }
 
@@ -516,6 +527,7 @@ impl ReplSession {
 
   Production & Building:
     build <item>              Queue production item
+    build list                List available buildings for selected city
     cancel                    Cancel current production
     district <type> <q> <r>   Place a district
     improve <type>            Place improvement at selected unit

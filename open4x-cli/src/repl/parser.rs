@@ -43,6 +43,7 @@ pub enum QueryKind {
     Scores,
     Diplomacy,
     Tile(i32, i32),
+    BuildList,
 }
 
 /// Parse a line of REPL input into a `ReplCommand`.
@@ -113,10 +114,13 @@ pub fn parse_command(
         // ── Production ──────────────────────────────────────────────────
         "build" | "b" => {
             if parts.len() >= 2 {
+                if parts[1].eq_ignore_ascii_case("list") || parts[1].eq_ignore_ascii_case("ls") {
+                    return ReplCommand::Query(QueryKind::BuildList);
+                }
                 let item = parts[1..].join(" ");
                 return ReplCommand::Action(ActionKind::Build { city: city_str(), item });
             }
-            ReplCommand::Unknown("Usage: build <item>".to_string())
+            ReplCommand::Unknown("Usage: build <item> | build list".to_string())
         }
 
         "cancel-production" | "cancel" => {
