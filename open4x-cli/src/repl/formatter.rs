@@ -1,9 +1,11 @@
 //! Human-readable formatting for state deltas and queries.
 
 use libciv::game::diff::StateDelta;
-use libciv::{all_scores, CivId, GameState};
+use libciv::{all_scores, CityId, CivId, GameState, UnitId};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
+
+use super::short_ids::ShortIds;
 
 /// Format a single delta into a one-line human-readable string.
 /// Returns `None` for deltas that should be suppressed (noise).
@@ -139,53 +141,75 @@ pub fn print_deltas(diff: &libciv::GameStateDiff, state: &GameState) {
 // ── Query formatters ────────────────────────────────────────────────────────
 
 /// Print a tabular list of units owned by the given civ.
-pub fn print_units(state: &GameState, civ_id: CivId) {
+pub fn print_units(state: &GameState, civ_id: CivId, short_ids: &ShortIds<UnitId>) {
     let units: Vec<_> = state.units.iter().filter(|u| u.owner == civ_id).collect();
     if units.is_empty() {
         println!("  No units.");
         return;
     }
-    println!("  {:<28} {:<14} {:>8} {:>4}/{:<4} {:>3}",
-        "ID", "Type", "Coord", "HP", "Max", "Mv");
+    println!(
+        "  {:<28} {:<14} {:>8} {:>4}/{:<4} {:>3}",
+        "ID", "Type", "Coord", "HP", "Max", "Mv"
+    );
     println!("  {}", "-".repeat(70));
     for u in &units {
-        let type_name = state.unit_type_defs.iter()
+        let type_name = state
+            .unit_type_defs
+            .iter()
             .find(|d| d.id == u.unit_type)
             .map(|d| d.name)
             .unwrap_or("?");
-        let id_short = &u.id.to_string()[..8.min(u.id.to_string().len())];
-        println!("  {:<28} {:<14} ({:>3},{:>3}) {:>4}/{:<4} {:>3}",
-            id_short,
-            type_name,
-            u.coord.q, u.coord.r,
-            u.health, 100,
-            u.movement_left);
+        let id_display = short_ids.format_bold(u.id);
+        // Pad to 28 visible chars (ANSI codes don't count).
+        let visible_len = short_ids.display_len(u.id);
+        let pad = if visible_len < 28 {
+            28 - visible_len
+        } else {
+            1
+        };
+        print!("  {id_display}{:pad$}", "");
+        println!(
+            "{:<14} ({:>3},{:>3}) {:>4}/{:<4} {:>3}",
+            type_name, u.coord.q, u.coord.r, u.health, 100, u.movement_left
+        );
     }
 }
 
 /// Print a tabular list of cities owned by the given civ.
-pub fn print_cities(state: &GameState, civ_id: CivId) {
+pub fn print_cities(state: &GameState, civ_id: CivId, short_ids: &ShortIds<CityId>) {
     let cities: Vec<_> = state.cities.iter().filter(|c| c.owner == civ_id).collect();
     if cities.is_empty() {
         println!("  No cities.");
         return;
     }
-    println!("  {:<28} {:<16} {:>8} {:>4} {:<20}",
-        "ID", "Name", "Coord", "Pop", "Producing");
+    println!(
+        "  {:<28} {:<16} {:>8} {:>4} {:<20}",
+        "ID", "Name", "Coord", "Pop", "Producing"
+    );
     println!("  {}", "-".repeat(80));
     for c in &cities {
-        let id_short = &c.id.to_string()[..8.min(c.id.to_string().len())];
-        let producing = c.production_queue.front()
+        let id_display = short_ids.format_bold(c.id);
+        let visible_len = short_ids.display_len(c.id);
+        let pad = if visible_len < 28 {
+            28 - visible_len
+        } else {
+            1
+        };
+        let producing = c
+            .production_queue
+            .front()
             .map(|p| format!("{p:?}"))
             .unwrap_or_else(|| "-".to_string());
-        // Truncate producing string for display.
         let prod_display = if producing.len() > 20 {
             format!("{}...", &producing[..17])
         } else {
             producing
         };
-        println!("  {:<28} {:<16} ({:>3},{:>3}) {:>4} {:<20}",
-            id_short, c.name, c.coord.q, c.coord.r, c.population, prod_display);
+        print!("  {id_display}{:pad$}", "");
+        println!(
+            "{:<16} ({:>3},{:>3}) {:>4} {:<20}",
+            c.name, c.coord.q, c.coord.r, c.population, prod_display
+        );
     }
 }
 

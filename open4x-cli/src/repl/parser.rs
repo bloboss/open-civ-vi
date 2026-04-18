@@ -19,6 +19,10 @@ pub enum ReplCommand {
     Board,
     /// Select a unit at the given (q, r) coordinate.
     SelectUnit(i32, i32),
+    /// Select a unit by ID suffix and show its details.
+    UnitSelect(String),
+    /// Select a city by name or ID suffix and show its details.
+    CitySelect(String),
     /// Save the game state to disk.
     Save,
     /// Print the help text.
@@ -39,8 +43,6 @@ pub enum QueryKind {
     Scores,
     Diplomacy,
     Tile(i32, i32),
-    CityDetail(String),
-    UnitDetail(String),
 }
 
 /// Parse a line of REPL input into a `ReplCommand`.
@@ -319,14 +321,14 @@ pub fn parse_command(
 
         "city" => {
             if parts.len() >= 2 {
-                return ReplCommand::Query(QueryKind::CityDetail(parts[1].to_string()));
+                return ReplCommand::CitySelect(parts[1..].join(" "));
             }
-            ReplCommand::Unknown("Usage: city <id_or_name>".to_string())
+            ReplCommand::Unknown("Usage: city <name_or_suffix>".to_string())
         }
 
         "unit" => {
             if parts.len() >= 2 {
-                return ReplCommand::Query(QueryKind::UnitDetail(parts[1].to_string()));
+                return ReplCommand::UnitSelect(parts[1].to_string());
             }
             ReplCommand::Unknown("Usage: unit <id>".to_string())
         }

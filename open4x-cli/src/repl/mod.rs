@@ -6,6 +6,7 @@
 
 mod formatter;
 mod parser;
+pub mod short_ids;
 
 use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
@@ -25,6 +26,7 @@ use crate::handlers;
 use crate::state_io;
 
 use self::parser::{QueryKind, ReplCommand};
+use self::short_ids::ShortIds;
 
 /// Holds the in-memory game state and session context for the REPL.
 pub struct ReplSession {
@@ -33,6 +35,9 @@ pub struct ReplSession {
     civ_id: CivId,
     civ_name: &'static str,
     selected_unit: Option<UnitId>,
+    selected_city: Option<CityId>,
+    unit_short_ids: ShortIds<UnitId>,
+    city_short_ids: ShortIds<CityId>,
     game_file: PathBuf,
     ai_civ_ids: Vec<CivId>,
 }
@@ -72,12 +77,25 @@ impl ReplSession {
             .find(|u| u.owner == civ_id)
             .map(|u| u.id);
 
+        // Select the first owned city, if any.
+        let selected_city = state
+            .cities
+            .iter()
+            .find(|c| c.owner == civ_id)
+            .map(|c| c.id);
+
+        let unit_short_ids = Self::build_unit_short_ids(&state, civ_id);
+        let city_short_ids = Self::build_city_short_ids(&state, civ_id);
+
         Ok(Self {
             state,
             rules: DefaultRulesEngine,
             civ_id,
             civ_name,
             selected_unit,
+            selected_city,
+            unit_short_ids,
+            city_short_ids,
             game_file: game_file.to_path_buf(),
             ai_civ_ids,
         })
@@ -97,11 +115,7 @@ impl ReplSession {
             {
                 let sel = self
                     .selected_unit
-                    .map(|u| {
-                        let id_str = u.to_string();
-                        let short = &id_str[..8.min(id_str.len())];
-                        format!(" [{}]", short)
-                    })
+                    .map(|u| format!(" [{}]", self.unit_short_ids.short(u)))
                     .unwrap_or_default();
                 print!("T{}{sel}> ", self.state.turn);
                 let _ = io::stdout().flush();
@@ -126,6 +140,8 @@ impl ReplSession {
                 ReplCommand::EndTurn => self.handle_end_turn(),
                 ReplCommand::Board => self.print_board(),
                 ReplCommand::SelectUnit(q, r) => self.handle_select(q, r),
+                ReplCommand::UnitSelect(ref id_str) => self.handle_unit_select(id_str),
+                ReplCommand::CitySelect(ref id_str) => self.handle_city_select(id_str),
                 ReplCommand::Save => self.handle_save(),
                 ReplCommand::Help => Self::print_help(),
                 ReplCommand::Quit => {
@@ -184,6 +200,7 @@ impl ReplSession {
             Ok(diff) => {
                 apply_diff(&mut self.state, &diff);
                 recalculate_visibility(&mut self.state, self.civ_id);
+                self.recalculate_short_ids();
                 formatter::print_deltas(&diff, &self.state);
             }
             Err(e) => {
@@ -217,6 +234,9 @@ impl ReplSession {
             recalculate_visibility(&mut self.state, cid);
         }
 
+        // Recalculate short IDs (units may have been created/destroyed).
+        self.recalculate_short_ids();
+
         // Save.
         if let Err(e) = state_io::save_game_file(&self.game_file, &self.state) {
             eprintln!("  Save error: {e}");
@@ -247,8 +267,12 @@ impl ReplSession {
 
     fn handle_query(&self, query: &QueryKind) {
         match query {
-            QueryKind::Units => formatter::print_units(&self.state, self.civ_id),
-            QueryKind::Cities => formatter::print_cities(&self.state, self.civ_id),
+            QueryKind::Units => {
+                formatter::print_units(&self.state, self.civ_id, &self.unit_short_ids);
+            }
+            QueryKind::Cities => {
+                formatter::print_cities(&self.state, self.civ_id, &self.city_short_ids);
+            }
             QueryKind::Yields => formatter::print_yields(&self.state, self.civ_id),
             QueryKind::Techs => formatter::print_techs(&self.state, self.civ_id),
             QueryKind::Civics => formatter::print_civics(&self.state, self.civ_id),
@@ -256,63 +280,6 @@ impl ReplSession {
             QueryKind::Diplomacy => formatter::print_diplomacy(&self.state, self.civ_id),
             QueryKind::Tile(q, r) => {
                 formatter::print_tile(&self.state, HexCoord::from_qr(*q, *r));
-            }
-            QueryKind::CityDetail(id_or_name) => {
-                // Try to find by name first, then by ID prefix.
-                let city = self
-                    .state
-                    .cities
-                    .iter()
-                    .find(|c| c.name.eq_ignore_ascii_case(id_or_name))
-                    .or_else(|| {
-                        self.state
-                            .cities
-                            .iter()
-                            .find(|c| c.id.to_string().starts_with(id_or_name.as_str()))
-                    });
-                match city {
-                    Some(c) => {
-                        println!("  City: {} ({})", c.name, c.id);
-                        println!("    Coord: ({}, {})", c.coord.q, c.coord.r);
-                        println!("    Pop: {}  Capital: {}", c.population, c.is_capital);
-                        println!("    Food: {}/{}", c.food_stored, c.food_to_grow);
-                        println!("    Production stored: {}", c.production_stored);
-                        let q_len = c.production_queue.len();
-                        println!("    Production queue ({q_len}):");
-                        for item in &c.production_queue {
-                            println!("      {item:?}");
-                        }
-                    }
-                    None => println!("  City not found: {id_or_name}"),
-                }
-            }
-            QueryKind::UnitDetail(id_str) => {
-                let unit = self
-                    .state
-                    .units
-                    .iter()
-                    .find(|u| u.id.to_string().starts_with(id_str.as_str()));
-                match unit {
-                    Some(u) => {
-                        let type_name = self
-                            .state
-                            .unit_type_defs
-                            .iter()
-                            .find(|d| d.id == u.unit_type)
-                            .map(|d| d.name)
-                            .unwrap_or("?");
-                        println!("  Unit: {} ({})", type_name, u.id);
-                        println!("    Coord: ({}, {})", u.coord.q, u.coord.r);
-                        println!("    HP: {}  Movement: {}/{}", u.health, u.movement_left, u.max_movement);
-                        if let Some(cs) = u.combat_strength {
-                            println!("    Combat strength: {cs}");
-                        }
-                        if let Some(charges) = u.charges {
-                            println!("    Charges: {charges}");
-                        }
-                    }
-                    None => println!("  Unit not found: {id_str}"),
-                }
             }
         }
     }
@@ -340,6 +307,105 @@ impl ReplSession {
                 println!("  No owned unit at ({q}, {r}).");
             }
         }
+    }
+
+    fn handle_unit_select(&mut self, input: &str) {
+        match self.resolve_unit(input) {
+            Some(uid) => {
+                self.selected_unit = Some(uid);
+                let unit = self.state.units.iter().find(|u| u.id == uid).unwrap();
+                let type_name = self
+                    .state
+                    .unit_type_defs
+                    .iter()
+                    .find(|d| d.id == unit.unit_type)
+                    .map(|d| d.name)
+                    .unwrap_or("?");
+                println!("  Selected: {type_name} ({})", self.unit_short_ids.format_bold(uid));
+                println!("    Coord: ({}, {})", unit.coord.q, unit.coord.r);
+                println!(
+                    "    HP: {}  Movement: {}/{}",
+                    unit.health, unit.movement_left, unit.max_movement
+                );
+                if let Some(cs) = unit.combat_strength {
+                    println!("    Combat strength: {cs}");
+                }
+                if let Some(charges) = unit.charges {
+                    println!("    Charges: {charges}");
+                }
+            }
+            None => println!("  No unit found matching '{input}'"),
+        }
+    }
+
+    /// Resolve a user-provided string to a UnitId via suffix matching.
+    fn resolve_unit(&self, input: &str) -> Option<UnitId> {
+        self.unit_short_ids.find_by_suffix(input)
+    }
+
+    fn handle_city_select(&mut self, input: &str) {
+        match self.resolve_city(input) {
+            Some(cid) => {
+                self.selected_city = Some(cid);
+                let city = self.state.cities.iter().find(|c| c.id == cid).unwrap();
+                println!(
+                    "  Selected: {} ({})",
+                    city.name,
+                    self.city_short_ids.format_bold(cid)
+                );
+                println!("    Coord: ({}, {})", city.coord.q, city.coord.r);
+                println!("    Pop: {}  Capital: {}", city.population, city.is_capital);
+                println!("    Food: {}/{}", city.food_stored, city.food_to_grow);
+                println!("    Production stored: {}", city.production_stored);
+                let q_len = city.production_queue.len();
+                println!("    Production queue ({q_len}):");
+                for item in &city.production_queue {
+                    println!("      {item:?}");
+                }
+            }
+            None => println!("  No city found matching '{input}'"),
+        }
+    }
+
+    /// Resolve a user-provided string to a CityId.
+    /// Tries name match first, then ID suffix match.
+    fn resolve_city(&self, input: &str) -> Option<CityId> {
+        // Name match (case-insensitive).
+        if let Some(city) = self
+            .state
+            .cities
+            .iter()
+            .find(|c| c.owner == self.civ_id && c.name.eq_ignore_ascii_case(input))
+        {
+            return Some(city.id);
+        }
+        // ID suffix match.
+        self.city_short_ids.find_by_suffix(input)
+    }
+
+    fn recalculate_short_ids(&mut self) {
+        self.unit_short_ids = Self::build_unit_short_ids(&self.state, self.civ_id);
+        self.city_short_ids = Self::build_city_short_ids(&self.state, self.civ_id);
+    }
+
+    fn build_unit_short_ids(state: &GameState, civ_id: CivId) -> ShortIds<UnitId> {
+        ShortIds::new(
+            state
+                .units
+                .iter()
+                .filter(|u| u.owner == civ_id)
+                .map(|u| (u.id, u.id.as_ulid().to_string())),
+        )
+    }
+
+    fn build_city_short_ids(state: &GameState, civ_id: CivId) -> ShortIds<CityId> {
+        ShortIds::new(
+            state
+                .cities
+                .iter()
+                .filter(|c| c.owner == civ_id)
+                .map(|c| (c.id, c.id.as_ulid().to_string())),
+        )
     }
 
     fn handle_save(&self) {
@@ -429,13 +495,15 @@ impl ReplSession {
         }
     }
 
-    /// Get the first city ID owned by this civ, if any.
+    /// Get the selected city ID, falling back to the first owned city.
     fn current_city_id(&self) -> Option<CityId> {
-        self.state
-            .cities
-            .iter()
-            .find(|c| c.owner == self.civ_id)
-            .map(|c| c.id)
+        self.selected_city.or_else(|| {
+            self.state
+                .cities
+                .iter()
+                .find(|c| c.owner == self.civ_id)
+                .map(|c| c.id)
+        })
     }
 
     fn print_help() {
@@ -477,8 +545,8 @@ impl ReplSession {
   Queries:
     units / cities / yields / techs / civics / scores / diplomacy
     tile <q> <r>              Inspect a tile
-    city <name_or_id>         City details
-    unit <id>                 Unit details
+    city <name_or_suffix>      Select city by name/ID suffix + show details
+    unit <suffix>             Select unit by ID suffix + show details
 
   Other:
     select <q> <r>            Select unit at coordinate
