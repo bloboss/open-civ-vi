@@ -223,7 +223,7 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
             vision_range:    uc.vision_range,
             charges,
             trade_origin: None,
-            trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+            trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
         });
         diff.push(StateDelta::UnitCreated { unit: unit_id, coord: uc.coord, owner: uc.civ_id });
     }

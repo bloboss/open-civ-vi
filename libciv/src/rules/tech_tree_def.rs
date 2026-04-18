@@ -265,7 +265,7 @@ let shipbuilding = TechNode {
     name:               "Shipbuilding",
     cost:               200,
     prerequisites:      vec![sailing_id],
-    effects:            vec![UnlockUnit("Quadrireme")],
+    effects:            vec![UnlockUnit("Quadrireme"), EnableEmbarkCoast],
     eureka_description: "Own 2 Galleys.",
     eureka_effects:     vec![],
 };
@@ -383,7 +383,7 @@ let cartography = TechNode {
     name:               "Cartography",
     cost:               540,
     prerequisites:      vec![shipbuilding_id],
-    effects:            vec![UnlockUnit("Caravel")],
+    effects:            vec![UnlockUnit("Caravel"), EnableEmbarkOcean],
     eureka_description: "Build 2 Harbors.",
     eureka_effects:     vec![],
 };

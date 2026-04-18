@@ -122,6 +122,18 @@ pub fn format_delta(delta: &StateDelta, state: &GameState) -> Option<String> {
             let name = civ_display_name(state, *civ);
             Some(format!("{name} entered {new_era:?} ({era_age:?})"))
         }
+        StateDelta::UnitEmbarked { coord, .. } => {
+            Some(format!("Unit embarked at ({}, {})", coord.q, coord.r))
+        }
+        StateDelta::UnitDisembarked { coord, .. } => {
+            Some(format!("Unit disembarked at ({}, {})", coord.q, coord.r))
+        }
+        StateDelta::EmbarkCoastUnlocked { .. } => {
+            Some("Coast embarkation unlocked!".to_string())
+        }
+        StateDelta::EmbarkOceanUnlocked { .. } => {
+            Some("Ocean embarkation unlocked!".to_string())
+        }
         // Suppress noise.
         StateDelta::TilesRevealed { .. } => None,
         StateDelta::CitizenAssigned { .. } => None,
@@ -276,8 +288,8 @@ pub fn print_available_buildings(state: &GameState, civ_id: CivId, city_id: City
 
     println!("  Available buildings for {}:", city.name);
     println!(
-        "  {:<24} {:>6} {:>6}  {}",
-        "Name", "Cost", "Maint", "District"
+        "  {:<24} {:>6} {:>6}  District",
+        "Name", "Cost", "Maint"
     );
     println!("  {}", "-".repeat(60));
     for d in &available {

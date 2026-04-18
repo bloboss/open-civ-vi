@@ -389,6 +389,7 @@ pub(crate) fn purchase_with_faith(
                 religion_id,
                 spread_charges: if base_charges > 0 { Some(base_charges) } else { None },
                 religious_strength,
+                is_embarked: false,
             };
             state.units.push(new_unit);
 

@@ -95,7 +95,7 @@ fn spawn_great_prophet(state: &mut libciv::GameState, warrior_type: libciv::Unit
         trade_destination: None,
         religion_id: None,
         spread_charges: None,
-        religious_strength: None,
+        religious_strength: None, is_embarked: false,
     });
     unit_id
 }
@@ -128,7 +128,7 @@ fn spawn_missionary(
         trade_destination: None,
         religion_id: Some(religion_id),
         spread_charges: Some(3),
-        religious_strength: None,
+        religious_strength: None, is_embarked: false,
     });
     unit_id
 }
@@ -162,6 +162,7 @@ fn spawn_apostle(
         religion_id: Some(religion_id),
         spread_charges: Some(3),
         religious_strength: Some(110),
+        is_embarked: false,
     });
     unit_id
 }
@@ -440,7 +441,7 @@ fn spread_religion_unit_destroyed_at_zero_charges() {
         trade_destination: None,
         religion_id: Some(religion_id),
         spread_charges: Some(1),
-        religious_strength: None,
+        religious_strength: None, is_embarked: false,
     });
 
     let diff = rules.spread_religion(&mut s.state, unit_id).unwrap();

@@ -110,11 +110,11 @@ pub fn available_building_defs(state: &GameState, civ_id: CivId) -> Vec<&Buildin
 /// 3. **Prerequisite building**: exclude if the city lacks the prerequisite.
 /// 4. **Mutual exclusivity**: exclude if the mutually exclusive building exists.
 /// 5. **Already queued**: exclude buildings already in the production queue.
-pub fn available_buildings_for_city<'a>(
-    state: &'a GameState,
+pub fn available_buildings_for_city(
+    state: &GameState,
     civ_id: CivId,
     city_id: CityId,
-) -> Vec<&'a BuildingDef> {
+) -> Vec<&BuildingDef> {
     let city = match state.cities.iter().find(|c| c.id == city_id) {
         Some(c) => c,
         None => return Vec::new(),
@@ -160,24 +160,24 @@ pub fn available_buildings_for_city<'a>(
             }
 
             // District requirement.
-            if let Some(req) = d.requires_district {
-                if !district_names.iter().any(|n| n.eq_ignore_ascii_case(req)) {
-                    return false;
-                }
+            if let Some(req) = d.requires_district
+                && !district_names.iter().any(|n| n.eq_ignore_ascii_case(req))
+            {
+                return false;
             }
 
             // Prerequisite building.
-            if let Some(prereq) = d.prereq_building {
-                if !built_names.iter().any(|n| n.eq_ignore_ascii_case(prereq)) {
-                    return false;
-                }
+            if let Some(prereq) = d.prereq_building
+                && !built_names.iter().any(|n| n.eq_ignore_ascii_case(prereq))
+            {
+                return false;
             }
 
             // Mutual exclusivity.
-            if let Some(excl) = d.mutually_exclusive {
-                if built_names.iter().any(|n| n.eq_ignore_ascii_case(excl)) {
-                    return false;
-                }
+            if let Some(excl) = d.mutually_exclusive
+                && built_names.iter().any(|n| n.eq_ignore_ascii_case(excl))
+            {
+                return false;
             }
 
             true

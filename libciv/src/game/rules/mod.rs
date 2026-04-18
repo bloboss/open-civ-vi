@@ -1063,7 +1063,7 @@ mod tests {
             vision_range:   2,
             charges:        None,
             trade_origin:   None,
-            trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+            trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
         });
         unit_id
     }

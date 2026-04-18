@@ -218,6 +218,7 @@ fn spawn_scouts(state: &mut GameState, diff: &mut GameStateDiff) {
             religion_id: None,
             spread_charges: None,
             religious_strength: None,
+            is_embarked: false,
         });
 
         if let Some(camp) = state.barbarian_camps.iter_mut().find(|c| c.id == camp_id) {
@@ -256,6 +257,7 @@ fn spawn_scouts(state: &mut GameState, diff: &mut GameStateDiff) {
                 religion_id: None,
                 spread_charges: None,
                 religious_strength: None,
+                is_embarked: false,
             });
 
             if let Some(camp) = state.barbarian_camps.iter_mut().find(|c| c.id == camp_id) {
@@ -479,6 +481,7 @@ fn generate_combat_units(state: &mut GameState, diff: &mut GameStateDiff) {
             religion_id: None,
             spread_charges: None,
             religious_strength: None,
+            is_embarked: false,
         });
 
         if let Some(camp) = state.barbarian_camps.iter_mut().find(|c| c.id == info.camp_id) {
@@ -717,6 +720,7 @@ pub(crate) fn hire_from_camp(
         religion_id: None,
         spread_charges: None,
         religious_strength: None,
+        is_embarked: false,
     });
     diff.push(StateDelta::UnitCreated { unit: unit_id, coord: spawn, owner: civ_id });
 

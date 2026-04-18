@@ -7,7 +7,7 @@ mod state_io;
 
 use std::io::{self, BufRead, Write};
 
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use libciv::{
     all_scores, BarbarianCampId, BeliefId, CityId, CivId, GameState, GameStateDiff,
     BuiltinVictoryCondition, DefaultRulesEngine, GreatPersonType, RulesEngine,
@@ -185,7 +185,7 @@ fn build_session() -> Session {
         health:          100,
         range:           0,
         vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Starting Builder at city coord (3, 3) — for testing improve command.
@@ -205,7 +205,7 @@ fn build_session() -> Session {
         health:          100,
         range:           0,
         vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Starting Trader at city coord (3, 3) — for testing trade commands.
@@ -225,7 +225,7 @@ fn build_session() -> Session {
         health:          100,
         range:           0,
         vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Babylon — AI adversary civilization.
@@ -261,7 +261,7 @@ fn build_session() -> Session {
         health:          100,
         range:           0,
         vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     recalculate_visibility(&mut state, civ_id);
@@ -396,7 +396,7 @@ fn build_ai_demo(seed: u64) -> AiDemo {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // ── Babylon (east side) ───────────────────────────────────────────────
@@ -421,7 +421,7 @@ fn build_ai_demo(seed: u64) -> AiDemo {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // ── Victory conditions ────────────────────────────────────────────────

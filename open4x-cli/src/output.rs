@@ -43,11 +43,6 @@ impl ActionResult {
             game_over: None,
         }
     }
-
-    pub fn with_game_over(mut self, info: GameOverInfo) -> Self {
-        self.game_over = Some(info);
-        self
-    }
 }
 
 /// Print an `ActionResult` as JSON to stdout.

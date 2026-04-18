@@ -495,6 +495,28 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
             // Informational: alliance state is managed directly by form_alliance
             // and advance_turn.
         }
+
+        // ── Embarkation ────────────────────────────────────────────────────
+        StateDelta::UnitEmbarked { unit, .. } => {
+            if let Some(u) = state.unit_mut(*unit) {
+                u.is_embarked = true;
+            }
+        }
+        StateDelta::UnitDisembarked { unit, .. } => {
+            if let Some(u) = state.unit_mut(*unit) {
+                u.is_embarked = false;
+            }
+        }
+        StateDelta::EmbarkCoastUnlocked { civ } => {
+            if let Some(c) = state.civilizations.iter_mut().find(|c| c.id == *civ) {
+                c.can_embark_coast = true;
+            }
+        }
+        StateDelta::EmbarkOceanUnlocked { civ } => {
+            if let Some(c) = state.civilizations.iter_mut().find(|c| c.id == *civ) {
+                c.can_embark_ocean = true;
+            }
+        }
     }
 }
 

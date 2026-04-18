@@ -140,7 +140,7 @@ pub fn handle_new_game(
             trade_destination: None,
             religion_id: None,
             spread_charges: None,
-            religious_strength: None,
+            religious_strength: None, is_embarked: false,
         });
 
         // Starting Settler at capital.
@@ -165,7 +165,7 @@ pub fn handle_new_game(
             trade_destination: None,
             religion_id: None,
             spread_charges: None,
-            religious_strength: None,
+            religious_strength: None, is_embarked: false,
         });
 
         // Player config slot.

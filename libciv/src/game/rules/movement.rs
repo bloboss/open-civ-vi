@@ -25,13 +25,27 @@ pub(crate) fn move_unit(
     let from   = unit.coord();
     let budget = unit.movement_left();
     let domain = unit.domain();
+    let is_embarked = unit.is_embarked();
 
     let to_norm = state.board.normalize(to).ok_or(RulesError::InvalidCoord)?;
 
-    // Determine whether a path to the destination exists at all.
-    // Use domain-aware pathfinding so land units cannot path through water
-    // and sea units cannot path through land.
+    // Look up embarkation capability for land units.
+    let (can_coast, can_ocean) = if domain == UnitDomain::Land {
+        state
+            .civilizations
+            .iter()
+            .find(|c| c.id == unit.owner())
+            .map(|c| (c.can_embark_coast, c.can_embark_ocean))
+            .unwrap_or((false, false))
+    } else {
+        (false, false)
+    };
+
+    // Choose pathfinder based on domain and embarkation capability.
     let full_path = match domain {
+        UnitDomain::Land if can_coast => {
+            state.board.find_path_embark(from, to_norm, u32::MAX, can_ocean)
+        }
         UnitDomain::Land => state.board.find_path_land(from, to_norm, u32::MAX),
         UnitDomain::Sea  => state.board.find_path_sea(from, to_norm, u32::MAX),
         UnitDomain::Air  => state.board.find_path(from, to_norm, u32::MAX),
@@ -40,32 +54,60 @@ pub(crate) fn move_unit(
     // Walk the path, consuming movement budget step by step.
     let mut spent  = 0u32;
     let mut reached = from;
+    let mut diff = GameStateDiff::new();
 
     for i in 1..full_path.len() {
-        let prev = full_path[i - 1];
         let next = full_path[i];
 
-        let tile_cost = match state.board.tile(next) {
-            Some(t) => {
-                // Enforce domain restriction during the walk as well.
-                match domain {
-                    UnitDomain::Land if t.terrain.is_water() => break,
-                    UnitDomain::Sea  if t.terrain.is_land()  => break,
-                    _ => {}
+        let Some(tile) = state.board.tile(next) else { break };
+        let next_is_water = tile.terrain.is_water();
+
+        // ── Domain / embarkation enforcement ────────────────────────
+        if domain == UnitDomain::Land {
+            if next_is_water && !is_embarked {
+                // Land → water: embark transition.
+                if !can_coast { break; }
+                if tile.terrain == crate::world::terrain::BuiltinTerrain::Ocean && !can_ocean {
+                    break;
                 }
-                let base = match t.road.as_ref() {
-                    Some(r) => r.as_def().movement_cost(),
-                    None    => t.movement_cost(),
-                };
-                match base {
-                    MovementCost::Impassable => break,
-                    MovementCost::Cost(c)    => c,
+                // Embarking consumes all remaining movement.
+                reached = next;
+                spent = budget;
+                diff.push(StateDelta::UnitEmbarked { unit: unit_id, coord: next });
+                break;
+            } else if !next_is_water && is_embarked {
+                // Water → land: disembark transition.
+                reached = next;
+                spent = budget;
+                diff.push(StateDelta::UnitDisembarked { unit: unit_id, coord: next });
+                break;
+            } else if next_is_water && is_embarked {
+                // Water → water while embarked: check ocean capability.
+                if tile.terrain == crate::world::terrain::BuiltinTerrain::Ocean && !can_ocean {
+                    break;
                 }
+            } else if next_is_water {
+                // No embarkation capability.
+                break;
             }
-            None => break,
+        } else if domain == UnitDomain::Sea && tile.terrain.is_land() {
+            break;
+        }
+
+        // ── Tile movement cost ──────────────────────────────────────
+        let tile_cost = {
+            let base = match tile.road.as_ref() {
+                Some(r) => r.as_def().movement_cost(),
+                None    => tile.movement_cost(),
+            };
+            match base {
+                MovementCost::Impassable => break,
+                MovementCost::Cost(c)    => c,
+            }
         };
 
         // Edge crossing cost: free (0) when no edge feature exists.
+        let prev = full_path[i - 1];
         let edge_cost: u32 = {
             let crossing = neighbor_dir(&state.board, prev, next)
                 .and_then(|dir| state.board.edge(prev, dir))
@@ -85,8 +127,6 @@ pub(crate) fn move_unit(
         reached  = next;
     }
 
-    let mut diff = GameStateDiff::new();
-
     if reached == from {
         // Zero movement occurred (budget was 0 or first step too costly).
         return Err(RulesError::InsufficientMovement(diff));
@@ -97,13 +137,10 @@ pub(crate) fn move_unit(
         let mover_owner      = state.unit(unit_id).map(|u| u.owner);
         let mover_can_attack = state.unit(unit_id).and_then(|u| u.combat_strength).is_some();
         if occupant.owner == mover_owner.unwrap_or(occupant.owner) {
-            // Friendly unit on destination — stacking not allowed.
             return Err(RulesError::TileOccupiedByUnit);
         } else if !mover_can_attack {
-            // Civilian trying to move onto an enemy — it cannot fight back.
             return Err(RulesError::UnitCannotAttack);
         } else {
-            // Combat unit vs enemy: player must call attack() explicitly.
             return Err(RulesError::TileOccupiedByUnit);
         }
     }
@@ -112,12 +149,12 @@ pub(crate) fn move_unit(
         unit: unit_id,
         from,
         to: reached,
-        cost: spent });
+        cost: spent,
+    });
 
     if reached == to_norm {
         Ok(diff)
     } else {
-        // Partial move: unit moved but did not reach the destination.
         Err(RulesError::InsufficientMovement(diff))
     }
 }

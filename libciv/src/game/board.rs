@@ -130,6 +130,27 @@ impl WorldBoard {
         self.find_path_filtered(start, goal, movement_budget, |t| t.terrain.is_water())
     }
 
+    /// Dijkstra pathfinding for embark-capable land units.
+    /// Allows both land tiles and water tiles (Coast always; Ocean if `allow_ocean`).
+    pub fn find_path_embark(
+        &self,
+        start: HexCoord,
+        goal: HexCoord,
+        movement_budget: u32,
+        allow_ocean: bool,
+    ) -> Option<Vec<HexCoord>> {
+        self.find_path_filtered(start, goal, movement_budget, |t| {
+            if t.terrain.is_land() {
+                return true;
+            }
+            match t.terrain {
+                BuiltinTerrain::Coast => true,
+                BuiltinTerrain::Ocean => allow_ocean,
+                _ => false,
+            }
+        })
+    }
+
     /// Dijkstra pathfinding with a tile filter predicate.
     fn find_path_filtered(
         &self,

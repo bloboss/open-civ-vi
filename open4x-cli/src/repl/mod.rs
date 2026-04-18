@@ -170,8 +170,7 @@ impl ReplSession {
     // ── Command handlers ────────────────────────────────────────────────────
 
     fn handle_action(&mut self, kind: &crate::cli::ActionKind) {
-        let action;
-        match kind {
+        let action = match kind {
             // Resolve attack target by suffix against visible enemy units.
             crate::cli::ActionKind::Attack { unit, target } => {
                 let resolved_target = self
@@ -179,10 +178,10 @@ impl ReplSession {
                     .find_by_suffix(target)
                     .map(|uid| uid.to_string())
                     .unwrap_or_else(|| target.clone());
-                action = crate::cli::ActionKind::Attack {
+                crate::cli::ActionKind::Attack {
                     unit: unit.clone(),
                     target: resolved_target,
-                };
+                }
             }
             // Resolve coords from selected unit for PlaceImprovement.
             crate::cli::ActionKind::PlaceImprovement {
@@ -196,17 +195,17 @@ impl ReplSession {
                     .and_then(|uid| self.state.units.iter().find(|u| u.id == uid))
                     .map(|u| u.coord)
                     .unwrap_or(HexCoord::from_qr(0, 0));
-                action = crate::cli::ActionKind::PlaceImprovement {
+                crate::cli::ActionKind::PlaceImprovement {
                     coord_q: coord.q,
                     coord_r: coord.r,
                     improvement: improvement.clone(),
                     builder: builder.clone(),
-                };
+                }
             }
             _ => {
                 return self.dispatch_action_ref(kind);
             }
-        }
+        };
         self.dispatch_action_ref(&action);
     }
 

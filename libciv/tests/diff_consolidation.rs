@@ -169,7 +169,7 @@ fn trader_autonomous_movement_emits_unit_moved() {
         trade_destination: Some(s.babylon_city),
         religion_id: None,
         spread_charges: None,
-        religious_strength: None,
+        religious_strength: None, is_embarked: false,
     });
 
     let diff = rules.advance_turn(&mut s.state);
@@ -238,7 +238,7 @@ fn unique_unit_healing_emits_unit_healed() {
         trade_destination: None,
         religion_id: None,
         spread_charges: None,
-        religious_strength: None,
+        religious_strength: None, is_embarked: false,
     });
 
     let diff = rules.advance_turn(&mut s.state);

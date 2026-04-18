@@ -170,7 +170,7 @@ fn barbarian_scout_discovers_player_and_returns() {
         experience: 0,
         health: 100, range: 0, vision_range: 3, charges: None,
         trade_origin: None, trade_destination: None, religion_id: None,
-        spread_charges: None, religious_strength: None,
+        spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let mut camp = BarbarianCamp::new(camp_id, camp_coord, barb_civ, 0, None);
@@ -502,7 +502,7 @@ fn clear_barbarian_camp_removes_units() {
         experience: 0,
         health: 100, range: 0, vision_range: 2, charges: None,
         trade_origin: None, trade_destination: None, religion_id: None,
-        spread_charges: None, religious_strength: None,
+        spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let mut camp = BarbarianCamp::new(camp_id, camp_coord, barb_civ, 0, None);

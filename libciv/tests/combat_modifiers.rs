@@ -79,7 +79,7 @@ fn combat_scenario(
         combat_strength: Some(atk_cs), promotions: Vec::new(),
         experience: 0, health: 100, range: 0, vision_range: 2,
         charges: None, trade_origin: None, trade_destination: None,
-        religion_id: None, spread_charges: None, religious_strength: None,
+        religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let def_unit = state.id_gen.next_unit_id();
@@ -91,7 +91,7 @@ fn combat_scenario(
         combat_strength: Some(def_cs), promotions: Vec::new(),
         experience: 0, health: 100, range: 0, vision_range: 2,
         charges: None, trade_origin: None, trade_destination: None,
-        religion_id: None, spread_charges: None, religious_strength: None,
+        religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     (state, atk_civ_id, def_civ_id, atk_unit, def_unit, atk_type_id, def_type_id)

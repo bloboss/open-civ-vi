@@ -179,7 +179,7 @@ fn melee_attack_emits_damage_and_reduces_health() {
         health:          100,
         range:           0,
         vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let diff = rules.attack(&mut s.state, s.rome_warrior, enemy_id)
@@ -239,7 +239,7 @@ fn attacking_unit_at_one_hp_destroys_it() {
         health:          1,      // barely alive
         range:           0,
         vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let diff = rules.attack(&mut s.state, s.rome_warrior, enemy_id)
@@ -288,7 +288,7 @@ fn settler_founds_city_and_is_consumed() {
         health:          100,
         range:           0,
         vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let unit_count_before = s.state.units.len();
@@ -355,7 +355,7 @@ fn founder_too_close_to_existing_city_is_rejected() {
         health:          100,
         range:           0,
         vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let result = rules.found_city(&mut s.state, settler_id, "Too Close".to_string());
@@ -542,7 +542,7 @@ fn spawn_slinger(s: &mut common::Scenario, coord: HexCoord) -> libciv::UnitId {
         health:          100,
         range:           2,
         vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
     unit_id
 }
@@ -576,7 +576,7 @@ fn ranged_unit_attacks_from_two_tiles_away() {
         health:          100,
         range:           0,
         vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Distance is exactly 2 — within range, but not adjacent.
@@ -624,7 +624,7 @@ fn ranged_attack_beyond_range_is_rejected() {
         health:          100,
         range:           0,
         vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     assert_eq!(HexCoord::from_qr(5, 3).distance(&HexCoord::from_qr(8, 3)), 3);
@@ -662,7 +662,7 @@ fn ranged_attack_succeeds_without_adjacency() {
         health:          100,
         range:           0,
         vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Verify the distance is exactly 2 (not adjacent).
@@ -703,7 +703,7 @@ fn two_friendly_units_cannot_stack() {
         health:          100,
         range:           0,
         vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Rome's warrior (at (5,3)) tries to move onto (6,3) — occupied by a friendly.
@@ -745,7 +745,7 @@ fn cannot_found_city_near_enemy_capital() {
         health:          100,
         range:           0,
         vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let result = rules.found_city(&mut s.state, settler_id, "Too Close".to_string());
@@ -783,7 +783,7 @@ fn civilian_blocked_from_moving_onto_enemy_unit() {
         health:          100,
         range:           0,
         vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
     let enemy_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
@@ -801,7 +801,7 @@ fn civilian_blocked_from_moving_onto_enemy_unit() {
         health:          100,
         range:           0,
         vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Settler tries to walk onto the enemy tile.
@@ -835,7 +835,7 @@ fn civilian_blocked_from_stacking_with_friendly_unit() {
         health:          100,
         range:           0,
         vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Try to move settler onto (5, 3) where Rome's warrior stands.
@@ -870,7 +870,7 @@ fn combat_unit_cannot_walk_into_enemy_tile() {
         health:          100,
         range:           0,
         vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Rome's warrior (at (5,3)) tries to move onto (6,3) — an enemy tile.
@@ -1166,7 +1166,7 @@ fn wall_defense_bonus_reduces_damage_to_defender() {
             health:          100,
             range:           0,
             vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
         });
 
         // Place an attacker adjacent to the city.
@@ -1187,7 +1187,7 @@ fn wall_defense_bonus_reduces_damage_to_defender() {
             health:          100,
             range:           0,
             vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
         });
 
         let diff = rules.attack(&mut s.state, attacker_id, defender_id)
@@ -1240,7 +1240,7 @@ fn melee_attack_damages_city_walls() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Place a melee attacker adjacent.
@@ -1252,7 +1252,7 @@ fn melee_attack_damages_city_walls() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let diff = rules.attack(&mut s.state, attacker_id, defender_id)
@@ -1299,7 +1299,7 @@ fn wall_destruction_when_hp_reaches_zero() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Strong attacker to ensure enough damage for wall_damage = def_damage/2 >= 1.
@@ -1311,7 +1311,7 @@ fn wall_destruction_when_hp_reaches_zero() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(40), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let diff = rules.attack(&mut s.state, attacker_id, defender_id)
@@ -1358,7 +1358,7 @@ fn ranged_attack_does_not_damage_walls() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Ranged attacker within range 2.
@@ -1370,7 +1370,7 @@ fn ranged_attack_does_not_damage_walls() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(25), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 2, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 2, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let diff = rules.attack(&mut s.state, attacker_id, defender_id)
@@ -1412,7 +1412,7 @@ fn city_bombard_deals_damage_no_counter() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let diff = rules.city_bombard(&mut s.state, s.rome_city, target_id)
@@ -1450,7 +1450,7 @@ fn city_bombard_requires_walls() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let result = rules.city_bombard(&mut s.state, s.rome_city, target_id);
@@ -1478,7 +1478,7 @@ fn city_bombard_range_check() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let result = rules.city_bombard(&mut s.state, s.rome_city, target_id);
@@ -1507,7 +1507,7 @@ fn city_bombard_once_per_turn_resets_after_advance() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
     let target2 = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
@@ -1517,7 +1517,7 @@ fn city_bombard_once_per_turn_resets_after_advance() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // First bombardment succeeds.
@@ -1579,7 +1579,7 @@ fn siege_unit_bonus_applies_on_city_tile() {
             movement_left: 200, max_movement: 200,
             combat_strength: Some(20), promotions: Vec::new(),
             experience: 0,
-            health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+            health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
         });
 
         // Attacker within range 2 of the city.
@@ -1591,7 +1591,7 @@ fn siege_unit_bonus_applies_on_city_tile() {
             movement_left: 200, max_movement: 200,
             combat_strength: Some(20), promotions: Vec::new(),
             experience: 0,
-            health: 100, range: 2, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+            health: 100, range: 2, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
         });
 
         let diff = rules.attack(&mut s.state, attacker_id, defender_id)
@@ -1653,7 +1653,7 @@ fn siege_bonus_not_applied_in_open_field() {
             movement_left: 200, max_movement: 200,
             combat_strength: Some(20), promotions: Vec::new(),
             experience: 0,
-            health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+            health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
         });
 
         // Ranged attacker within range 2.
@@ -1665,7 +1665,7 @@ fn siege_bonus_not_applied_in_open_field() {
             movement_left: 200, max_movement: 200,
             combat_strength: Some(20), promotions: Vec::new(),
             experience: 0,
-            health: 100, range: 2, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+            health: 100, range: 2, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
         });
 
         let diff = rules.attack(&mut s.state, attacker_id, defender_id)
@@ -1713,7 +1713,7 @@ fn city_capture_transfers_ownership_on_last_defender_killed() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Rome attacker adjacent; strong enough to one-shot the defender.
@@ -1725,7 +1725,7 @@ fn city_capture_transfers_ownership_on_last_defender_killed() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(60), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let diff = rules.attack(&mut s.state, attacker_id, defender_id)
@@ -1777,7 +1777,7 @@ fn city_capture_destroys_garrisoned_units_on_tile() {
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
         health: 1,   // one HP so it dies immediately
-        range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
     let garrison_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
@@ -1788,7 +1788,7 @@ fn city_capture_destroys_garrisoned_units_on_tile() {
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
         health: 1,   // also one HP
-        range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Rome attacker adjacent.
@@ -1800,7 +1800,7 @@ fn city_capture_destroys_garrisoned_units_on_tile() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Kill defender1.  Garrison still alive → no capture yet.
@@ -1841,7 +1841,7 @@ fn ranged_kill_on_city_tile_does_not_capture() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 1, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 1, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Ranged attacker within range 2.
@@ -1853,7 +1853,7 @@ fn ranged_kill_on_city_tile_does_not_capture() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 2, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 2, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let diff = rules.attack(&mut s.state, attacker_id, defender_id)
@@ -1884,7 +1884,7 @@ fn no_capture_while_defenders_remain() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
     let _defender2_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
@@ -1894,7 +1894,7 @@ fn no_capture_while_defenders_remain() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Weak attacker that deals very little damage (won't kill the defender).
@@ -1906,7 +1906,7 @@ fn no_capture_while_defenders_remain() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(1), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let diff = rules.attack(&mut s.state, attacker_id, defender1_id)
@@ -1948,7 +1948,7 @@ fn city_bombard_fails_after_walls_are_destroyed() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let result = rules.city_bombard(&mut s.state, s.rome_city, enemy_id);
@@ -1983,7 +1983,7 @@ fn city_bombard_fails_after_walls_breached_by_combat() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Strong Rome attacker at (4,3) -- adjacent to (3,3) -- attacks the
@@ -1996,7 +1996,7 @@ fn city_bombard_fails_after_walls_breached_by_combat() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(60), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     // Attack the unit on Rome's city tile; wall_damage = def_damage/2 >= 1,
@@ -2022,7 +2022,7 @@ fn city_bombard_fails_after_walls_breached_by_combat() {
         movement_left: 200, max_movement: 200,
         combat_strength: Some(20), promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
 
     let result = rules.city_bombard(&mut s.state, s.rome_city, new_enemy_id);

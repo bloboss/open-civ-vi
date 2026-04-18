@@ -267,6 +267,7 @@ impl SpawnUnit {
             religion_id: None,
             spread_charges: None,
             religious_strength: None,
+            is_embarked: false,
         });
         id
     }

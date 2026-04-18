@@ -45,7 +45,7 @@ fn spawn_trader(s: &mut common::Scenario, owner: CivId, coord: HexCoord) -> Unit
         health: 100,
         range: 0,
         vision_range: 2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
     });
     unit_id
 }

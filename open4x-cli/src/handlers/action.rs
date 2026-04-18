@@ -76,9 +76,6 @@ fn parse_belief_id(s: &str) -> Result<BeliefId, String> {
     parse_ulid(s).map(BeliefId::from_ulid)
 }
 
-fn parse_barbarian_camp_id(s: &str) -> Result<BarbarianCampId, String> {
-    parse_ulid(s).map(BarbarianCampId::from_ulid)
-}
 
 fn parse_improvement(s: &str) -> Result<BuiltinImprovement, String> {
     match s.to_lowercase().as_str() {

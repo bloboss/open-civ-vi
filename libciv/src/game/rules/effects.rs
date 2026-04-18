@@ -120,7 +120,7 @@ pub(crate) fn apply_effect(
                     vision_range:    2,
                     charges:         if def.max_charges > 0 { Some(def.max_charges) } else { None },
                     trade_origin: None,
-                    trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+                    trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
                 });
                 diff.push(StateDelta::UnitCreated { unit: unit_id, coord, owner: civ_id });
             } else {
@@ -203,6 +203,16 @@ pub(crate) fn apply_effect(
         OneShotEffect::GrantModifier(_) => {
             // No stored mutation: modifier is collected at query time via
             // `Civilization::get_tree_modifiers`. Nothing to do here.
+        }
+
+        OneShotEffect::EnableEmbarkCoast => {
+            state.civilizations[civ_idx].can_embark_coast = true;
+            diff.push(StateDelta::EmbarkCoastUnlocked { civ: civ_id });
+        }
+
+        OneShotEffect::EnableEmbarkOcean => {
+            state.civilizations[civ_idx].can_embark_ocean = true;
+            diff.push(StateDelta::EmbarkOceanUnlocked { civ: civ_id });
         }
     }
 }

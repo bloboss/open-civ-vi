@@ -78,6 +78,12 @@ pub enum OneShotEffect {
     /// tech or civic. The modifier is collected at query time via
     /// `Civilization::get_tree_modifiers(tech_tree, civic_tree)`.
     GrantModifier(Modifier),
+
+    // ── Embarkation unlocks ─────────────────────────────────────────────────
+    /// Allow land units to embark onto Coast tiles. Typically from Shipbuilding.
+    EnableEmbarkCoast,
+    /// Allow land units to embark onto Ocean tiles. Typically from Cartography.
+    EnableEmbarkOcean,
 }
 
 impl OneShotEffect {
@@ -91,6 +97,8 @@ impl OneShotEffect {
             OneShotEffect::AdoptGovernment(_)       => CascadeClass::Idempotent,
             OneShotEffect::UnlockPolicy(_)          => CascadeClass::Idempotent,
             OneShotEffect::GrantModifier(_)         => CascadeClass::NonCascading,
+            OneShotEffect::EnableEmbarkCoast        => CascadeClass::Idempotent,
+            OneShotEffect::EnableEmbarkOcean        => CascadeClass::Idempotent,
             _                                       => CascadeClass::NonCascading,
         }
     }
@@ -113,6 +121,10 @@ impl OneShotEffect {
             OneShotEffect::UnlockPolicy(p) =>
                 !civ.unlocked_policies.contains(p),
             OneShotEffect::GrantModifier(_) => true,
+            OneShotEffect::EnableEmbarkCoast =>
+                !civ.can_embark_coast,
+            OneShotEffect::EnableEmbarkOcean =>
+                !civ.can_embark_ocean,
             _ => true,
         }
     }

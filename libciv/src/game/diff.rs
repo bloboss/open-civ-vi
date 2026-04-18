@@ -378,6 +378,16 @@ pub enum StateDelta {
     AllianceFormed { civ_a: CivId, civ_b: CivId, alliance_type: AllianceType },
     /// An alliance between two civilizations leveled up.
     AllianceLevelUp { civ_a: CivId, civ_b: CivId, new_level: u8 },
+
+    // ── Embarkation ──────────────────────────────────────────────────────────
+    /// A civilization unlocked coast embarkation (via Shipbuilding tech).
+    EmbarkCoastUnlocked { civ: CivId },
+    /// A civilization unlocked ocean embarkation (via Cartography tech).
+    EmbarkOceanUnlocked { civ: CivId },
+    /// A land unit embarked onto a water tile.
+    UnitEmbarked { unit: UnitId, coord: HexCoord },
+    /// An embarked unit disembarked onto a land tile.
+    UnitDisembarked { unit: UnitId, coord: HexCoord },
 }
 
 /// A batch of deltas representing a complete state transition.

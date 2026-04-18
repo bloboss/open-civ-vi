@@ -55,7 +55,7 @@ fn spawn_rock_band(s: &mut common::Scenario, owner: libciv::CivId, coord: HexCoo
         trade_destination: None,
         religion_id: None,
         spread_charges: None,
-        religious_strength: None,
+        religious_strength: None, is_embarked: false,
     });
     unit_id
 }

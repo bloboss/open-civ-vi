@@ -282,7 +282,7 @@ mod tests {
             movement_left: 200, max_movement: 200,
             combat_strength: Some(20), promotions: Vec::new(),
             experience: 0,
-            health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+            health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
         });
 
         (state, civ_id, unit_id, warrior_type)
@@ -511,7 +511,7 @@ mod tests {
                 movement_left: 200, max_movement: 200,
                 combat_strength: Some(20), promotions: Vec::new(),
                 experience: 0,
-                health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
+                health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
             });
 
             (state, civ_id)

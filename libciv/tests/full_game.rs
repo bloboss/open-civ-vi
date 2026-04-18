@@ -90,7 +90,7 @@ fn spawn_settler(s: &mut common::Scenario, owner: CivId, coord: HexCoord) -> Uni
         trade_destination: None,
         religion_id: None,
         spread_charges: None,
-        religious_strength: None,
+        religious_strength: None, is_embarked: false,
     });
     unit_id
 }
@@ -118,7 +118,7 @@ fn spawn_warrior(s: &mut common::Scenario, owner: CivId, coord: HexCoord) -> Uni
         trade_destination: None,
         religion_id: None,
         spread_charges: None,
-        religious_strength: None,
+        religious_strength: None, is_embarked: false,
     });
     unit_id
 }
@@ -146,7 +146,7 @@ fn spawn_builder(s: &mut common::Scenario, owner: CivId, coord: HexCoord) -> Uni
         trade_destination: None,
         religion_id: None,
         spread_charges: None,
-        religious_strength: None,
+        religious_strength: None, is_embarked: false,
     });
     unit_id
 }
@@ -194,7 +194,7 @@ fn spawn_trader(s: &mut common::Scenario, owner: CivId, coord: HexCoord) -> Unit
         trade_destination: None,
         religion_id: None,
         spread_charges: None,
-        religious_strength: None,
+        religious_strength: None, is_embarked: false,
     });
     unit_id
 }
@@ -227,7 +227,7 @@ fn spawn_great_prophet(
         trade_destination: None,
         religion_id: None,
         spread_charges: None,
-        religious_strength: None,
+        religious_strength: None, is_embarked: false,
     });
     unit_id
 }

@@ -15,6 +15,7 @@ pub trait Unit: std::fmt::Debug {
     fn health(&self) -> u32;
     fn max_health(&self) -> u32 { 100 }
     fn is_alive(&self) -> bool { self.health() > 0 }
+    fn is_embarked(&self) -> bool { false }
 }
 
 /// A concrete simple unit implementation.
@@ -54,6 +55,9 @@ pub struct BasicUnit {
     pub spread_charges: Option<u8>,
     /// Religious combat strength for theological combat (Apostles).
     pub religious_strength: Option<u32>,
+    /// True when a land unit is currently on a water tile (embarked).
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub is_embarked: bool,
 }
 
 impl Unit for BasicUnit {
@@ -68,4 +72,5 @@ impl Unit for BasicUnit {
     fn combat_strength(&self) -> Option<u32> { self.combat_strength }
     fn promotions(&self) -> &[PromotionId] { &self.promotions }
     fn health(&self) -> u32 { self.health }
+    fn is_embarked(&self) -> bool { self.is_embarked }
 }

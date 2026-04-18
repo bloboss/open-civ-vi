@@ -216,6 +216,14 @@ pub struct Civilization {
     /// Tiles that have ever been seen; never removed. Used to render
     /// fog-of-war memory (explored but currently out of vision).
     pub explored_tiles: HashSet<libhexgrid::coord::HexCoord>,
+
+    // ── Embarkation ──────────────────────────────────────────────────────────
+    /// Whether land units can enter Coast tiles. Unlocked by Shipbuilding tech.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub can_embark_coast: bool,
+    /// Whether land units can enter Ocean tiles. Unlocked by Cartography tech.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub can_embark_ocean: bool,
 }
 
 impl Civilization {
@@ -266,6 +274,8 @@ impl Civilization {
             diplomatic_favor: 0,
             visible_tiles:  HashSet::new(),
             explored_tiles: HashSet::new(),
+            can_embark_coast: false,
+            can_embark_ocean: false,
         }
     }
 

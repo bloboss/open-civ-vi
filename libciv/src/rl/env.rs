@@ -322,6 +322,7 @@ impl CivEnv {
             religion_id: None,
             spread_charges: None,
             religious_strength: None,
+            is_embarked: false,
         });
 
         // ── Opponent civilisation ─────���─────────────────────────────────────
@@ -375,6 +376,7 @@ impl CivEnv {
             religion_id: None,
             spread_charges: None,
             religious_strength: None,
+            is_embarked: false,
         });
 
         // Register opponent heuristic agent.
