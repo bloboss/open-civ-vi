@@ -2,6 +2,7 @@
 
 use crate::UnitId;
 use crate::civ::unit::Unit;
+use crate::enums::UnitDomain;
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 use libhexgrid::types::MovementCost;
@@ -23,13 +24,18 @@ pub(crate) fn move_unit(
     let unit = state.unit(unit_id).ok_or(RulesError::UnitNotFound)?;
     let from   = unit.coord();
     let budget = unit.movement_left();
+    let domain = unit.domain();
 
     let to_norm = state.board.normalize(to).ok_or(RulesError::InvalidCoord)?;
 
     // Determine whether a path to the destination exists at all.
-    let full_path = state.board
-        .find_path(from, to_norm, u32::MAX)
-        .ok_or(RulesError::DestinationImpassable)?;
+    // Use domain-aware pathfinding so land units cannot path through water
+    // and sea units cannot path through land.
+    let full_path = match domain {
+        UnitDomain::Land => state.board.find_path_land(from, to_norm, u32::MAX),
+        UnitDomain::Sea  => state.board.find_path_sea(from, to_norm, u32::MAX),
+        UnitDomain::Air  => state.board.find_path(from, to_norm, u32::MAX),
+    }.ok_or(RulesError::DestinationImpassable)?;
 
     // Walk the path, consuming movement budget step by step.
     let mut spent  = 0u32;
@@ -41,6 +47,12 @@ pub(crate) fn move_unit(
 
         let tile_cost = match state.board.tile(next) {
             Some(t) => {
+                // Enforce domain restriction during the walk as well.
+                match domain {
+                    UnitDomain::Land if t.terrain.is_water() => break,
+                    UnitDomain::Sea  if t.terrain.is_land()  => break,
+                    _ => {}
+                }
                 let base = match t.road.as_ref() {
                     Some(r) => r.as_def().movement_cost(),
                     None    => t.movement_cost(),

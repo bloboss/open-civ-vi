@@ -92,16 +92,8 @@ pub fn build_scenario() -> Scenario {
         .find(|c| c.id == rome_id).unwrap()
         .cities.push(rome_city);
 
-    let rome_warrior = state.id_gen.next_unit_id();
-    state.units.push(BasicUnit {
-        id: rome_warrior, unit_type: warrior_type, owner: rome_id,
-        coord: HexCoord::from_qr(5, 3),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
-        experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
-    });
+    let rome_warrior = SpawnUnit::combat(warrior_type, rome_id, HexCoord::from_qr(5, 3))
+        .build(&mut state);
 
     // ── Babylon ───────────────────────────────────────────────────────────
     let babylon_id = state.id_gen.next_civ_id();
@@ -117,16 +109,8 @@ pub fn build_scenario() -> Scenario {
         .find(|c| c.id == babylon_id).unwrap()
         .cities.push(babylon_city);
 
-    let babylon_warrior = state.id_gen.next_unit_id();
-    state.units.push(BasicUnit {
-        id: babylon_warrior, unit_type: warrior_type, owner: babylon_id,
-        coord: HexCoord::from_qr(8, 5),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
-        experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None,
-    });
+    let babylon_warrior = SpawnUnit::combat(warrior_type, babylon_id, HexCoord::from_qr(8, 5))
+        .build(&mut state);
 
     // ── Initial visibility for both civs ──────────────────────────────────
     recalculate_visibility(&mut state, rome_id);
@@ -169,5 +153,121 @@ pub fn apply_move(state: &mut GameState, diff: &libciv::GameStateDiff) {
                 u.movement_left = u.movement_left.saturating_sub(*cost);
             }
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Unit spawning helper
+// ---------------------------------------------------------------------------
+
+/// Builder for spawning test units with sensible defaults.
+///
+/// Only the fields that differ between tests need to be set explicitly.
+/// Call `.build(state)` to generate the ID, push the unit, and return its ID.
+pub struct SpawnUnit {
+    pub unit_type: UnitTypeId,
+    pub owner: CivId,
+    pub coord: HexCoord,
+    pub domain: UnitDomain,
+    pub category: UnitCategory,
+    pub movement: u32,
+    pub combat_strength: Option<u32>,
+    pub health: u32,
+    pub charges: Option<u8>,
+    pub vision_range: u8,
+    pub range: u8,
+}
+
+impl SpawnUnit {
+    /// Create a land combat unit with standard defaults.
+    pub fn combat(unit_type: UnitTypeId, owner: CivId, coord: HexCoord) -> Self {
+        Self {
+            unit_type,
+            owner,
+            coord,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            movement: 200,
+            combat_strength: Some(20),
+            health: 100,
+            charges: None,
+            vision_range: 2,
+            range: 0,
+        }
+    }
+
+    /// Create a land civilian unit with standard defaults.
+    pub fn civilian(unit_type: UnitTypeId, owner: CivId, coord: HexCoord) -> Self {
+        Self {
+            unit_type,
+            owner,
+            coord,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Civilian,
+            movement: 200,
+            combat_strength: None,
+            health: 100,
+            charges: None,
+            vision_range: 2,
+            range: 0,
+        }
+    }
+
+    pub fn domain(mut self, domain: UnitDomain) -> Self {
+        self.domain = domain;
+        self
+    }
+
+    pub fn category(mut self, category: UnitCategory) -> Self {
+        self.category = category;
+        self
+    }
+
+    pub fn movement(mut self, movement: u32) -> Self {
+        self.movement = movement;
+        self
+    }
+
+    pub fn combat_strength(mut self, cs: Option<u32>) -> Self {
+        self.combat_strength = cs;
+        self
+    }
+
+    pub fn health(mut self, hp: u32) -> Self {
+        self.health = hp;
+        self
+    }
+
+    pub fn charges(mut self, c: u8) -> Self {
+        self.charges = Some(c);
+        self
+    }
+
+    /// Push the unit into `state.units` and return the generated `UnitId`.
+    pub fn build(self, state: &mut GameState) -> UnitId {
+        let id = state.id_gen.next_unit_id();
+        state.units.push(BasicUnit {
+            id,
+            unit_type: self.unit_type,
+            owner: self.owner,
+            coord: self.coord,
+            domain: self.domain,
+            category: self.category,
+            movement_left: self.movement,
+            max_movement: self.movement,
+            combat_strength: self.combat_strength,
+            health: self.health,
+            range: self.range,
+            vision_range: self.vision_range,
+            charges: self.charges,
+            promotions: Vec::new(),
+            experience: 0,
+            trade_origin: None,
+            trade_destination: None,
+            religion_id: None,
+            spread_charges: None,
+            religious_strength: None,
+        });
+        id
     }
 }

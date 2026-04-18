@@ -37,6 +37,8 @@ pub struct ReplSession {
     selected_unit: Option<UnitId>,
     selected_city: Option<CityId>,
     unit_short_ids: ShortIds<UnitId>,
+    /// Short IDs for visible foreign units (for attack targeting).
+    other_unit_short_ids: ShortIds<UnitId>,
     city_short_ids: ShortIds<CityId>,
     game_file: PathBuf,
     log_path: PathBuf,
@@ -86,6 +88,7 @@ impl ReplSession {
             .map(|c| c.id);
 
         let unit_short_ids = Self::build_unit_short_ids(&state, civ_id);
+        let other_unit_short_ids = Self::build_other_unit_short_ids(&state, civ_id);
         let city_short_ids = Self::build_city_short_ids(&state, civ_id);
 
         let log_path = game_file.with_extension("json.log");
@@ -98,6 +101,7 @@ impl ReplSession {
             selected_unit,
             selected_city,
             unit_short_ids,
+            other_unit_short_ids,
             city_short_ids,
             game_file: game_file.to_path_buf(),
             log_path,
@@ -166,31 +170,42 @@ impl ReplSession {
     // ── Command handlers ────────────────────────────────────────────────────
 
     fn handle_action(&mut self, kind: &crate::cli::ActionKind) {
-        // For PlaceImprovement with the selected unit, fill in coords from unit position.
         let action;
-        if let crate::cli::ActionKind::PlaceImprovement {
-            coord_q: 0,
-            coord_r: 0,
-            improvement,
-            builder,
-        } = kind
-        {
-            // Resolve coord from selected unit.
-            let coord = self
-                .selected_unit
-                .and_then(|uid| self.state.units.iter().find(|u| u.id == uid))
-                .map(|u| u.coord)
-                .unwrap_or(HexCoord::from_qr(0, 0));
-            action = crate::cli::ActionKind::PlaceImprovement {
-                coord_q: coord.q,
-                coord_r: coord.r,
-                improvement: improvement.clone(),
-                builder: builder.clone(),
-            };
-        } else {
-            // Clone-by-ref won't work since ActionKind isn't Clone.
-            // We use the reference directly.
-            return self.dispatch_action_ref(kind);
+        match kind {
+            // Resolve attack target by suffix against visible enemy units.
+            crate::cli::ActionKind::Attack { unit, target } => {
+                let resolved_target = self
+                    .other_unit_short_ids
+                    .find_by_suffix(target)
+                    .map(|uid| uid.to_string())
+                    .unwrap_or_else(|| target.clone());
+                action = crate::cli::ActionKind::Attack {
+                    unit: unit.clone(),
+                    target: resolved_target,
+                };
+            }
+            // Resolve coords from selected unit for PlaceImprovement.
+            crate::cli::ActionKind::PlaceImprovement {
+                coord_q: 0,
+                coord_r: 0,
+                improvement,
+                builder,
+            } => {
+                let coord = self
+                    .selected_unit
+                    .and_then(|uid| self.state.units.iter().find(|u| u.id == uid))
+                    .map(|u| u.coord)
+                    .unwrap_or(HexCoord::from_qr(0, 0));
+                action = crate::cli::ActionKind::PlaceImprovement {
+                    coord_q: coord.q,
+                    coord_r: coord.r,
+                    improvement: improvement.clone(),
+                    builder: builder.clone(),
+                };
+            }
+            _ => {
+                return self.dispatch_action_ref(kind);
+            }
         }
         self.dispatch_action_ref(&action);
     }
@@ -277,7 +292,12 @@ impl ReplSession {
     fn handle_query(&self, query: &QueryKind) {
         match query {
             QueryKind::Units => {
-                formatter::print_units(&self.state, self.civ_id, &self.unit_short_ids);
+                formatter::print_units(
+                    &self.state,
+                    self.civ_id,
+                    &self.unit_short_ids,
+                    &self.other_unit_short_ids,
+                );
             }
             QueryKind::Cities => {
                 formatter::print_cities(&self.state, self.civ_id, &self.city_short_ids);
@@ -430,6 +450,7 @@ impl ReplSession {
 
     fn recalculate_short_ids(&mut self) {
         self.unit_short_ids = Self::build_unit_short_ids(&self.state, self.civ_id);
+        self.other_unit_short_ids = Self::build_other_unit_short_ids(&self.state, self.civ_id);
         self.city_short_ids = Self::build_city_short_ids(&self.state, self.civ_id);
     }
 
@@ -439,6 +460,24 @@ impl ReplSession {
                 .units
                 .iter()
                 .filter(|u| u.owner == civ_id)
+                .map(|u| (u.id, u.id.as_ulid().to_string())),
+        )
+    }
+
+    fn build_other_unit_short_ids(state: &GameState, civ_id: CivId) -> ShortIds<UnitId> {
+        let visible = state
+            .civilizations
+            .iter()
+            .find(|c| c.id == civ_id)
+            .map(|c| &c.visible_tiles);
+        ShortIds::new(
+            state
+                .units
+                .iter()
+                .filter(|u| {
+                    u.owner != civ_id
+                        && visible.is_none_or(|v| v.contains(&u.coord))
+                })
                 .map(|u| (u.id, u.id.as_ulid().to_string())),
         )
     }

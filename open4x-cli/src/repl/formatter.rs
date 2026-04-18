@@ -2,7 +2,7 @@
 
 use libciv::game::diff::StateDelta;
 use libciv::game::production_helpers::available_buildings_for_city;
-use libciv::{all_scores, CityId, CivId, GameState, UnitId};
+use libciv::{all_scores, CityId, CivId, GameState, UnitId, UnitTypeId};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 
@@ -141,28 +141,72 @@ pub fn print_deltas(diff: &libciv::GameStateDiff, state: &GameState) {
 
 // ── Query formatters ────────────────────────────────────────────────────────
 
-/// Print a tabular list of units owned by the given civ.
-pub fn print_units(state: &GameState, civ_id: CivId, short_ids: &ShortIds<UnitId>) {
-    let units: Vec<_> = state.units.iter().filter(|u| u.owner == civ_id).collect();
-    if units.is_empty() {
+/// Print a tabular list of owned units, followed by visible foreign units.
+pub fn print_units(
+    state: &GameState,
+    civ_id: CivId,
+    short_ids: &ShortIds<UnitId>,
+    other_short_ids: &ShortIds<UnitId>,
+) {
+    // ── Our units ──────────────────────────────────────────────────────────
+    let own: Vec<_> = state.units.iter().filter(|u| u.owner == civ_id).collect();
+    if own.is_empty() {
         println!("  No units.");
+    } else {
+        println!(
+            "  {:<28} {:<14} {:>8} {:>4}/{:<4} {:>3}",
+            "ID", "Type", "Coord", "HP", "Max", "Mv"
+        );
+        println!("  {}", "-".repeat(70));
+        for u in &own {
+            let type_name = unit_type_name(state, u.unit_type);
+            let id_display = short_ids.format_bold(u.id);
+            let visible_len = short_ids.display_len(u.id);
+            let pad = if visible_len < 28 {
+                28 - visible_len
+            } else {
+                1
+            };
+            print!("  {id_display}{:pad$}", "");
+            println!(
+                "{:<14} ({:>3},{:>3}) {:>4}/{:<4} {:>3}",
+                type_name, u.coord.q, u.coord.r, u.health, 100, u.movement_left
+            );
+        }
+    }
+
+    // ── Other visible units ────────────────────────────────────────────────
+    let visible = state
+        .civilizations
+        .iter()
+        .find(|c| c.id == civ_id)
+        .map(|c| &c.visible_tiles);
+
+    let others: Vec<_> = state
+        .units
+        .iter()
+        .filter(|u| {
+            u.owner != civ_id
+                && visible.is_none_or(|v| v.contains(&u.coord))
+        })
+        .collect();
+
+    if others.is_empty() {
         return;
     }
+
+    println!();
+    println!("  Other units:");
     println!(
-        "  {:<28} {:<14} {:>8} {:>4}/{:<4} {:>3}",
-        "ID", "Type", "Coord", "HP", "Max", "Mv"
+        "  {:<28} {:<14} {:>8} {:>4}/{:<4} {:<16}",
+        "ID", "Type", "Coord", "HP", "Max", "Owner"
     );
-    println!("  {}", "-".repeat(70));
-    for u in &units {
-        let type_name = state
-            .unit_type_defs
-            .iter()
-            .find(|d| d.id == u.unit_type)
-            .map(|d| d.name)
-            .unwrap_or("?");
-        let id_display = short_ids.format_bold(u.id);
-        // Pad to 28 visible chars (ANSI codes don't count).
-        let visible_len = short_ids.display_len(u.id);
+    println!("  {}", "-".repeat(82));
+    for u in &others {
+        let type_name = unit_type_name(state, u.unit_type);
+        let owner = owner_label(state, u.owner);
+        let id_display = other_short_ids.format_bold(u.id);
+        let visible_len = other_short_ids.display_len(u.id);
         let pad = if visible_len < 28 {
             28 - visible_len
         } else {
@@ -170,8 +214,8 @@ pub fn print_units(state: &GameState, civ_id: CivId, short_ids: &ShortIds<UnitId
         };
         print!("  {id_display}{:pad$}", "");
         println!(
-            "{:<14} ({:>3},{:>3}) {:>4}/{:<4} {:>3}",
-            type_name, u.coord.q, u.coord.r, u.health, 100, u.movement_left
+            "{:<14} ({:>3},{:>3}) {:>4}/{:<4} {:<16}",
+            type_name, u.coord.q, u.coord.r, u.health, 100, owner
         );
     }
 }
@@ -411,4 +455,25 @@ fn civ_display_name(state: &GameState, civ_id: CivId) -> &'static str {
         .find(|c| c.id == civ_id)
         .map(|c| c.name)
         .unwrap_or("?")
+}
+
+fn unit_type_name(state: &GameState, unit_type: UnitTypeId) -> &'static str {
+    state
+        .unit_type_defs
+        .iter()
+        .find(|d| d.id == unit_type)
+        .map(|d| d.name)
+        .unwrap_or("?")
+}
+
+/// Classify a unit's owner for display: civ name, "City-State", or "Barbarian".
+fn owner_label(state: &GameState, owner: CivId) -> String {
+    if state.barbarian_civ == Some(owner) {
+        return "Barbarian".to_string();
+    }
+    if state.city_state_by_civ(owner).is_some() {
+        let name = civ_display_name(state, owner);
+        return format!("{name} (CS)");
+    }
+    civ_display_name(state, owner).to_string()
 }

@@ -97,11 +97,46 @@ impl WorldBoard {
     }
 
     /// Dijkstra pathfinding. Returns `Some(path)` or `None` if unreachable.
+    ///
+    /// `terrain_passable` is an optional filter: if provided, tiles where it
+    /// returns `false` are treated as impassable. Use this to enforce domain
+    /// restrictions (e.g. land units cannot enter water tiles).
     pub fn find_path(
         &self,
         start: HexCoord,
         goal: HexCoord,
         movement_budget: u32,
+    ) -> Option<Vec<HexCoord>> {
+        self.find_path_filtered(start, goal, movement_budget, |_| true)
+    }
+
+    /// Dijkstra pathfinding for land units: excludes water tiles (Coast, Ocean).
+    pub fn find_path_land(
+        &self,
+        start: HexCoord,
+        goal: HexCoord,
+        movement_budget: u32,
+    ) -> Option<Vec<HexCoord>> {
+        self.find_path_filtered(start, goal, movement_budget, |t| t.terrain.is_land())
+    }
+
+    /// Dijkstra pathfinding for sea units: excludes land tiles.
+    pub fn find_path_sea(
+        &self,
+        start: HexCoord,
+        goal: HexCoord,
+        movement_budget: u32,
+    ) -> Option<Vec<HexCoord>> {
+        self.find_path_filtered(start, goal, movement_budget, |t| t.terrain.is_water())
+    }
+
+    /// Dijkstra pathfinding with a tile filter predicate.
+    fn find_path_filtered(
+        &self,
+        start: HexCoord,
+        goal: HexCoord,
+        movement_budget: u32,
+        tile_passable: impl Fn(&WorldTile) -> bool,
     ) -> Option<Vec<HexCoord>> {
         let start = self.normalize_coord(start)?;
         let goal = self.normalize_coord(goal)?;
@@ -128,6 +163,11 @@ impl WorldBoard {
                 let neighbor_raw = coord + dir.unit_vec();
                 let Some(neighbor) = self.normalize_coord(neighbor_raw) else { continue };
                 let Some(tile) = self.tile(neighbor) else { continue };
+
+                // Domain filter: skip tiles incompatible with the unit's domain.
+                if !tile_passable(tile) {
+                    continue;
+                }
 
                 // Roads override terrain movement cost when present.
                 let base_cost = match tile.road.as_ref() {
