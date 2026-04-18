@@ -20,7 +20,7 @@ use libciv::{
     GameState, RulesEngine, UnitId,
 };
 use libhexgrid::board::HexBoard;
-use libhexgrid::coord::HexCoord;
+use libhexgrid::coord::{HexCoord, HexDir};
 
 use crate::handlers;
 use crate::state_io;
@@ -39,6 +39,7 @@ pub struct ReplSession {
     unit_short_ids: ShortIds<UnitId>,
     city_short_ids: ShortIds<CityId>,
     game_file: PathBuf,
+    log_path: PathBuf,
     ai_civ_ids: Vec<CivId>,
 }
 
@@ -87,6 +88,8 @@ impl ReplSession {
         let unit_short_ids = Self::build_unit_short_ids(&state, civ_id);
         let city_short_ids = Self::build_city_short_ids(&state, civ_id);
 
+        let log_path = game_file.with_extension("json.log");
+
         Ok(Self {
             state,
             rules: DefaultRulesEngine,
@@ -97,6 +100,7 @@ impl ReplSession {
             unit_short_ids,
             city_short_ids,
             game_file: game_file.to_path_buf(),
+            log_path,
             ai_civ_ids,
         })
     }
@@ -140,6 +144,7 @@ impl ReplSession {
                 ReplCommand::EndTurn => self.handle_end_turn(),
                 ReplCommand::Board => self.print_board(),
                 ReplCommand::SelectUnit(q, r) => self.handle_select(q, r),
+                ReplCommand::MoveDirection(dir) => self.handle_move_direction(dir),
                 ReplCommand::UnitSelect(ref id_str) => self.handle_unit_select(id_str),
                 ReplCommand::CitySelect(ref id_str) => self.handle_city_select(id_str),
                 ReplCommand::Save => self.handle_save(),
@@ -201,6 +206,7 @@ impl ReplSession {
                 apply_diff(&mut self.state, &diff);
                 recalculate_visibility(&mut self.state, self.civ_id);
                 self.recalculate_short_ids();
+                self.trace_diff("action", &diff);
                 formatter::print_deltas(&diff, &self.state);
             }
             Err(e) => {
@@ -236,6 +242,9 @@ impl ReplSession {
 
         // Recalculate short IDs (units may have been created/destroyed).
         self.recalculate_short_ids();
+
+        // Log the combined diff.
+        self.trace_diff("end-turn", &combined_diff);
 
         // Save.
         if let Err(e) = state_io::save_game_file(&self.game_file, &self.state) {
@@ -318,6 +327,31 @@ impl ReplSession {
                 println!("  No owned unit at ({q}, {r}).");
             }
         }
+    }
+
+    fn handle_move_direction(&mut self, dir: HexDir) {
+        let uid = match self.selected_unit {
+            Some(uid) => uid,
+            None => {
+                println!("  No unit selected.");
+                return;
+            }
+        };
+        let coord = match self.state.units.iter().find(|u| u.id == uid) {
+            Some(u) => u.coord,
+            None => {
+                println!("  Selected unit no longer exists.");
+                self.selected_unit = None;
+                return;
+            }
+        };
+        let target = coord + dir.unit_vec();
+        let action = crate::cli::ActionKind::Move {
+            unit: uid.to_string(),
+            to_q: target.q,
+            to_r: target.r,
+        };
+        self.dispatch_action_ref(&action);
     }
 
     fn handle_unit_select(&mut self, input: &str) {
@@ -426,6 +460,23 @@ impl ReplSession {
         }
     }
 
+    // ── Trace logging ───────────────────────────────────────────────────────
+
+    /// Append a JSON log entry for a game state diff.
+    fn trace_diff(&self, source: &str, diff: &GameStateDiff) {
+        if diff.is_empty() {
+            return;
+        }
+        let entry = serde_json::json!({
+            "turn": self.state.turn,
+            "source": source,
+            "diff": diff,
+        });
+        if let Err(e) = state_io::append_log(&self.log_path, &entry) {
+            eprintln!("  Trace log error: {e}");
+        }
+    }
+
     // ── Display helpers ─────────────────────────────────────────────────────
 
     fn print_turn_header(&self) {
@@ -521,7 +572,9 @@ impl ReplSession {
         println!(
             "\
   Movement & Combat:
+    move <dir>                Move selected unit in direction (e/w/ne/nw/se/sw)
     move [unit] <q> <r>       Move unit to coordinate
+    e/w/ne/nw/se/sw           Direction shortcut (same as move <dir>)
     attack [unit] <target>    Attack a target unit
     settle [unit] [name]      Found a city with settler
 

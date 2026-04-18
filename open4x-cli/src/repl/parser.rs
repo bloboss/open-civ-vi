@@ -4,6 +4,7 @@
 //! session loop can dispatch.
 
 use libciv::{CityId, UnitId};
+use libhexgrid::coord::HexDir;
 
 use crate::cli::ActionKind;
 
@@ -19,6 +20,8 @@ pub enum ReplCommand {
     Board,
     /// Select a unit at the given (q, r) coordinate.
     SelectUnit(i32, i32),
+    /// Move the selected unit in a hex direction.
+    MoveDirection(HexDir),
     /// Select a unit by ID suffix and show its details.
     UnitSelect(String),
     /// Select a city by name or ID suffix and show its details.
@@ -79,13 +82,24 @@ pub fn parse_command(
     match cmd.as_str() {
         // ── Movement & Combat ───────────────────────────────────────────
         "move" | "m" | "go" => {
+            if parts.len() >= 2 {
+                // Try direction first: `move e`, `move sw`, etc.
+                if let Some(dir) = parse_direction(parts[1]) {
+                    return ReplCommand::MoveDirection(dir);
+                }
+            }
             if parts.len() >= 3
                 && let (Ok(q), Ok(r)) = (parts[parts.len() - 2].parse::<i32>(), parts[parts.len() - 1].parse::<i32>())
             {
                 let u = if parts.len() >= 4 { parts[1].to_string() } else { unit_str() };
                 return ReplCommand::Action(ActionKind::Move { unit: u, to_q: q, to_r: r });
             }
-            ReplCommand::Unknown("Usage: move [unit] <q> <r>".to_string())
+            ReplCommand::Unknown("Usage: move <dir> | move [unit] <q> <r>".to_string())
+        }
+
+        // Bare direction shortcuts: `e`, `sw`, `nw`, etc.
+        _ if parse_direction(cmd.as_str()).is_some() => {
+            ReplCommand::MoveDirection(parse_direction(cmd.as_str()).unwrap())
         }
 
         "attack" | "atk" => {
@@ -344,5 +358,18 @@ pub fn parse_command(
         "quit" | "exit" | "q" => ReplCommand::Quit,
 
         _ => ReplCommand::Unknown(format!("Unknown command: '{}'", parts[0])),
+    }
+}
+
+/// Parse a direction string into a `HexDir`.
+fn parse_direction(s: &str) -> Option<HexDir> {
+    match s.to_lowercase().as_str() {
+        "e" | "east" => Some(HexDir::E),
+        "w" | "west" => Some(HexDir::W),
+        "ne" | "northeast" => Some(HexDir::NE),
+        "nw" | "northwest" => Some(HexDir::NW),
+        "se" | "southeast" => Some(HexDir::SE),
+        "sw" | "southwest" => Some(HexDir::SW),
+        _ => None,
     }
 }
