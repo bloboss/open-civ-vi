@@ -48,7 +48,11 @@ pub enum QueryKind {
     Scores,
     Diplomacy,
     Tile(i32, i32),
-    BuildList,
+    BuildListAll,
+    BuildListUnits,
+    BuildListBuildings,
+    BuildListWonders,
+    BuildListProjects,
     ResearchList,
     CivicsList,
     DistrictList,
@@ -133,13 +137,41 @@ pub fn parse_command(
         // ── Production ──────────────────────────────────────────────────
         "build" | "b" => {
             if parts.len() >= 2 {
-                if parts[1].eq_ignore_ascii_case("list") || parts[1].eq_ignore_ascii_case("ls") {
-                    return ReplCommand::Query(QueryKind::BuildList);
+                let sub = parts[1].to_lowercase();
+                // `build list` / `build ls` — full combined list.
+                if sub == "list" || sub == "ls" {
+                    return ReplCommand::Query(QueryKind::BuildListAll);
                 }
+                // Sub-category commands: build <category> [list | <name>]
+                let is_category = matches!(
+                    sub.as_str(),
+                    "unit" | "building" | "bdg" | "wonder" | "project"
+                );
+                if is_category {
+                    if parts.len() == 2
+                        || (parts.len() >= 3
+                            && (parts[2].eq_ignore_ascii_case("list")
+                                || parts[2].eq_ignore_ascii_case("ls")))
+                    {
+                        return match sub.as_str() {
+                            "unit" => ReplCommand::Query(QueryKind::BuildListUnits),
+                            "building" | "bdg" => ReplCommand::Query(QueryKind::BuildListBuildings),
+                            "wonder" => ReplCommand::Query(QueryKind::BuildListWonders),
+                            "project" => ReplCommand::Query(QueryKind::BuildListProjects),
+                            _ => unreachable!(),
+                        };
+                    }
+                    // `build <category> <name>` — queue production.
+                    if parts.len() >= 3 {
+                        let item = parts[2..].join(" ");
+                        return ReplCommand::Action(ActionKind::Build { city: city_str(), item });
+                    }
+                }
+                // Fallback: `build <name>` queues any production item by name.
                 let item = parts[1..].join(" ");
                 return ReplCommand::Action(ActionKind::Build { city: city_str(), item });
             }
-            ReplCommand::Unknown("Usage: build <item> | build list".to_string())
+            ReplCommand::Unknown("Usage: build <item> | build list | build <unit|bdg|wonder|project> [list|<name>]".to_string())
         }
 
         "cancel-production" | "cancel" => {

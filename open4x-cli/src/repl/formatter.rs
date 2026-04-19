@@ -2,7 +2,7 @@
 
 use libciv::civ::district::BuiltinDistrict;
 use libciv::game::diff::StateDelta;
-use libciv::game::production_helpers::available_buildings_for_city;
+use libciv::game::production_helpers::{available_buildings_for_city, available_unit_defs};
 use libciv::{all_scores, CityId, CivId, GameState, UnitId, UnitTypeId};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
@@ -288,6 +288,225 @@ pub fn print_cities(state: &GameState, civ_id: CivId, short_ids: &ShortIds<CityI
                 "", dist.name(), coord_str, bldg_str
             );
         }
+    }
+}
+
+/// Print available units that the civ can currently produce.
+pub fn print_available_units(state: &GameState, civ_id: CivId) {
+    let mut available = available_unit_defs(state, civ_id);
+    available.sort_by_key(|d| d.production_cost);
+
+    if available.is_empty() {
+        println!("  No units available for production.");
+        return;
+    }
+
+    println!("  Available units:");
+    println!(
+        "  {:<24} {:>6} {:>4} {:>3} {:<10}",
+        "Name", "Cost", "Mv", "CS", "Domain"
+    );
+    println!("  {}", "-".repeat(55));
+    for d in &available {
+        let cs = d.combat_strength
+            .map(|v| format!("{v}"))
+            .unwrap_or_else(|| "-".to_string());
+        println!(
+            "  {:<24} {:>6} {:>4} {:>3} {:<10}",
+            d.name, d.production_cost, d.max_movement / 100, cs,
+            format!("{:?}", d.domain),
+        );
+    }
+}
+
+/// Print available wonders that the civ can currently build.
+pub fn print_available_wonders(state: &GameState, _civ_id: CivId) {
+    let mut available: Vec<_> = state.wonder_defs.iter().collect();
+    available.sort_by_key(|d| d.production_cost);
+
+    if available.is_empty() {
+        println!("  No wonders available.");
+        return;
+    }
+
+    println!("  Available wonders:");
+    println!("  {:<24} {:>6}", "Name", "Cost");
+    println!("  {}", "-".repeat(32));
+    for d in &available {
+        println!("  {:<24} {:>6}", d.name, d.production_cost);
+    }
+}
+
+/// Print available projects for the given city.
+///
+/// A project is available if:
+/// 1. The city has the required district (if any).
+/// 2. If non-repeatable, it is not already queued.
+pub fn print_available_projects(state: &GameState, _civ_id: CivId, city_id: CityId) {
+    let city = match state.cities.iter().find(|c| c.id == city_id) {
+        Some(c) => c,
+        None => {
+            println!("  City not found.");
+            return;
+        }
+    };
+
+    let district_names: Vec<&str> = std::iter::once("City Center")
+        .chain(city.districts.iter().map(|d| d.name()))
+        .collect();
+
+    let queued_project_ids: Vec<_> = city.production_queue.iter()
+        .filter_map(|item| {
+            if let libciv::civ::ProductionItem::Project(pid) = item {
+                Some(*pid)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    let mut available: Vec<_> = state.project_defs.iter()
+        .filter(|d| {
+            // District requirement.
+            if let Some(req) = d.requires_district
+                && !district_names.iter().any(|n| n.eq_ignore_ascii_case(req))
+            {
+                return false;
+            }
+            // Non-repeatable projects: skip if already queued.
+            if !d.repeatable && queued_project_ids.contains(&d.id) {
+                return false;
+            }
+            true
+        })
+        .collect();
+    available.sort_by_key(|d| d.production_cost);
+
+    if available.is_empty() {
+        println!("  No projects available for {}.", city.name);
+        return;
+    }
+
+    println!("  Available projects for {}:", city.name);
+    println!(
+        "  {:<24} {:>6}  District",
+        "Name", "Cost"
+    );
+    println!("  {}", "-".repeat(45));
+    for d in &available {
+        let district = d.requires_district.unwrap_or("-");
+        let repeat = if d.repeatable { " (repeatable)" } else { "" };
+        println!("  {:<24} {:>6}  {}{}", d.name, d.production_cost, district, repeat);
+    }
+}
+
+/// Print a combined list of all buildable items for the current city.
+pub fn print_build_list_all(
+    state: &GameState,
+    civ_id: CivId,
+    city_id: CityId,
+    district_filter: Option<BuiltinDistrict>,
+) {
+    let city = match state.cities.iter().find(|c| c.id == city_id) {
+        Some(c) => c,
+        None => {
+            println!("  City not found.");
+            return;
+        }
+    };
+    println!("  Build options for {}:", city.name);
+
+    // ── Units ──
+    let mut units = available_unit_defs(state, civ_id);
+    units.sort_by_key(|d| d.production_cost);
+    if !units.is_empty() {
+        println!();
+        println!("  Units:");
+        for d in &units {
+            let cs = d.combat_strength
+                .map(|v| format!("{v}"))
+                .unwrap_or_else(|| "-".to_string());
+            println!(
+                "    {:<22} {:>6}  CS:{:>3}  {:?}",
+                d.name, d.production_cost, cs, d.domain,
+            );
+        }
+    }
+
+    // ── Buildings ──
+    let mut buildings = available_buildings_for_city(state, civ_id, city_id);
+    if let Some(dist) = district_filter {
+        let dist_name = dist.name();
+        buildings.retain(|d| {
+            d.requires_district
+                .is_some_and(|r| r.eq_ignore_ascii_case(dist_name))
+        });
+    }
+    if !buildings.is_empty() {
+        println!();
+        let bldg_header = district_filter
+            .map(|d| format!("Buildings ({}):", d.name()))
+            .unwrap_or_else(|| "Buildings:".to_string());
+        println!("  {bldg_header}");
+        for d in &buildings {
+            let district = d.requires_district.unwrap_or("-");
+            println!(
+                "    {:<22} {:>6}  maint:{:>2}  {}",
+                d.name, d.cost, d.maintenance, district,
+            );
+        }
+    }
+
+    // ── Wonders ──
+    let mut wonders: Vec<_> = state.wonder_defs.iter().collect();
+    wonders.sort_by_key(|d| d.production_cost);
+    if !wonders.is_empty() {
+        println!();
+        println!("  Wonders:");
+        for d in &wonders {
+            println!("    {:<22} {:>6}", d.name, d.production_cost);
+        }
+    }
+
+    // ── Projects ──
+    let district_names: Vec<&str> = std::iter::once("City Center")
+        .chain(city.districts.iter().map(|d| d.name()))
+        .collect();
+    let queued_project_ids: Vec<_> = city.production_queue.iter()
+        .filter_map(|item| {
+            if let libciv::civ::ProductionItem::Project(pid) = item {
+                Some(*pid)
+            } else {
+                None
+            }
+        })
+        .collect();
+    let mut projects: Vec<_> = state.project_defs.iter()
+        .filter(|d| {
+            if let Some(req) = d.requires_district
+                && !district_names.iter().any(|n| n.eq_ignore_ascii_case(req))
+            {
+                return false;
+            }
+            if !d.repeatable && queued_project_ids.contains(&d.id) {
+                return false;
+            }
+            true
+        })
+        .collect();
+    projects.sort_by_key(|d| d.production_cost);
+    if !projects.is_empty() {
+        println!();
+        println!("  Projects:");
+        for d in &projects {
+            let district = d.requires_district.unwrap_or("-");
+            let repeat = if d.repeatable { " (repeatable)" } else { "" };
+            println!("    {:<22} {:>6}  {}{}", d.name, d.production_cost, district, repeat);
+        }
+    }
+
+    if units.is_empty() && buildings.is_empty() && wonders.is_empty() && projects.is_empty() {
+        println!("  (nothing available)");
     }
 }
 

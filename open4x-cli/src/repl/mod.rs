@@ -319,13 +319,42 @@ impl ReplSession {
             QueryKind::CivicsList => {
                 formatter::print_available_civics(&self.state, self.civ_id);
             }
-            QueryKind::BuildList => {
+            QueryKind::BuildListAll => {
+                if let Some(city_id) = self.current_city_id() {
+                    formatter::print_build_list_all(
+                        &self.state,
+                        self.civ_id,
+                        city_id,
+                        self.selected_district,
+                    );
+                } else {
+                    println!("  No city selected.");
+                }
+            }
+            QueryKind::BuildListUnits => {
+                formatter::print_available_units(&self.state, self.civ_id);
+            }
+            QueryKind::BuildListBuildings => {
                 if let Some(city_id) = self.current_city_id() {
                     formatter::print_available_buildings(
                         &self.state,
                         self.civ_id,
                         city_id,
                         self.selected_district,
+                    );
+                } else {
+                    println!("  No city selected.");
+                }
+            }
+            QueryKind::BuildListWonders => {
+                formatter::print_available_wonders(&self.state, self.civ_id);
+            }
+            QueryKind::BuildListProjects => {
+                if let Some(city_id) = self.current_city_id() {
+                    formatter::print_available_projects(
+                        &self.state,
+                        self.civ_id,
+                        city_id,
                     );
                 } else {
                     println!("  No city selected.");
@@ -695,8 +724,12 @@ impl ReplSession {
     settle [unit] [name]      Found a city with settler
 
   Production & Building:
-    build <item>              Queue production item
-    build list                List available buildings (scoped by selected district)
+    build <item>              Queue any production item by name
+    build list                List all buildable items for selected city
+    build unit [list|<name>]  List or queue a unit
+    build bdg [list|<name>]   List or queue a building (alias: building)
+    build wonder [list|<name>]  List or queue a wonder
+    build project [list|<name>] List or queue a project
     cancel                    Cancel current production
     district <type> <q> <r>   Place a district
     district list             List available districts for selected city
