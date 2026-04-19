@@ -2031,3 +2031,96 @@ fn city_bombard_fails_after_walls_breached_by_combat() {
         "city with breached walls should not be able to bombard, got: {result:?}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Idle unit healing
+// ---------------------------------------------------------------------------
+
+/// A damaged unit that does not move heals +10 HP on advance_turn (neutral territory).
+#[test]
+fn idle_unit_heals_in_neutral_territory() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Damage Rome's warrior to 60 HP. It's at (5,3) which has no owner.
+    s.state.units.iter_mut()
+        .find(|u| u.id == s.rome_warrior).unwrap()
+        .health = 60;
+
+    let diff = rules.advance_turn(&mut s.state);
+
+    let healed = s.state.units.iter()
+        .find(|u| u.id == s.rome_warrior).unwrap()
+        .health;
+    assert_eq!(healed, 70, "idle unit should heal +10 in neutral territory");
+
+    assert!(diff.deltas.iter().any(|d| matches!(d,
+        StateDelta::UnitHealed { unit, old_health: 60, new_health: 70 }
+        if *unit == s.rome_warrior
+    )));
+}
+
+/// A damaged unit that does not move heals +20 HP in friendly territory.
+#[test]
+fn idle_unit_heals_in_friendly_territory() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Move Rome's warrior to Rome's capital tile (3,3) which is owned by Rome.
+    let rome_coord = HexCoord::from_qr(3, 3);
+    s.state.board.tile_mut(rome_coord).unwrap().owner = Some(s.rome_id);
+    let warrior = s.state.units.iter_mut()
+        .find(|u| u.id == s.rome_warrior).unwrap();
+    warrior.coord = rome_coord;
+    warrior.health = 50;
+
+    let diff = rules.advance_turn(&mut s.state);
+
+    let healed = s.state.units.iter()
+        .find(|u| u.id == s.rome_warrior).unwrap()
+        .health;
+    assert_eq!(healed, 70, "idle unit should heal +20 in friendly territory");
+
+    assert!(diff.deltas.iter().any(|d| matches!(d,
+        StateDelta::UnitHealed { unit, old_health: 50, new_health: 70 }
+        if *unit == s.rome_warrior
+    )));
+}
+
+/// A unit that has moved (movement_left < max_movement) does NOT heal.
+#[test]
+fn moved_unit_does_not_heal() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    // Damage and spend some movement.
+    let warrior = s.state.units.iter_mut()
+        .find(|u| u.id == s.rome_warrior).unwrap();
+    warrior.health = 60;
+    warrior.movement_left = 100; // spent half movement
+
+    rules.advance_turn(&mut s.state);
+
+    let hp = s.state.units.iter()
+        .find(|u| u.id == s.rome_warrior).unwrap()
+        .health;
+    assert_eq!(hp, 60, "unit that moved should not heal");
+}
+
+/// Healing does not exceed 100 HP.
+#[test]
+fn idle_healing_caps_at_100() {
+    let mut s = common::build_scenario();
+    let rules = DefaultRulesEngine;
+
+    s.state.units.iter_mut()
+        .find(|u| u.id == s.rome_warrior).unwrap()
+        .health = 95;
+
+    rules.advance_turn(&mut s.state);
+
+    let hp = s.state.units.iter()
+        .find(|u| u.id == s.rome_warrior).unwrap()
+        .health;
+    assert_eq!(hp, 100, "healing should cap at 100");
+}

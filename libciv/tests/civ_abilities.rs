@@ -314,7 +314,7 @@ fn test_mamluk_heals_every_turn() {
         "Mamluk should heal at end of turn (health: {}, expected > 60)",
         mamluk.health
     );
-    assert_eq!(mamluk.health, 70, "Mamluk should heal 10 HP per turn");
+    assert_eq!(mamluk.health, 80, "Mamluk should heal 10 (ability) + 10 (idle) HP per turn");
 }
 
 // ---------------------------------------------------------------------------

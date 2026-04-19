@@ -1167,6 +1167,25 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         }
     }
 
+    // ── Phase 4c: Idle unit healing ──────────────────────────────────────
+    // Units that did not move this turn (movement_left == max_movement)
+    // heal passively: +20 HP in friendly territory, +10 HP elsewhere.
+    for unit in &mut state.units {
+        if unit.health < 100 && unit.movement_left == unit.max_movement {
+            let in_friendly = state.board.tile(unit.coord)
+                .and_then(|t| t.owner)
+                .is_some_and(|owner| owner == unit.owner);
+            let heal = if in_friendly { 20 } else { 10 };
+            let old_health = unit.health;
+            unit.health = (unit.health + heal).min(100);
+            diff.push(StateDelta::UnitHealed {
+                unit: unit.id,
+                old_health,
+                new_health: unit.health,
+            });
+        }
+    }
+
     // ── Phase 5: Diplomacy — grievance decay and status recomputation ─────
     // Decay each grievance by 1 per turn; drop records that reach zero.
     // Increment turns_at_war for warring pairs.
