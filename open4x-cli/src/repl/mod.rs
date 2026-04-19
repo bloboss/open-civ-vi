@@ -309,6 +309,12 @@ impl ReplSession {
             QueryKind::Tile(q, r) => {
                 formatter::print_tile(&self.state, HexCoord::from_qr(*q, *r));
             }
+            QueryKind::ResearchList => {
+                formatter::print_available_techs(&self.state, self.civ_id);
+            }
+            QueryKind::CivicsList => {
+                formatter::print_available_civics(&self.state, self.civ_id);
+            }
             QueryKind::BuildList => {
                 if let Some(city_id) = self.current_city_id() {
                     formatter::print_available_buildings(
@@ -626,6 +632,9 @@ impl ReplSession {
 
   Research & Government:
     research <tech>           Queue tech research
+    research list             List available techs for research
+    culture <civic>           Set current civic to research
+    culture list              List available civics for research
     adopt-government <name>   Adopt a government
     assign-policy <policy>    Assign a policy card
 

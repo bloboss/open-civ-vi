@@ -47,6 +47,8 @@ pub enum QueryKind {
     Diplomacy,
     Tile(i32, i32),
     BuildList,
+    ResearchList,
+    CivicsList,
 }
 
 /// Parse a line of REPL input into a `ReplCommand`.
@@ -144,10 +146,24 @@ pub fn parse_command(
         // ── Research ────────────────────────────────────────────────────
         "research" | "res" => {
             if parts.len() >= 2 {
+                if parts[1].eq_ignore_ascii_case("list") || parts[1].eq_ignore_ascii_case("ls") {
+                    return ReplCommand::Query(QueryKind::ResearchList);
+                }
                 let tech = parts[1..].join(" ");
                 return ReplCommand::Action(ActionKind::Research { tech });
             }
-            ReplCommand::Unknown("Usage: research <tech>".to_string())
+            ReplCommand::Unknown("Usage: research <tech> | research list".to_string())
+        }
+
+        "culture" | "civic" => {
+            if parts.len() >= 2 {
+                if parts[1].eq_ignore_ascii_case("list") || parts[1].eq_ignore_ascii_case("ls") {
+                    return ReplCommand::Query(QueryKind::CivicsList);
+                }
+                let civic = parts[1..].join(" ");
+                return ReplCommand::Action(ActionKind::StudyCivic { civic });
+            }
+            ReplCommand::Unknown("Usage: culture <civic> | culture list".to_string())
         }
 
         // ── Improvements & Roads ────────────────────────────────────────

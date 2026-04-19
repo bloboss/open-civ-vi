@@ -377,6 +377,114 @@ pub fn print_civics(state: &GameState, civ_id: CivId) {
     }
 }
 
+/// Print available techs that can be researched by the given civ.
+///
+/// A tech is available if:
+/// 1. It has not already been researched.
+/// 2. It is not already in the research queue.
+/// 3. All prerequisites have been researched.
+pub fn print_available_techs(state: &GameState, civ_id: CivId) {
+    let civ = match state.civilizations.iter().find(|c| c.id == civ_id) {
+        Some(c) => c,
+        None => {
+            println!("  Civilization not found.");
+            return;
+        }
+    };
+
+    let queued_ids: Vec<_> = civ.research_queue.iter().map(|tp| tp.tech_id).collect();
+
+    let mut available: Vec<_> = state
+        .tech_tree
+        .nodes
+        .values()
+        .filter(|n| {
+            !civ.researched_techs.contains(&n.id)
+                && !queued_ids.contains(&n.id)
+                && state
+                    .tech_tree
+                    .prerequisites_met(n.id, &civ.researched_techs)
+        })
+        .collect();
+    available.sort_by_key(|n| n.cost);
+
+    if available.is_empty() {
+        println!("  No techs available for research.");
+        return;
+    }
+
+    println!("  Available techs:");
+    println!("  {:<24} {:>6}  Prerequisites", "Name", "Cost");
+    println!("  {}", "-".repeat(60));
+    for n in &available {
+        let prereqs: Vec<&str> = n
+            .prerequisites
+            .iter()
+            .filter_map(|pid| state.tech_tree.get(*pid).map(|p| p.name))
+            .collect();
+        let prereq_str = if prereqs.is_empty() {
+            "-".to_string()
+        } else {
+            prereqs.join(", ")
+        };
+        println!("  {:<24} {:>6}  {}", n.name, n.cost, prereq_str);
+    }
+}
+
+/// Print available civics that can be researched by the given civ.
+///
+/// A civic is available if:
+/// 1. It has not already been completed.
+/// 2. It is not the current civic in progress.
+/// 3. All prerequisites have been completed.
+pub fn print_available_civics(state: &GameState, civ_id: CivId) {
+    let civ = match state.civilizations.iter().find(|c| c.id == civ_id) {
+        Some(c) => c,
+        None => {
+            println!("  Civilization not found.");
+            return;
+        }
+    };
+
+    let in_progress_id = civ.civic_in_progress.as_ref().map(|cp| cp.civic_id);
+
+    let mut available: Vec<_> = state
+        .civic_tree
+        .nodes
+        .values()
+        .filter(|n| {
+            !civ.completed_civics.contains(&n.id)
+                && in_progress_id != Some(n.id)
+                && state
+                    .civic_tree
+                    .prerequisites_met(n.id, &civ.completed_civics)
+        })
+        .collect();
+    available.sort_by_key(|n| n.cost);
+
+    if available.is_empty() {
+        println!("  No civics available for research.");
+        return;
+    }
+
+    println!("  Available civics:");
+    println!("  {:<24} {:>6}  Prerequisites", "Name", "Cost");
+    println!("  {}", "-".repeat(60));
+    for n in &available {
+        let prereqs: Vec<&str> = n
+            .prerequisites
+            .iter()
+            .filter_map(|pid| state.civic_tree.get(*pid).map(|p| p.name))
+            .collect();
+        let prereq_str = if prereqs.is_empty() {
+            "-".to_string()
+        } else {
+            prereqs.join(", ")
+        };
+        println!("  {:<24} {:>6}  {}", n.name, n.cost, prereq_str);
+    }
+}
+
 /// Print a leaderboard of all civ scores.
 pub fn print_scores(state: &GameState) {
     let mut scores = all_scores(state);

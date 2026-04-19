@@ -266,6 +266,11 @@ pub enum ActionKind {
         #[arg(long)]
         tech: String,
     },
+    /// Set the current civic to research
+    StudyCivic {
+        #[arg(long)]
+        civic: String,
+    },
     /// Adopt a government
     AdoptGovernment {
         #[arg(long)]

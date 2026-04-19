@@ -73,6 +73,11 @@ impl CivicTree {
     pub fn get(&self, id: CivicId) -> Option<&CivicNode> {
         self.nodes.get(&id)
     }
+
+    pub fn prerequisites_met(&self, id: CivicId, completed: &[CivicId]) -> bool {
+        let Some(node) = self.nodes.get(&id) else { return false };
+        node.prerequisites.iter().all(|p| completed.contains(p))
+    }
 }
 
 /// Build the game's full tech tree, returning the tree and named ID handles.

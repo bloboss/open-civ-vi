@@ -326,6 +326,27 @@ pub(crate) fn dispatch_action(
             });
             Ok(GameStateDiff { deltas: Vec::new() })
         }
+        ActionKind::StudyCivic { civic } => {
+            // Set the current civic to research by name.
+            let civic_id = state
+                .civic_tree
+                .nodes
+                .values()
+                .find(|n| n.name == civic.as_str())
+                .map(|n| n.id)
+                .ok_or_else(|| format!("unknown civic '{civic}'"))?;
+            let civ = state
+                .civilizations
+                .iter_mut()
+                .find(|c| c.id == civ_id)
+                .ok_or("civ not found")?;
+            civ.civic_in_progress = Some(libciv::civ::CivicProgress {
+                civic_id,
+                progress: 0,
+                inspired: false,
+            });
+            Ok(GameStateDiff { deltas: Vec::new() })
+        }
         ActionKind::AdoptGovernment { name } => {
             // Find government by name and adopt it.
             let gov_id = state
