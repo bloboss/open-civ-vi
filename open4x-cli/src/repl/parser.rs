@@ -26,6 +26,8 @@ pub enum ReplCommand {
     UnitSelect(String),
     /// Select a city by name or ID suffix and show its details.
     CitySelect(String),
+    /// Select a district in the current city by name.
+    DistrictSelect(String),
     /// Save the game state to disk.
     Save,
     /// Print the help text.
@@ -49,6 +51,7 @@ pub enum QueryKind {
     BuildList,
     ResearchList,
     CivicsList,
+    DistrictList,
 }
 
 /// Parse a line of REPL input into a `ReplCommand`.
@@ -195,18 +198,30 @@ pub fn parse_command(
 
         // ── Districts ───────────────────────────────────────────────────
         "district" | "dist" => {
-            if parts.len() >= 4 {
-                let district = parts[1].to_string();
-                if let (Ok(q), Ok(r)) = (parts[2].parse::<i32>(), parts[3].parse::<i32>()) {
-                    return ReplCommand::Action(ActionKind::PlaceDistrict {
-                        city: city_str(),
-                        district,
-                        q,
-                        r,
-                    });
+            if parts.len() >= 2 {
+                if parts[1].eq_ignore_ascii_case("list") || parts[1].eq_ignore_ascii_case("ls") {
+                    return ReplCommand::Query(QueryKind::DistrictList);
+                }
+                if parts[1].eq_ignore_ascii_case("select") || parts[1].eq_ignore_ascii_case("sel") {
+                    if parts.len() >= 3 {
+                        return ReplCommand::DistrictSelect(parts[2..].join(" "));
+                    }
+                    return ReplCommand::Unknown("Usage: district select <name>".to_string());
+                }
+                // Place district: district <type> <q> <r>
+                if parts.len() >= 4 {
+                    let district = parts[1].to_string();
+                    if let (Ok(q), Ok(r)) = (parts[2].parse::<i32>(), parts[3].parse::<i32>()) {
+                        return ReplCommand::Action(ActionKind::PlaceDistrict {
+                            city: city_str(),
+                            district,
+                            q,
+                            r,
+                        });
+                    }
                 }
             }
-            ReplCommand::Unknown("Usage: district <type> <q> <r>".to_string())
+            ReplCommand::Unknown("Usage: district <type> <q> <r> | district list | district select <name>".to_string())
         }
 
         // ── Diplomacy ───────────────────────────────────────────────────

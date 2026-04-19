@@ -1,5 +1,6 @@
 //! Human-readable formatting for state deltas and queries.
 
+use libciv::civ::district::BuiltinDistrict;
 use libciv::game::diff::StateDelta;
 use libciv::game::production_helpers::available_buildings_for_city;
 use libciv::{all_scores, CityId, CivId, GameState, UnitId, UnitTypeId};
@@ -232,7 +233,8 @@ pub fn print_units(
     }
 }
 
-/// Print a tabular list of cities owned by the given civ.
+/// Print a tabular list of cities owned by the given civ, with districts
+/// indented under each city.
 pub fn print_cities(state: &GameState, civ_id: CivId, short_ids: &ShortIds<CityId>) {
     let cities: Vec<_> = state.cities.iter().filter(|c| c.owner == civ_id).collect();
     if cities.is_empty() {
@@ -267,11 +269,38 @@ pub fn print_cities(state: &GameState, civ_id: CivId, short_ids: &ShortIds<CityI
             "{:<16} ({:>3},{:>3}) {:>4} {:<20}",
             c.name, c.coord.q, c.coord.r, c.population, prod_display
         );
+
+        // Show districts indented under the city.
+        for dist in &c.districts {
+            let placed = state.placed_districts.iter()
+                .find(|pd| pd.city_id == c.id && pd.district_type == *dist);
+            let coord_str = placed
+                .map(|pd| format!("({:>3},{:>3})", pd.coord.q, pd.coord.r))
+                .unwrap_or_else(|| "       -".to_string());
+            let building_count = placed.map(|pd| pd.buildings.len()).unwrap_or(0);
+            let bldg_str = if building_count > 0 {
+                format!("{building_count} bldg")
+            } else {
+                String::new()
+            };
+            println!(
+                "    {:<26} {:<16} {:>8}      {:<20}",
+                "", dist.name(), coord_str, bldg_str
+            );
+        }
     }
 }
 
 /// Print available buildings that can be produced in the given city.
-pub fn print_available_buildings(state: &GameState, civ_id: CivId, city_id: CityId) {
+///
+/// When `district_filter` is `Some`, only buildings belonging to that district
+/// are shown (or "City Center" buildings when `CityCenter` is selected).
+pub fn print_available_buildings(
+    state: &GameState,
+    civ_id: CivId,
+    city_id: CityId,
+    district_filter: Option<BuiltinDistrict>,
+) {
     let city = match state.cities.iter().find(|c| c.id == city_id) {
         Some(c) => c,
         None => {
@@ -280,13 +309,29 @@ pub fn print_available_buildings(state: &GameState, civ_id: CivId, city_id: City
         }
     };
 
-    let available = available_buildings_for_city(state, civ_id, city_id);
+    let mut available = available_buildings_for_city(state, civ_id, city_id);
+
+    // Filter by selected district.
+    if let Some(dist) = district_filter {
+        let dist_name = dist.name();
+        available.retain(|d| {
+            d.requires_district
+                .is_some_and(|r| r.eq_ignore_ascii_case(dist_name))
+        });
+    }
+
     if available.is_empty() {
-        println!("  No buildings available for {}.", city.name);
+        let scope = district_filter
+            .map(|d| format!("{} in {}", d.name(), city.name))
+            .unwrap_or_else(|| city.name.clone());
+        println!("  No buildings available for {scope}.");
         return;
     }
 
-    println!("  Available buildings for {}:", city.name);
+    let header = district_filter
+        .map(|d| format!("Available buildings for {} ({}):", city.name, d.name()))
+        .unwrap_or_else(|| format!("Available buildings for {}:", city.name));
+    println!("  {header}");
     println!(
         "  {:<24} {:>6} {:>6}  District",
         "Name", "Cost", "Maint"
@@ -298,6 +343,94 @@ pub fn print_available_buildings(state: &GameState, civ_id: CivId, city_id: City
             "  {:<24} {:>6} {:>6}  {}",
             d.name, d.cost, d.maintenance, district
         );
+    }
+}
+
+/// Print districts available for placement in the given city.
+///
+/// A district is available if:
+/// 1. The city does not already have that district type.
+/// 2. The required tech (if any) has been researched.
+/// 3. The required civic (if any) has been completed.
+/// 4. It is not CityCenter (implicit).
+pub fn print_available_districts(state: &GameState, civ_id: CivId, city_id: CityId) {
+    let city = match state.cities.iter().find(|c| c.id == city_id) {
+        Some(c) => c,
+        None => {
+            println!("  City not found.");
+            return;
+        }
+    };
+    let civ = match state.civilizations.iter().find(|c| c.id == civ_id) {
+        Some(c) => c,
+        None => {
+            println!("  Civilization not found.");
+            return;
+        }
+    };
+
+    let all_districts = [
+        BuiltinDistrict::Campus,
+        BuiltinDistrict::TheaterSquare,
+        BuiltinDistrict::CommercialHub,
+        BuiltinDistrict::Harbor,
+        BuiltinDistrict::HolySite,
+        BuiltinDistrict::Encampment,
+        BuiltinDistrict::IndustrialZone,
+        BuiltinDistrict::EntertainmentComplex,
+        BuiltinDistrict::WaterPark,
+        BuiltinDistrict::Aqueduct,
+        BuiltinDistrict::Dam,
+        BuiltinDistrict::Canal,
+        BuiltinDistrict::Aerodrome,
+        BuiltinDistrict::Neighborhood,
+        BuiltinDistrict::Spaceport,
+        BuiltinDistrict::Lavra,
+        BuiltinDistrict::Mbanza,
+        BuiltinDistrict::StreetCarnival,
+        BuiltinDistrict::RoyalNavyDockyard,
+    ];
+
+    let mut available: Vec<(BuiltinDistrict, &str)> = Vec::new();
+    for &dist in &all_districts {
+        // Skip if already built.
+        if city.districts.contains(&dist) {
+            continue;
+        }
+        let reqs = dist.requirements(&state.tech_refs, &state.civic_refs);
+        // Check tech prerequisite.
+        if let Some(tid) = reqs.required_tech
+            && !civ.researched_techs.contains(&tid)
+        {
+            continue;
+        }
+        // Check civic prerequisite.
+        if let Some(cid) = reqs.required_civic
+            && !civ.completed_civics.contains(&cid)
+        {
+            continue;
+        }
+        // Terrain note for display.
+        let terrain_note = if reqs.requires_water {
+            "water"
+        } else if reqs.requires_land {
+            "land"
+        } else {
+            "-"
+        };
+        available.push((dist, terrain_note));
+    }
+
+    if available.is_empty() {
+        println!("  No districts available for {}.", city.name);
+        return;
+    }
+
+    println!("  Available districts for {}:", city.name);
+    println!("  {:<24} {:>6}  Terrain", "Name", "Cost");
+    println!("  {}", "-".repeat(40));
+    for (dist, terrain) in &available {
+        println!("  {:<24} {:>6}  {}", dist.name(), dist.base_cost(), terrain);
     }
 }
 

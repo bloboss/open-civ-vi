@@ -106,7 +106,7 @@ fn parse_improvement(s: &str) -> Result<BuiltinImprovement, String> {
     }
 }
 
-fn parse_district(s: &str) -> Result<BuiltinDistrict, String> {
+pub(crate) fn parse_district(s: &str) -> Result<BuiltinDistrict, String> {
     match s.to_lowercase().replace(' ', "").as_str() {
         "campus" => Ok(BuiltinDistrict::Campus),
         "theatersquare" | "theater_square" => Ok(BuiltinDistrict::TheaterSquare),

@@ -15,6 +15,7 @@ use libciv::ai::{Agent, HeuristicAgent};
 use libciv::game::visibility::recalculate_visibility;
 use libciv::visualize::Visualizer;
 use libciv::world::tile::WorldTile;
+use libciv::civ::district::BuiltinDistrict;
 use libciv::{
     apply_diff, compute_score, CityId, CivId, DefaultRulesEngine, GameStateDiff,
     GameState, RulesEngine, UnitId,
@@ -36,6 +37,7 @@ pub struct ReplSession {
     civ_name: &'static str,
     selected_unit: Option<UnitId>,
     selected_city: Option<CityId>,
+    selected_district: Option<BuiltinDistrict>,
     unit_short_ids: ShortIds<UnitId>,
     /// Short IDs for visible foreign units (for attack targeting).
     other_unit_short_ids: ShortIds<UnitId>,
@@ -100,6 +102,7 @@ impl ReplSession {
             civ_name,
             selected_unit,
             selected_city,
+            selected_district: None,
             unit_short_ids,
             other_unit_short_ids,
             city_short_ids,
@@ -151,6 +154,7 @@ impl ReplSession {
                 ReplCommand::MoveDirection(dir) => self.handle_move_direction(dir),
                 ReplCommand::UnitSelect(ref id_str) => self.handle_unit_select(id_str),
                 ReplCommand::CitySelect(ref id_str) => self.handle_city_select(id_str),
+                ReplCommand::DistrictSelect(ref name) => self.handle_district_select(name),
                 ReplCommand::Save => self.handle_save(),
                 ReplCommand::Help => Self::print_help(),
                 ReplCommand::Quit => {
@@ -321,6 +325,18 @@ impl ReplSession {
                         &self.state,
                         self.civ_id,
                         city_id,
+                        self.selected_district,
+                    );
+                } else {
+                    println!("  No city selected.");
+                }
+            }
+            QueryKind::DistrictList => {
+                if let Some(city_id) = self.current_city_id() {
+                    formatter::print_available_districts(
+                        &self.state,
+                        self.civ_id,
+                        city_id,
                     );
                 } else {
                     println!("  No city selected.");
@@ -417,6 +433,7 @@ impl ReplSession {
         match self.resolve_city(input) {
             Some(cid) => {
                 self.selected_city = Some(cid);
+                self.selected_district = None;
                 let city = self.state.cities.iter().find(|c| c.id == cid).unwrap();
                 println!(
                     "  Selected: {} ({})",
@@ -435,6 +452,61 @@ impl ReplSession {
             }
             None => println!("  No city found matching '{input}'"),
         }
+    }
+
+    fn handle_district_select(&mut self, name: &str) {
+        let city_id = match self.current_city_id() {
+            Some(id) => id,
+            None => {
+                println!("  No city selected.");
+                return;
+            }
+        };
+        let city = match self.state.cities.iter().find(|c| c.id == city_id) {
+            Some(c) => c,
+            None => {
+                println!("  City not found.");
+                return;
+            }
+        };
+
+        // Parse the district name.
+        let district = match crate::handlers::action::parse_district(name) {
+            Ok(d) => d,
+            Err(e) => {
+                println!("  {e}");
+                return;
+            }
+        };
+
+        // Check the city actually has this district.
+        if !city.districts.contains(&district) {
+            println!("  {} does not have a {}.", city.name, district.name());
+            return;
+        }
+
+        self.selected_district = Some(district);
+
+        // Show the district and its buildings.
+        let placed = self.state.placed_districts.iter()
+            .find(|pd| pd.city_id == city_id && pd.district_type == district);
+        println!("  Selected district: {}", district.name());
+        if let Some(pd) = placed {
+            println!("    Coord: ({}, {})", pd.coord.q, pd.coord.r);
+            if pd.buildings.is_empty() {
+                println!("    Buildings: (none)");
+            } else {
+                println!("    Buildings:");
+                for bid in &pd.buildings {
+                    let bname = self.state.building_defs.iter()
+                        .find(|d| d.id == *bid)
+                        .map(|d| d.name)
+                        .unwrap_or("?");
+                    println!("      - {bname}");
+                }
+            }
+        }
+        println!("    Use 'build list' to see available buildings for this district.");
     }
 
     /// Resolve a user-provided string to a CityId.
@@ -624,9 +696,11 @@ impl ReplSession {
 
   Production & Building:
     build <item>              Queue production item
-    build list                List available buildings for selected city
+    build list                List available buildings (scoped by selected district)
     cancel                    Cancel current production
     district <type> <q> <r>   Place a district
+    district list             List available districts for selected city
+    district select <name>    Select a district (scopes build list)
     improve <type>            Place improvement at selected unit
     road [unit] <q> <r>       Build road at coordinate
 
