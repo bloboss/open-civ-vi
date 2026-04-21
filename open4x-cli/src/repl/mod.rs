@@ -6,10 +6,13 @@
 
 mod formatter;
 mod parser;
+pub mod prompt;
 pub mod short_ids;
 
-use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
+
+use rustyline::error::ReadlineError;
+use rustyline::DefaultEditor;
 
 use libciv::ai::{Agent, HeuristicAgent};
 use libciv::game::visibility::recalculate_visibility;
@@ -27,6 +30,7 @@ use crate::handlers;
 use crate::state_io;
 
 use self::parser::{QueryKind, ReplCommand};
+use self::prompt::{PromptConfig, PromptContext};
 use self::short_ids::ShortIds;
 
 /// Holds the in-memory game state and session context for the REPL.
@@ -45,6 +49,7 @@ pub struct ReplSession {
     game_file: PathBuf,
     log_path: PathBuf,
     ai_civ_ids: Vec<CivId>,
+    prompt_config: PromptConfig,
 }
 
 impl ReplSession {
@@ -109,66 +114,108 @@ impl ReplSession {
             game_file: game_file.to_path_buf(),
             log_path,
             ai_civ_ids,
+            prompt_config: PromptConfig::default(),
         })
     }
 
     /// Run the interactive REPL loop.
     pub fn run(&mut self) {
         println!("open4x REPL -- {} ({})", self.civ_name, self.civ_id);
-        println!("Type 'help' for commands, 'quit' to exit.\n");
+        println!("Type 'help' for commands, 'quit' to exit.");
+        println!("Prompt format: '{}' (change with 'prompt <format>')\n", self.prompt_config.format);
         self.print_turn_header();
         self.print_board();
 
-        let stdin = io::stdin();
-        let mut reader = stdin.lock();
-        loop {
-            // Prompt.
-            {
-                let sel = self
-                    .selected_unit
-                    .map(|u| format!(" [{}]", self.unit_short_ids.short(u)))
-                    .unwrap_or_default();
-                print!("T{}{sel}> ", self.state.turn);
-                let _ = io::stdout().flush();
-            }
+        // History file alongside the game save.
+        let history_path = self.game_file.with_extension("history");
+        let mut rl = DefaultEditor::new().expect("failed to init readline");
+        let _ = rl.load_history(&history_path);
 
-            let mut line = String::new();
-            match reader.read_line(&mut line) {
-                Ok(0) => break, // EOF
+        loop {
+            let prompt = self.build_prompt();
+            match rl.readline(&prompt) {
+                Ok(line) => {
+                    let trimmed = line.trim();
+                    if trimmed.is_empty() {
+                        continue;
+                    }
+                    let _ = rl.add_history_entry(trimmed);
+                    if self.dispatch_line(trimmed) {
+                        break;
+                    }
+                }
+                Err(ReadlineError::Interrupted | ReadlineError::Eof) => {
+                    self.handle_save();
+                    println!("Goodbye.");
+                    break;
+                }
                 Err(e) => {
                     eprintln!("Read error: {e}");
                     break;
                 }
-                Ok(_) => {}
             }
+        }
 
-            let current_city = self.current_city_id();
-            let cmd = parser::parse_command(&line, self.selected_unit, current_city);
+        let _ = rl.save_history(&history_path);
+    }
 
-            match cmd {
-                ReplCommand::Action(kind) => self.handle_action(&kind),
-                ReplCommand::Query(q) => self.handle_query(&q),
-                ReplCommand::EndTurn => self.handle_end_turn(),
-                ReplCommand::Board => self.print_board(),
-                ReplCommand::SelectUnit(q, r) => self.handle_select(q, r),
-                ReplCommand::MoveDirection(dir) => self.handle_move_direction(dir),
-                ReplCommand::UnitSelect(ref id_str) => self.handle_unit_select(id_str),
-                ReplCommand::CitySelect(ref id_str) => self.handle_city_select(id_str),
-                ReplCommand::DistrictSelect(ref name) => self.handle_district_select(name),
-                ReplCommand::Save => self.handle_save(),
-                ReplCommand::Help => Self::print_help(),
-                ReplCommand::Quit => {
-                    self.handle_save();
-                    println!("Goodbye.");
-                    return;
-                }
-                ReplCommand::Unknown(msg) => {
-                    if !msg.is_empty() {
-                        println!("  {msg}");
-                    }
+    /// Dispatch a single line of input. Returns `true` if the REPL should exit.
+    fn dispatch_line(&mut self, line: &str) -> bool {
+        // Handle `prompt` meta-command before parsing.
+        if let Some(rest) = line.strip_prefix("prompt") {
+            let rest = rest.trim();
+            if rest.is_empty() {
+                println!("  Current format: {}", self.prompt_config.format);
+                println!("  Placeholders: {{turn}} {{civ}} {{gold}} {{score}} {{city}} {{unit}} {{district}}");
+                println!("  Usage: prompt <format_string>");
+            } else {
+                self.prompt_config.format = rest.to_string();
+                println!("  Prompt format set to: {rest}");
+            }
+            return false;
+        }
+
+        let current_city = self.current_city_id();
+        let cmd = parser::parse_command(line, self.selected_unit, current_city);
+
+        match cmd {
+            ReplCommand::Action(kind) => self.handle_action(&kind),
+            ReplCommand::Query(q) => self.handle_query(&q),
+            ReplCommand::EndTurn => self.handle_end_turn(),
+            ReplCommand::Board => self.print_board(),
+            ReplCommand::SelectUnit(q, r) => self.handle_select(q, r),
+            ReplCommand::MoveDirection(dir) => self.handle_move_direction(dir),
+            ReplCommand::UnitSelect(ref id_str) => self.handle_unit_select(id_str),
+            ReplCommand::CitySelect(ref id_str) => self.handle_city_select(id_str),
+            ReplCommand::DistrictSelect(ref name) => self.handle_district_select(name),
+            ReplCommand::Save => self.handle_save(),
+            ReplCommand::Help => Self::print_help(),
+            ReplCommand::Quit => {
+                self.handle_save();
+                println!("Goodbye.");
+                return true;
+            }
+            ReplCommand::Unknown(msg) => {
+                if !msg.is_empty() {
+                    println!("  {msg}");
                 }
             }
         }
+        false
+    }
+
+    /// Build the prompt string from the current config and state.
+    fn build_prompt(&self) -> String {
+        let ctx = PromptContext {
+            state: &self.state,
+            civ_id: self.civ_id,
+            civ_name: self.civ_name,
+            selected_unit: self.selected_unit,
+            selected_city: self.selected_city,
+            selected_district: self.selected_district,
+            unit_short_ids: &self.unit_short_ids,
+        };
+        prompt::render_prompt(&self.prompt_config, &ctx)
     }
 
     // ── Command handlers ────────────────────────────────────────────────────
@@ -312,6 +359,18 @@ impl ReplSession {
             QueryKind::Diplomacy => formatter::print_diplomacy(&self.state, self.civ_id),
             QueryKind::Tile(q, r) => {
                 formatter::print_tile(&self.state, HexCoord::from_qr(*q, *r));
+            }
+            QueryKind::TileDir(dir) => {
+                match self.selected_unit
+                    .and_then(|uid| self.state.units.iter().find(|u| u.id == uid))
+                    .map(|u| u.coord)
+                {
+                    Some(coord) => {
+                        let target = coord + dir.unit_vec();
+                        formatter::print_tile(&self.state, target);
+                    }
+                    None => println!("  No unit selected."),
+                }
             }
             QueryKind::ResearchList => {
                 formatter::print_available_techs(&self.state, self.civ_id);
@@ -764,12 +823,14 @@ impl ReplSession {
   Queries:
     units / cities / yields / techs / civics / scores / diplomacy
     tile <q> <r>              Inspect a tile
+    tile <dir>                Inspect tile in direction from selected unit
     city <name_or_suffix>      Select city by name/ID suffix + show details
     unit <suffix>             Select unit by ID suffix + show details
 
   Other:
     select <q> <r>            Select unit at coordinate
     end / next / n            End turn
+    prompt [format]            Show or set prompt format (placeholders: {{{{turn}}}} {{{{city}}}} {{{{unit}}}} etc.)
     board / map               Redraw map
     save                      Save game
     help / h / ?              Show this help

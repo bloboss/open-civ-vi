@@ -48,6 +48,7 @@ pub enum QueryKind {
     Scores,
     Diplomacy,
     Tile(i32, i32),
+    TileDir(HexDir),
     BuildListAll,
     BuildListUnits,
     BuildListBuildings,
@@ -397,7 +398,12 @@ pub fn parse_command(
             {
                 return ReplCommand::Query(QueryKind::Tile(q, r));
             }
-            ReplCommand::Unknown("Usage: tile <q> <r>".to_string())
+            if parts.len() >= 2
+                && let Some(dir) = parse_direction(parts[1])
+            {
+                return ReplCommand::Query(QueryKind::TileDir(dir));
+            }
+            ReplCommand::Unknown("Usage: tile <q> <r> | tile <dir>".to_string())
         }
 
         "city" => {
