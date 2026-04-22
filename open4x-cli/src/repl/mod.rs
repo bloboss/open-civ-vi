@@ -535,7 +535,7 @@ impl ReplSession {
                 let q_len = city.production_queue.len();
                 println!("    Production queue ({q_len}):");
                 for item in &city.production_queue {
-                    println!("      {item:?}");
+                    println!("      {}", formatter::production_item_name(&self.state, item));
                 }
             }
             None => println!("  No city found matching '{input}'"),
