@@ -172,11 +172,11 @@ pub(crate) fn apply_effect(
                         .find(|p| p.id == pid)
                         .map(|p| p.policy_type);
                     let fits = match policy_type {
-                        Some(PolicyType::Military)   => { if mil_free  > 0 { mil_free  -= 1; true } else { false } }
-                        Some(PolicyType::Economic)   => { if eco_free  > 0 { eco_free  -= 1; true } else { false } }
-                        Some(PolicyType::Diplomatic) => { if dip_free  > 0 { dip_free  -= 1; true } else { false } }
-                        Some(PolicyType::Wildcard)   => { if wc_free   > 0 { wc_free   -= 1; true } else { false } }
-                        None => false,
+                        Some(PolicyType::Military)   if mil_free > 0 => { mil_free -= 1; true }
+                        Some(PolicyType::Economic)   if eco_free > 0 => { eco_free -= 1; true }
+                        Some(PolicyType::Diplomatic) if dip_free > 0 => { dip_free -= 1; true }
+                        Some(PolicyType::Wildcard)   if wc_free  > 0 => { wc_free  -= 1; true }
+                        _ => false,
                     };
                     if fits { kept.push(pid); } else { removed.push(pid); }
                 }
