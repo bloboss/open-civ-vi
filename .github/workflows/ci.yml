@@ -23,7 +23,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Clippy
-        run: cargo clippy -p libhexgrid -p libciv -p open4x -- -D warnings
+        run: cargo clippy -p libhexgrid -p libciv -p open4x-cli -- -D warnings
 
   test:
     name: Tests
@@ -37,7 +37,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Run tests
-        run: cargo test -p libhexgrid -p libciv -p open4x
+        run: cargo test -p libhexgrid -p libciv -p open4x-cli
 
   ai-simulation:
     name: AI Simulation

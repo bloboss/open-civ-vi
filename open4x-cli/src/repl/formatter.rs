@@ -1,6 +1,7 @@
 //! Human-readable formatting for state deltas and queries.
 
 use libciv::civ::district::BuiltinDistrict;
+use libciv::civ::ProductionItem;
 use libciv::game::diff::StateDelta;
 use libciv::game::production_helpers::{available_buildings_for_city, available_unit_defs};
 use libciv::{all_scores, CityId, CivId, GameState, UnitId, UnitTypeId};
@@ -257,7 +258,7 @@ pub fn print_cities(state: &GameState, civ_id: CivId, short_ids: &ShortIds<CityI
         let producing = c
             .production_queue
             .front()
-            .map(|p| format!("{p:?}"))
+            .map(|p| production_item_name(state, p))
             .unwrap_or_else(|| "-".to_string());
         let prod_display = if producing.len() > 20 {
             format!("{}...", &producing[..17])
@@ -357,7 +358,7 @@ pub fn print_available_projects(state: &GameState, _civ_id: CivId, city_id: City
 
     let queued_project_ids: Vec<_> = city.production_queue.iter()
         .filter_map(|item| {
-            if let libciv::civ::ProductionItem::Project(pid) = item {
+            if let ProductionItem::Project(pid) = item {
                 Some(*pid)
             } else {
                 None
@@ -474,7 +475,7 @@ pub fn print_build_list_all(
         .collect();
     let queued_project_ids: Vec<_> = city.production_queue.iter()
         .filter_map(|item| {
-            if let libciv::civ::ProductionItem::Project(pid) = item {
+            if let ProductionItem::Project(pid) = item {
                 Some(*pid)
             } else {
                 None
@@ -936,6 +937,41 @@ fn unit_type_name(state: &GameState, unit_type: UnitTypeId) -> &'static str {
         .find(|d| d.id == unit_type)
         .map(|d| d.name)
         .unwrap_or("?")
+}
+
+/// Human-readable name for a production item, unwrapping the enum variant.
+/// Used by REPL displays where the surrounding context (e.g. a "Producing"
+/// column, or a "Production queue:" header) makes the variant tag redundant
+/// — so `ProductionItem::Unit(settler_id)` renders as `Settler`, not
+/// `Unit(Settler)`.
+pub fn production_item_name(state: &GameState, item: &ProductionItem) -> String {
+    match item {
+        ProductionItem::Unit(tid) => state
+            .unit_type_defs
+            .iter()
+            .find(|d| d.id == *tid)
+            .map(|d| d.name.to_string())
+            .unwrap_or_else(|| "?".to_string()),
+        ProductionItem::Building(bid) => state
+            .building_defs
+            .iter()
+            .find(|d| d.id == *bid)
+            .map(|d| d.name.to_string())
+            .unwrap_or_else(|| "?".to_string()),
+        ProductionItem::District(dist) => dist.name().to_string(),
+        ProductionItem::Wonder(wid) => state
+            .wonder_defs
+            .iter()
+            .find(|d| d.id == *wid)
+            .map(|d| d.name.to_string())
+            .unwrap_or_else(|| "?".to_string()),
+        ProductionItem::Project(pid) => state
+            .project_defs
+            .iter()
+            .find(|d| d.id == *pid)
+            .map(|d| d.name.to_string())
+            .unwrap_or_else(|| "?".to_string()),
+    }
 }
 
 /// Classify a unit's owner for display: civ name, "City-State", or "Barbarian".

@@ -155,7 +155,7 @@ fn test_tourism_from_buildings() {
     // For now, verify tourism_output is computed (may be 0 if building yields
     // aren't integrated into compute_yields yet).
     // The tourism field in the yield will be picked up by Phase 3c.
-    assert!(civ.tourism_output >= 0); // At minimum, no crash.
+    let _ = civ.tourism_output; // At minimum, no crash on access.
 }
 
 #[test]
