@@ -841,7 +841,7 @@ pub fn print_available_civics(state: &GameState, civ_id: CivId) {
 /// Print a leaderboard of all civ scores.
 pub fn print_scores(state: &GameState) {
     let mut scores = all_scores(state);
-    scores.sort_by(|a, b| b.1.cmp(&a.1));
+    scores.sort_by_key(|b| std::cmp::Reverse(b.1));
     println!("  {:<20} {:>6}", "Civilization", "Score");
     println!("  {}", "-".repeat(28));
     for (cid, score) in &scores {

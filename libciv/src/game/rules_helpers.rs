@@ -297,7 +297,7 @@ pub(crate) fn highest_pressure_civ(
         }
     }
 
-    pressure_by_civ.sort_by(|a, b| b.1.cmp(&a.1));
+    pressure_by_civ.sort_by_key(|b| std::cmp::Reverse(b.1));
     pressure_by_civ.first().map(|(civ, _)| *civ)
 }
 

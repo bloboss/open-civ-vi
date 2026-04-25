@@ -360,18 +360,17 @@ fn step_d_interior_features(
                     t.feature = Some(BuiltinFeature::Marsh);
                 }
             }
-            EcoZone::Desert => {
+            EcoZone::Desert
                 // Oasis: non-hill, isolated, global quota ~4 per "continent region".
                 // We cap at 40 total oases on the whole map and enforce 4-tile separation.
-                if !tile.hills && oasis_placed.len() < 40 {
-                    let too_close = oasis_placed
-                        .iter()
-                        .any(|o: &HexCoord| o.distance(&coord) < 4);
-                    if !too_close && r < 0.02
-                        && let Some(t) = board.tile_mut(coord) {
-                        t.feature = Some(BuiltinFeature::Oasis);
-                        oasis_placed.push(coord);
-                    }
+                if !tile.hills && oasis_placed.len() < 40 => {
+                let too_close = oasis_placed
+                    .iter()
+                    .any(|o: &HexCoord| o.distance(&coord) < 4);
+                if !too_close && r < 0.02
+                    && let Some(t) = board.tile_mut(coord) {
+                    t.feature = Some(BuiltinFeature::Oasis);
+                    oasis_placed.push(coord);
                 }
             }
             _ => {}
