@@ -334,11 +334,10 @@ pub(crate) fn purchase_with_faith(
                         return Err(RulesError::MissingPrerequisite);
                     }
                 }
-                "Inquisitor" => {
+                "Inquisitor"
                     // Requires Launch Inquisition to have been used.
-                    if !civ.inquisition_launched {
-                        return Err(RulesError::InquisitionNotLaunched);
-                    }
+                    if !civ.inquisition_launched => {
+                    return Err(RulesError::InquisitionNotLaunched);
                 }
                 _ => {}
             }

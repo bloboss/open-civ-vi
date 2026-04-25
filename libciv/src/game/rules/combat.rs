@@ -223,11 +223,10 @@ pub(crate) fn attack(
                                 atk_cs_bonus += bonus;
                             }
                         }
-                        UniqueUnitAbility::DebuffAdjacentEnemies(debuff) => {
+                        UniqueUnitAbility::DebuffAdjacentEnemies(debuff)
                             // Varu: -5 CS to adjacent enemies.
-                            if atk_unit.coord.distance(&def_coord) == 1 {
-                                def_cs_bonus -= debuff;
-                            }
+                            if atk_unit.coord.distance(&def_coord) == 1 => {
+                            def_cs_bonus -= debuff;
                         }
                         _ => {}
                     }
