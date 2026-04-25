@@ -43,7 +43,7 @@ pub fn all_scores(state: &GameState) -> Vec<(CivId, u32)> {
         })
         .map(|civ| (civ.id, compute_score(state, civ.id)))
         .collect();
-    scores.sort_by(|a, b| b.1.cmp(&a.1));
+    scores.sort_by_key(|b| std::cmp::Reverse(b.1));
     scores
 }
 
