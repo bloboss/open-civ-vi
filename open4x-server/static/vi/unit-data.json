@@ -1,0 +1,163 @@
+{
+  "$schema": "unit-data/v1",
+  "units": [
+    {
+      "id": "u-1142",
+      "name": "Alpha",
+      "kind": "Warrior",
+      "class": "Melee",
+      "era": "Ancient",
+      "hp": 24, "hp_max": 30,
+      "mp": 2,  "mp_max": 2,
+      "xp": 12, "xp_next": 15,
+      "strength_melee": 20,
+      "strength_ranged": null,
+      "sight": 2,
+      "upkeep_gold": 1,
+      "position": { "q": 16, "r": 7 },
+      "terrain": "Forest",
+      "status": "idle",
+      "promotions": [
+        { "id": "battlecry",  "name": "Battlecry",  "desc": "+7 Combat Strength vs. melee units", "chosen": true,  "level": 1 },
+        { "id": "tortoise",   "name": "Tortoise",   "desc": "+10 Combat Strength vs. ranged units","chosen": false, "level": 1 },
+        { "id": "commando",   "name": "Commando",   "desc": "Can scale cliff faces",               "chosen": false, "level": 2, "locked": true },
+        { "id": "zweihander", "name": "Zweihänder", "desc": "+7 CS if no adjacent friendly units", "chosen": false, "level": 2, "locked": true }
+      ],
+      "actions": [
+        { "id": "move",         "label": "Move",        "hotkey": "M", "enabled": true  },
+        { "id": "attack",       "label": "Attack",      "hotkey": "A", "enabled": true  },
+        { "id": "fortify",      "label": "Fortify",     "hotkey": "F", "enabled": true  },
+        { "id": "sleep",        "label": "Sleep",       "hotkey": "Z", "enabled": true  },
+        { "id": "heal",         "label": "Heal",        "hotkey": "H", "enabled": false },
+        { "id": "promote",      "label": "Promote",     "hotkey": "P", "enabled": true  },
+        { "id": "upgrade",      "label": "Upgrade",     "hotkey": "U", "enabled": false },
+        { "id": "disband",      "label": "Disband",     "hotkey": null,"enabled": true  }
+      ]
+    },
+    {
+      "id": "u-2",
+      "name": "Beta",
+      "kind": "Archer",
+      "class": "Ranged",
+      "era": "Ancient",
+      "hp": 30, "hp_max": 30,
+      "mp": 2,  "mp_max": 2,
+      "xp": 0,  "xp_next": 15,
+      "strength_melee": 15,
+      "strength_ranged": 25,
+      "sight": 2,
+      "upkeep_gold": 1,
+      "position": { "q": 13, "r": 6 },
+      "terrain": "Plains",
+      "status": "idle",
+      "promotions": [],
+      "actions": [
+        { "id": "move",    "label": "Move",    "hotkey": "M", "enabled": true },
+        { "id": "ranged",  "label": "Ranged",  "hotkey": "R", "enabled": true },
+        { "id": "fortify", "label": "Fortify", "hotkey": "F", "enabled": true },
+        { "id": "sleep",   "label": "Sleep",   "hotkey": "Z", "enabled": true }
+      ]
+    },
+    {
+      "id": "u-settler",
+      "name": null,
+      "kind": "Settler",
+      "class": "Civilian",
+      "era": "Ancient",
+      "hp": 10, "hp_max": 10,
+      "mp": 2,  "mp_max": 2,
+      "xp": 0,  "xp_next": null,
+      "strength_melee": null,
+      "strength_ranged": null,
+      "sight": 2,
+      "upkeep_gold": 0,
+      "position": { "q": 15, "r": 7 },
+      "terrain": "Grass",
+      "status": "idle",
+      "promotions": [],
+      "actions": [
+        { "id": "move",       "label": "Move",       "hotkey": "M", "enabled": true },
+        { "id": "found_city", "label": "Found City", "hotkey": "B", "enabled": true },
+        { "id": "sleep",      "label": "Sleep",      "hotkey": "Z", "enabled": true }
+      ]
+    },
+    {
+      "id": "u-scout",
+      "name": "Echo",
+      "kind": "Scout",
+      "class": "Recon",
+      "era": "Ancient",
+      "hp": 18, "hp_max": 20,
+      "mp": 3,  "mp_max": 3,
+      "xp": 4,  "xp_next": 15,
+      "strength_melee": 10,
+      "strength_ranged": null,
+      "sight": 3,
+      "upkeep_gold": 0,
+      "position": { "q": 22, "r": 4 },
+      "terrain": "Plains",
+      "status": "idle",
+      "promotions": [],
+      "actions": [
+        { "id": "move",         "label": "Move",         "hotkey": "M", "enabled": true  },
+        { "id": "auto_explore", "label": "Auto-explore", "hotkey": "E", "enabled": true  },
+        { "id": "fortify",      "label": "Fortify",      "hotkey": "F", "enabled": true  },
+        { "id": "sleep",        "label": "Sleep",        "hotkey": "Z", "enabled": true  },
+        { "id": "disband",      "label": "Disband",      "hotkey": null,"enabled": true  }
+      ]
+    },
+    {
+      "id": "u-builder",
+      "name": null,
+      "kind": "Builder",
+      "class": "Civilian",
+      "era": "Ancient",
+      "hp": 10, "hp_max": 10,
+      "mp": 2,  "mp_max": 2,
+      "xp": 0,  "xp_next": null,
+      "strength_melee": null,
+      "strength_ranged": null,
+      "sight": 2,
+      "upkeep_gold": 0,
+      "charges": 2, "charges_max": 3,
+      "position": { "q": 14, "r": 9 },
+      "terrain": "Plains",
+      "status": "idle",
+      "promotions": [],
+      "actions": [
+        { "id": "move",     "label": "Move",     "hotkey": "M", "enabled": true  },
+        { "id": "farm",     "label": "Farm",     "hotkey": null,"enabled": true  },
+        { "id": "mine",     "label": "Mine",     "hotkey": null,"enabled": false },
+        { "id": "pasture",  "label": "Pasture",  "hotkey": null,"enabled": false },
+        { "id": "road",     "label": "Road",     "hotkey": null,"enabled": true  },
+        { "id": "sleep",    "label": "Sleep",    "hotkey": "Z", "enabled": true  },
+        { "id": "disband",  "label": "Disband",  "hotkey": null,"enabled": true  }
+      ]
+    },
+    {
+      "id": "u-galley",
+      "name": null,
+      "kind": "Galley",
+      "class": "Naval Melee",
+      "era": "Ancient",
+      "hp": 30, "hp_max": 30,
+      "mp": 3,  "mp_max": 3,
+      "xp": 0,  "xp_next": 15,
+      "strength_melee": 25,
+      "strength_ranged": null,
+      "sight": 2,
+      "upkeep_gold": 2,
+      "position": { "q": 10, "r": 11 },
+      "terrain": "Coast",
+      "status": "idle",
+      "promotions": [],
+      "actions": [
+        { "id": "move",    "label": "Move",    "hotkey": "M", "enabled": true  },
+        { "id": "attack",  "label": "Attack",  "hotkey": "A", "enabled": true  },
+        { "id": "fortify", "label": "Fortify", "hotkey": "F", "enabled": true  },
+        { "id": "sleep",   "label": "Sleep",   "hotkey": "Z", "enabled": true  },
+        { "id": "disband", "label": "Disband", "hotkey": null,"enabled": true  }
+      ]
+    }
+  ]
+}

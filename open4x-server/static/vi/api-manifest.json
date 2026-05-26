@@ -1,0 +1,374 @@
+{
+  "$schema": "api-manifest/v1",
+  "$doc": {
+    "summary": "REST API surface required to drive the 4X wireframe frontend. All endpoints are relative to a base URL e.g. /api/v1. All responses are JSON. All mutation endpoints (POST/PUT/PATCH/DELETE) accept and return JSON. The frontend fetches these on load and after each action; the server is the single source of truth.",
+    "auth": "Bearer token in Authorization header. All endpoints require authentication.",
+    "conventions": {
+      "turn_id": "Integer turn number. All game-state endpoints are implicitly scoped to the active game session.",
+      "q_r":     "Axial hex coordinates. q = column, r = row.",
+      "pct":     "Integer 0–100 percentage.",
+      "yields":  "{ f, p, g, sci, cul, faith } — all integers, per-turn deltas."
+    }
+  },
+  "endpoints": [
+
+    {
+      "group": "Player State",
+      "comment": "Top resource bar and global player variables.",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/player-state",
+          "desc": "Returns current player resources, turn, era, happiness, strategic resources.",
+          "response_schema": "player-state/v1",
+          "local_json": "player-state.json",
+          "poll": "on turn-end or resource change"
+        }
+      ]
+    },
+
+    {
+      "group": "World / Map",
+      "comment": "Hex tile grid, camera state, edge overlays.",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/world/snapshot",
+          "desc": "Sparse tile snapshot around the camera. Query params: q, r, radius (default 12). Returns world metadata + visible tiles.",
+          "response_schema": "world-snapshot/v1",
+          "local_json": "world-snapshot.json",
+          "poll": "on camera pan/zoom, turn-end"
+        },
+        {
+          "method": "GET",
+          "path": "/world/tile/:q/:r",
+          "desc": "Single tile detail including adjacency bonuses, worked-by city, improvement.",
+          "response_schema": "world-snapshot tile object",
+          "local_json": "world-snapshot.json tiles[]"
+        },
+        {
+          "method": "GET",
+          "path": "/map/overlays",
+          "desc": "Overlay toggle state + minimap marker positions.",
+          "response_schema": "map-overlays/v1",
+          "local_json": "map-overlays.json"
+        },
+        {
+          "method": "POST",
+          "path": "/map/overlays/:id/toggle",
+          "desc": "Toggle a named overlay on/off. Body: { active: bool }.",
+          "local_json": null
+        }
+      ]
+    },
+
+    {
+      "group": "Units",
+      "comment": "All player units and their action dispatch.",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/units",
+          "desc": "All player units with full stats, promotions, and action availability.",
+          "response_schema": "unit-data/v1",
+          "local_json": "unit-data.json",
+          "poll": "on turn-end, after any unit action"
+        },
+        {
+          "method": "GET",
+          "path": "/units/:id",
+          "desc": "Single unit detail.",
+          "local_json": "unit-data.json units[]"
+        },
+        {
+          "method": "POST",
+          "path": "/units/:id/action",
+          "desc": "Dispatch a unit action. Body: { action_id, target_q?, target_r? }. Returns updated unit + affected tiles.",
+          "actions": ["move","attack","fortify","sleep","heal","promote","upgrade","disband","found_city","auto_explore","farm","mine","pasture","road","ranged"],
+          "local_json": null
+        }
+      ]
+    },
+
+    {
+      "group": "Armies",
+      "comment": "Army / corps formation and combat preview.",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/armies",
+          "desc": "All armies and corps with unit membership and cohesion.",
+          "response_schema": "army-data/v1",
+          "local_json": "army-data.json"
+        },
+        {
+          "method": "POST",
+          "path": "/armies",
+          "desc": "Form a new army. Body: { name, unit_ids[] }.",
+          "local_json": null
+        },
+        {
+          "method": "GET",
+          "path": "/combat/preview",
+          "desc": "Combat odds preview. Query: attacker_id, defender_q, defender_r. Returns predicted damage and outcome.",
+          "local_json": "army-data.json combat_preview"
+        }
+      ]
+    },
+
+    {
+      "group": "Cities",
+      "comment": "City management, districts, buildings, production queue.",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/cities",
+          "desc": "All cities with yields, districts, buildings, production queue, loyalty, religion pressure.",
+          "response_schema": "city-data/v1",
+          "local_json": "city-data.json",
+          "poll": "on turn-end, after production/citizen action"
+        },
+        {
+          "method": "GET",
+          "path": "/cities/:id",
+          "desc": "Single city full detail.",
+          "local_json": "city-data.json cities[]"
+        },
+        {
+          "method": "GET",
+          "path": "/cities/:id/tiles",
+          "desc": "Tile ownership map for city hex view.",
+          "response_schema": "city-tiles/v1 (single city entry)",
+          "local_json": "city-tiles.json"
+        },
+        {
+          "method": "POST",
+          "path": "/cities/:id/production",
+          "desc": "Add item to production queue. Body: { item_id, item_type: 'building'|'unit'|'wonder' }.",
+          "local_json": null
+        },
+        {
+          "method": "DELETE",
+          "path": "/cities/:id/production/:pos",
+          "desc": "Remove item at queue position.",
+          "local_json": null
+        },
+        {
+          "method": "POST",
+          "path": "/cities/:id/citizens",
+          "desc": "Set citizen focus. Body: { focus: 'default'|'food'|'prod'|'gold'|'sci' }.",
+          "local_json": null
+        },
+        {
+          "method": "PATCH",
+          "path": "/cities/:id/rename",
+          "desc": "Rename city. Body: { name: string }.",
+          "local_json": null
+        }
+      ]
+    },
+
+    {
+      "group": "Technology",
+      "comment": "Tech tree state and research queue.",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/tech",
+          "desc": "All techs with status, progress, and current research queue.",
+          "response_schema": "tech-tree/v1",
+          "local_json": "tech-tree.json",
+          "poll": "on turn-end"
+        },
+        {
+          "method": "POST",
+          "path": "/tech/research",
+          "desc": "Set active research. Body: { tech_id }. Swaps current research.",
+          "local_json": null
+        },
+        {
+          "method": "POST",
+          "path": "/tech/queue",
+          "desc": "Append tech to queue. Body: { tech_id }.",
+          "local_json": null
+        },
+        {
+          "method": "DELETE",
+          "path": "/tech/queue/:tech_id",
+          "desc": "Remove tech from queue.",
+          "local_json": null
+        }
+      ]
+    },
+
+    {
+      "group": "Civics",
+      "comment": "Civics tree, government, and active policies.",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/civics",
+          "desc": "All civics with status, current government, and policy slots.",
+          "response_schema": "civics-tree/v1",
+          "local_json": "civics-tree.json",
+          "poll": "on turn-end"
+        },
+        {
+          "method": "POST",
+          "path": "/civics/research",
+          "desc": "Set active civic. Body: { civic_id }.",
+          "local_json": null
+        },
+        {
+          "method": "POST",
+          "path": "/civics/queue",
+          "desc": "Append civic to queue. Body: { civic_id }.",
+          "local_json": null
+        },
+        {
+          "method": "DELETE",
+          "path": "/civics/queue/:civic_id",
+          "desc": "Remove civic from queue.",
+          "local_json": null
+        },
+        {
+          "method": "GET",
+          "path": "/government",
+          "desc": "Current government, policy slots, active policies, full policy catalogue.",
+          "response_schema": "government-policies/v1",
+          "local_json": "government-policies.json",
+          "poll": "on civic completion, government change"
+        },
+        {
+          "method": "POST",
+          "path": "/government/change",
+          "desc": "Switch government. Body: { government_id }. Triggers 1-turn anarchy.",
+          "local_json": null
+        },
+        {
+          "method": "PUT",
+          "path": "/government/policies",
+          "desc": "Replace all active policies. Body: { policies: [{ slot, policy_id }] }.",
+          "local_json": null
+        }
+      ]
+    },
+
+    {
+      "group": "Notifications & Turn Queue",
+      "comment": "Event feed and pending actions for the current turn.",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/notifications",
+          "desc": "Current notification feed.",
+          "response_schema": "notifications/v1",
+          "local_json": "notifications.json",
+          "poll": "on turn-end"
+        },
+        {
+          "method": "DELETE",
+          "path": "/notifications/:id",
+          "desc": "Dismiss a notification.",
+          "local_json": null
+        },
+        {
+          "method": "DELETE",
+          "path": "/notifications",
+          "desc": "Dismiss all notifications.",
+          "local_json": null
+        },
+        {
+          "method": "GET",
+          "path": "/turn-queue",
+          "desc": "Pending actions to resolve before end-turn.",
+          "response_schema": "turn-queue/v1",
+          "local_json": "turn-queue.json",
+          "poll": "after each unit/city action, on turn-end"
+        },
+        {
+          "method": "POST",
+          "path": "/turn-queue/:id/skip",
+          "desc": "Skip a non-required queue item.",
+          "local_json": null
+        },
+        {
+          "method": "POST",
+          "path": "/turn/end",
+          "desc": "End the current turn. Returns 400 if required queue items are unresolved. On success returns updated player-state.",
+          "local_json": null
+        }
+      ]
+    },
+
+    {
+      "group": "Diplomacy",
+      "comment": "Civilizations, city-states, and deal negotiation.",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/diplomacy",
+          "desc": "All known civs, city-states, relations, and active deal draft.",
+          "response_schema": "diplomacy/v1",
+          "local_json": "diplomacy.json",
+          "poll": "on turn-end, after diplomatic action"
+        },
+        {
+          "method": "GET",
+          "path": "/diplomacy/civs/:id",
+          "desc": "Single civ detail with modifiers.",
+          "local_json": "diplomacy.json civs[]"
+        },
+        {
+          "method": "POST",
+          "path": "/diplomacy/civs/:id/action",
+          "desc": "Perform diplomatic action. Body: { action: 'declare_war'|'denounce'|'open_borders'|'alliance'|'research_agr'|'joint_war'|'gift_unit', unit_id? }.",
+          "local_json": null
+        },
+        {
+          "method": "PUT",
+          "path": "/diplomacy/deal",
+          "desc": "Update deal draft. Body: { civ_id, you_give[], they_give[], duration_turns }.",
+          "local_json": null
+        },
+        {
+          "method": "POST",
+          "path": "/diplomacy/deal/propose",
+          "desc": "Propose the current deal draft. Returns AI acceptance + updated relation score.",
+          "local_json": null
+        }
+      ]
+    },
+
+    {
+      "group": "Empire Overview",
+      "comment": "Aggregate empire statistics dashboard.",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/empire/overview",
+          "desc": "Summary stats, city table, resources, trade routes, religion, yields sparkline.",
+          "response_schema": "empire-overview/v1",
+          "local_json": "empire-overview.json",
+          "poll": "on turn-end"
+        }
+      ]
+    },
+
+    {
+      "group": "Victory",
+      "comment": "Victory condition progress and leaderboard.",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/victory",
+          "desc": "All victory conditions with player progress, steps, and full leaderboard.",
+          "response_schema": "victory/v1",
+          "local_json": "victory.json",
+          "poll": "on turn-end"
+        }
+      ]
+    }
+
+  ]
+}

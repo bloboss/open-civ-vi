@@ -1,0 +1,388 @@
+/* ============================================================
+ * open4x-hud.css — HUD-specific layout styles.
+ * Sits on top of open4x.css design system.
+ * ============================================================ */
+
+/* the HUD screen is a full-bleed map with floating panels */
+#screen-hud { background: var(--bg); }
+
+.hud-map {
+  position: absolute;
+  inset: 0;
+}
+.hud-map .hex-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+}
+.hud-map.dragging .hex-canvas { cursor: grabbing; }
+.hud-map .hex-labels {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.hud-map .hex-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  font-family: var(--font-sans);
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1.1;
+  pointer-events: none;
+}
+.hud-map .hex-label .hl-city {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  background: rgba(255,255,255,.85);
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border-soft);
+}
+.hud-map .hex-label .hl-res {
+  font-size: 9.5px;
+  font-family: var(--font-mono);
+  color: var(--accent);
+  background: rgba(255,255,255,.78);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+.hud-map .hex-label .hl-terrain {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+.hud-map .hex-label .hl-yields {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--ink-2);
+}
+.hud-map .hex-label .hl-id { font-size: 8.5px; color: var(--ink-4); font-family: var(--font-mono); }
+.hud-map .hex-label.dim { opacity: 0.55; }
+
+/* ── floating side panels ─────────────────────────────── */
+.hud-panel {
+  position: absolute;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-3);
+  box-shadow: var(--shadow-pop);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 5;
+}
+.hud-panel-h {
+  padding: 8px 12px 7px;
+  border-bottom: 1px solid var(--border-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--surface);
+}
+.hud-panel-h .title {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+.hud-panel-h .actions { display: flex; gap: 2px; }
+.hud-panel-h .actions .icon-btn { width: 22px; height: 22px; }
+
+/* ── notifications panel (right edge) ─────────────────── */
+.notifications-panel {
+  top: 12px;
+  right: 12px;
+  width: 280px;
+  max-height: calc(100% - 24px);
+}
+.notif-list {
+  flex: 1;
+  overflow: auto;
+  padding: 4px 0;
+}
+.notif {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  padding: 8px 12px 8px 12px;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  position: relative;
+}
+.notif:hover { background: var(--surface-2); }
+.notif + .notif { border-top: 1px solid var(--border-soft); }
+.notif.accent { border-left-color: var(--accent); }
+.notif.good   { border-left-color: var(--good); }
+.notif.warn   { border-left-color: var(--warn); }
+.notif.bad    { border-left-color: var(--bad); }
+.notif-icon {
+  width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-3);
+  background: var(--surface-3);
+  border-radius: 50%;
+  margin-top: 1px;
+}
+.notif.accent .notif-icon { background: var(--accent-soft); color: var(--accent); }
+.notif.good   .notif-icon { background: var(--good-soft);   color: var(--good); }
+.notif.warn   .notif-icon { background: var(--warn-soft);   color: var(--warn); }
+.notif.bad    .notif-icon { background: var(--bad-soft);    color: var(--bad); }
+.notif-title {
+  font-size: 12px;
+  color: var(--ink);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  display: flex; align-items: center; gap: 6px;
+}
+.notif-desc {
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 2px;
+  line-height: 1.35;
+}
+.notif-cat {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-4);
+}
+.notif-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--ink-4);
+  font-size: 12px;
+}
+
+/* ── turn queue panel (bottom-left) ──────────────────── */
+.turn-queue-panel {
+  left: 12px;
+  bottom: 12px;
+  width: 320px;
+  max-height: 360px;
+}
+.tq-list { flex: 1; overflow: auto; }
+.tq-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 12px;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+}
+.tq-item:hover { background: var(--surface-2); }
+.tq-item + .tq-item { border-top: 1px solid var(--border-soft); }
+.tq-item.kind-research { border-left-color: var(--y-sci); }
+.tq-item.kind-unit     { border-left-color: var(--ink-2); }
+.tq-item.kind-civilian { border-left-color: var(--y-prod); }
+.tq-item.kind-city     { border-left-color: var(--accent); }
+.tq-item.required { background: var(--accent-tint); }
+.tq-item.required:hover { background: #dfeceb; }
+.tq-num {
+  width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-3);
+  background: var(--surface-3);
+  border-radius: 4px;
+}
+.tq-item.required .tq-num { background: var(--accent); color: white; }
+.tq-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  display: flex; align-items: center; gap: 6px;
+}
+.tq-title .req-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 0 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.tq-desc {
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+.tq-skip { font-size: 11px; color: var(--ink-4); padding: 2px 6px; border-radius: 3px; }
+.tq-skip:hover { color: var(--ink); background: var(--surface-3); }
+
+/* ── tile/unit context panel (bottom-center) ─────────── */
+.context-panel {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 12px;
+  display: flex;
+  align-items: stretch;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-3);
+  box-shadow: var(--shadow-pop);
+  overflow: hidden;
+  max-width: 720px;
+  min-width: 480px;
+  z-index: 6;
+}
+.context-empty {
+  padding: 14px 22px;
+  color: var(--ink-4);
+  font-size: 12px;
+  font-style: italic;
+}
+.ctx-section {
+  padding: 12px 16px;
+  border-right: 1px solid var(--border-soft);
+  min-width: 0;
+}
+.ctx-section:last-child { border-right: 0; }
+.ctx-title {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.ctx-h {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+.ctx-h .coord { font-family: var(--font-mono); color: var(--ink-3); font-weight: 400; font-size: 12px; }
+.ctx-meta { font-size: 11.5px; color: var(--ink-3); }
+.ctx-actions { display: flex; gap: 4px; padding: 10px 12px; align-items: center; background: var(--surface-2); }
+.ctx-actions .btn { height: 22px; padding: 0 8px; font-size: 11px; }
+
+/* ── minimap panel (top-left) ────────────────────────── */
+.minimap-panel {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 220px;
+  height: 132px;
+  z-index: 4;
+}
+.minimap-panel canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  display: block;
+}
+.minimap-panel .mm-overlay {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: auto;
+  cursor: crosshair;
+}
+.minimap-panel .mm-label {
+  position: absolute;
+  top: 6px; left: 8px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  background: rgba(255,255,255,.8);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+.minimap-panel .mm-vp {
+  position: absolute;
+  border: 1px solid var(--ink);
+  pointer-events: none;
+}
+
+/* zoom controls — bottom-right above the turn queue gutter would conflict, put it bottom-right */
+.zoom-stack {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  z-index: 4;
+}
+.zoom-stack .icon-btn {
+  width: 28px; height: 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0;
+}
+.zoom-stack .icon-btn:first-child { border-radius: var(--r-2) var(--r-2) 0 0; }
+.zoom-stack .icon-btn:last-child  { border-radius: 0 0 var(--r-2) var(--r-2); }
+.zoom-stack .icon-btn + .icon-btn { border-top: 0; }
+
+/* status footer (bottom of map, full width sub-bar) */
+.map-status {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;   /* shown only when no context panel */
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  background: rgba(255,255,255,.8);
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border-soft);
+  z-index: 3;
+}
+
+/* hint nudge (centered, only on empty notif / empty queue states) */
+.empty-hint {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--ink-4);
+  font-size: 12px;
+}
+
+/* ── stub screen (for screens not yet built out) ─────── */
+.screen-stub {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.screen-stub-card {
+  text-align: center;
+  padding: 40px 56px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-3);
+  background: var(--surface);
+  max-width: 480px;
+}
+.screen-stub-card .kicker { display: block; margin-bottom: 10px; }
+.screen-stub-card h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.screen-stub-card p {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 13px;
+}

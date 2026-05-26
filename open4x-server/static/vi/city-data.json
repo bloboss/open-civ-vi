@@ -1,0 +1,375 @@
+{
+  "$schema": "city-data/v1",
+  "cities": [
+    {
+      "id": "alexandria",
+      "name": "Alexandria",
+      "capital": true,
+      "position": {
+        "q": 14,
+        "r": 6
+      },
+      "population": 7,
+      "citizens_working": 4,
+      "citizens_specialists": 3,
+      "citizens_unemployed": 0,
+      "specialists": {
+        "scientists": 1,
+        "merchants": 1,
+        "artists": 1
+      },
+      "citizen_focus": "default",
+      "yields": {
+        "food": 12,
+        "production": 14,
+        "gold": 6,
+        "science": 11,
+        "culture": 7,
+        "faith": 2
+      },
+      "growth": {
+        "food_stored": 42,
+        "food_needed": 60,
+        "turns": 6
+      },
+      "housing": {
+        "used": 9,
+        "max": 11
+      },
+      "amenities": 2,
+      "loyalty": {
+        "per_turn": 4.2,
+        "current": 100
+      },
+      "appeal_avg": 1.3,
+      "flood_risk": "low",
+      "religion": {
+        "majority": null,
+        "pressure": {}
+      },
+      "districts": [
+        {
+          "id": "city_center",
+          "name": "City Center",
+          "status": "built",
+          "adj_bonus": 0
+        },
+        {
+          "id": "campus",
+          "name": "Campus",
+          "status": "built",
+          "adj_bonus": 2
+        },
+        {
+          "id": "commerce",
+          "name": "Commercial Hub",
+          "status": "queued",
+          "adj_bonus": 0
+        },
+        {
+          "id": "harbor",
+          "name": "Harbor",
+          "status": "available",
+          "adj_bonus": 0
+        },
+        {
+          "id": "theatre",
+          "name": "Theatre Sq.",
+          "status": "locked",
+          "adj_bonus": 0
+        }
+      ],
+      "buildings": [
+        {
+          "district": "city_center",
+          "name": "Palace",
+          "yields": "+2 all",
+          "status": "built"
+        },
+        {
+          "district": "city_center",
+          "name": "Monument",
+          "yields": "+2 🎭",
+          "status": "built"
+        },
+        {
+          "district": "city_center",
+          "name": "Granary",
+          "yields": "+1F +2H",
+          "status": "built"
+        },
+        {
+          "district": "campus",
+          "name": "Library",
+          "yields": "+2 🔬",
+          "status": "built"
+        },
+        {
+          "district": "commerce",
+          "name": "Market",
+          "yields": "+2G +1 trade",
+          "status": "queued"
+        },
+        {
+          "district": "city_center",
+          "name": "Pyramids",
+          "yields": "wonder",
+          "status": "wonder"
+        }
+      ],
+      "production": {
+        "current": {
+          "name": "Library",
+          "type": "building",
+          "progress": 33,
+          "cost": 60,
+          "turns": 4
+        },
+        "queue": [
+          {
+            "pos": 2,
+            "name": "Granary",
+            "type": "building",
+            "cost": 45
+          },
+          {
+            "pos": 3,
+            "name": "Warrior",
+            "type": "unit",
+            "cost": 40
+          },
+          {
+            "pos": 4,
+            "name": "Settler",
+            "type": "unit",
+            "cost": 80
+          }
+        ]
+      },
+      "loyalty_sources": [
+        {
+          "id": "l1",
+          "label": "City population",
+          "type": "city",
+          "city": "Alexandria",
+          "civ": "Egypt",
+          "value": 5
+        },
+        {
+          "id": "l2",
+          "label": "Memphis (nearby)",
+          "type": "city",
+          "city": "Memphis",
+          "civ": "Egypt",
+          "value": 2.1
+        },
+        {
+          "id": "l3",
+          "label": "Governor Reyna",
+          "type": "policy",
+          "city": null,
+          "civ": "Egypt",
+          "value": 4
+        },
+        {
+          "id": "l4",
+          "label": "Amenities bonus",
+          "type": "policy",
+          "city": null,
+          "civ": "Egypt",
+          "value": 1
+        },
+        {
+          "id": "l5",
+          "label": "Caria (nearby)",
+          "type": "civ",
+          "city": "Halicarnassus",
+          "civ": "Caria",
+          "value": -3.2
+        },
+        {
+          "id": "l6",
+          "label": "Phoenicia (trade)",
+          "type": "civ",
+          "city": "Tyre",
+          "civ": "Phoenicia",
+          "value": -0.7
+        }
+      ],
+      "religion_pressure": [
+        {
+          "id": "r1",
+          "religion": "Hellenism",
+          "type": "city",
+          "source": "Caria · Halicarnassus",
+          "civ": "Caria",
+          "value": 8
+        },
+        {
+          "id": "r2",
+          "religion": "Hellenism",
+          "type": "trade_route",
+          "source": "Trade route from Tyre",
+          "civ": "Phoenicia",
+          "value": 3
+        },
+        {
+          "id": "r3",
+          "religion": "Hellenism",
+          "type": "city",
+          "source": "Caria · Miletus",
+          "civ": "Caria",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": "memphis",
+      "name": "Memphis",
+      "capital": false,
+      "position": {
+        "q": 22,
+        "r": 9
+      },
+      "population": 5,
+      "citizens_working": 4,
+      "citizens_specialists": 1,
+      "citizens_unemployed": 0,
+      "specialists": {
+        "scientists": 0,
+        "merchants": 1,
+        "artists": 0
+      },
+      "citizen_focus": "food",
+      "yields": {
+        "food": 6,
+        "production": 9,
+        "gold": 4,
+        "science": 5,
+        "culture": 2,
+        "faith": 1
+      },
+      "growth": {
+        "food_stored": 18,
+        "food_needed": 50,
+        "turns": 8
+      },
+      "housing": {
+        "used": 7,
+        "max": 8
+      },
+      "amenities": 0,
+      "loyalty": {
+        "per_turn": 1.2,
+        "current": 98
+      },
+      "appeal_avg": 0.8,
+      "flood_risk": "none",
+      "religion": {
+        "majority": null,
+        "pressure": {}
+      },
+      "districts": [
+        {
+          "id": "city_center",
+          "name": "City Center",
+          "status": "built",
+          "adj_bonus": 0
+        },
+        {
+          "id": "campus",
+          "name": "Campus",
+          "status": "available",
+          "adj_bonus": 0
+        },
+        {
+          "id": "commerce",
+          "name": "Commercial Hub",
+          "status": "locked",
+          "adj_bonus": 0
+        }
+      ],
+      "buildings": [
+        {
+          "district": "city_center",
+          "name": "Monument",
+          "yields": "+2 🎭",
+          "status": "built"
+        },
+        {
+          "district": "city_center",
+          "name": "Granary",
+          "yields": "+1F +2H",
+          "status": "built"
+        },
+        {
+          "district": "city_center",
+          "name": "Walls",
+          "yields": "+6 def",
+          "status": "queued"
+        }
+      ],
+      "production": {
+        "current": {
+          "name": "Walls",
+          "type": "building",
+          "progress": 12,
+          "cost": 80,
+          "turns": 3
+        },
+        "queue": [
+          {
+            "pos": 2,
+            "name": "Archer",
+            "type": "unit",
+            "cost": 60
+          }
+        ]
+      },
+      "loyalty_sources": [
+        {
+          "id": "l1",
+          "label": "City population",
+          "type": "city",
+          "city": "Memphis",
+          "civ": "Egypt",
+          "value": 3.5
+        },
+        {
+          "id": "l2",
+          "label": "Alexandria (nearby)",
+          "type": "city",
+          "city": "Alexandria",
+          "civ": "Egypt",
+          "value": 2
+        },
+        {
+          "id": "l3",
+          "label": "Amenities neutral",
+          "type": "policy",
+          "city": null,
+          "civ": "Egypt",
+          "value": 0
+        },
+        {
+          "id": "l4",
+          "label": "Nubia (nearby)",
+          "type": "civ",
+          "city": "Napata",
+          "civ": "Nubia",
+          "value": -4.3
+        }
+      ],
+      "religion_pressure": [
+        {
+          "id": "r1",
+          "religion": "Hellenism",
+          "type": "city",
+          "source": "Caria · Halicarnassus",
+          "civ": "Caria",
+          "value": 5
+        }
+      ]
+    }
+  ]
+}

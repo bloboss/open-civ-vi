@@ -1,0 +1,34 @@
+{
+  "$schema": "army-data/v1",
+  "$doc": {
+    "summary": "Armies, corps, and the active combat preview for the Unit/Army screen.",
+    "fields": {
+      "armies[].id":              "Unique identifier.",
+      "armies[].name":            "Display name e.g. 'Delta'.",
+      "armies[].unit_ids":        "Ordered array of unit ids (from unit-data.json) that form this army.",
+      "armies[].cohesion_pct":    "0–100 cohesion percentage.",
+      "armies[].unlock_civic":    "Civic required to form armies (null = already unlocked).",
+      "corps_slots":              "Max number of corps/armies the player can field.",
+      "combat_preview":           "The current combat preview shown in the right panel.",
+      "combat_preview.attacker":  "{ unit_id, str, hp } — references unit-data.json id.",
+      "combat_preview.defender":  "{ name, str, hp } — may be an enemy unit (no id).",
+      "combat_preview.predicted": "{ dmg_attacker, dmg_defender, outcome_label }"
+    }
+  },
+  "armies": [
+    {
+      "id": "army-delta",
+      "name": "Delta",
+      "unit_ids": ["u-1142", "u-2", "u-scout"],
+      "cohesion_pct": 72,
+      "unlock_civic": null
+    }
+  ],
+  "corps_slots": 3,
+  "form_corps_unlock_civic": "nationalism",
+  "combat_preview": {
+    "attacker": { "unit_id": "u-1142", "str": 20, "hp": 24 },
+    "defender": { "name": "Barb Brute", "str": 18, "hp": 25 },
+    "predicted": { "dmg_attacker": 7, "dmg_defender": 11, "outcome_label": "Win likely" }
+  }
+}

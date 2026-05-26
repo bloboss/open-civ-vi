@@ -1,0 +1,20 @@
+{
+  "$schema": "player-state/v1",
+  "turn": 142,
+  "turn_max": 500,
+  "era": "Classical",
+  "era_progress": 0.65,
+  "resources": {
+    "gold":        { "value": 1284, "per_turn": 14 },
+    "science":     { "value": null, "per_turn": 47 },
+    "culture":     { "value": null, "per_turn": 32 },
+    "faith":       { "value": null, "per_turn": 8  },
+    "food":        { "value": null, "per_turn": 12 },
+    "production":  { "value": null, "per_turn": 28 }
+  },
+  "happiness": 4,
+  "strategic": {
+    "Iron":   3,
+    "Horses": 2
+  }
+}

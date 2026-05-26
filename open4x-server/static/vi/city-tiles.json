@@ -1,0 +1,82 @@
+{
+  "$schema": "city-tiles/v1",
+  "$doc": {
+    "summary": "Per-city tile ownership maps used by the city hex view renderer.",
+    "fields": {
+      "cities[].id":           "City id matching city-data.json cities[].id.",
+      "cities[].tiles[].offset": "[dq, dr] axial offset from the city center tile.",
+      "cities[].tiles[].status": "'center' | 'working' | 'idle' — determines fill color in the city hex view.",
+      "note": "The renderer converts (cityQ + offset[0], cityR + offset[1]) to world coords with X wrapping."
+    }
+  },
+  "cities": [
+    {
+      "id": "alexandria",
+      "tiles": [
+        { "offset": [  0,  0 ], "status": "center"  },
+        { "offset": [  0, -1 ], "status": "working" },
+        { "offset": [  1, -1 ], "status": "working" },
+        { "offset": [  1,  0 ], "status": "working" },
+        { "offset": [  0,  1 ], "status": "working" },
+        { "offset": [ -1,  0 ], "status": "idle"    },
+        { "offset": [ -1, -1 ], "status": "idle"    },
+        { "offset": [  0, -2 ], "status": "idle"    },
+        { "offset": [  1, -2 ], "status": "idle"    },
+        { "offset": [  2, -1 ], "status": "idle"    },
+        { "offset": [ -2,  0 ], "status": "idle"    },
+        { "offset": [ -1, -2 ], "status": "idle"    },
+        { "offset": [ -2, -1 ], "status": "idle"    }
+      ]
+    },
+    {
+      "id": "memphis",
+      "tiles": [
+        { "offset": [  0,  0 ], "status": "center"  },
+        { "offset": [  0, -1 ], "status": "working" },
+        { "offset": [  1, -1 ], "status": "working" },
+        { "offset": [  1,  0 ], "status": "working" },
+        { "offset": [  0,  1 ], "status": "working" },
+        { "offset": [ -1,  0 ], "status": "idle"    },
+        { "offset": [ -1, -1 ], "status": "idle"    },
+        { "offset": [  0, -2 ], "status": "idle"    },
+        { "offset": [  1, -2 ], "status": "idle"    },
+        { "offset": [  2, -1 ], "status": "idle"    },
+        { "offset": [ -1, -2 ], "status": "idle"    }
+      ]
+    },
+    {
+      "id": "thebes",
+      "tiles": [
+        { "offset": [  0,  0 ], "status": "center"  },
+        { "offset": [  0, -1 ], "status": "working" },
+        { "offset": [  1, -1 ], "status": "working" },
+        { "offset": [  1,  0 ], "status": "working" },
+        { "offset": [  0,  1 ], "status": "working" },
+        { "offset": [ -1,  0 ], "status": "idle"    },
+        { "offset": [ -1, -1 ], "status": "idle"    }
+      ]
+    },
+    {
+      "id": "giza",
+      "tiles": [
+        { "offset": [  0,  0 ], "status": "center"  },
+        { "offset": [  0, -1 ], "status": "working" },
+        { "offset": [  1, -1 ], "status": "working" },
+        { "offset": [  1,  0 ], "status": "working" },
+        { "offset": [  0,  1 ], "status": "working" },
+        { "offset": [ -1,  0 ], "status": "idle"    }
+      ]
+    },
+    {
+      "id": "aswan",
+      "tiles": [
+        { "offset": [  0,  0 ], "status": "center"  },
+        { "offset": [  0, -1 ], "status": "working" },
+        { "offset": [  1, -1 ], "status": "working" },
+        { "offset": [  1,  0 ], "status": "working" },
+        { "offset": [  0,  1 ], "status": "working" },
+        { "offset": [ -1,  0 ], "status": "idle"    }
+      ]
+    }
+  ]
+}

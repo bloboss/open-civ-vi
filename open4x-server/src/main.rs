@@ -3,7 +3,7 @@
 use axum::Router;
 use axum::routing::get;
 use tower_http::cors::CorsLayer;
-use tower_http::services::ServeDir;
+use tower_http::services::{ServeDir, ServeFile};
 
 use open4x_server::server;
 
@@ -15,12 +15,22 @@ async fn main() {
     let static_dir = std::env::var("OPEN4X_STATIC_DIR")
         .unwrap_or_else(|_| "./open4x-client-web/dist".to_string());
 
+    // Hi-fi design bundle (Open4X.html + companion JS/CSS/JSON) served at /vi.
+    // Lives outside OPEN4X_STATIC_DIR so the trunk bundle and the design bundle
+    // can ship independently. See book/src/roadmap/web-ui.md.
+    let vi_dir = std::env::var("OPEN4X_VI_DIR")
+        .unwrap_or_else(|_| "./open4x-server/static/vi".to_string());
+    let vi_service = ServeDir::new(&vi_dir)
+        .append_index_html_on_directories(false)
+        .fallback(ServeFile::new(format!("{vi_dir}/Open4X.html")));
+
     let app = Router::new()
         .route("/ws", get(server::ws::ws_handler))
         .route("/health", get(|| async { "ok" }))
         .route("/api/demo-game", get(demo_game_handler))
         // REST v1 — see book/src/roadmap/web-ui.md
         .nest("/api/v1", server::rest::v1_router())
+        .nest_service("/vi", vi_service)
         .fallback_service(ServeDir::new(&static_dir))
         .layer(CorsLayer::permissive())
         .with_state(state);
@@ -29,6 +39,7 @@ async fn main() {
     let addr = format!("0.0.0.0:{port}");
     println!("open4x-server listening on {addr}");
     println!("  static files: {static_dir}");
+    println!("  vi bundle:    {vi_dir} (mounted at /vi)");
     println!("  data dir:     {}", std::env::var("OPEN4X_DATA_DIR").unwrap_or_else(|_| "./data".into()));
     let listener = tokio::net::TcpListener::bind(&addr).await
         .expect("failed to bind");
