@@ -37,8 +37,21 @@ cargo run -p open4x -- play
 # in open4x-server fails CI if the live Axum router and the
 # #[utoipa::path] annotations in open4x-server/src/server/openapi.rs ever
 # drift apart.
-cargo run -p open4x-server --features openapi --bin gen-openapi
+cargo xtask gen-openapi
+
+# Full pre-commit check: build + test + clippy + openapi-feature pass +
+# wasm32 client build + openapi.json freshness diff.
+cargo xtask check
+# (skip the wasm leg on a fresh machine without the target installed):
+cargo xtask check --no-wasm
+
+# Discover every recipe:
+cargo xtask --help
 ```
+
+`cargo xtask` is the workspace recipe runner (pure Rust, lives in `xtask/`,
+wired up via an alias in `.cargo/config.toml`). Recipes orchestrate cargo,
+trunk, and mdbook; nothing in there knows about game state.
 
 ## API documentation
 

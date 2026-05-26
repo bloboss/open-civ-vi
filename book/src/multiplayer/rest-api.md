@@ -178,14 +178,20 @@ plumbing through libciv is tracked under the Phase 4 work in
 
 ```bash
 # Default location: book/src/multiplayer/openapi.json
-cargo run -p open4x-server --features openapi --bin gen-openapi
+cargo xtask gen-openapi
 
 # Custom output path:
-cargo run -p open4x-server --features openapi --bin gen-openapi -- /tmp/o.json
+cargo xtask gen-openapi --out /tmp/o.json
+
+# CI: fail if the committed file is stale.
+cargo xtask openapi-check
 ```
 
-The generator walks up from the current directory until it finds the
-workspace `Cargo.toml`, so it works from anywhere inside the tree.
+Under the hood `cargo xtask gen-openapi` runs
+`cargo run -p open4x-server --features openapi --bin gen-openapi`; either
+form works. The generator walks up from the current directory until it
+finds the workspace `Cargo.toml`, so it runs from anywhere inside the
+tree.
 
 ## Out of scope here
 

@@ -104,8 +104,15 @@ changelog live in [`web-ui.md`](./roadmap/web-ui.md).
 ```bash
 # Regenerate the OpenAPI document. Runs from anywhere in the workspace;
 # default output path is book/src/multiplayer/openapi.json.
-cargo run -p open4x-server --features openapi --bin gen-openapi
+cargo xtask gen-openapi
+
+# CI / pre-push: verify the committed openapi.json is up to date.
+cargo xtask openapi-check
 ```
+
+`cargo xtask` is the workspace recipe runner. Use `cargo xtask --help` to
+discover the other recipes (`check`, `wasm`, `book`, `server`,
+`trunk-serve`, …).
 
 CI keeps the document in sync via the `openapi_paths_match_router` test in
 `open4x-server/tests/openapi_contract.rs`. If the live Axum router and the

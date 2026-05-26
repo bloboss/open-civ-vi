@@ -129,10 +129,11 @@ open4x-protocol::v1::web::*    ◄── wire types (ToSchema-derived under `ope
                         └─ open4x-sdk::endpoints::*    (typed client; matches openapi.json)
 ```
 
-If any of those links drift, the contract test fails. To regenerate the spec:
+If any of those links drift, the contract test fails. To regenerate the
+spec:
 
 ```bash
-cargo run -p open4x-server --features openapi --bin gen-openapi
+cargo xtask gen-openapi
 ```
 
 ## Client architecture

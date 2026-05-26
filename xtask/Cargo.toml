@@ -1,0 +1,9 @@
+[package]
+name = "xtask"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "Workspace recipe runner. Invoked as `cargo xtask <recipe>` via the alias in .cargo/config.toml."
+
+[dependencies]
+clap = { workspace = true }
