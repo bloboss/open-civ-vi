@@ -28,3 +28,7 @@ serde_json = "1"
 tokio = { version = "1", features = ["full"] }
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 rustyline = "15"
+# OpenAPI generation. Opt-in via the `openapi` cargo feature on
+# `open4x-protocol` and `open4x-server`. Default builds (including the
+# wasm32 client) do not pull `utoipa` in.
+utoipa = { version = "5", features = ["preserve_path_order"] }

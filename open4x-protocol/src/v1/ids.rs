@@ -21,6 +21,34 @@ macro_rules! define_api_id {
                 write!(f, "{}({})", stringify!($name), self.0)
             }
         }
+
+        // OpenAPI schema: every wire ID newtype serializes as a 26-char
+        // Crockford-base32 ULID string, so describe it as a string with
+        // an explicit `format: ulid` and a deterministic example.
+        #[cfg(feature = "openapi")]
+        impl utoipa::PartialSchema for $name {
+            fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
+                use utoipa::openapi::schema::{ObjectBuilder, SchemaType, Type};
+                ObjectBuilder::new()
+                    .schema_type(SchemaType::Type(Type::String))
+                    .format(Some(utoipa::openapi::SchemaFormat::Custom("ulid".to_string())))
+                    .description(Some(concat!(
+                        stringify!($name),
+                        " — Crockford-base32 ULID (26 chars). Wire form is the bare ULID string."
+                    )))
+                    .examples([serde_json::Value::String(
+                        "01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string(),
+                    )])
+                    .into()
+            }
+        }
+
+        #[cfg(feature = "openapi")]
+        impl utoipa::ToSchema for $name {
+            fn name() -> std::borrow::Cow<'static, str> {
+                std::borrow::Cow::Borrowed(stringify!($name))
+            }
+        }
     };
 }
 

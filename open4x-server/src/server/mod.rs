@@ -12,3 +12,5 @@ pub mod api_token;
 pub mod reports;
 pub mod rest;
 pub mod web_projection;
+#[cfg(feature = "openapi")]
+pub mod openapi;

@@ -4,6 +4,7 @@ use super::ids::CivTemplateId;
 
 /// A player profile: identity + civ selection.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct ProfileView {
     /// Ed25519 public key bytes (32 bytes).
     pub pubkey: Vec<u8>,
@@ -18,6 +19,7 @@ pub struct ProfileView {
 /// Replaces the old Leader/Agenda system. Users select a template and provide
 /// their own display name via their profile.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct CivTemplate {
     pub id: CivTemplateId,
     pub civ_name: String,

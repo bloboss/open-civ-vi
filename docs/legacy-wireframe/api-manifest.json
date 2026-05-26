@@ -1,5 +1,6 @@
 {
   "$schema": "api-manifest/v1",
+  "$status": "SUPERSEDED — this file is the original hand-authored sketch from the wireframe. The current REST API is described in book/src/multiplayer/openapi.json, generated from source by `cargo run -p open4x-server --features openapi --bin gen-openapi`. Paths and methods in this manifest disagree with the live router in several places; do not consume programmatically.",
   "$doc": {
     "summary": "REST API surface required to drive the 4X wireframe frontend. All endpoints are relative to a base URL e.g. /api/v1. All responses are JSON. All mutation endpoints (POST/PUT/PATCH/DELETE) accept and return JSON. The frontend fetches these on load and after each action; the server is the single source of truth.",
     "auth": "Bearer token in Authorization header. All endpoints require authentication.",

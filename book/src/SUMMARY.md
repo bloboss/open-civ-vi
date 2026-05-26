@@ -41,7 +41,8 @@
 
 # Multiplayer
 
-- [Wire Protocol](./multiplayer/protocol.md)
+- [Wire Protocol (WebSocket)](./multiplayer/protocol.md)
+- [REST API Reference](./multiplayer/rest-api.md)
 - [Game Server](./multiplayer/server.md)
 - [Web Client](./multiplayer/web-client.md)
 - [Reverse Proxy](./multiplayer/reverse-proxy.md)

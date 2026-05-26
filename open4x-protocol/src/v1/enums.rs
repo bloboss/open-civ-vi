@@ -5,6 +5,8 @@ use super::ids::*;
 // ── Terrain ──────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum BuiltinTerrain {
     Grassland,
     Plains,
@@ -19,6 +21,8 @@ pub enum BuiltinTerrain {
 // ── Features ─────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum BuiltinFeature {
     Forest,
     Rainforest,
@@ -37,6 +41,8 @@ pub enum BuiltinFeature {
 // ── Resources ────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum BuiltinResource {
     // Bonus
     Wheat,
@@ -85,6 +91,8 @@ pub enum BuiltinResource {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum ResourceCategory {
     Bonus,
     Luxury,
@@ -94,6 +102,8 @@ pub enum ResourceCategory {
 // ── Improvements ─────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum BuiltinImprovement {
     Farm,
     Mine,
@@ -131,6 +141,8 @@ pub enum BuiltinImprovement {
 // ── Roads ────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum BuiltinRoad {
     Ancient,
     Medieval,
@@ -141,6 +153,8 @@ pub enum BuiltinRoad {
 // ── Districts ────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum BuiltinDistrict {
     Campus,
     TheaterSquare,
@@ -167,6 +181,8 @@ pub enum BuiltinDistrict {
 // ── Units ────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum UnitDomain {
     Land,
     Sea,
@@ -174,6 +190,8 @@ pub enum UnitDomain {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum UnitCategory {
     Civilian,
     Combat,
@@ -186,6 +204,8 @@ pub enum UnitCategory {
 // ── Misc game enums ──────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum AgeType {
     Ancient,
     Classical,
@@ -199,6 +219,8 @@ pub enum AgeType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum PolicyType {
     Military,
     Economic,
@@ -207,6 +229,8 @@ pub enum PolicyType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum DiplomaticStatus {
     War,
     Denounced,
@@ -216,6 +240,8 @@ pub enum DiplomaticStatus {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum CityOwnership {
     Normal,
     Occupied,
@@ -224,6 +250,8 @@ pub enum CityOwnership {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum WallLevel {
     None,
     Ancient,
@@ -232,6 +260,8 @@ pub enum WallLevel {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum YieldType {
     Food,
     Production,
@@ -246,12 +276,16 @@ pub enum YieldType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum AttackType {
     Melee,
     Ranged,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum TileVisibility {
     Visible,
     Foggy,
@@ -260,6 +294,8 @@ pub enum TileVisibility {
 // ── Production ───────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum ProductionItemView {
     Unit(UnitTypeId),
     Building(BuildingId),
@@ -271,6 +307,8 @@ pub enum ProductionItemView {
 // ── Victory ──────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum VictoryKind {
     ImmediateWin,
     TurnLimit { turn_limit: u32 },
@@ -279,6 +317,8 @@ pub enum VictoryKind {
 // ── Religion ────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum BeliefCategory {
     Pantheon,
     Founder,
@@ -290,6 +330,8 @@ pub enum BeliefCategory {
 // ── Board topology ──────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum BoardTopology {
     Flat,
     CylindricalEW,
@@ -302,6 +344,7 @@ pub enum BoardTopology {
 /// citizen auto-assignment toward a particular yield. `Default` means the
 /// engine's standard heuristic.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum CityFocus {
     #[default]
     Default,

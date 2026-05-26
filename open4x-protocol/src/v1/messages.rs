@@ -9,6 +9,8 @@ use super::view::GameView;
 // ── Client → Server ──────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum ClientMessage {
     // Auth
     Authenticate {
@@ -35,6 +37,7 @@ pub enum ClientMessage {
 
 /// A single game action submitted by a player.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum GameAction {
     MoveUnit {
         unit: UnitId,
@@ -142,6 +145,8 @@ pub enum GameAction {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct CreateGameRequest {
     pub name: String,
     pub width: u32,
@@ -153,6 +158,8 @@ pub struct CreateGameRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct ProfileUpdate {
     pub display_name: String,
     pub selected_template: CivTemplateId,
@@ -161,6 +168,8 @@ pub struct ProfileUpdate {
 // ── Server → Client ──────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum ServerMessage {
     // Auth
     Challenge {
@@ -214,6 +223,8 @@ pub enum ServerMessage {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct GameListEntry {
     pub game_id: GameId,
     pub name: String,
@@ -224,6 +235,8 @@ pub struct GameListEntry {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub enum GameStatus {
     Lobby,
     InProgress,

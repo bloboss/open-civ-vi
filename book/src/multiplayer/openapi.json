@@ -1,0 +1,3801 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "open4x REST API",
+    "description": "REST surface for the open4x single-player Civ-VI-style 4X. Every endpoint round-trips JSON; mutations return a `MutationResponse<T>` envelope with the freshly-projected slice and a turn-status block so the client can refresh the HUD bar without a second request.\n\n**Auth.** Bootstrap via `POST /api/v1/games/new` to mint a bearer token. Every other endpoint (besides `/health`) requires `Authorization: Bearer <token>`.\n\n**Source of truth.** This document is generated from the Rust source by `cargo run -p open4x-server --features openapi --bin gen-openapi`. Do not hand-edit `book/src/multiplayer/openapi.json`.\n\n**Multiplayer.** The WebSocket surface at `/ws` (Ed25519-authenticated; `ClientMessage` / `ServerMessage` JSON frames) is **not** described here. See `book/src/multiplayer/protocol.md` and `open4x-protocol::v1::messages` for those types.",
+    "contact": {
+      "name": "open-civ-vi",
+      "url": "https://github.com/bloboss/open-civ-vi"
+    },
+    "license": {
+      "name": "Apache-2.0"
+    },
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Same-origin (browser default)"
+    },
+    {
+      "url": "http://localhost:3001",
+      "description": "Local dev server (OPEN4X port)"
+    }
+  ],
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "Meta"
+        ],
+        "operationId": "_doc_health",
+        "responses": {
+          "200": {
+            "description": "Liveness probe. Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/games/new": {
+      "post": {
+        "tags": [
+          "Games"
+        ],
+        "operationId": "_doc_games_new",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewGameRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "New single-player game created. Returned token authenticates every subsequent /api/v1 call.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewGameResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/player-state": {
+      "get": {
+        "tags": [
+          "HUD"
+        ],
+        "operationId": "_doc_player_state",
+        "responses": {
+          "200": {
+            "description": "Resource bar + global player state for the authenticated civ.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/world/snapshot": {
+      "get": {
+        "tags": [
+          "World"
+        ],
+        "operationId": "_doc_world_snapshot",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Camera centre column (axial q). Defaults to 0.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "r",
+            "in": "query",
+            "description": "Camera centre row (axial r). Defaults to 0.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "radius",
+            "in": "query",
+            "description": "Cube-distance radius around (q, r). 0 = all explored. Hard-capped at 32.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sparse fog-of-war-filtered tile list around the camera.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorldSnapshot"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/world/tile/{q}/{r}": {
+      "get": {
+        "tags": [
+          "World"
+        ],
+        "operationId": "_doc_world_tile",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "path",
+            "description": "Axial q (column).",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "r",
+            "in": "path",
+            "description": "Axial r (row).",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Single tile detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TileView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tile not in player view.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/map/overlays": {
+      "get": {
+        "tags": [
+          "World"
+        ],
+        "operationId": "_doc_map_overlays",
+        "responses": {
+          "200": {
+            "description": "Catalogue of toggleable map overlays. Toggle state is client-side.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapOverlays"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/cities": {
+      "get": {
+        "tags": [
+          "Cities"
+        ],
+        "operationId": "_doc_cities",
+        "responses": {
+          "200": {
+            "description": "All known cities. Own cities include full production detail; foreign cities are limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CityData"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/cities/{id}": {
+      "get": {
+        "tags": [
+          "Cities"
+        ],
+        "operationId": "_doc_city_detail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "City ULID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CityRow"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/cities/{id}/tiles": {
+      "get": {
+        "tags": [
+          "Cities"
+        ],
+        "operationId": "_doc_city_tiles",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "City ULID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Territory + worked-tile flags for the city hex view.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CityTiles"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/cities/{id}/production": {
+      "post": {
+        "tags": [
+          "Cities"
+        ],
+        "operationId": "_doc_queue_production",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "City ULID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueueProductionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Item appended to the production queue. Returns the updated city row.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MutationResponseCityRow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/cities/{id}/production/{pos}": {
+      "delete": {
+        "tags": [
+          "Cities"
+        ],
+        "operationId": "_doc_cancel_production",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "City ULID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pos",
+            "in": "path",
+            "description": "Queue index. 0 = active.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Item removed. Returns the updated city row.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MutationResponseCityRow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/cities/{id}/focus": {
+      "post": {
+        "tags": [
+          "Cities"
+        ],
+        "operationId": "_doc_assign_city_focus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "City ULID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignCityFocusBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Focus updated. Returns the city row.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MutationResponseCityRow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/cities/{id}/rename": {
+      "post": {
+        "tags": [
+          "Cities"
+        ],
+        "operationId": "_doc_rename_city",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "City ULID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameCityBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "City renamed (1..=64 chars after trim).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MutationResponseCityRow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/units": {
+      "get": {
+        "tags": [
+          "Units"
+        ],
+        "operationId": "_doc_units",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnitData"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/units/{id}": {
+      "get": {
+        "tags": [
+          "Units"
+        ],
+        "operationId": "_doc_unit_detail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Unit ULID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Unit"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/units/{id}/action": {
+      "post": {
+        "tags": [
+          "Units"
+        ],
+        "operationId": "_doc_unit_action",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Unit ULID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnitActionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Action applied. View payload is the updated unit (or null for no-op).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MutationResponseJson"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Stubbed action (fortify/sleep). View payload is null.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MutationResponseJson"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/armies": {
+      "get": {
+        "tags": [
+          "Units"
+        ],
+        "operationId": "_doc_armies",
+        "responses": {
+          "200": {
+            "description": "Army/corps formations (stub; empty until libciv ships the system).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArmyData"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/combat/preview": {
+      "get": {
+        "tags": [
+          "Units"
+        ],
+        "operationId": "_doc_combat_preview",
+        "parameters": [
+          {
+            "name": "attacker_id",
+            "in": "query",
+            "description": "Attacker unit ULID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "defender_q",
+            "in": "query",
+            "description": "Target hex q.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "defender_r",
+            "in": "query",
+            "description": "Target hex r.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Heuristic combat preview. `note` flags the libciv-driven replacement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CombatPreview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tech": {
+      "get": {
+        "tags": [
+          "Research"
+        ],
+        "operationId": "_doc_tech",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TechTreeView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tech/research": {
+      "post": {
+        "tags": [
+          "Research"
+        ],
+        "operationId": "_doc_tech_research",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TechResearchBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Queued research target.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MutationResponseTechTreeView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Research"
+        ],
+        "operationId": "_doc_cancel_research",
+        "responses": {
+          "200": {
+            "description": "Active research dropped (idempotent — no-op on empty queue). Partial progress is discarded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MutationResponseTechTreeView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/civics": {
+      "get": {
+        "tags": [
+          "Civics"
+        ],
+        "operationId": "_doc_civics",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CivicsTreeView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/civics/research": {
+      "post": {
+        "tags": [
+          "Civics"
+        ],
+        "operationId": "_doc_civic_research",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CivicResearchBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Queued civic target.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MutationResponseCivicsTreeView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Civics"
+        ],
+        "operationId": "_doc_cancel_civic",
+        "responses": {
+          "200": {
+            "description": "Active civic dropped (idempotent). Partial progress discarded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MutationResponseCivicsTreeView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/government": {
+      "get": {
+        "tags": [
+          "Government"
+        ],
+        "operationId": "_doc_government",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GovernmentPolicies"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/government/change": {
+      "post": {
+        "tags": [
+          "Government"
+        ],
+        "operationId": "_doc_change_government",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeGovernmentBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Government switched. Active policies that no longer fit the slot config are unslotted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MutationResponseGovernmentPolicies"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown or not-yet-unlocked government.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/diplomacy": {
+      "get": {
+        "tags": [
+          "Diplomacy"
+        ],
+        "operationId": "_doc_diplomacy",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Diplomacy"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/diplomacy/civs/{id}": {
+      "get": {
+        "tags": [
+          "Diplomacy"
+        ],
+        "operationId": "_doc_diplomacy_civ",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Civ ULID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CivRow"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/empire/overview": {
+      "get": {
+        "tags": [
+          "Empire"
+        ],
+        "operationId": "_doc_empire_overview",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmpireOverview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/victory": {
+      "get": {
+        "tags": [
+          "Victory"
+        ],
+        "operationId": "_doc_victory",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Victory"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "operationId": "_doc_notifications",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notifications"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Notifications"
+        ],
+        "operationId": "_doc_dismiss_all_notifications",
+        "responses": {
+          "204": {
+            "description": "All notifications for the authenticated civ dismissed."
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/{id}": {
+      "delete": {
+        "tags": [
+          "Notifications"
+        ],
+        "operationId": "_doc_dismiss_notification",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Notification id.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Notification dismissed (idempotent on unknown ids)."
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/turn-queue": {
+      "get": {
+        "tags": [
+          "Turn"
+        ],
+        "operationId": "_doc_turn_queue",
+        "responses": {
+          "200": {
+            "description": "Required and skippable pending actions for the current turn.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnQueue"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/turn/end": {
+      "post": {
+        "tags": [
+          "Turn"
+        ],
+        "operationId": "_doc_end_turn",
+        "responses": {
+          "200": {
+            "description": "Turn advanced. View payload is `{ turn }`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MutationResponseEndTurnView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Required turn-queue items unresolved. Body shape: `{ error: \"unresolved_required_actions\", items: [...] }`.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/registry": {
+      "get": {
+        "tags": [
+          "Registry"
+        ],
+        "operationId": "_doc_registry",
+        "responses": {
+          "200": {
+            "description": "Unit-type and building catalogues. Stable across turns.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Registry"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActivePolicy": {
+        "type": "object",
+        "required": [
+          "slot",
+          "id",
+          "name",
+          "effect"
+        ],
+        "properties": {
+          "effect": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slot": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiErrorBody": {
+        "type": "object",
+        "description": "Standard error envelope returned with non-2xx statuses.",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "Army": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "units"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "units": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ArmyData": {
+        "type": "object",
+        "required": [
+          "armies"
+        ],
+        "properties": {
+          "armies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Army"
+            }
+          }
+        }
+      },
+      "AssignCityFocusBody": {
+        "type": "object",
+        "required": [
+          "focus"
+        ],
+        "properties": {
+          "focus": {
+            "type": "string",
+            "description": "Lowercase variant name: \"default\" | \"food\" | \"production\" | \"gold\"\n| \"science\" | \"culture\" | \"faith\"."
+          }
+        }
+      },
+      "Bucket": {
+        "type": "object",
+        "required": [
+          "per_turn"
+        ],
+        "properties": {
+          "per_turn": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "value": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "Building": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "cost",
+          "maintenance"
+        ],
+        "properties": {
+          "cost": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string"
+          },
+          "maintenance": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Camera": {
+        "type": "object",
+        "required": [
+          "x",
+          "y",
+          "zoom"
+        ],
+        "properties": {
+          "selection": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TileCoord"
+              }
+            ]
+          },
+          "x": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "y": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "zoom": {
+            "type": "number",
+            "format": "float"
+          }
+        }
+      },
+      "ChangeGovernmentBody": {
+        "type": "object",
+        "required": [
+          "government"
+        ],
+        "properties": {
+          "government": {
+            "type": "string",
+            "description": "Government name as it appears in the wire registry (e.g. \"Chiefdom\",\n\"Monarchy\", \"Democracy\"). Case-sensitive — matches `Government.name`."
+          }
+        }
+      },
+      "CityData": {
+        "type": "object",
+        "required": [
+          "cities"
+        ],
+        "properties": {
+          "cities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CityRow"
+            }
+          }
+        }
+      },
+      "CityRow": {
+        "type": "object",
+        "required": [
+          "name",
+          "pop"
+        ],
+        "properties": {
+          "capital": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "pop": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "CityStateRow": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "envoys"
+        ],
+        "properties": {
+          "envoys": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "suzerain": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CityTiles": {
+        "type": "object",
+        "required": [
+          "city_id",
+          "center",
+          "tiles"
+        ],
+        "properties": {
+          "center": {
+            "$ref": "#/components/schemas/TileCoord"
+          },
+          "city_id": {
+            "type": "string"
+          },
+          "tiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TileEntry"
+            }
+          }
+        }
+      },
+      "CivId": {
+        "type": "string",
+        "format": "ulid",
+        "description": "CivId — Crockford-base32 ULID (26 chars). Wire form is the bare ULID string.",
+        "examples": [
+          "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        ]
+      },
+      "CivRow": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "leader",
+          "relation",
+          "relation_score",
+          "agenda",
+          "government",
+          "cities_known",
+          "treaties",
+          "modifiers"
+        ],
+        "properties": {
+          "agenda": {
+            "type": "string"
+          },
+          "cities_known": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "government": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "leader": {
+            "type": "string"
+          },
+          "modifiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RelationModifier"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          },
+          "relation_score": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "treaties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "CivicNode": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "cost",
+          "unlocks",
+          "era",
+          "status",
+          "prereqs"
+        ],
+        "properties": {
+          "cost": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "era": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "prereqs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "progress": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string"
+          },
+          "unlocks": {
+            "type": "string"
+          }
+        }
+      },
+      "CivicResearchBody": {
+        "type": "object",
+        "required": [
+          "civic_id"
+        ],
+        "properties": {
+          "civic_id": {
+            "type": "string"
+          }
+        }
+      },
+      "CivicsTreeView": {
+        "type": "object",
+        "required": [
+          "civics",
+          "civic_queue"
+        ],
+        "properties": {
+          "civic_queue": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "civics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CivicNode"
+            }
+          }
+        }
+      },
+      "CombatPreview": {
+        "type": "object",
+        "required": [
+          "attacker_id",
+          "attacker_strength",
+          "defender_strength",
+          "predicted_attacker_damage",
+          "predicted_defender_damage",
+          "note"
+        ],
+        "properties": {
+          "attacker_id": {
+            "type": "string"
+          },
+          "attacker_strength": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "defender": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DefenderInfo"
+              }
+            ]
+          },
+          "defender_strength": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "note": {
+            "type": "string"
+          },
+          "predicted_attacker_damage": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "predicted_defender_damage": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "Condition": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "player_pct"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "player_pct": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "DealDraft": {
+        "type": "object",
+        "required": [
+          "civ_id",
+          "you_give",
+          "they_give",
+          "balance",
+          "mood"
+        ],
+        "properties": {
+          "balance": {
+            "type": "string"
+          },
+          "civ_id": {
+            "type": "string"
+          },
+          "duration_turns": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "mood": {
+            "type": "string"
+          },
+          "they_give": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "you_give": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "DefenderInfo": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "q",
+          "r"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "q": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "r": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "Diplomacy": {
+        "type": "object",
+        "required": [
+          "civs",
+          "city_states"
+        ],
+        "properties": {
+          "active_civ": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "city_states": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CityStateRow"
+            }
+          },
+          "civs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CivRow"
+            }
+          },
+          "deal_draft": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DealDraft"
+              }
+            ]
+          }
+        }
+      },
+      "EmpireOverview": {
+        "type": "object",
+        "required": [
+          "summary",
+          "cities",
+          "strategic_resources",
+          "luxury_resources",
+          "trade_routes",
+          "trade_slots_total"
+        ],
+        "properties": {
+          "cities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CityRow"
+            }
+          },
+          "luxury_resources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "strategic_resources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceRow"
+            }
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Summary"
+          },
+          "trade_routes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TradeRow"
+            }
+          },
+          "trade_slots_total": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "EndTurnView": {
+        "type": "object",
+        "required": [
+          "turn"
+        ],
+        "properties": {
+          "turn": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "GameId": {
+        "type": "string",
+        "format": "ulid",
+        "description": "GameId — Crockford-base32 ULID (26 chars). Wire form is the bare ULID string.",
+        "examples": [
+          "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        ]
+      },
+      "Government": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "era",
+          "slots",
+          "legacy_bonus"
+        ],
+        "properties": {
+          "era": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "legacy_bonus": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slots": {
+            "$ref": "#/components/schemas/Slots"
+          }
+        }
+      },
+      "GovernmentPolicies": {
+        "type": "object",
+        "required": [
+          "government",
+          "active_policies",
+          "catalogue"
+        ],
+        "properties": {
+          "active_policies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivePolicy"
+            }
+          },
+          "catalogue": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PolicyCard"
+            }
+          },
+          "government": {
+            "$ref": "#/components/schemas/Government"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": [
+          "ok",
+          "api"
+        ],
+        "properties": {
+          "api": {
+            "type": "string"
+          },
+          "ok": {
+            "type": "boolean"
+          }
+        }
+      },
+      "LeaderRow": {
+        "type": "object",
+        "required": [
+          "rank",
+          "name",
+          "score"
+        ],
+        "properties": {
+          "is_player": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "score": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "Legend": {
+        "type": "object",
+        "required": [
+          "terrains",
+          "resources",
+          "edge_kinds"
+        ],
+        "properties": {
+          "edge_kinds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "terrains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "MapOverlays": {
+        "type": "object",
+        "required": [
+          "overlays"
+        ],
+        "properties": {
+          "overlays": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Overlay"
+            }
+          }
+        }
+      },
+      "MutationResponseCityRow": {
+        "type": "object",
+        "required": [
+          "ok",
+          "view",
+          "turn_status"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "turn_status": {
+            "$ref": "#/components/schemas/TurnStatusBlock"
+          },
+          "view": {
+            "$ref": "#/components/schemas/CityRow"
+          }
+        }
+      },
+      "MutationResponseCivicsTreeView": {
+        "type": "object",
+        "required": [
+          "ok",
+          "view",
+          "turn_status"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "turn_status": {
+            "$ref": "#/components/schemas/TurnStatusBlock"
+          },
+          "view": {
+            "$ref": "#/components/schemas/CivicsTreeView"
+          }
+        }
+      },
+      "MutationResponseEndTurnView": {
+        "type": "object",
+        "required": [
+          "ok",
+          "view",
+          "turn_status"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "turn_status": {
+            "$ref": "#/components/schemas/TurnStatusBlock"
+          },
+          "view": {
+            "$ref": "#/components/schemas/EndTurnView"
+          }
+        }
+      },
+      "MutationResponseGovernmentPolicies": {
+        "type": "object",
+        "required": [
+          "ok",
+          "view",
+          "turn_status"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "turn_status": {
+            "$ref": "#/components/schemas/TurnStatusBlock"
+          },
+          "view": {
+            "$ref": "#/components/schemas/GovernmentPolicies"
+          }
+        }
+      },
+      "MutationResponseJson": {
+        "type": "object",
+        "required": [
+          "ok",
+          "view",
+          "turn_status"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "turn_status": {
+            "$ref": "#/components/schemas/TurnStatusBlock"
+          },
+          "view": {
+            "type": "object"
+          }
+        }
+      },
+      "MutationResponseTechTreeView": {
+        "type": "object",
+        "required": [
+          "ok",
+          "view",
+          "turn_status"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "turn_status": {
+            "$ref": "#/components/schemas/TurnStatusBlock"
+          },
+          "view": {
+            "$ref": "#/components/schemas/TechTreeView"
+          }
+        }
+      },
+      "NewGameRequest": {
+        "type": "object",
+        "properties": {
+          "display_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "height": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "num_ai": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "seed": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0
+          },
+          "turn_limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "width": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "NewGameResponse": {
+        "type": "object",
+        "required": [
+          "game_id",
+          "civ_id",
+          "token",
+          "turn"
+        ],
+        "properties": {
+          "civ_id": {
+            "$ref": "#/components/schemas/CivId"
+          },
+          "game_id": {
+            "$ref": "#/components/schemas/GameId"
+          },
+          "token": {
+            "type": "string"
+          },
+          "turn": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "Notification": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "category",
+          "title",
+          "desc"
+        ],
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "desc": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NotificationTarget"
+              }
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "NotificationTarget": {
+        "type": "object",
+        "required": [
+          "screen"
+        ],
+        "properties": {
+          "q": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "r": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "screen": {
+            "type": "string"
+          }
+        }
+      },
+      "Notifications": {
+        "type": "object",
+        "required": [
+          "turn",
+          "notifications"
+        ],
+        "properties": {
+          "notifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Notification"
+            }
+          },
+          "turn": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "Overlay": {
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "active"
+        ],
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "PlayerState": {
+        "type": "object",
+        "required": [
+          "turn",
+          "turn_max",
+          "era",
+          "era_progress",
+          "resources",
+          "happiness",
+          "strategic"
+        ],
+        "properties": {
+          "era": {
+            "type": "string"
+          },
+          "era_progress": {
+            "type": "number",
+            "format": "float"
+          },
+          "happiness": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "resources": {
+            "$ref": "#/components/schemas/Resources"
+          },
+          "strategic": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "turn": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "turn_max": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "PolicyCard": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "era",
+          "status",
+          "effect"
+        ],
+        "properties": {
+          "dark_age": {
+            "type": "boolean"
+          },
+          "effect": {
+            "type": "string"
+          },
+          "era": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "unlock_civic": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "QueueProductionBody": {
+        "type": "object",
+        "required": [
+          "item_id",
+          "item_type"
+        ],
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "item_type": {
+            "type": "string"
+          }
+        }
+      },
+      "Registry": {
+        "type": "object",
+        "required": [
+          "unit_types",
+          "buildings"
+        ],
+        "properties": {
+          "buildings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Building"
+            }
+          },
+          "unit_types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnitType"
+            }
+          }
+        }
+      },
+      "RelationModifier": {
+        "type": "object",
+        "required": [
+          "kind",
+          "desc",
+          "value"
+        ],
+        "properties": {
+          "desc": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "value": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "RenameCityBody": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "New city name. Server enforces 1..=64 chars after trim."
+          }
+        }
+      },
+      "ResourceRow": {
+        "type": "object",
+        "required": [
+          "name",
+          "value",
+          "per_turn"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "per_turn": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "value": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "Resources": {
+        "type": "object",
+        "required": [
+          "gold",
+          "science",
+          "culture",
+          "faith",
+          "food",
+          "production"
+        ],
+        "properties": {
+          "culture": {
+            "$ref": "#/components/schemas/Bucket"
+          },
+          "faith": {
+            "$ref": "#/components/schemas/Bucket"
+          },
+          "food": {
+            "$ref": "#/components/schemas/Bucket"
+          },
+          "gold": {
+            "$ref": "#/components/schemas/Bucket"
+          },
+          "production": {
+            "$ref": "#/components/schemas/Bucket"
+          },
+          "science": {
+            "$ref": "#/components/schemas/Bucket"
+          }
+        }
+      },
+      "Slots": {
+        "type": "object",
+        "required": [
+          "military",
+          "economic",
+          "diplomatic",
+          "wildcard"
+        ],
+        "properties": {
+          "diplomatic": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "economic": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "military": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "wildcard": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "Summary": {
+        "type": "object",
+        "required": [
+          "cities",
+          "population",
+          "treasury",
+          "treasury_per_turn",
+          "military_units"
+        ],
+        "properties": {
+          "cities": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "military_units": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "population": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "treasury": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "treasury_per_turn": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "TechNode": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "cost",
+          "unlocks",
+          "era",
+          "status",
+          "prereqs"
+        ],
+        "properties": {
+          "cost": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "era": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "prereqs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "progress": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string"
+          },
+          "unlocks": {
+            "type": "string"
+          }
+        }
+      },
+      "TechResearchBody": {
+        "type": "object",
+        "required": [
+          "tech_id"
+        ],
+        "properties": {
+          "tech_id": {
+            "type": "string"
+          }
+        }
+      },
+      "TechTreeView": {
+        "type": "object",
+        "required": [
+          "techs",
+          "research_queue"
+        ],
+        "properties": {
+          "research_queue": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "techs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TechNode"
+            }
+          }
+        }
+      },
+      "TileCity": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "pop"
+        ],
+        "properties": {
+          "capital": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "pop": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "TileCoord": {
+        "type": "object",
+        "required": [
+          "q",
+          "r"
+        ],
+        "properties": {
+          "q": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "r": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "TileEntry": {
+        "type": "object",
+        "required": [
+          "q",
+          "r"
+        ],
+        "properties": {
+          "is_center": {
+            "type": "boolean"
+          },
+          "locked": {
+            "type": "boolean"
+          },
+          "q": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "r": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "worked": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TileUnit": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "hp"
+        ],
+        "properties": {
+          "hp": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "TileView": {
+        "type": "object",
+        "required": [
+          "q",
+          "r",
+          "terrain",
+          "yields"
+        ],
+        "properties": {
+          "appeal": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "city": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TileCity"
+              }
+            ]
+          },
+          "flood": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fog": {
+            "type": "boolean"
+          },
+          "improvement": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "owner": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "q": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "r": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "resource": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "terrain": {
+            "type": "string"
+          },
+          "unit": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TileUnit"
+              }
+            ]
+          },
+          "yields": {
+            "$ref": "#/components/schemas/TileYields"
+          }
+        }
+      },
+      "TileYields": {
+        "type": "object",
+        "properties": {
+          "f": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "g": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "p": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "TradeRow": {
+        "type": "object",
+        "required": [
+          "from",
+          "to",
+          "yields"
+        ],
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "yields": {
+            "type": "string"
+          }
+        }
+      },
+      "TurnQueue": {
+        "type": "object",
+        "required": [
+          "turn",
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TurnQueueItem"
+            }
+          },
+          "turn": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "TurnQueueItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "desc"
+        ],
+        "properties": {
+          "desc": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "skip_label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NotificationTarget"
+              }
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "TurnStatusBlock": {
+        "type": "object",
+        "required": [
+          "turn",
+          "ended"
+        ],
+        "properties": {
+          "ended": {
+            "type": "boolean"
+          },
+          "turn": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "Unit": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "owner",
+          "hp",
+          "hp_max",
+          "mp",
+          "mp_max",
+          "position",
+          "status",
+          "range",
+          "vision_range",
+          "category",
+          "domain",
+          "actions"
+        ],
+        "properties": {
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnitAction"
+            }
+          },
+          "category": {
+            "type": "string"
+          },
+          "combat_strength": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "domain": {
+            "type": "string"
+          },
+          "hp": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "hp_max": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string"
+          },
+          "is_own": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "mp": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "mp_max": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "position": {
+            "$ref": "#/components/schemas/TileCoord"
+          },
+          "range": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string"
+          },
+          "vision_range": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "UnitAction": {
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "hotkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "UnitActionBody": {
+        "type": "object",
+        "required": [
+          "action_id"
+        ],
+        "properties": {
+          "action_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "City name when `action_id == \"found_city\"`. Defaults to \"New City\"."
+          },
+          "target_q": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "target_r": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "UnitData": {
+        "type": "object",
+        "required": [
+          "units"
+        ],
+        "properties": {
+          "units": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Unit"
+            }
+          }
+        }
+      },
+      "UnitType": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "production_cost",
+          "max_movement",
+          "category",
+          "domain"
+        ],
+        "properties": {
+          "can_found_city": {
+            "type": "boolean"
+          },
+          "category": {
+            "type": "string"
+          },
+          "combat_strength": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "domain": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "max_movement": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string"
+          },
+          "production_cost": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "Victory": {
+        "type": "object",
+        "required": [
+          "turn",
+          "turn_max",
+          "leading_condition",
+          "leading_pct",
+          "score",
+          "rank",
+          "rank_of",
+          "conditions",
+          "leaderboard"
+        ],
+        "properties": {
+          "conditions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Condition"
+            }
+          },
+          "leaderboard": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeaderRow"
+            }
+          },
+          "leading_condition": {
+            "type": "string"
+          },
+          "leading_pct": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "rank": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "rank_of": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "score": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "turn": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "turn_max": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "WorldMeta": {
+        "type": "object",
+        "required": [
+          "width",
+          "height",
+          "wrap_x",
+          "wrap_y",
+          "seed",
+          "turn"
+        ],
+        "properties": {
+          "height": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "seed": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "turn": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "width": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "wrap_x": {
+            "type": "boolean"
+          },
+          "wrap_y": {
+            "type": "boolean"
+          }
+        }
+      },
+      "WorldSnapshot": {
+        "type": "object",
+        "required": [
+          "world",
+          "camera",
+          "legend",
+          "tiles"
+        ],
+        "properties": {
+          "camera": {
+            "$ref": "#/components/schemas/Camera"
+          },
+          "legend": {
+            "$ref": "#/components/schemas/Legend"
+          },
+          "tiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TileView"
+            }
+          },
+          "world": {
+            "$ref": "#/components/schemas/WorldMeta"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Token returned by `POST /api/v1/games/new`. Submit as `Authorization: Bearer <token>` on every subsequent request."
+      }
+    }
+  },
+  "security": [
+    {
+      "bearer": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Meta",
+      "description": "Liveness and metadata."
+    },
+    {
+      "name": "Games",
+      "description": "Game bootstrap. Mints a bearer token."
+    },
+    {
+      "name": "HUD",
+      "description": "Top resource bar / global player state."
+    },
+    {
+      "name": "World",
+      "description": "Hex map, tile detail, overlay catalogue."
+    },
+    {
+      "name": "Cities",
+      "description": "City list, detail, tile work, production queue, focus, rename."
+    },
+    {
+      "name": "Units",
+      "description": "Unit list, detail, action dispatch, combat preview, armies."
+    },
+    {
+      "name": "Research",
+      "description": "Tech tree + research queue."
+    },
+    {
+      "name": "Civics",
+      "description": "Civic tree + civic queue."
+    },
+    {
+      "name": "Government",
+      "description": "Current government, policy slots, catalogue."
+    },
+    {
+      "name": "Diplomacy",
+      "description": "Known civs and city-states."
+    },
+    {
+      "name": "Empire",
+      "description": "Aggregate dashboard."
+    },
+    {
+      "name": "Victory",
+      "description": "Per-condition progress + leaderboard."
+    },
+    {
+      "name": "Notifications",
+      "description": "Event feed (per-civ ring buffer, cap 64)."
+    },
+    {
+      "name": "Turn",
+      "description": "Turn queue + end-turn."
+    },
+    {
+      "name": "Registry",
+      "description": "Static unit-type and building catalogue."
+    }
+  ]
+}
