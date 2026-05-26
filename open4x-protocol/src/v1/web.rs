@@ -20,6 +20,8 @@ pub mod player_state {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct PlayerState {
         pub turn: u32,
         pub turn_max: u32,
@@ -31,6 +33,8 @@ pub mod player_state {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct Resources {
         pub gold: Bucket,
         pub science: Bucket,
@@ -41,6 +45,8 @@ pub mod player_state {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct Bucket {
         pub value: Option<i32>,
         pub per_turn: i32,
@@ -53,6 +59,8 @@ pub mod world {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct WorldSnapshot {
         pub world: WorldMeta,
         pub camera: Camera,
@@ -61,6 +69,8 @@ pub mod world {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct WorldMeta {
         pub width: u32,
         pub height: u32,
@@ -71,6 +81,8 @@ pub mod world {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct Camera {
         pub x: i32,
         pub y: i32,
@@ -79,12 +91,16 @@ pub mod world {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct TileCoord {
         pub q: i32,
         pub r: i32,
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct Legend {
         pub terrains: Vec<String>,
         pub resources: Vec<String>,
@@ -92,6 +108,8 @@ pub mod world {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct TileView {
         pub q: i32,
         pub r: i32,
@@ -111,6 +129,8 @@ pub mod world {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct TileYields {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub f: Option<i32>,
@@ -121,6 +141,8 @@ pub mod world {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct TileCity {
         pub id: String,
         pub name: String,
@@ -130,6 +152,8 @@ pub mod world {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct TileUnit {
         pub id: String,
         pub kind: String,
@@ -144,12 +168,16 @@ pub mod tech_tree {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct TechTreeView {
         pub techs: Vec<TechNode>,
         pub research_queue: Vec<String>,
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct TechNode {
         pub id: String,
         pub name: String,
@@ -168,12 +196,16 @@ pub mod civics_tree {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct CivicsTreeView {
         pub civics: Vec<CivicNode>,
         pub civic_queue: Vec<String>,
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct CivicNode {
         pub id: String,
         pub name: String,
@@ -192,6 +224,8 @@ pub mod government {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct GovernmentPolicies {
         pub government: Government,
         pub active_policies: Vec<ActivePolicy>,
@@ -199,6 +233,8 @@ pub mod government {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct Government {
         pub id: String,
         pub name: String,
@@ -208,6 +244,8 @@ pub mod government {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct Slots {
         pub military: u32,
         pub economic: u32,
@@ -216,6 +254,8 @@ pub mod government {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct ActivePolicy {
         pub slot: String,
         pub id: String,
@@ -224,6 +264,8 @@ pub mod government {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct PolicyCard {
         pub id: String,
         pub name: String,
@@ -244,6 +286,8 @@ pub mod diplomacy {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct Diplomacy {
         pub civs: Vec<CivRow>,
         pub city_states: Vec<CityStateRow>,
@@ -252,6 +296,8 @@ pub mod diplomacy {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct CivRow {
         pub id: String,
         pub name: String,
@@ -266,6 +312,8 @@ pub mod diplomacy {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct RelationModifier {
         pub kind: String,
         pub desc: String,
@@ -273,6 +321,8 @@ pub mod diplomacy {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct CityStateRow {
         pub id: String,
         pub name: String,
@@ -282,6 +332,8 @@ pub mod diplomacy {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct DealDraft {
         pub civ_id: String,
         pub you_give: Vec<String>,
@@ -298,6 +350,8 @@ pub mod empire_overview {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct EmpireOverview {
         pub summary: Summary,
         pub cities: Vec<CityRow>,
@@ -308,6 +362,8 @@ pub mod empire_overview {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct Summary {
         pub cities: u32,
         pub population: u32,
@@ -317,6 +373,8 @@ pub mod empire_overview {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct CityRow {
         pub name: String,
         #[serde(default)]
@@ -325,6 +383,8 @@ pub mod empire_overview {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct ResourceRow {
         pub name: String,
         pub value: u32,
@@ -332,6 +392,8 @@ pub mod empire_overview {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct TradeRow {
         pub from: String,
         pub to: String,
@@ -345,6 +407,8 @@ pub mod victory {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct Victory {
         pub turn: u32,
         pub turn_max: u32,
@@ -358,6 +422,8 @@ pub mod victory {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct Condition {
         pub id: String,
         pub name: String,
@@ -365,6 +431,8 @@ pub mod victory {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct LeaderRow {
         pub rank: u32,
         pub name: String,
@@ -380,11 +448,15 @@ pub mod city_data {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct CityData {
         pub cities: Vec<CityRow>,
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct CityRow {
         pub id: String,
         pub name: String,
@@ -412,6 +484,8 @@ pub mod city_tiles {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct CityTiles {
         pub city_id: String,
         pub center: super::world::TileCoord,
@@ -419,6 +493,8 @@ pub mod city_tiles {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct TileEntry {
         pub q: i32,
         pub r: i32,
@@ -437,11 +513,15 @@ pub mod unit_data {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct UnitData {
         pub units: Vec<Unit>,
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct Unit {
         pub id: String,
         pub name: String,
@@ -464,6 +544,8 @@ pub mod unit_data {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct UnitAction {
         pub id: String,
         pub label: String,
@@ -478,6 +560,8 @@ pub mod combat_preview {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct CombatPreview {
         pub attacker_id: String,
         pub defender: Option<DefenderInfo>,
@@ -489,6 +573,8 @@ pub mod combat_preview {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct DefenderInfo {
         pub id: String,
         pub kind: String,
@@ -501,11 +587,15 @@ pub mod army_data {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct ArmyData {
         pub armies: Vec<Army>,
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct Army {
         pub id: String,
         pub name: String,
@@ -519,12 +609,16 @@ pub mod notifications {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct Notifications {
         pub turn: u32,
         pub notifications: Vec<Notification>,
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct Notification {
         pub id: String,
         pub kind: String,
@@ -535,6 +629,8 @@ pub mod notifications {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct NotificationTarget {
         pub screen: String,
         pub q: Option<i32>,
@@ -546,12 +642,16 @@ pub mod turn_queue {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct TurnQueue {
         pub turn: u32,
         pub items: Vec<TurnQueueItem>,
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct TurnQueueItem {
         pub id: String,
         pub kind: String,
@@ -570,11 +670,15 @@ pub mod map_overlays {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct MapOverlays {
         pub overlays: Vec<Overlay>,
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct Overlay {
         pub id: String,
         pub label: String,
@@ -588,12 +692,16 @@ pub mod registry {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct Registry {
         pub unit_types: Vec<UnitType>,
         pub buildings: Vec<Building>,
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct UnitType {
         pub id: String,
         pub name: String,
@@ -607,6 +715,8 @@ pub mod registry {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct Building {
         pub id: String,
         pub name: String,
@@ -618,6 +728,8 @@ pub mod registry {
 // ── /turn/end response ───────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct TurnStatusBlock {
     pub turn: u32,
     pub ended: bool,
@@ -625,6 +737,7 @@ pub struct TurnStatusBlock {
 
 /// Standard mutation envelope: `{ ok, view, turn_status }`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct MutationResponse<T> {
     pub ok: bool,
     pub view: T,
@@ -633,6 +746,7 @@ pub struct MutationResponse<T> {
 
 /// Standard error envelope returned with non-2xx statuses.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct ApiErrorBody {
     pub error: String,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -5,3 +5,9 @@
 # See: https://docs.rs/getrandom/latest/#webassembly-support
 [target.wasm32-unknown-unknown]
 rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]
+
+# ---- xtask alias ----
+# `cargo xtask <recipe>` runs the workspace's recipe runner. See xtask/ and
+# `cargo xtask --help` for the available recipes.
+[alias]
+xtask = "run --quiet --package xtask --"

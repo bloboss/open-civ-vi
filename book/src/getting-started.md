@@ -91,15 +91,36 @@ cargo run -p open4x-server     # serves /api/*, /ws, and dist/
 Use an absolute path for `OPEN4X_STATIC_DIR` when running from a different
 working directory; the relative default resolves against the binary's CWD.
 
-### REST surface (under construction)
+### REST surface
 
-The HTTP API is being grown out under `/api/v1/*` — see
-[`book/src/roadmap/web-ui.md`](./roadmap/web-ui.md) for the full plan. As of
-Phase 0 only `/api/v1/health` is reachable; the legacy `/api/game/*`
-read-only endpoints remain in place during the transition.
+The HTTP API lives under `/api/v1/*`. The canonical, machine-readable
+description is generated from the Rust source via
+[`utoipa`](https://docs.rs/utoipa) and shipped at
+[`book/src/multiplayer/openapi.json`](./multiplayer/openapi.json). The
+human-readable companion is the
+[REST API reference](./multiplayer/rest-api.md); the full phased plan and
+changelog live in [`web-ui.md`](./roadmap/web-ui.md).
+
+```bash
+# Regenerate the OpenAPI document. Runs from anywhere in the workspace;
+# default output path is book/src/multiplayer/openapi.json.
+cargo xtask gen-openapi
+
+# CI / pre-push: verify the committed openapi.json is up to date.
+cargo xtask openapi-check
+```
+
+`cargo xtask` is the workspace recipe runner. Use `cargo xtask --help` to
+discover the other recipes (`check`, `wasm`, `book`, `server`,
+`trunk-serve`, …).
+
+CI keeps the document in sync via the `openapi_paths_match_router` test in
+`open4x-server/tests/openapi_contract.rs`. If the live Axum router and the
+`#[utoipa::path]` annotations in `open4x-server/src/server/openapi.rs`
+ever disagree, the test fails.
 
 The frontend connects to the server's WebSocket endpoint (`/ws`) for the AI
-demo and future multiplayer; the single-player loop will use REST instead.
+demo and future multiplayer; the single-player loop uses REST instead.
 
 ## Running Individual Test Suites
 

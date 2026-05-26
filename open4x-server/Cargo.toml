@@ -7,6 +7,14 @@ edition = "2024"
 name = "open4x-server"
 path = "src/main.rs"
 
+# OpenAPI generator. Writes `book/src/multiplayer/openapi.json` from the
+# Rust source. Gated behind the `openapi` feature so default builds skip
+# the utoipa dep.
+[[bin]]
+name = "gen-openapi"
+path = "src/bin/gen_openapi.rs"
+required-features = ["openapi"]
+
 [dependencies]
 serde       = { workspace = true }
 serde_json  = { workspace = true }
@@ -21,6 +29,14 @@ axum        = { version = "0.8", features = ["ws"] }
 tokio       = { workspace = true }
 dashmap     = { version = "6" }
 tower-http  = { version = "0.6", features = ["cors", "fs"] }
+utoipa      = { workspace = true, optional = true }
+
+[features]
+# Compile the OpenAPI metadata (annotations + `ApiDoc` struct) and the
+# `gen-openapi` binary. The generated spec is committed at
+# `book/src/multiplayer/openapi.json`; CI regenerates and diffs to catch
+# drift.
+openapi = ["dep:utoipa", "open4x-protocol/openapi"]
 
 [dev-dependencies]
 tower           = { version = "0.5", features = ["util"] }

@@ -8,3 +8,11 @@ description = "Wire-protocol types for the open4x REST/WS API. The single source
 serde      = { workspace = true }
 serde_json = { workspace = true }
 ulid       = { workspace = true }
+utoipa     = { workspace = true, optional = true }
+
+[features]
+# OpenAPI schema annotations. When enabled, every wire type derives
+# `utoipa::ToSchema` so `open4x-server` (with its own `openapi` feature)
+# can assemble an OpenAPI 3 document. Off by default so default builds
+# (and the wasm32 client) stay lean.
+openapi = ["dep:utoipa"]

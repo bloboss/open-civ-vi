@@ -24,6 +24,7 @@ use open4x_protocol::v1::view::GameView;
 use open4x_protocol::v1::web::{MutationResponse, TurnStatusBlock};
 
 #[derive(Serialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct HealthResponse {
     pub ok: bool,
     pub api: &'static str,
@@ -67,6 +68,7 @@ fn turn_status_block(state: &Arc<AppState>, game_id: GameId) -> TurnStatusBlock 
 // ── POST /games/new — bootstrap a single-player game over REST ───────────────
 
 #[derive(Deserialize, Default)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct NewGameRequest {
     #[serde(default)]
     pub display_name: Option<String>,
@@ -83,6 +85,7 @@ pub struct NewGameRequest {
 }
 
 #[derive(Serialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct NewGameResponse {
     pub game_id: GameId,
     pub civ_id: CivId,
@@ -192,6 +195,7 @@ pub async fn player_state(
 // ── /world/snapshot ──────────────────────────────────────────────────────────
 
 #[derive(Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct WorldSnapshotQuery {
     pub q: Option<i32>,
     pub r: Option<i32>,
@@ -233,6 +237,7 @@ pub async fn world_tile(
 // ── POST /turn/end ───────────────────────────────────────────────────────────
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct EndTurnView {
     pub turn: u32,
 }
@@ -386,6 +391,7 @@ pub async fn armies(
 // ── /combat/preview ──────────────────────────────────────────────────────────
 
 #[derive(Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct CombatPreviewQuery {
     pub attacker_id: String,
     pub defender_q: i32,
@@ -417,6 +423,7 @@ pub async fn combat_preview(
 // ── mutations: city production ───────────────────────────────────────────────
 
 #[derive(Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct QueueProductionBody {
     pub item_id: String,
     pub item_type: String, // "unit" | "building" | "wonder" | "district" | "project"
@@ -509,6 +516,7 @@ pub async fn cancel_production(
 // ── mutations: city focus ────────────────────────────────────────────────────
 
 #[derive(Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct AssignCityFocusBody {
     /// Lowercase variant name: "default" | "food" | "production" | "gold"
     /// | "science" | "culture" | "faith".
@@ -565,6 +573,7 @@ pub async fn assign_city_focus(
 // ── mutations: city rename ───────────────────────────────────────────────────
 
 #[derive(Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct RenameCityBody {
     /// New city name. Server enforces 1..=64 chars after trim.
     pub name: String,
@@ -619,6 +628,7 @@ pub async fn rename_city(
 // ── mutations: unit actions ──────────────────────────────────────────────────
 
 #[derive(Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct UnitActionBody {
     pub action_id: String,                 // "move" | "attack" | "fortify" | "sleep" | "found_city"
     #[serde(default)]
@@ -773,6 +783,7 @@ pub async fn tech(
 }
 
 #[derive(Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct TechResearchBody {
     pub tech_id: String,
 }
@@ -838,6 +849,7 @@ pub async fn civics(
 }
 
 #[derive(Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct CivicResearchBody {
     pub civic_id: String,
 }
@@ -907,6 +919,7 @@ pub async fn government(
 }
 
 #[derive(Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct ChangeGovernmentBody {
     /// Government name as it appears in the wire registry (e.g. "Chiefdom",
     /// "Monarchy", "Democracy"). Case-sensitive — matches `Government.name`.

@@ -11,6 +11,8 @@ use super::view::{CityView, YieldBundleView};
 // ── City reports ────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct CityReportRow {
     pub id: CityId,
     pub name: String,
@@ -24,6 +26,8 @@ pub struct CityReportRow {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct CityDetailReport {
     pub city: CityView,
     pub tile_yields: Vec<(HexCoord, YieldBundleView)>,
@@ -31,6 +35,8 @@ pub struct CityDetailReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct ProductionOption {
     pub item: ProductionItemView,
     pub name: String,
@@ -40,11 +46,15 @@ pub struct ProductionOption {
 // ── Resource reports ────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct ResourceReport {
     pub resources: Vec<ResourceEntry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct ResourceEntry {
     pub name: String,
     pub category: ResourceCategory,
@@ -55,6 +65,8 @@ pub struct ResourceEntry {
 // ── Unit reports ────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct UnitReport {
     pub id: UnitId,
     pub type_name: String,
@@ -69,6 +81,8 @@ pub struct UnitReport {
 // ── Map statistics ──────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct MapStatistics {
     pub terrain_counts: HashMap<String, u32>,
     pub feature_counts: HashMap<String, u32>,
@@ -82,6 +96,8 @@ pub struct MapStatistics {
 // ── Player reports ──────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct PlayerReport {
     pub id: CivId,
     pub name: String,
@@ -95,6 +111,8 @@ pub struct PlayerReport {
 // ── Turn status ─────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct TurnStatus {
     pub game_id: GameId,
     pub current_turn: u32,
@@ -105,6 +123,8 @@ pub struct TurnStatus {
 // ── Science / Culture reports ───────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct ScienceReport {
     pub tech_tree: super::view::TechTreeView,
     pub researched_techs: Vec<TechId>,
@@ -113,6 +133,8 @@ pub struct ScienceReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct CultureReport {
     pub civic_tree: super::view::CivicTreeView,
     pub completed_civics: Vec<CivicId>,

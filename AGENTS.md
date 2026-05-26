@@ -31,7 +31,52 @@ cargo run -p open4x -- play
 
 # Build WASM frontend (requires wasm-pack or trunk)
 # The WASM target config is in .cargo/config.toml (sets getrandom_backend="wasm_js")
+
+# Regenerate the REST OpenAPI 3 spec from source. Writes
+# book/src/multiplayer/openapi.json. The openapi_paths_match_router test
+# in open4x-server fails CI if the live Axum router and the
+# #[utoipa::path] annotations in open4x-server/src/server/openapi.rs ever
+# drift apart.
+cargo xtask gen-openapi
+
+# Full pre-commit check: build + test + clippy + openapi-feature pass +
+# wasm32 client build + openapi.json freshness diff.
+cargo xtask check
+# (skip the wasm leg on a fresh machine without the target installed):
+cargo xtask check --no-wasm
+
+# Discover every recipe:
+cargo xtask --help
 ```
+
+`cargo xtask` is the workspace recipe runner (pure Rust, lives in `xtask/`,
+wired up via an alias in `.cargo/config.toml`). Recipes orchestrate cargo,
+trunk, and mdbook; nothing in there knows about game state.
+
+## API documentation
+
+`open4x-protocol::v1::web::*` is the single source of truth for REST wire
+shapes. Path metadata (method, params, body, response) lives in
+`open4x-server/src/server/openapi.rs` as `#[utoipa::path]` annotations on
+no-op `_doc_*` functions; the `ApiDoc` struct at the bottom assembles them
+into a `utoipa::openapi::OpenApi`. The `gen-openapi` binary serialises it.
+
+When adding or modifying a REST endpoint:
+1. Add/change the route in `open4x-server/src/server/rest/mod.rs::v1_router`.
+2. Add/change the handler in `open4x-server/src/server/rest/handlers.rs`.
+3. Add/change the `#[utoipa::path]` block in
+   `open4x-server/src/server/openapi.rs` and update the `paths(...)` list
+   in `ApiDoc` and the `declared_paths()` mirror.
+4. Run `cargo test -p open4x-server --features openapi` — both the
+   `openapi_paths_match_router` and `declared_paths_match_router` tests
+   must pass.
+5. Run `cargo run -p open4x-server --features openapi --bin gen-openapi`
+   to refresh `book/src/multiplayer/openapi.json`.
+
+The WebSocket surface (`/ws`) is documented in
+`book/src/multiplayer/protocol.md`; its types live in
+`open4x-protocol::v1::messages`. OpenAPI does not model WebSockets, so the
+Rust types are the canonical reference for that path.
 
 ## Architecture
 
