@@ -16,7 +16,10 @@ use wasm_bindgen_futures::spawn_local;
 use open4x_sdk::endpoints as api;
 use open4x_sdk::wasm::WasmClient;
 
-use crate::components::hud::snapshot_map::SnapshotMap;
+use crate::components::hud::{
+    ContextPanel, MinimapPanel, NotificationsPanel, TurnQueuePanel, ZoomStack,
+    snapshot_map::SnapshotMap,
+};
 use crate::components::shell::{ScreenStub, Tab, Tabbar, Topbar};
 use open4x_protocol::v1::web::world::WorldSnapshot;
 
@@ -130,6 +133,15 @@ pub fn RestGamePage() -> impl IntoView {
         }
     });
 
+    let notifs = LocalResource::new(move || {
+        let _ = tick.get();
+        let tok = token.get();
+        async move {
+            let tok = tok?;
+            api::notifications::list(&client(Some(&tok))).await.ok()
+        }
+    });
+
     // ── Mutations ───────────────────────────────────────────────────────────
     let on_end_turn = Callback::new(move |_: ()| {
         let tok = token.get();
@@ -174,7 +186,15 @@ pub fn RestGamePage() -> impl IntoView {
                     class:active=move || active_tab.get() == Tab::Hud
                     attr:data-screen="hud"
                 >
-                    <HudScreen snapshot=snapshot selected=selected_tile />
+                    <HudScreen
+                        snapshot=snapshot
+                        selected=selected_tile
+                        notifs=notifs
+                        turn_queue=turn_queue
+                        token=token
+                        tick=tick
+                        on_open_tab=Callback::new(move |t| active_tab.set(t))
+                    />
                 </section>
 
                 {STUB_TABS.iter().copied().map(|(tab, title, desc)| view! {
@@ -195,18 +215,32 @@ pub fn RestGamePage() -> impl IntoView {
 fn HudScreen(
     snapshot: LocalResource<Option<WorldSnapshot>>,
     selected: RwSignal<Option<(i32, i32)>>,
+    notifs: LocalResource<Option<open4x_protocol::v1::web::notifications::Notifications>>,
+    turn_queue: LocalResource<Option<open4x_protocol::v1::web::turn_queue::TurnQueue>>,
+    token: RwSignal<Option<String>>,
+    tick: RwSignal<u64>,
+    on_open_tab: Callback<Tab>,
 ) -> impl IntoView {
     let snap_signal = Signal::derive(move || -> Option<WorldSnapshot> {
         snapshot.get().and_then(|w| (*w).clone())
     });
+
     view! {
-        <div class="hud-map" id="hud-map" style="position:absolute; inset:0; overflow:auto;">
-            <Suspense fallback=move || view! {
-                <p style="padding:1rem">"Loading map…"</p>
-            }>
-                <SnapshotMap snapshot=snap_signal selected=selected />
-            </Suspense>
-        </div>
+        <>
+            <div class="hud-map" id="hud-map" style="position:absolute; inset:0; overflow:auto;">
+                <Suspense fallback=move || view! {
+                    <p style="padding:1rem">"Loading map…"</p>
+                }>
+                    <SnapshotMap snapshot=snap_signal selected=selected />
+                </Suspense>
+            </div>
+
+            <MinimapPanel snapshot=snap_signal />
+            <NotificationsPanel notifs=notifs token=token tick=tick />
+            <TurnQueuePanel turn_queue=turn_queue />
+            <ContextPanel selected=selected snapshot=snap_signal on_open_tab=on_open_tab />
+            <ZoomStack />
+        </>
     }
 }
 
