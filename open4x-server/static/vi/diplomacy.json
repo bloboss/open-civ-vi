@@ -1,0 +1,168 @@
+{
+  "$schema": "diplomacy/v1",
+  "$doc": {
+    "summary": "Known civilizations, city-states, active diplomatic relations, and the current deal draft.",
+    "fields": {
+      "civs[].id":               "Unique snake_case identifier.",
+      "civs[].name":             "Display name of the civilization.",
+      "civs[].leader":           "Leader name shown in the detail panel.",
+      "civs[].relation":         "Relation label: 'Friendly' | 'Neutral' | 'Unfriendly' | 'At War'",
+      "civs[].relation_score":   "Numeric modifier; positive = friendly, negative = hostile.",
+      "civs[].agenda":           "Leader's known agenda.",
+      "civs[].government":       "Their current government form.",
+      "civs[].cities_known":     "Count of their cities we have visibility on.",
+      "civs[].military_est":     "Estimated military strength label.",
+      "civs[].science_est":      "Estimated science level label.",
+      "civs[].trade_routes":     "Trade routes from them to us.",
+      "civs[].trade_yields":     "Combined yield string from those trade routes.",
+      "civs[].treaties":         "Array of active treaty strings.",
+      "civs[].modifiers":        "Relation modifier rows: { kind: 'good'|'bad', desc, value }",
+      "city_states[].id":        "Unique identifier.",
+      "city_states[].name":      "Display name.",
+      "city_states[].envoys":    "Our envoys assigned here.",
+      "city_states[].suzerain":  "True if we are the suzerain.",
+      "active_civ":              "id of the civ currently open in the detail panel.",
+      "deal_draft":              "Current deal being negotiated.",
+      "deal_draft.you_give":     "Array of offer item strings from the player.",
+      "deal_draft.they_give":    "Array of offer item strings from the AI.",
+      "deal_draft.balance":      "Estimated fairness label.",
+      "deal_draft.mood":         "AI mood toward this deal.",
+      "deal_draft.duration_turns": "How many turns the deal lasts (null = permanent)."
+    }
+  },
+  "civs": [
+    {
+      "id": "caria",
+      "name": "Caria",
+      "leader": "Artemisia",
+      "relation": "Friendly",
+      "relation_score": 12,
+      "agenda": "Sea-farer",
+      "government": "Classical Rep.",
+      "cities_known": 5,
+      "military_est": "weak",
+      "science_est": "avg",
+      "trade_routes": 2,
+      "trade_yields": "+6G",
+      "treaties": ["Open borders", "Research agr."],
+      "modifiers": [
+        { "kind": "good", "desc": "Delegation received", "value":  8 },
+        { "kind": "good", "desc": "Trade partner",       "value":  6 },
+        { "kind": "good", "desc": "Shared religion",     "value":  4 },
+        { "kind": "bad",  "desc": "Different government","value": -6 }
+      ]
+    },
+    {
+      "id": "nubia",
+      "name": "Nubia",
+      "leader": "Amanitore",
+      "relation": "Neutral",
+      "relation_score": 0,
+      "agenda": "Pyramid Builder",
+      "government": "Chiefdom",
+      "cities_known": 4,
+      "military_est": "avg",
+      "science_est": "weak",
+      "trade_routes": 0,
+      "trade_yields": null,
+      "treaties": [],
+      "modifiers": []
+    },
+    {
+      "id": "persia",
+      "name": "Persia",
+      "leader": "Cyrus",
+      "relation": "Unfriendly",
+      "relation_score": -8,
+      "agenda": "Opportunist",
+      "government": "Autocracy",
+      "cities_known": 3,
+      "military_est": "strong",
+      "science_est": "avg",
+      "trade_routes": 0,
+      "trade_yields": null,
+      "treaties": [],
+      "modifiers": [
+        { "kind": "bad", "desc": "Denounced us",          "value": -8 }
+      ]
+    },
+    {
+      "id": "gaul",
+      "name": "Gaul",
+      "leader": "Ambiorix",
+      "relation": "At War",
+      "relation_score": -30,
+      "agenda": "Barbarian King",
+      "government": "Chiefdom",
+      "cities_known": 4,
+      "military_est": "strong",
+      "science_est": "weak",
+      "trade_routes": 0,
+      "trade_yields": null,
+      "treaties": [],
+      "modifiers": [
+        { "kind": "bad", "desc": "At war",                 "value": -30 }
+      ]
+    },
+    {
+      "id": "scythia",
+      "name": "Scythia",
+      "leader": "Tomyris",
+      "relation": "Neutral",
+      "relation_score": 2,
+      "agenda": "Backstab Phobe",
+      "government": "Chiefdom",
+      "cities_known": 2,
+      "military_est": "avg",
+      "science_est": "weak",
+      "trade_routes": 0,
+      "trade_yields": null,
+      "treaties": [],
+      "modifiers": []
+    },
+    {
+      "id": "phoenicia",
+      "name": "Phoenicia",
+      "leader": "Dido",
+      "relation": "Friendly",
+      "relation_score": 18,
+      "agenda": "Colonist",
+      "government": "Classical Rep.",
+      "cities_known": 6,
+      "military_est": "weak",
+      "science_est": "avg",
+      "trade_routes": 1,
+      "trade_yields": "+4G +2🎭",
+      "treaties": ["Open borders"],
+      "modifiers": [
+        { "kind": "good", "desc": "Trade partner",        "value": 10 },
+        { "kind": "good", "desc": "Shared government",    "value":  8 }
+      ]
+    }
+  ],
+  "city_states": [
+    {
+      "id": "kandy",
+      "name": "Kandy",
+      "envoys": 6,
+      "suzerain": true,
+      "bonus": "Suzerain: +1 Appeal all tiles"
+    },
+    {
+      "id": "akkad",
+      "name": "Akkad",
+      "envoys": 2,
+      "suzerain": false,
+      "bonus": "Envoy: +1 Science per Campus"
+    }
+  ],
+  "active_civ": "caria",
+  "deal_draft": {
+    "civ": "caria",
+    "you_give": ["-50 G", "-2 G/t (10t)", "Horses (str.)"],
+    "they_give": ["Iron (str.)", "+1 Envoy"],
+    "balance": "Roughly equal",
+    "mood": "Willing",
+    "duration_turns": 10
+  }
+}

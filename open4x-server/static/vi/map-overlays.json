@@ -1,0 +1,37 @@
+{
+  "$schema": "map-overlays/v1",
+  "$doc": {
+    "summary": "Available map overlay modes and minimap state for the HUD Map drawer pane.",
+    "fields": {
+      "overlays[].id":        "Snake_case identifier used as a CSS class and toggle key.",
+      "overlays[].label":     "Display label on the chip.",
+      "overlays[].active":    "True if this overlay is currently enabled.",
+      "minimap.cities":       "Array of { id, name, left_pct, top_pct, enemy } markers.",
+      "minimap.view":         "Current camera viewport as { left_pct, top_pct, width_pct, height_pct }.",
+      "minimap.wrap_x":       "Whether the world wraps east-west (cylindrical).",
+      "world_size_label":     "Human-readable world dimensions string."
+    }
+  },
+  "overlays": [
+    { "id": "yields",       "label": "yields",       "active": true  },
+    { "id": "appeal",       "label": "appeal",       "active": false },
+    { "id": "resources",    "label": "resources",    "active": false },
+    { "id": "borders",      "label": "borders",      "active": false },
+    { "id": "flood",        "label": "flood",        "active": false },
+    { "id": "political",    "label": "political",    "active": false },
+    { "id": "trade_routes", "label": "trade routes", "active": false },
+    { "id": "religion",     "label": "religion",     "active": false }
+  ],
+  "minimap": {
+    "cities": [
+      { "id": "alexandria", "name": "Alexandria", "left_pct": 42, "top_pct": 40, "enemy": false },
+      { "id": "memphis",    "name": "Memphis",    "left_pct": 55, "top_pct": 55, "enemy": false },
+      { "id": "thebes",     "name": "Thebes",     "left_pct": 32, "top_pct": 48, "enemy": false },
+      { "id": "barb_camp1", "name": null,         "left_pct": 70, "top_pct": 28, "enemy": true  },
+      { "id": "barb_camp2", "name": null,         "left_pct": 20, "top_pct": 60, "enemy": true  }
+    ],
+    "view": { "left_pct": 40, "top_pct": 35, "width_pct": 22, "height_pct": 30 },
+    "wrap_x": true
+  },
+  "world_size_label": "80 \u00d7 28 · cylindrical E\u2194W · poles clamped"
+}

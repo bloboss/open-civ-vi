@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Open4X — Hi-Fi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<!-- IBM Plex (UI + numerics) -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+  rel="stylesheet"
+/>
+
+<link rel="stylesheet" href="open4x.css" />
+<link rel="stylesheet" href="open4x-hud.css" />
+<link rel="stylesheet" href="open4x-city.css" />
+<link rel="stylesheet" href="open4x-tech.css" />
+<link rel="stylesheet" href="open4x-screens.css" />
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- ─────────────────────────── ROW 1 — topbar ─────────────────────────── -->
+  <header class="topbar">
+
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Open4X</span>
+      <span class="brand-sep">/</span>
+      <span class="brand-game" id="brand-civ">Egypt · Hatshepsut</span>
+
+      <div class="turn-info">
+        <div>
+          <span class="label">Turn</span>
+          <span class="val" id="turn-val">—</span>
+          <span class="val" style="color: var(--ink-4);">/<span id="turn-max">500</span></span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="label" style="margin-right:0;">Era</span>
+          <span class="val" id="era-val" style="font-family: var(--font-sans); font-size:12px;">—</span>
+          <div class="era-bar" title="Era progress"><i id="era-bar-fill" style="width:0%"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="resources" id="resources">
+      <!-- populated by JS -->
+    </div>
+
+    <div class="topbar-right">
+      <button class="icon-btn" title="Search (⌘K)">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+          <circle cx="7" cy="7" r="4.5" />
+          <path d="M10.5 10.5 L13 13" stroke-linecap="round" />
+        </svg>
+      </button>
+      <button class="icon-btn" title="Settings">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+          <circle cx="8" cy="8" r="2"/>
+          <path d="M8 1.5v2M8 12.5v2M14.5 8h-2M3.5 8h-2M12.6 3.4l-1.4 1.4M4.8 11.2l-1.4 1.4M12.6 12.6l-1.4-1.4M4.8 4.8 3.4 3.4" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button class="icon-btn" title="Profile">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+          <circle cx="8" cy="5.5" r="2.5" />
+          <path d="M2.5 14c0-2.5 2.5-4.5 5.5-4.5s5.5 2 5.5 4.5" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ─────────────────────────── ROW 2 — screen tabs ────────────────────── -->
+  <div class="tabbar">
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-screen="hud">         <span>Map</span>          <span class="tab-key">1</span> </button>
+      <button class="tab"        data-screen="city">        <span>Cities</span>       <span class="tab-key">2</span> <span class="tab-badge" id="tab-city-count">5</span> </button>
+      <button class="tab"        data-screen="units">       <span>Units</span>        <span class="tab-key">3</span> <span class="tab-badge" id="tab-unit-count">—</span> </button>
+      <button class="tab"        data-screen="tech">        <span>Tech</span>         <span class="tab-key">4</span> <span class="tab-badge attn" id="tab-tech-cur" title="Active research">→</span> </button>
+      <button class="tab"        data-screen="civics">      <span>Civics</span>       <span class="tab-key">5</span> <span class="tab-badge" id="tab-civics-cur" title="Active civic">→</span> </button>
+      <button class="tab"        data-screen="dipl">        <span>Diplomacy</span>    <span class="tab-key">6</span> </button>
+      <button class="tab"        data-screen="govt">        <span>Government</span>   <span class="tab-key">7</span> </button>
+      <button class="tab"        data-screen="overview">    <span>Empire</span>       <span class="tab-key">8</span> </button>
+      <button class="tab"        data-screen="victory">     <span>Victory</span>      <span class="tab-key">9</span> </button>
+    </nav>
+    <div class="end-turn-group">
+      <div class="end-turn-meta" id="end-turn-meta">
+        <span class="dot"></span>
+        <span id="queue-summary">— actions remaining</span>
+      </div>
+      <button class="btn-primary" id="end-turn-btn">
+        <span>End Turn</span>
+        <span class="kbd">⏎</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────── ROW 3 — screens ────────────────────────── -->
+  <main class="screen-root" id="screen-root">
+
+    <!-- ──────── HUD ──────── -->
+    <section class="screen active" id="screen-hud" data-screen="hud">
+
+      <div class="hud-map" id="hud-map">
+        <canvas class="hex-canvas" id="hud-canvas"></canvas>
+        <div class="hex-labels" id="hud-labels"></div>
+      </div>
+
+      <!-- minimap top-left -->
+      <div class="minimap-panel" id="minimap-panel">
+        <canvas id="minimap-canvas" width="220" height="132"></canvas>
+        <div class="mm-vp" id="minimap-vp"></div>
+        <div class="mm-overlay" id="minimap-overlay"></div>
+        <span class="mm-label">Minimap</span>
+      </div>
+
+      <!-- notifications right edge -->
+      <aside class="hud-panel notifications-panel" id="notifications-panel">
+        <div class="hud-panel-h">
+          <span class="title">Notifications · <span id="notif-turn" class="mono" style="color:var(--ink-4); text-transform:none; letter-spacing:0;">T —</span></span>
+          <div class="actions">
+            <button class="icon-btn" title="Clear all" id="notif-clear">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+                <path d="M3 4h10M5 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1M6 7v5M10 7v5M4 4l1 9a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1l1-9" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="notif-list scrolly" id="notif-list"></div>
+      </aside>
+
+      <!-- turn queue bottom-left -->
+      <aside class="hud-panel turn-queue-panel" id="turn-queue-panel">
+        <div class="hud-panel-h">
+          <span class="title">
+            Turn Queue · <span class="mono" style="color:var(--ink-4); text-transform:none; letter-spacing:0;" id="tq-counter">0 / 0</span>
+          </span>
+          <div class="actions">
+            <button class="icon-btn" title="Auto-resolve all">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+                <path d="M3 8h10M9 4l4 4-4 4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="tq-list scrolly" id="tq-list"></div>
+      </aside>
+
+      <!-- bottom-center context panel (tile / unit details) -->
+      <div class="context-panel" id="context-panel">
+        <div class="context-empty">Click a tile to inspect · drag to pan · scroll to zoom</div>
+      </div>
+
+      <!-- zoom controls bottom-right -->
+      <div class="zoom-stack">
+        <button class="icon-btn" id="zoom-in" title="Zoom in">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+            <path d="M8 3v10M3 8h10" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="zoom-out" title="Zoom out">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+            <path d="M3 8h10" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="zoom-home" title="Recenter">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+            <path d="M3 8 8 3l5 5M5 8v5h6V8" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- ──────── stub screens (built out in follow-ups) ──────── -->
+    <section class="screen" id="screen-city" data-screen="city">
+      <div class="screen-stub"><div class="screen-stub-card">
+        <span class="kicker">Coming next</span>
+        <h2>City management</h2>
+        <p>Three-column layout: cities · district & yields & population · production queue.</p>
+      </div></div>
+    </section>
+    <section class="screen" id="screen-units" data-screen="units">
+      <div class="screen-stub"><div class="screen-stub-card">
+        <span class="kicker">Coming next</span>
+        <h2>Units & Armies</h2>
+        <p>Unit roster + per-unit detail with promotions, actions, combat stats.</p>
+      </div></div>
+    </section>
+    <section class="screen" id="screen-tech" data-screen="tech">
+      <div class="screen-stub"><div class="screen-stub-card">
+        <span class="kicker">Coming next</span>
+        <h2>Technology tree</h2>
+        <p>Era columns · prereq edges · queue · research focus.</p>
+      </div></div>
+    </section>
+    <section class="screen" id="screen-civics" data-screen="civics">
+      <div class="screen-stub"><div class="screen-stub-card">
+        <span class="kicker">Coming next</span>
+        <h2>Civics tree</h2>
+        <p>Same layout as tech, plus policy preview.</p>
+      </div></div>
+    </section>
+    <section class="screen" id="screen-dipl" data-screen="dipl">
+      <div class="screen-stub"><div class="screen-stub-card">
+        <span class="kicker">Coming next</span>
+        <h2>Diplomacy</h2>
+        <p>Civ list · relations & modifiers · deal builder · city-states.</p>
+      </div></div>
+    </section>
+    <section class="screen" id="screen-govt" data-screen="govt">
+      <div class="screen-stub"><div class="screen-stub-card">
+        <span class="kicker">Coming next</span>
+        <h2>Government & Policies</h2>
+        <p>Current government · slot composition · policy catalogue.</p>
+      </div></div>
+    </section>
+    <section class="screen" id="screen-overview" data-screen="overview">
+      <div class="screen-stub"><div class="screen-stub-card">
+        <span class="kicker">Coming next</span>
+        <h2>Empire overview</h2>
+        <p>Summary stats · city table · resources · trade routes · religion · yields chart.</p>
+      </div></div>
+    </section>
+    <section class="screen" id="screen-victory" data-screen="victory">
+      <div class="screen-stub"><div class="screen-stub-card">
+        <span class="kicker">Coming next</span>
+        <h2>Victory conditions</h2>
+        <p>Per-condition progress · steps · leaderboard.</p>
+      </div></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ─────────────────────────── scripts ─────────────────────────── -->
+<script src="open4x-api.js"></script>
+
+<!-- Token bootstrap: resolve a bearer token (URL ?token=, localStorage, or
+     POST /api/v1/games/new), configure the api adapter for live mode, then
+     load the remaining screen modules in order. -->
+<script>
+(async () => {
+  "use strict";
+  const STORAGE_KEY = "open4x.token";
+  const API_BASE    = "/api/v1";
+
+  function tokenFromUrl() {
+    const m = /[?&]token=([^&]+)/.exec(window.location.search);
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+
+  async function bootstrapToken() {
+    const fromUrl = tokenFromUrl();
+    if (fromUrl) { localStorage.setItem(STORAGE_KEY, fromUrl); return fromUrl; }
+    const fromStorage = localStorage.getItem(STORAGE_KEY);
+    if (fromStorage) return fromStorage;
+    const r = await fetch(`${API_BASE}/games/new`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    if (!r.ok) throw new Error(`POST /games/new failed: ${r.status}`);
+    const body = await r.json();
+    localStorage.setItem(STORAGE_KEY, body.token);
+    return body.token;
+  }
+
+  try {
+    const token = await bootstrapToken();
+    window.api.config.mode    = "live";
+    window.api.config.baseUrl = API_BASE;
+    window.api.config.token   = token;
+  } catch (e) {
+    console.error("[open4x] token bootstrap failed; falling back to json fixtures", e);
+  }
+
+  const mods = [
+    "hex-webgl-hud.js",
+    "open4x-city.js", "open4x-tech.js", "open4x-civics.js",
+    "open4x-units.js", "open4x-dipl.js", "open4x-govt.js",
+    "open4x-overview.js", "open4x-victory.js",
+    "open4x.js",
+  ];
+  for (const src of mods) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error(`failed to load ${src}`));
+      document.body.appendChild(s);
+    });
+  }
+})();
+</script>
+
+</body>
+</html>

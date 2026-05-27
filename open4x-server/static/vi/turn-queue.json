@@ -1,0 +1,90 @@
+{
+  "$schema": "turn-queue/v1",
+  "$doc": {
+    "summary": "Ordered list of actions that need to be resolved before the player can end their turn.",
+    "fields": {
+      "turn":              "The turn number this queue applies to.",
+      "items[].id":        "Unique string identifier for this queue entry.",
+      "items[].kind":      "'research' | 'unit' | 'civilian' | 'city' — controls left-border color.",
+      "items[].required":  "If true, the player cannot skip this item or end turn until resolved.",
+      "items[].title":     "Primary label shown in bold.",
+      "items[].desc":      "Secondary descriptor line.",
+      "items[].skipLabel": "Label for the skip button. Omit on required items.",
+      "items[].target":    "Navigation target: { screen } or { screen, q, r } for map jump."
+    }
+  },
+  "turn": 142,
+  "items": [
+    {
+      "id": "q1",
+      "kind": "research",
+      "required": true,
+      "title": "Choose next research",
+      "desc": "Bronze Working complete — pick from 5 unlocked techs",
+      "target": { "screen": "tech" }
+    },
+    {
+      "id": "q2",
+      "kind": "unit",
+      "required": false,
+      "title": "Warrior · Alpha",
+      "desc": "Needs orders at 16,7 · 2/2 MP",
+      "skipLabel": "Skip turn",
+      "target": { "screen": "hud", "q": 16, "r": 7 }
+    },
+    {
+      "id": "q3",
+      "kind": "unit",
+      "required": false,
+      "title": "Archer · Beta",
+      "desc": "Needs orders at 13,6 · fortified — reconfirm or move",
+      "skipLabel": "Skip turn",
+      "target": { "screen": "hud", "q": 13, "r": 6 }
+    },
+    {
+      "id": "q4",
+      "kind": "civilian",
+      "required": false,
+      "title": "Settler",
+      "desc": "Idle near Alexandria · found city or move",
+      "skipLabel": "Sleep",
+      "target": { "screen": "hud", "q": 15, "r": 7 }
+    },
+    {
+      "id": "q5",
+      "kind": "civilian",
+      "required": false,
+      "title": "Builder (2/3 charges)",
+      "desc": "At 14,9 · can build farm on wheat tile",
+      "skipLabel": "Sleep",
+      "target": { "screen": "hud", "q": 14, "r": 9 }
+    },
+    {
+      "id": "q6",
+      "kind": "city",
+      "required": false,
+      "title": "Alexandria · production",
+      "desc": "Library finishes in 4 turns · review queue",
+      "skipLabel": "Keep current",
+      "target": { "screen": "city" }
+    },
+    {
+      "id": "q7",
+      "kind": "unit",
+      "required": false,
+      "title": "Scout · Echo",
+      "desc": "Needs orders at 22,4 · explored new coastline",
+      "skipLabel": "Skip turn",
+      "target": { "screen": "hud", "q": 22, "r": 4 }
+    },
+    {
+      "id": "q8",
+      "kind": "unit",
+      "required": false,
+      "title": "Galley",
+      "desc": "At 10,11 · 3/3 MP · can enter ocean next turn",
+      "skipLabel": "Skip turn",
+      "target": { "screen": "hud", "q": 10, "r": 11 }
+    }
+  ]
+}

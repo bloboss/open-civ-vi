@@ -1,0 +1,94 @@
+{
+  "$schema": "victory/v1",
+  "$doc": {
+    "summary": "Victory condition progress for all civs and the leaderboard.",
+    "fields": {
+      "turn":                      "Current turn number.",
+      "turn_max":                  "Total turns in the game.",
+      "leading_condition":         "id of the victory condition where the player is currently leading.",
+      "leading_pct":               "Player's progress percentage in the leading condition.",
+      "score":                     "Player's current score.",
+      "rank":                      "Player's current rank among all civs.",
+      "rank_of":                   "Total civ count.",
+      "projected_winner":          "Name of the projected winner (may be 'You').",
+      "conditions[].id":           "Snake_case condition identifier.",
+      "conditions[].name":         "Display name.",
+      "conditions[].player_pct":   "Player's completion percentage (0–100).",
+      "conditions[].steps":        "Array of { label, done } for step-based conditions (optional).",
+      "conditions[].stats":        "Key-value pairs for stat-based conditions (optional).",
+      "leaderboard[].rank":        "Position (1-indexed).",
+      "leaderboard[].name":        "Civ display name.",
+      "leaderboard[].is_player":   "True for the human player's row.",
+      "leaderboard[].score":       "Total score.",
+      "leaderboard[].victory_pcts":"{ science, culture, domination, religion, diplomatic } percentages."
+    }
+  },
+  "turn": 142,
+  "turn_max": 500,
+  "leading_condition": "science",
+  "leading_pct": 68,
+  "score": 1284,
+  "rank": 2,
+  "rank_of": 6,
+  "projected_winner": "You",
+  "conditions": [
+    {
+      "id": "science",
+      "name": "Science",
+      "player_pct": 68,
+      "steps": [
+        { "label": "Rocketry",    "done": true  },
+        { "label": "Satellites",  "done": false },
+        { "label": "Moon Landing","done": false },
+        { "label": "Mars",        "done": false }
+      ]
+    },
+    {
+      "id": "culture",
+      "name": "Culture",
+      "player_pct": 41,
+      "stats": {
+        "Tourists": "14 / 34",
+        "Wonders":  "2 built",
+        "Works":    "6 great"
+      }
+    },
+    {
+      "id": "domination",
+      "name": "Domination",
+      "player_pct": 25,
+      "stats": {
+        "Capitals": "1 / 6",
+        "Own cap":  "✓ Alexandria",
+        "At war":   "Gaul"
+      }
+    },
+    {
+      "id": "religion",
+      "name": "Religion",
+      "player_pct": 0,
+      "stats": {
+        "Religion": "not founded",
+        "Prophet":  "2 / 4"
+      }
+    },
+    {
+      "id": "diplomatic",
+      "name": "Diplomatic",
+      "player_pct": 18,
+      "stats": {
+        "DVP":      "3 / 20",
+        "Envoys":   "9 total",
+        "Suzerain": "1 city-st."
+      }
+    }
+  ],
+  "leaderboard": [
+    { "rank": 1, "name": "You (Egypt)",  "is_player": true,  "score": 1284, "victory_pcts": { "science": 68, "culture": 41, "domination": 25, "religion": 0,  "diplomatic": 18 } },
+    { "rank": 2, "name": "Caria",        "is_player": false, "score": 1102, "victory_pcts": { "science": 52, "culture": 48, "domination": 10, "religion": 22, "diplomatic": 34 } },
+    { "rank": 3, "name": "Phoenicia",    "is_player": false, "score": 988,  "victory_pcts": { "science": 40, "culture": 30, "domination": 12, "religion": 0,  "diplomatic": 44 } },
+    { "rank": 4, "name": "Persia",       "is_player": false, "score": 940,  "victory_pcts": { "science": 45, "culture": 22, "domination": 50, "religion": 15, "diplomatic": 10 } },
+    { "rank": 5, "name": "Nubia",        "is_player": false, "score": 812,  "victory_pcts": { "science": 30, "culture": 28, "domination": 20, "religion": 60, "diplomatic": 12 } },
+    { "rank": 6, "name": "Gaul",         "is_player": false, "score": 640,  "victory_pcts": { "science": 25, "culture": 10, "domination": 55, "religion": 0,  "diplomatic": 4  } }
+  ]
+}

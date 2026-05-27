@@ -1,0 +1,196 @@
+{
+  "$schema": "government-policies/v1",
+  "$doc": {
+    "summary": "Government form, active policy slots, and the full catalogue of available/locked policy cards.",
+    "fields": {
+      "government.id":             "Snake_case government identifier.",
+      "government.name":           "Display name.",
+      "government.era":            "Era this government unlocks in.",
+      "government.slots":          "{ military, economic, diplomatic, wildcard } — total slot counts.",
+      "government.legacy_bonus":   "Text description of this government's legacy bonus.",
+      "active_policies[]":         "Cards currently slotted. Ordered: military first, then economic, diplomatic, wildcard.",
+      "active_policies[].slot":    "'military' | 'economic' | 'diplomatic' | 'wildcard'",
+      "active_policies[].id":      "Policy card id (matches catalogue entry).",
+      "active_policies[].name":    "Display name.",
+      "active_policies[].effect":  "Short effect description.",
+      "catalogue[]":               "All policy cards the player has access to or will unlock.",
+      "catalogue[].id":            "Unique snake_case identifier.",
+      "catalogue[].name":          "Display name.",
+      "catalogue[].type":          "'military' | 'economic' | 'diplomatic' | 'wildcard'",
+      "catalogue[].era":           "Era the card is associated with.",
+      "catalogue[].dark_age":      "True if this is a dark age policy (only available during dark ages).",
+      "catalogue[].status":        "'available' | 'active' | 'locked'",
+      "catalogue[].unlock_civic":  "Civic id that unlocks this card (optional).",
+      "catalogue[].effect":        "Full effect description.",
+      "catalogue[].effect_detail": "Extended tooltip text (optional).",
+      "available_governments[]":   "Other governments the player could switch to."
+    }
+  },
+  "government": {
+    "id": "chiefdom",
+    "name": "Chiefdom",
+    "era": "Ancient",
+    "slots": { "military": 2, "economic": 2, "diplomatic": 1, "wildcard": 0 },
+    "legacy_bonus": "Gain +1 Envoy when you earn a Civic."
+  },
+  "active_policies": [
+    { "slot": "military",   "id": "discipline",        "name": "Discipline",        "effect": "+5 Combat Strength vs. Barbarians" },
+    { "slot": "military",   "id": "survey",            "name": "Survey",            "effect": "+1 sight for all land units" },
+    { "slot": "economic",   "id": "god_king",          "name": "God King",          "effect": "+1 🔬 Science and +1 † Faith per turn" },
+    { "slot": "economic",   "id": "ilkum",             "name": "Ilkum",             "effect": "Builders receive +1 build charge" },
+    { "slot": "diplomatic", "id": "diplomatic_league", "name": "Diplomatic League", "effect": "First Envoy sent to each city-state grants +1 Envoy" }
+  ],
+  "catalogue": [
+    {
+      "id": "discipline",        "name": "Discipline",           "type": "military",   "era": "Ancient",      "dark_age": false, "status": "active",
+      "unlock_civic": "craftsmanship",
+      "effect": "+5 Combat Strength vs. Barbarians",
+      "effect_detail": "All land units gain +5 Combat Strength when fighting Barbarian units."
+    },
+    {
+      "id": "survey",            "name": "Survey",               "type": "military",   "era": "Ancient",      "dark_age": false, "status": "active",
+      "unlock_civic": "craftsmanship",
+      "effect": "+1 sight for all land units",
+      "effect_detail": "All your land units have their sight range increased by 1."
+    },
+    {
+      "id": "strategos",         "name": "Strategos",            "type": "military",   "era": "Tribal",       "dark_age": false, "status": "available",
+      "unlock_civic": "military_trad",
+      "effect": "+25% Production toward Ancient and Medieval melee units",
+      "effect_detail": "Cities produce melee units of the Ancient and Medieval eras 25% faster."
+    },
+    {
+      "id": "agoge",             "name": "Agoge",                "type": "military",   "era": "Classical",    "dark_age": false, "status": "locked",
+      "unlock_civic": "state_workforce",
+      "effect": "+50% Production toward Ancient and Medieval melee and ranged units",
+      "effect_detail": "Cities produce Ancient and Medieval melee and ranged units 50% faster."
+    },
+    {
+      "id": "conscription",      "name": "Conscription",         "type": "military",   "era": "Classical",    "dark_age": false, "status": "locked",
+      "unlock_civic": "state_workforce",
+      "effect": "Unit maintenance reduced by 1 Gold per turn",
+      "effect_detail": "All military units cost 1 less Gold per turn to maintain."
+    },
+    {
+      "id": "levee_en_masse",    "name": "Levée en Masse",       "type": "military",   "era": "Industrial",   "dark_age": false, "status": "locked",
+      "unlock_civic": "games_rec",
+      "effect": "+50% Production toward Industrial and Modern era units",
+      "effect_detail": null
+    },
+    {
+      "id": "feudal_contract",   "name": "Feudal Contract",      "type": "military",   "era": "Medieval",     "dark_age": false, "status": "locked",
+      "unlock_civic": "recorded_hist",
+      "effect": "+50% Production toward Ancient and Medieval heavy and light cavalry units",
+      "effect_detail": null
+    },
+    {
+      "id": "dark_ages_mil",     "name": "Total War",            "type": "military",   "era": "Dark Age",     "dark_age": true,  "status": "locked",
+      "unlock_civic": null,
+      "effect": "+50% Production toward all military units; +5 Loyalty per turn for cities with a garrisoned unit",
+      "effect_detail": "Only available during a Dark Age."
+    },
+    {
+      "id": "god_king",          "name": "God King",             "type": "economic",   "era": "Ancient",      "dark_age": false, "status": "active",
+      "unlock_civic": "craftsmanship",
+      "effect": "+1 🔬 Science and +1 † Faith per turn",
+      "effect_detail": "Your capital generates 1 extra Science and 1 extra Faith per turn."
+    },
+    {
+      "id": "ilkum",             "name": "Ilkum",                "type": "economic",   "era": "Ancient",      "dark_age": false, "status": "active",
+      "unlock_civic": "craftsmanship",
+      "effect": "Builders receive +1 build charge",
+      "effect_detail": "Each Builder you train or purchase gains one additional build charge."
+    },
+    {
+      "id": "urban_planning",    "name": "Urban Planning",       "type": "economic",   "era": "Classical",    "dark_age": false, "status": "locked",
+      "unlock_civic": "state_workforce",
+      "effect": "+1 Production in every city",
+      "effect_detail": null
+    },
+    {
+      "id": "trade_confederation","name": "Trade Confederation",  "type": "economic",   "era": "Tribal",       "dark_age": false, "status": "available",
+      "unlock_civic": "early_empire",
+      "effect": "+1 Culture and +1 Gold for each Trade Route",
+      "effect_detail": null
+    },
+    {
+      "id": "triangular_trade",  "name": "Triangular Trade",     "type": "economic",   "era": "Renaissance",  "dark_age": false, "status": "locked",
+      "unlock_civic": "medieval_faires",
+      "effect": "+3 Gold and +1 Faith for each Trade Route",
+      "effect_detail": null
+    },
+    {
+      "id": "market_economy",    "name": "Market Economy",       "type": "economic",   "era": "Industrial",   "dark_age": false, "status": "locked",
+      "unlock_civic": "recorded_hist",
+      "effect": "+2 Gold for each Commercial Hub building",
+      "effect_detail": null
+    },
+    {
+      "id": "dark_ages_eco",     "name": "Robber Barons",        "type": "economic",   "era": "Dark Age",     "dark_age": true,  "status": "locked",
+      "unlock_civic": null,
+      "effect": "+4 Gold and +2 Production for each city with a population of 6 or more",
+      "effect_detail": "Only available during a Dark Age."
+    },
+    {
+      "id": "diplomatic_league", "name": "Diplomatic League",    "type": "diplomatic", "era": "Ancient",      "dark_age": false, "status": "active",
+      "unlock_civic": "craftsmanship",
+      "effect": "First Envoy sent to each city-state grants +1 Envoy",
+      "effect_detail": null
+    },
+    {
+      "id": "merchantrepublic",  "name": "Merchant Republic",    "type": "diplomatic", "era": "Classical",    "dark_age": false, "status": "locked",
+      "unlock_civic": "political_phil",
+      "effect": "+1 Trade Route capacity; +2 Gold from each Trade Route",
+      "effect_detail": null
+    },
+    {
+      "id": "wisselbanken",      "name": "Wisselbanken",         "type": "diplomatic", "era": "Renaissance",  "dark_age": false, "status": "locked",
+      "unlock_civic": "recorded_hist",
+      "effect": "+5 Gold for each city-state you have 6+ Envoys in",
+      "effect_detail": null
+    },
+    {
+      "id": "the_new_deal",      "name": "The New Deal",         "type": "diplomatic", "era": "Modern",       "dark_age": false, "status": "locked",
+      "unlock_civic": "games_rec",
+      "effect": "+4 Housing and +2 Amenities in cities with a City Center, Harbor, or Commercial Hub district",
+      "effect_detail": null
+    },
+    {
+      "id": "dark_ages_dip",     "name": "Veterancy",            "type": "diplomatic", "era": "Dark Age",     "dark_age": true,  "status": "locked",
+      "unlock_civic": null,
+      "effect": "+10 Production toward Encampment, Harbor, and Aerodrome districts and buildings in those districts",
+      "effect_detail": "Only available during a Dark Age."
+    },
+    {
+      "id": "laissez_faire",     "name": "Laissez-Faire",        "type": "wildcard",   "era": "Industrial",   "dark_age": false, "status": "locked",
+      "unlock_civic": "games_rec",
+      "effect": "+2 Trade Routes",
+      "effect_detail": null
+    },
+    {
+      "id": "natural_philosophy","name": "Natural Philosophy",   "type": "wildcard",   "era": "Classical",    "dark_age": false, "status": "locked",
+      "unlock_civic": "political_phil",
+      "effect": "Campus district buildings provide +2 Great Scientist points",
+      "effect_detail": null
+    },
+    {
+      "id": "simultaneum",       "name": "Simultaneum",          "type": "wildcard",   "era": "Medieval",     "dark_age": false, "status": "locked",
+      "unlock_civic": "drama_poetry",
+      "effect": "Holy Site districts provide +2 Great Prophet points; +2 Faith from each Holy Site building",
+      "effect_detail": null
+    },
+    {
+      "id": "dark_ages_wc",      "name": "Gothic Architecture",  "type": "wildcard",   "era": "Dark Age",     "dark_age": true,  "status": "locked",
+      "unlock_civic": null,
+      "effect": "25% Production discount on Ancient and Medieval era Wonders",
+      "effect_detail": "Only available during a Dark Age."
+    }
+  ],
+  "available_governments": [
+    { "id": "chiefdom",        "name": "Chiefdom",          "era": "Ancient",   "slots": { "military": 2, "economic": 2, "diplomatic": 1, "wildcard": 0 }, "current": true },
+    { "id": "autocracy",       "name": "Autocracy",         "era": "Classical", "slots": { "military": 1, "economic": 1, "diplomatic": 1, "wildcard": 1 }, "current": false, "unlock_civic": "code_of_laws" },
+    { "id": "classical_rep",   "name": "Classical Republic","era": "Classical", "slots": { "military": 0, "economic": 2, "diplomatic": 2, "wildcard": 1 }, "current": false, "unlock_civic": "code_of_laws" },
+    { "id": "oligarchy",       "name": "Oligarchy",         "era": "Classical", "slots": { "military": 3, "economic": 1, "diplomatic": 1, "wildcard": 0 }, "current": false, "unlock_civic": "political_phil", "locked": true },
+    { "id": "merchant_rep",    "name": "Merchant Republic", "era": "Medieval",  "slots": { "military": 1, "economic": 3, "diplomatic": 1, "wildcard": 2 }, "current": false, "unlock_civic": "recorded_hist",  "locked": true }
+  ]
+}

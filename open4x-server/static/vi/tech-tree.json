@@ -1,0 +1,56 @@
+{
+  "$schema": "tech-tree/v1",
+  "$doc": {
+    "summary": "Technology tree data + active research queue.",
+    "fields": {
+      "techs[].id":        "Unique camelCase identifier referenced by RESEARCH_QUEUE and prerequisites.",
+      "techs[].name":      "Display name shown in the tree and drawer.",
+      "techs[].cost":      "Base science cost to complete (integer).",
+      "techs[].progress":  "Science already accumulated — only present on the 'current' tech.",
+      "techs[].unlocks":   "Short human-readable string listing what this tech enables.",
+      "techs[].era":       "Era column this node belongs to: Ancient | Classical | Medieval | Renaissance | Industrial | Modern+",
+      "techs[].status":    "'done' | 'current' | 'available' | 'locked'",
+      "techs[].prereqs":   "Array of tech ids that must be 'done' before this can be started (optional).",
+      "research_queue":    "Ordered array of tech ids queued after the current one (index 0 = next up)."
+    }
+  },
+  "techs": [
+    { "id": "pottery",       "name": "Pottery",         "cost": 25,  "unlocks": "Granary",                  "era": "Ancient",      "status": "done",      "prereqs": [] },
+    { "id": "animal_husb",   "name": "Animal Husb.",    "cost": 25,  "unlocks": "Pasture · Horses",          "era": "Ancient",      "status": "done",      "prereqs": [] },
+    { "id": "mining",        "name": "Mining",          "cost": 25,  "unlocks": "Mine · Quarry",             "era": "Ancient",      "status": "done",      "prereqs": [] },
+    { "id": "sailing",       "name": "Sailing",         "cost": 50,  "unlocks": "Galley · Harbor",           "era": "Ancient",      "status": "done",      "prereqs": [] },
+    { "id": "astronomy",     "name": "Astronomy",       "cost": 50,  "unlocks": "Plantation",                "era": "Ancient",      "status": "done",      "prereqs": [] },
+    { "id": "masonry",       "name": "Masonry",         "cost": 80,  "unlocks": "Walls · Pyramids",          "era": "Ancient",      "status": "done",      "prereqs": ["mining"] },
+    { "id": "writing",       "name": "Writing",         "cost": 50,  "unlocks": "Library",                   "era": "Classical",    "status": "done",      "prereqs": ["pottery"] },
+    { "id": "bronze",        "name": "Bronze Working",  "cost": 200, "progress": 84, "unlocks": "Swordsman · Iron", "era": "Classical", "status": "current", "prereqs": ["mining"] },
+    { "id": "wheel",         "name": "Wheel",           "cost": 80,  "unlocks": "Road · Chariot",            "era": "Classical",    "status": "done",      "prereqs": ["animal_husb"] },
+    { "id": "horse_riding",  "name": "Horse Riding",    "cost": 120, "unlocks": "Horseman",                  "era": "Classical",    "status": "available", "prereqs": ["wheel"] },
+    { "id": "currency",      "name": "Currency",        "cost": 120, "unlocks": "Market · Trade routes",     "era": "Classical",    "status": "available", "prereqs": ["writing"] },
+    { "id": "mathematics",   "name": "Mathematics",     "cost": 200, "unlocks": "Catapult",                  "era": "Medieval",     "status": "available", "prereqs": ["writing"] },
+    { "id": "iron_working",  "name": "Iron Working",    "cost": 200, "unlocks": "Legion",                    "era": "Medieval",     "status": "available", "prereqs": ["bronze"] },
+    { "id": "engineering",   "name": "Engineering",     "cost": 200, "unlocks": "Aqueduct",                  "era": "Medieval",     "status": "available", "prereqs": ["wheel"] },
+    { "id": "construction",  "name": "Construction",    "cost": 200, "unlocks": "Colosseum",                 "era": "Medieval",     "status": "locked",    "prereqs": ["engineering"] },
+    { "id": "ship_building", "name": "Ship Building",   "cost": 200, "unlocks": "Quadrireme",                "era": "Medieval",     "status": "locked",    "prereqs": ["sailing"] },
+    { "id": "machinery",     "name": "Machinery",       "cost": 300, "unlocks": "Crossbow",                  "era": "Renaissance",  "status": "locked",    "prereqs": ["iron_working"] },
+    { "id": "mil_engineering","name": "Military Eng.",  "cost": 300, "unlocks": "Siege Tower",               "era": "Renaissance",  "status": "locked",    "prereqs": ["construction"] },
+    { "id": "education",     "name": "Education",       "cost": 300, "unlocks": "University",                "era": "Renaissance",  "status": "locked",    "prereqs": ["mathematics"] },
+    { "id": "banking",       "name": "Banking",         "cost": 300, "unlocks": "Bank",                      "era": "Renaissance",  "status": "locked",    "prereqs": ["currency"] },
+    { "id": "cartography",   "name": "Cartography",     "cost": 300, "unlocks": "Caravel",                   "era": "Renaissance",  "status": "locked",    "prereqs": ["ship_building"] },
+    { "id": "gunpowder",     "name": "Gunpowder",       "cost": 500, "unlocks": "Musketman",                 "era": "Industrial",   "status": "locked",    "prereqs": ["mil_engineering"] },
+    { "id": "metallurgy",    "name": "Metallurgy",      "cost": 500, "unlocks": "Field Cannon",              "era": "Industrial",   "status": "locked",    "prereqs": ["gunpowder"] },
+    { "id": "steam_power",   "name": "Steam Power",     "cost": 500, "unlocks": "Factory",                   "era": "Industrial",   "status": "locked",    "prereqs": ["metallurgy"] },
+    { "id": "sanitation",    "name": "Sanitation",      "cost": 500, "unlocks": "Sewer",                     "era": "Industrial",   "status": "locked",    "prereqs": ["engineering"] },
+    { "id": "electricity",   "name": "Electricity",     "cost": 700, "unlocks": "Radio",                     "era": "Modern+",      "status": "locked",    "prereqs": ["steam_power"] },
+    { "id": "combustion",    "name": "Combustion",      "cost": 700, "unlocks": "Tank",                      "era": "Modern+",      "status": "locked",    "prereqs": ["metallurgy"] },
+    { "id": "flight",        "name": "Flight",          "cost": 700, "unlocks": "Biplane",                   "era": "Modern+",      "status": "locked",    "prereqs": ["combustion"] }
+  ],
+  "research_queue": ["currency", "iron_working"],
+  "era_columns": [
+    { "id": "Ancient",     "width": 300 },
+    { "id": "Classical",   "width": 300 },
+    { "id": "Medieval",    "width": 300 },
+    { "id": "Renaissance", "width": 300 },
+    { "id": "Industrial",  "width": 300 },
+    { "id": "Modern+",     "width": 300 }
+  ]
+}

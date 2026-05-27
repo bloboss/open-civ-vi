@@ -213,6 +213,20 @@ for wasm without any workspace-level rustflag.
 ## Configuration
 
 `OPEN4X_STATIC_DIR` (default `./open4x-client-web/dist`) tells the server
-where to find the trunk-built bundle. `PORT` (default `3001`) sets the
-listen address. The client connects to the same origin for both REST and
-WS.
+where to find the trunk-built bundle. `OPEN4X_VI_DIR` (default
+`./open4x-server/static/vi`) tells the server where to find the hi-fi
+design bundle served at `/vi`. `PORT` (default `3001`) sets the listen
+address. The client connects to the same origin for both REST and WS.
+
+## Hi-fi design bundle (`/vi`)
+
+The `open4x-server/static/vi/` directory ships the hi-fi `Open4X.html`
+mock-up plus its companion JS/CSS/JSON assets, mounted at `/vi`. Open
+`http://localhost:3001/vi/` after starting the server; the page
+bootstraps a token via `POST /api/v1/games/new` (stashed in
+`localStorage["open4x.token"]`), flips `open4x-api.js` into `live` mode,
+and drives every screen from `/api/v1/*`.
+
+This bundle is the visual source of truth while the Leptos client is
+being ported screen-by-screen — when the port is complete the directory
+will be removed.

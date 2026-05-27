@@ -1,0 +1,55 @@
+{
+  "$schema": "civics-tree/v1",
+  "$doc": {
+    "summary": "Civics tree data, active civic queue, and current government / policy slots.",
+    "fields": {
+      "civics[].id":          "Unique camelCase identifier.",
+      "civics[].name":        "Display name.",
+      "civics[].cost":        "Base culture cost to complete.",
+      "civics[].progress":    "Culture already accumulated — only present on 'current' civic.",
+      "civics[].unlocks":     "Short human-readable string of what this civic enables.",
+      "civics[].era":         "Era column: Foundational | Tribal | Political | Cultural | Global",
+      "civics[].status":      "'done' | 'current' | 'available' | 'locked'",
+      "civics[].prereqs":     "Array of civic ids required before this is researchable.",
+      "civic_queue":          "Ordered array of civic ids queued after the current one.",
+      "government.name":      "Current government form display name.",
+      "government.slots":     "Policy slot counts by type.",
+      "government.policies":  "Currently active policy cards.",
+      "legacy_unlocked":      "Count of legacy bonuses unlocked this game."
+    }
+  },
+  "civics": [
+    { "id": "foraging",       "name": "Foraging",            "cost": 20,  "unlocks": "Gather policy",                    "era": "Foundational", "status": "done",      "prereqs": [] },
+    { "id": "mysticism",      "name": "Mysticism",           "cost": 40,  "unlocks": "Holy Site",                        "era": "Foundational", "status": "done",      "prereqs": ["foraging"] },
+    { "id": "craftsmanship",  "name": "Craftsmanship",       "cost": 40,  "unlocks": "Builder policy",                   "era": "Foundational", "status": "done",      "prereqs": ["foraging"] },
+    { "id": "early_empire",   "name": "Early Empire",        "cost": 60,  "unlocks": "Settler +50%",                     "era": "Tribal",       "status": "done",      "prereqs": ["craftsmanship"] },
+    { "id": "code_of_laws",   "name": "Code of Laws",        "cost": 80,  "progress": 54, "unlocks": "Govt: Autocracy · Classical Rep.", "era": "Tribal", "status": "current", "prereqs": ["craftsmanship"] },
+    { "id": "military_trad",  "name": "Military Trad.",      "cost": 60,  "unlocks": "Strategos policy",                 "era": "Tribal",       "status": "done",      "prereqs": ["craftsmanship"] },
+    { "id": "state_workforce","name": "State Workforce",     "cost": 100, "unlocks": "Urban Planning",                   "era": "Political",    "status": "available", "prereqs": ["early_empire"] },
+    { "id": "political_phil", "name": "Political Phil.",     "cost": 100, "unlocks": "+Govt slots",                      "era": "Political",    "status": "available", "prereqs": ["code_of_laws"] },
+    { "id": "drama_poetry",   "name": "Drama & Poetry",      "cost": 100, "unlocks": "Theatre Sq.",                      "era": "Political",    "status": "available", "prereqs": ["early_empire"] },
+    { "id": "games_rec",      "name": "Games & Recreation",  "cost": 200, "unlocks": "Entertainment",                    "era": "Cultural",     "status": "locked",    "prereqs": ["state_workforce"] },
+    { "id": "recorded_hist",  "name": "Recorded History",    "cost": 200, "unlocks": "+Govt slots",                      "era": "Cultural",     "status": "locked",    "prereqs": ["political_phil"] },
+    { "id": "medieval_faires","name": "Medieval Faires",     "cost": 300, "unlocks": "Trade +2 G",                       "era": "Global",       "status": "locked",    "prereqs": ["recorded_hist"] }
+  ],
+  "civic_queue": ["political_phil"],
+  "government": {
+    "name": "Chiefdom",
+    "slots": { "military": 2, "economic": 2, "diplomatic": 1, "wildcard": 0 },
+    "policies": [
+      { "slot": "military",   "name": "Discipline",        "effect": "+5 vs barb" },
+      { "slot": "military",   "name": "Survey",            "effect": "+1 sight" },
+      { "slot": "economic",   "name": "God King",          "effect": "+1 🔬 +1 †" },
+      { "slot": "economic",   "name": "Ilkum",             "effect": "Builder +30%" },
+      { "slot": "diplomatic", "name": "Diplomatic League", "effect": "+1 envoy" }
+    ]
+  },
+  "legacy_unlocked": 3,
+  "era_columns": [
+    { "id": "Foundational", "width": 260 },
+    { "id": "Tribal",       "width": 260 },
+    { "id": "Political",    "width": 260 },
+    { "id": "Cultural",     "width": 260 },
+    { "id": "Global",       "width": 260 }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "notifications/v1",
+  "turn": 142,
+  "notifications": [
+    { "id": "n1",  "kind": "accent", "category": "research",   "title": "Research complete",       "desc": "Bronze Working · choose next →",          "target": { "screen": "tech" } },
+    { "id": "n2",  "kind": "warn",   "category": "environment","title": "Flood warning · 13,7",    "desc": "River will flood next turn (−2 yields)",  "target": { "screen": "hud", "q": 13, "r": 7 } },
+    { "id": "n3",  "kind": "bad",    "category": "military",   "title": "Barbarian scout · 26,4",  "desc": "3 tiles from Alexandria",                 "target": { "screen": "hud", "q": 26, "r": 4 } },
+    { "id": "n4",  "kind": "good",   "category": "builder",    "title": "Builder finished",        "desc": "Pasture on 15,7 · +1 Production",         "target": { "screen": "hud", "q": 15, "r": 7 } },
+    { "id": "n5",  "kind": "",       "category": "diplomacy",  "title": "Trade route offer",       "desc": "Caria → Alexandria · +3G, +1F",           "target": { "screen": "dipl" } },
+    { "id": "n6",  "kind": "accent", "category": "civic",      "title": "Civic unlocked",          "desc": "Code of Laws complete · pick government", "target": { "screen": "civics" } },
+    { "id": "n7",  "kind": "warn",   "category": "city",       "title": "City unhappy · Aswan",    "desc": "Amenities −1 · loyalty 88%",              "target": { "screen": "overview" } },
+    { "id": "n8",  "kind": "good",   "category": "diplomacy",  "title": "Envoy earned",            "desc": "Assign to any city-state",                "target": { "screen": "dipl" } },
+    { "id": "n9",  "kind": "bad",    "category": "military",   "title": "Unit defeated",           "desc": "Scout Echo lost at 28,6",                 "target": { "screen": "hud", "q": 28, "r": 6 } },
+    { "id": "n10", "kind": "",       "category": "production", "title": "Wonder available",        "desc": "Pyramids can be built in Giza",           "target": { "screen": "city" } },
+    { "id": "n11", "kind": "accent", "category": "religion",   "title": "Great Prophet imminent",  "desc": "2 / 4 · found religion soon",             "target": { "screen": "overview" } },
+    { "id": "n12", "kind": "warn",   "category": "economy",    "title": "Treasury low",            "desc": "92 turns to bankrupt at current rate",    "target": { "screen": "overview" } },
+    { "id": "n13", "kind": "",       "category": "era",        "title": "Era change in 15 turns",  "desc": "Classical → Medieval (65%)",              "target": null }
+  ]
+}

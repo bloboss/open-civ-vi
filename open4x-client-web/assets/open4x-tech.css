@@ -1,0 +1,311 @@
+/* ============================================================
+ * open4x-tech.css — technology tree screen styles.
+ * Also applies to the civics screen (same layout).
+ * ============================================================ */
+
+#screen-tech .tech-screen,
+#screen-civics .civics-screen {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  height: 100%;
+  background: var(--bg);
+}
+
+.tech-canvas-wrap,
+.civics-canvas-wrap {
+  position: relative;
+  overflow: auto;
+  background: var(--bg);
+}
+
+.tech-canvas,
+.civics-canvas {
+  position: relative;
+  background-image:
+    linear-gradient(to right, var(--border-soft) 1px, transparent 1px);
+  background-size: 200px 100%;
+  padding-bottom: 30px;
+}
+
+/* era header row */
+.tech-era-h,
+.civic-era-h {
+  position: absolute;
+  top: 0;
+  height: 32px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 2;
+}
+.tech-era-h .kicker,
+.civic-era-h .kicker {
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.era-bar {
+  position: relative;
+  height: 2px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.era-bar i {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  background: var(--accent);
+  opacity: 0.4;
+}
+
+/* tech cards */
+.tech-card {
+  position: absolute;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2);
+  padding: 6px 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .12s, border-color .12s, background .12s;
+  z-index: 3;
+}
+.tech-card:hover {
+  border-color: var(--ink-2);
+  transform: translateY(-1px);
+}
+.tech-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.tech-card.done {
+  background: var(--good-soft);
+  border-color: #c0d8c4;
+}
+.tech-card.done .tech-name { color: var(--good); }
+.tech-card.current {
+  background: var(--surface);
+  border-color: var(--accent);
+  border-width: 1.5px;
+}
+.tech-card.current::before {
+  content: "";
+  position: absolute;
+  top: -3px; left: -3px;
+  width: 7px; height: 7px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+.tech-card.available { background: var(--surface); }
+.tech-card.locked {
+  background: var(--surface-2);
+  opacity: 0.55;
+}
+.tech-card.locked .tech-name { color: var(--ink-4); }
+.tech-card.queued::after {
+  content: "";
+  position: absolute;
+  top: -1px; right: -1px;
+  width: 6px; height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.tech-card-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.tech-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tech-q-pos {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 1px 5px;
+  border-radius: 8px;
+}
+.tech-check { color: var(--good); font-size: 11px; }
+.tech-current-pct {
+  font-size: 10.5px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tech-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+.tech-cost {
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
+.tech-cost-u {
+  font-size: 8px;
+  color: var(--ink-4);
+  margin-left: 1px;
+}
+.tech-unlocks {
+  font-size: 10px;
+  color: var(--ink-3);
+  font-family: var(--font-sans);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 110px;
+}
+
+.tech-progress {
+  position: absolute;
+  left: 8px; right: 8px;
+  bottom: 4px;
+}
+
+/* prereq edges */
+.tech-edges {
+  position: absolute;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.tech-edge {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+.tech-edge.done {
+  stroke: var(--good);
+  stroke-dasharray: none;
+  opacity: 0.6;
+}
+
+/* ── right side: active research + queue + selected ── */
+.tech-side,
+.civics-side {
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.tech-side-section .kicker { display: block; margin-bottom: 8px; }
+
+.tech-current-card {
+  background: var(--accent-tint);
+  border: 1px solid var(--accent-soft);
+  border-radius: var(--r-3);
+  padding: 12px 14px;
+}
+.tech-current-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+.tech-current-meta {
+  font-size: 11px;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+}
+.tech-current-unlocks {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.tech-current-eta {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.tech-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tech-q-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--r-2);
+}
+.tech-q-row:hover { background: var(--surface-2); }
+.tech-q-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-4);
+  width: 14px;
+}
+.tech-q-name { font-size: 12px; color: var(--ink); }
+.tech-q-cost { font-size: 11px; color: var(--ink-3); }
+.tech-q-rm { font-size: 14px; color: var(--ink-4); padding: 0 6px; height: 18px; }
+.tech-q-rm:hover { color: var(--bad); }
+
+.tech-sel-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-3);
+  padding: 12px 14px;
+}
+.tech-sel-name {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+}
+.tech-sel-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.tech-sel-unlocks { margin-top: 10px; font-size: 12px; }
+.tech-sel-unlocks .kicker { margin-right: 4px; }
+.tech-sel-prereqs { margin-top: 8px; font-size: 12px; }
+.tech-sel-prereqs .kicker { margin-right: 4px; display: inline-block; }
+/* civics-specific: current government summary */
+.govt-summary { background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: var(--r-3); padding: 12px 14px; }
+.govt-name {
+  font-size: 15px; font-weight: 600; letter-spacing: -0.01em;
+  margin-bottom: 8px;
+}
+.govt-slots {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.govt-slot {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--surface); border: 1px solid var(--border-soft);
+  padding: 2px 8px; border-radius: var(--r-pill);
+  font-size: 11px;
+}
+.govt-slot-k { color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; font-size: 9.5px; }
+.govt-slot-v { color: var(--ink); font-size: 12px; }
+.govt-policies { display: flex; flex-direction: column; gap: 4px; }
+.govt-policy {
+  display: flex; justify-content: space-between; gap: 8px;
+  padding: 4px 8px; border-radius: var(--r-2);
+  background: var(--surface); border: 1px solid var(--border-soft);
+  font-size: 11.5px;
+}
+.govt-policy-name { color: var(--ink); }
+.govt-policy-effect { color: var(--ink-3); font-size: 10.5px; }
+.bar.culture > i { background: var(--y-cul); }
