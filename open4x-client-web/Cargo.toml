@@ -33,9 +33,14 @@ serde-wasm-bindgen       = { version = "0.6" }
 # for wasm targets, but the feature has to be declared on the dep itself.
 getrandom            = { version = "0.3", features = ["wasm_js"] }
 web-sys              = { version = "0.3", features = [
-    "Blob", "BlobPropertyBag", "Document",
-    "HtmlAnchorElement", "HtmlInputElement", "Url", "Window", "Location",
+    "Blob", "BlobPropertyBag", "Document", "Element", "DomRect",
+    "HtmlAnchorElement", "HtmlInputElement", "HtmlCanvasElement", "Url",
+    "Window", "Location",
     "WebSocket", "MessageEvent", "CloseEvent", "ErrorEvent",
     "Storage", "console",
     "Response", "Headers", "RequestInit", "Request",
+    "MouseEvent", "WheelEvent", "PointerEvent",
+    "WebGl2RenderingContext", "WebGlProgram", "WebGlShader",
+    "WebGlBuffer", "WebGlVertexArrayObject", "WebGlUniformLocation",
+    "WebGlContextAttributes",
 ] }

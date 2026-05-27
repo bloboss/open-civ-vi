@@ -7,8 +7,8 @@
 //! WebSocket is involved.
 //!
 //! The layout mirrors `open4x-server/static/vi/Open4X.html` — a three-row
-//! `.app` grid (topbar / tabbar / screen-root). The HUD screen still uses
-//! the SVG `SnapshotMap`; the WebGL2 renderer port lands in a follow-up.
+//! `.app` grid (topbar / tabbar / screen-root). The HUD board is the
+//! WebGL2 renderer in [`crate::components::hud::webgl_map`].
 
 use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
@@ -17,8 +17,8 @@ use open4x_sdk::endpoints as api;
 use open4x_sdk::wasm::WasmClient;
 
 use crate::components::hud::{
-    ContextPanel, MinimapPanel, NotificationsPanel, TurnQueuePanel, ZoomStack,
-    snapshot_map::SnapshotMap,
+    Camera, ContextPanel, MinimapPanel, NotificationsPanel, TurnQueuePanel, WebglMap, ZoomStack,
+    recenter, zoom_in, zoom_out,
 };
 use crate::components::shell::{ScreenStub, Tab, Tabbar, Topbar};
 use open4x_protocol::v1::web::world::WorldSnapshot;
@@ -43,6 +43,7 @@ pub fn RestGamePage() -> impl IntoView {
     let tick = RwSignal::new(0u64);
     let active_tab = RwSignal::new(Tab::Hud);
     let selected_tile = RwSignal::new(None::<(i32, i32)>);
+    let camera = RwSignal::new(Camera::default());
 
     // Bootstrap once on mount.
     //
@@ -189,6 +190,8 @@ pub fn RestGamePage() -> impl IntoView {
                     <HudScreen
                         snapshot=snapshot
                         selected=selected_tile
+                        camera=camera
+                        cities=cities
                         notifs=notifs
                         turn_queue=turn_queue
                         token=token
@@ -215,6 +218,8 @@ pub fn RestGamePage() -> impl IntoView {
 fn HudScreen(
     snapshot: LocalResource<Option<WorldSnapshot>>,
     selected: RwSignal<Option<(i32, i32)>>,
+    camera: RwSignal<Camera>,
+    cities: LocalResource<Option<open4x_protocol::v1::web::city_data::CityData>>,
     notifs: LocalResource<Option<open4x_protocol::v1::web::notifications::Notifications>>,
     turn_queue: LocalResource<Option<open4x_protocol::v1::web::turn_queue::TurnQueue>>,
     token: RwSignal<Option<String>>,
@@ -225,21 +230,38 @@ fn HudScreen(
         snapshot.get().and_then(|w| (*w).clone())
     });
 
+    let on_recenter = Callback::new(move |_| {
+        // Prefer the player's capital, then the first known city, then the
+        // world centre.
+        let target = cities.get().as_deref()
+            .and_then(|w| w.as_ref().map(|c| {
+                c.cities.iter().find(|x| x.capital && x.is_own)
+                    .or_else(|| c.cities.iter().find(|x| x.is_own))
+                    .or_else(|| c.cities.first())
+                    .map(|x| (x.position.q, x.position.r))
+            }))
+            .flatten();
+        if let Some(pos) = target {
+            recenter(camera, pos);
+            selected.set(Some(pos));
+        }
+    });
+    let on_zoom_in  = Callback::new(move |_| zoom_in(camera));
+    let on_zoom_out = Callback::new(move |_| zoom_out(camera));
+
     view! {
         <>
-            <div class="hud-map" id="hud-map" style="position:absolute; inset:0; overflow:auto;">
-                <Suspense fallback=move || view! {
-                    <p style="padding:1rem">"Loading map…"</p>
-                }>
-                    <SnapshotMap snapshot=snap_signal selected=selected />
-                </Suspense>
-            </div>
+            <WebglMap snapshot=snap_signal camera=camera selected=selected />
 
             <MinimapPanel snapshot=snap_signal />
             <NotificationsPanel notifs=notifs token=token tick=tick />
             <TurnQueuePanel turn_queue=turn_queue />
             <ContextPanel selected=selected snapshot=snap_signal on_open_tab=on_open_tab />
-            <ZoomStack />
+            <ZoomStack
+                on_zoom_in=on_zoom_in
+                on_zoom_out=on_zoom_out
+                on_recenter=on_recenter
+            />
         </>
     }
 }
