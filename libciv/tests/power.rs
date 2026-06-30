@@ -140,3 +140,60 @@ fn multiple_cities_accumulate_co2() {
 
     assert_eq!(s.state.global_co2, 2, "both fossil plants should contribute to global CO2");
 }
+
+/// Add a *builtin* building (looked up by name from the already-registered
+/// `building_defs`) to a city. Exercises the real `co2_per_turn` data assigned
+/// in `rules::building_defs`, rather than a synthetic def.
+fn add_builtin_building(s: &mut common::Scenario, city_idx: usize, name: &str) {
+    let id = s
+        .state
+        .building_defs
+        .iter()
+        .find(|d| d.name == name)
+        .unwrap_or_else(|| panic!("builtin building {name:?} not found"))
+        .id;
+    s.state.cities[city_idx].buildings.push(id);
+}
+
+#[test]
+fn factory_emits_co2_clean_building_does_not() {
+    let mut s = build_scenario();
+    assert_eq!(s.state.global_co2, 0);
+
+    let rome_idx = s.state.cities.iter().position(|c| c.id == s.rome_city).unwrap();
+
+    // A Factory now emits co2_per_turn = 1 (heavy industry).
+    add_builtin_building(&mut s, rome_idx, "Factory");
+    advance_turn_with_diff(&mut s);
+    assert_eq!(
+        s.state.global_co2, 1,
+        "a city with a Factory should add 1 CO2 per turn"
+    );
+
+    // A clean building (Library) adds nothing on top.
+    add_builtin_building(&mut s, rome_idx, "Library");
+    advance_turn_with_diff(&mut s);
+    assert_eq!(
+        s.state.global_co2, 2,
+        "a clean building adds 0; only the Factory keeps emitting (1 -> 2)"
+    );
+}
+
+#[test]
+fn fossil_power_plants_emit_per_assigned_scale() {
+    let mut s = build_scenario();
+
+    let rome_idx = s.state.cities.iter().position(|c| c.id == s.rome_city).unwrap();
+
+    // Coal (3) + Oil (2) + Power Plant (2) + Nuclear (0, clean) = 7 per turn.
+    add_builtin_building(&mut s, rome_idx, "Coal Power Plant");
+    add_builtin_building(&mut s, rome_idx, "Oil Power Plant");
+    add_builtin_building(&mut s, rome_idx, "Power Plant");
+    add_builtin_building(&mut s, rome_idx, "Nuclear Power Plant");
+
+    advance_turn_with_diff(&mut s);
+    assert_eq!(
+        s.state.global_co2, 7,
+        "emitters should sum per assigned scale; nuclear (clean) adds 0"
+    );
+}
