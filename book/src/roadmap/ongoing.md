@@ -147,6 +147,13 @@ from this list when complete)_
       Non-wizard JSON (e.g. an imported raw body) is rejected with a
       "⚠ isn't a wizard preset" note rather than corrupting state.
       Closes the "Load-from-built-in" follow-up's wizard half.
+- [x] **NewGame ▸ remove dead footer "generate" control** — on the
+      Review step the footer rendered an accent "⌬ generate" button
+      with no handler (a dead duplicate of the real "Generate world"
+      CTA in the Review panel), sitting exactly where users reach for
+      the primary action. Replaced it with a muted "⌬ Generate world
+      ↓" pointer to the live button, and made the middle keyboard hint
+      drop the "⏎ next" claim on Review (where Enter is a no-op).
 - [x] **Presets tab ▸ built-in starter configs load** — the
       "Built-in" panel's three rows had inert "load" buttons. Made
       `newgame.rs` the authority: new `WizardPreset::defaults()` +

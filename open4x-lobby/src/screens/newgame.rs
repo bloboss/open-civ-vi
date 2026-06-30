@@ -408,11 +408,18 @@ pub fn NewGame(#[prop(optional)] on_generated: Option<Callback<String>>) -> impl
                     <SavePreset />
                 </div>
                 <span>
-                    <span class="kbd">"⏎"</span>" next · "
+                    {move || (step.get() != Step::Review).then(|| view! {
+                        <span class="kbd">"⏎"</span>" next · "
+                    })}
                     <span class="kbd">"esc"</span>" close popups"
                 </span>
                 {move || if step.get() == Step::Review {
-                    view! { <Btn variant="accent">"⌬ generate"</Btn> }.into_any()
+                    // The real CTA is the "⌬ Generate world" button in the
+                    // Review panel; this slot used to hold a dead duplicate
+                    // (no handler). Point at the live one instead.
+                    view! {
+                        <span class="muted xsmall">"⌬ Generate world ↓"</span>
+                    }.into_any()
                 } else {
                     view! {
                         <Btn variant="primary"
