@@ -5,6 +5,21 @@ use crate::game::IdGenerator;
 use crate::{YieldBundle, YieldType};
 
 /// Returns all base-game building definitions.
+///
+/// ## CO2 emitter scale (`co2_per_turn`)
+///
+/// Heavy-industry and fossil-fuel buildings drive climate change via the
+/// Phase 2c-2 accumulation in `turn_phase.rs`. Emissions use a small scale:
+///
+/// | Building          | `co2_per_turn` |
+/// |-------------------|:--------------:|
+/// | Factory           | 1              |
+/// | Power Plant       | 2              |
+/// | Oil Power Plant   | 2              |
+/// | Coal Power Plant  | 3 (dirtiest)   |
+///
+/// Clean-power buildings (e.g. Nuclear Power Plant) stay at `0`, as do all
+/// non-industrial buildings.
 pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
     vec![
         // ── City Center Buildings (8) ────────────────────────────────────────
@@ -535,7 +550,7 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 1, power_generated: 0, co2_per_turn: 0,
+            power_cost: 1, power_generated: 0, co2_per_turn: 1,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -549,7 +564,7 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0, power_generated: 0, co2_per_turn: 2,
         },
         // ── Entertainment Complex Buildings (3) ──────────────────────────────
         BuildingDef {
@@ -704,7 +719,7 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 4, co2_per_turn: 1,
+            power_cost: 0, power_generated: 4, co2_per_turn: 3,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -718,7 +733,7 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 4, co2_per_turn: 1,
+            power_cost: 0, power_generated: 4, co2_per_turn: 2,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
