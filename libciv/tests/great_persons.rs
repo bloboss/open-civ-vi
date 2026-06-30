@@ -277,6 +277,66 @@ fn test_multiple_districts_accumulate() {
 }
 
 // ===========================================================================
+// Great person points accumulation from buildings
+// ===========================================================================
+
+#[test]
+fn test_building_generates_great_person_points() {
+    let mut s = scenario_with_great_person_defs();
+
+    // A Library is a Campus building and should feed Great Scientist points.
+    let library_id = s.state.building_defs.iter()
+        .find(|d| d.name == "Library")
+        .map(|d| d.id)
+        .expect("Library building def should exist in the builtin registry");
+
+    // Add a Library to Rome's capital (bypassing district/prereq requirements).
+    s.state.cities.iter_mut()
+        .find(|c| c.id == s.rome_city).unwrap()
+        .buildings.push(library_id);
+
+    let before = s.state.civ(s.rome_id).unwrap()
+        .great_person_points.get(&GreatPersonType::Scientist).copied().unwrap_or(0);
+
+    // Advance one turn.
+    common::advance_turn(&mut s);
+
+    let after = s.state.civ(s.rome_id).unwrap()
+        .great_person_points.get(&GreatPersonType::Scientist).copied().unwrap_or(0);
+    assert_eq!(after - before, 1, "Library should generate 1 Scientist point per turn");
+
+    // Babylon has no Library and therefore no Scientist points.
+    let babylon_pts = s.state.civ(s.babylon_id).unwrap()
+        .great_person_points.get(&GreatPersonType::Scientist).copied().unwrap_or(0);
+    assert_eq!(babylon_pts, 0, "Babylon has no Library, should have 0 Scientist points");
+}
+
+#[test]
+fn test_building_points_match_their_type() {
+    let mut s = scenario_with_great_person_defs();
+
+    // A Market is a Commercial Hub building and should feed Great Merchant points.
+    let market_id = s.state.building_defs.iter()
+        .find(|d| d.name == "Market")
+        .map(|d| d.id)
+        .expect("Market building def should exist in the builtin registry");
+
+    s.state.cities.iter_mut()
+        .find(|c| c.id == s.rome_city).unwrap()
+        .buildings.push(market_id);
+
+    common::advance_turn(&mut s);
+
+    let civ = s.state.civ(s.rome_id).unwrap();
+    let merchant_pts = civ.great_person_points
+        .get(&GreatPersonType::Merchant).copied().unwrap_or(0);
+    let scientist_pts = civ.great_person_points
+        .get(&GreatPersonType::Scientist).copied().unwrap_or(0);
+    assert_eq!(merchant_pts, 1, "Market should generate 1 Merchant point per turn");
+    assert_eq!(scientist_pts, 0, "Market should not generate Scientist points");
+}
+
+// ===========================================================================
 // Auto-recruitment at threshold
 // ===========================================================================
 

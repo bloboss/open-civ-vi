@@ -7,6 +7,9 @@ use libhexgrid::coord::HexCoord;
 /// Points generated per district per turn.
 pub const GP_BASE_POINTS_PER_DISTRICT: u32 = 1;
 
+/// Points generated per great-person-yielding building per turn.
+pub const GP_BASE_POINTS_PER_BUILDING: u32 = 1;
+
 /// Base recruitment threshold for the first great person of each type.
 pub const GP_BASE_THRESHOLD: u32 = 60;
 
@@ -35,6 +38,43 @@ pub fn district_great_person_types(district: BuiltinDistrict) -> &'static [Great
         BuiltinDistrict::IndustrialZone  => &[GreatPersonType::Engineer],
         _ => &[],
     }
+}
+
+/// Maps a building (by name) to the great person type it generates points for,
+/// along with the number of points generated per turn. Returns `None` for
+/// buildings that don't generate great person points.
+///
+/// Mirrors the Civ-VI building sources: Campus buildings feed Scientists, Holy
+/// Site buildings feed Prophets, Theater Square buildings feed Writers/Artists/
+/// Musicians, Commercial Hub buildings feed Merchants, Harbor buildings feed
+/// Admirals, Encampment buildings feed Generals, and Industrial Zone buildings
+/// feed Engineers. Unique buildings that replace one of these are mapped to the
+/// same type as the base building they replace.
+pub fn building_great_person_points(name: &str) -> Option<(GreatPersonType, u32)> {
+    let person_type = match name {
+        // ── Campus → Scientist ──────────────────────────────────────────────
+        "Library" | "University" | "Research Lab" | "Navigation School" => {
+            GreatPersonType::Scientist
+        }
+        // ── Holy Site → Prophet ─────────────────────────────────────────────
+        "Shrine" | "Temple" | "Stave Church" | "Prasat" => GreatPersonType::Prophet,
+        // ── Theater Square → Writer / Artist / Musician ─────────────────────
+        "Amphitheater" => GreatPersonType::Writer,
+        "Art Museum" | "Archaeological Museum" => GreatPersonType::Artist,
+        "Broadcast Center" => GreatPersonType::Musician,
+        // ── Commercial Hub → Merchant ───────────────────────────────────────
+        "Market" | "Bank" | "Stock Exchange" | "Sukiennice" => GreatPersonType::Merchant,
+        // ── Harbor → Admiral ────────────────────────────────────────────────
+        "Lighthouse" | "Shipyard" | "Seaport" => GreatPersonType::Admiral,
+        // ── Encampment → General ────────────────────────────────────────────
+        "Barracks" | "Stable" | "Military Academy" | "Basilikoi Paides" => {
+            GreatPersonType::General
+        }
+        // ── Industrial Zone → Engineer ──────────────────────────────────────
+        "Workshop" | "Factory" | "Power Plant" => GreatPersonType::Engineer,
+        _ => return None,
+    };
+    Some((person_type, GP_BASE_POINTS_PER_BUILDING))
 }
 
 /// Era ordering for gating great person candidates.

@@ -1264,11 +1264,12 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
     // available candidate is automatically recruited.
     {
         use crate::civ::great_people::{
-            district_great_person_types, recruitment_threshold, next_candidate_name,
+            district_great_person_types, building_great_person_points,
+            recruitment_threshold, next_candidate_name,
             spawn_great_person, GP_BASE_POINTS_PER_DISTRICT,
         };
 
-        // Collect per-civ GP point increments (immutable pass over cities/districts).
+        // Collect per-civ GP point increments (immutable pass over cities/districts/buildings).
         let mut civ_gp_increments: Vec<(CivId, std::collections::HashMap<crate::GreatPersonType, u32>)> = Vec::new();
         for civ in &state.civilizations {
             let mut increments: std::collections::HashMap<crate::GreatPersonType, u32> = std::collections::HashMap::new();
@@ -1276,6 +1277,14 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
                 for district in &city.districts {
                     for &gp_type in district_great_person_types(*district) {
                         *increments.entry(gp_type).or_insert(0) += GP_BASE_POINTS_PER_DISTRICT;
+                    }
+                }
+                // Completed buildings also generate typed great person points.
+                for building_id in &city.buildings {
+                    if let Some(def) = state.building_defs.iter().find(|d| d.id == *building_id)
+                        && let Some((gp_type, points)) = building_great_person_points(def.name)
+                    {
+                        *increments.entry(gp_type).or_insert(0) += points;
                     }
                 }
             }
