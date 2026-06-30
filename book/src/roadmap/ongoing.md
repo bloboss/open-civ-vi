@@ -115,8 +115,8 @@ _(this section is the running tracker — items here are picked up by the
 next loop tick; mark items done in `accounts-and-login.md` and delete
 from this list when complete)_
 
-> **Lobby webui loop**: cron `f11fc9e9` — **self-paced**, starts at
-> every 20 min (session-only, expires after 7 days). Each tick reads
+> **Lobby webui loop**: cron `8f6aa28b` — **self-paced**, currently
+> every 15 min (session-only, expires after 7 days). Each tick reads
 > the runbook in the session scratchpad (`loop-runbook.md`), times
 > itself with `date`, lands one `git agent-commit` on branch
 > `claude/newgame-save-preset` (commits stay local — no push), then
