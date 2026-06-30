@@ -17,14 +17,29 @@
 > runs `cargo test -p libciv -p open4x-protocol -p open4x-server`,
 > fixes forward, and stops when all three are merged + green.
 
-### Status
+### Status — ALL THREE MERGED ✅ (loop complete)
 
-- [ ] `feat/great-people` — libciv buildings→GPP + test + `/great-people`
-      projection. Builder agent in flight.
-- [ ] `feat/governors` — `/governors` read-only projection. Builder
-      agent in flight.
-- [ ] `feat/climate` — `/climate` read-only projection. Builder agent
-      in flight.
+All three `feat/*` branches merged into `claude/backend-gp-gov-climate`;
+full suite green (`cargo test -p libciv -p open4x-protocol -p
+open4x-server`, plus `--features openapi` contract test). Unpushed,
+awaiting review. Loop cron `897b0367` stopped.
+
+- [x] `feat/great-people` (`23acca0`) — **libciv: buildings now deploy
+      great-person points by type** (new `building_great_person_points`
+      map + Phase 5a accumulation), with a libciv test asserting a
+      Library yields Scientist GPP after a turn. Plus `GET /great-people`
+      projection (per-class progress + roster) + server test.
+- [x] `feat/governors` (`d8811ad`) — `GET /governors` read-only
+      projection (roster, titles, promotions) + test.
+- [x] `feat/climate` (`8fdf1ee`) — `GET /climate` read-only projection
+      (global CO2, sea-level stage, thresholds, emissions/turn,
+      submerged count) + tests.
+
+**Follow-ups** (not blocking; tests pass without them):
+- Add the 3 new routes to the utoipa `openapi.rs` paths so they appear
+  in the generated spec (the contract test passes today regardless).
+- Wire the 3 in-game SPA placeholder tabs (`open4x-client-web/src/tabs/
+  {great_people,governors,climate}.rs`) to these routes — now unblocked.
 
 ---
 
