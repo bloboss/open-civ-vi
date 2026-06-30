@@ -785,3 +785,44 @@ pub mod governors {
         pub promotions: Vec<String>,
     }
 }
+
+// ── /climate ─────────────────────────────────────────────────────────────────
+
+pub mod climate {
+    use super::*;
+
+    /// Read-only projection of the global climate / sea-level simulation
+    /// (libciv GS-2). Mirrors `GameState.global_co2` / `climate_level` plus a
+    /// best-effort summary of the player's emissions and submerged tiles.
+    #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+    pub struct ClimateView {
+        /// Cumulative global CO2 emitted across all civilizations.
+        pub global_co2: u32,
+        /// Current sea-level rise stage (0–7).
+        pub climate_level: u8,
+        /// CO2 thresholds that trigger each successive sea-level stage.
+        pub thresholds: Vec<u32>,
+        /// CO2 the authenticated player's cities emit per turn.
+        pub co2_per_turn: u32,
+        /// Count of coastal-lowland tiles submerged by sea-level rise.
+        pub submerged_tiles: u32,
+        /// Best-effort list of recent disasters (may be empty — there is no
+        /// persistent disaster log on `GameState`).
+        pub recent_disasters: Vec<DisasterEntry>,
+    }
+
+    /// A single environmental disaster occurrence.
+    #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+    pub struct DisasterEntry {
+        /// Disaster kind as a string (e.g. "Flood", "Hurricane").
+        pub kind: String,
+        /// Turn on which the disaster occurred.
+        pub turn: u32,
+        /// Tile coordinate `[q, r]` if known.
+        pub coord: Option<[i32; 2]>,
+    }
+}
