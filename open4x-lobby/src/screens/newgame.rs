@@ -7,7 +7,7 @@
 use std::sync::Arc;
 
 use leptos::prelude::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use wasm_bindgen_futures::spawn_local;
 
 use crate::components::api::games as games_api;
@@ -152,6 +152,7 @@ impl WizardState {
     /// turn-mode fields the create-game route doesn't consume yet, so
     /// a future "load preset → wizard" path can round-trip the full
     /// configuration.
+    #[allow(clippy::wrong_self_convention)]
     fn to_preset(&self) -> WizardPreset {
         let victory = VICTORY_CONDITIONS
             .iter()
@@ -186,12 +187,39 @@ impl WizardState {
     fn default_preset_name(&self) -> String {
         format!("{}'s {}", self.selected_leader.get(), self.selected_civ.get())
     }
+
+    /// Push a deserialised preset back onto every signal — the
+    /// inverse of `to_preset`. Unknown victory names are ignored;
+    /// missing ones clear their toggle, so the wizard mirrors the
+    /// saved configuration exactly.
+    fn apply_preset(&self, p: &WizardPreset) {
+        self.map_type.set(p.map_type.clone());
+        self.map_size.set(p.map_size.clone());
+        self.advanced.set(p.advanced);
+        self.selected_leader.set(p.leader.clone());
+        self.selected_civ.set(p.civ.clone());
+        self.difficulty.set(p.difficulty.clone());
+        self.starting_era.set(p.starting_era.clone());
+        self.game_speed.set(p.game_speed.clone());
+        self.ai_personality.set(p.ai_personality.clone());
+        self.disasters.set(p.disasters);
+        self.barbarians.set(p.barbarians);
+        self.city_states.set(p.city_states);
+        self.ai_aggression.set(p.ai_aggression);
+        for (i, (name, _, _)) in VICTORY_CONDITIONS.iter().enumerate() {
+            self.victory[i].set(p.victory.iter().any(|v| v == name));
+        }
+        self.timer.set(p.timer.clone());
+        self.simultaneous.set(p.simultaneous);
+        self.private_game.set(p.private_game);
+        self.cross_play.set(p.cross_play);
+    }
 }
 
 /// Serializable snapshot of the whole wizard form. The `presets`
 /// store treats `body_json` as opaque text, so the shape lives here
 /// next to the producer rather than in the protocol crate.
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct WizardPreset {
     map_type: String,
     map_size: String,
@@ -230,7 +258,7 @@ pub fn NewGame(#[prop(optional)] on_generated: Option<Callback<String>>) -> impl
                 <div class="title">"New game"</div>
                 <span class="crumbs">"// procedural worldgen"</span>
                 <div class="actions">
-                    <Btn variant="ghost" size="sm">"presets"</Btn>
+                    <LoadPreset />
                 </div>
             </div>
 
@@ -427,9 +455,111 @@ fn SavePreset() -> impl IntoView {
                                 "// stored · find it under the Presets tab"
                             </p>
                         }.into_any(),
-                        _ => view! { <></> }.into_any(),
+                        _ => ().into_any(),
                     }}
                 </div>
+            })}
+        </span>
+    }
+}
+
+/// "presets" button + inline dropdown listing the user's saved
+/// presets. Selecting one deserialises its `body_json` back into a
+/// `WizardPreset` and applies it to the live `WizardState`, so a
+/// stashed configuration round-trips into the wizard. The inverse of
+/// `SavePreset`.
+#[component]
+fn LoadPreset() -> impl IntoView {
+    let state = expect_context::<WizardState>();
+    let open = RwSignal::new(false);
+    let tick = RwSignal::new(0u32);
+    let rows: LocalResource<Vec<presets_api::PresetView>> = LocalResource::new(move || {
+        let _ = tick.get();
+        async move { presets_api::list().await.unwrap_or_default() }
+    });
+    // Name of the preset just applied, for transient confirmation.
+    let loaded = RwSignal::new(Option::<String>::None);
+
+    let toggle = move |_| {
+        let now_open = !open.get_untracked();
+        open.set(now_open);
+        if now_open {
+            // Refresh the list each time the dropdown opens so a
+            // preset saved moments ago in this same wizard appears.
+            tick.update(|t| *t += 1);
+            loaded.set(None);
+        }
+    };
+
+    view! {
+        <span style="position:relative; display:inline-block">
+            <Btn variant="ghost" size="sm" on_click=Callback::new(toggle)>
+                {move || if open.get() { "× presets" } else { "presets" }}
+            </Btn>
+            {move || open.get().then(|| view! {
+                <div
+                    class="panel"
+                    style="position:absolute; top:calc(100% + 6px); right:0; z-index:50; \
+                           width:280px; padding:8px; box-shadow:0 6px 24px rgba(0,0,0,.18)"
+                >
+                    <div class="muted xsmall" style="margin:0 4px 6px">
+                        "Load a saved preset into the wizard."
+                    </div>
+                    <Suspense fallback=move || view! {
+                        <div class="muted xsmall" style="padding:4px">"loading…"</div>
+                    }>
+                        {move || rows.get().map(|wrap| {
+                            let mine: Vec<presets_api::PresetView> = (*wrap).clone();
+                            if mine.is_empty() {
+                                return view! {
+                                    <p class="muted xsmall" style="padding:4px">
+                                        "No saved presets yet. Use " <strong>"+ save preset"</strong>
+                                        " below to stash this configuration."
+                                    </p>
+                                }.into_any();
+                            }
+                            view! {
+                                <div class="col" style="gap:2px; max-height:260px; overflow:auto">
+                                    {mine.into_iter().map(|p| {
+                                        let name = p.name.clone();
+                                        let body = p.body_json.clone();
+                                        let on_load = move |_| {
+                                            match serde_json::from_str::<WizardPreset>(&body) {
+                                                Ok(preset) => {
+                                                    state.apply_preset(&preset);
+                                                    loaded.set(Some(name.clone()));
+                                                    open.set(false);
+                                                }
+                                                Err(_) => {
+                                                    loaded.set(Some(format!(
+                                                        "⚠ \"{name}\" isn't a wizard preset"
+                                                    )));
+                                                }
+                                            }
+                                        };
+                                        view! {
+                                            <button
+                                                class="popup-row"
+                                                style="display:block; width:100%; text-align:left; \
+                                                       padding:6px 8px; background:none; border:0; \
+                                                       cursor:pointer; border-radius:6px"
+                                                on:click=on_load
+                                            >
+                                                <div style="font-weight:600">{p.name.clone()}</div>
+                                                <div class="muted xsmall">{p.updated_at.clone()}</div>
+                                            </button>
+                                        }
+                                    }).collect::<Vec<_>>()}
+                                </div>
+                            }.into_any()
+                        })}
+                    </Suspense>
+                </div>
+            })}
+            {move || loaded.get().map(|msg| view! {
+                <span class="muted xsmall" style="margin-left:8px">
+                    {if msg.starts_with('⚠') { msg } else { format!("loaded \"{msg}\" ✓") }}
+                </span>
             })}
         </span>
     }

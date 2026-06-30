@@ -127,6 +127,15 @@ from this list when complete)_
       round-trip) and POSTs to `/api/v1/presets` via the existing
       `presets_api::create`. Pending / Saved ✓ / Error feedback
       inline.
+- [x] **NewGame ▸ load preset into wizard** (round-trip of the
+      above) — the previously-inert header "presets" button is now
+      a `LoadPreset` dropdown that lists the user's saved presets
+      (`presets_api::list`), and clicking one deserialises its
+      `body_json` back into a `WizardPreset` and pushes every field
+      onto the live `WizardState` via the new `apply_preset`.
+      Non-wizard JSON (e.g. an imported raw body) is rejected with a
+      "⚠ isn't a wizard preset" note rather than corrupting state.
+      Closes the "Load-from-built-in" follow-up's wizard half.
 
 ### Up next (Phase 6)
 
@@ -136,22 +145,29 @@ from this list when complete)_
       and `--limit <n>` (default 100). Prints TSV with the hex
       PlayerId display format, never wraps long detail strings,
       escapes embedded tabs/newlines for grep-ability.
-- [ ] **Single-binary deploy** — embed migrations + serve dist/
-      from the binary's bundled assets (rust-embed) so a deploy is
-      just `open4x-lobby` + an `OPEN4X_LOBBY_DATA_DIR`.
+- [x] **Single-binary deploy** — `rust-embed` snapshots `dist/` +
+      `book/book/` into the binary; migrations were already embedded
+      via `sqlx::migrate!`. See accounts-and-login.md Phase 6.
 
 ### Up next (Phase 5 polish)
 
-- [ ] Real game tile thumbnails (snapshot per server_token, cached).
-- [ ] Email verification flow ("Verify email" CTA on unverified
-      identities → second magic-link confirm).
+_(Most of this section landed during Phase 5 — see the [x] entries
+in accounts-and-login.md §9. Reconciled here so the tracker is
+honest. Remaining truly-open items are flagged below.)_
 
-- [ ] Per-tile `···` menu: View summary / Copy game ID / Share
-      invite link / Archive / Resign.
-- [ ] Notes popup: markdown textarea, persisted via
-      `POST /api/v1/games/{id}/notes` (route is also still TODO).
-- [ ] Sort dropdown (recent ↓ / oldest / by score / by turn).
-- [ ] Push filter selection into URL query params for
+- [x] Real game tile thumbnails (lobby-side proxy of the server
+      world snapshot; in-session `ThumbnailCache`; ownership/fog/city
+      flags). Done — accounts-and-login.md `ede8fb62` / `06c8fc7c`.
+- [x] Email verification flow ("verify" CTA on unverified email
+      identities → second magic-link). Done — `25ea95a8`.
+- [~] Per-tile `···` menu: View summary / Copy game ID / Resign
+      wired; Share-invite-link + Archive still inert (need the
+      invite-mint surface + a status column).
+- [x] Notes popup: markdown textarea persisted via
+      `POST /api/v1/games/{id}/notes` (route + `0003_game_notes.sql`
+      landed in Phase 4.4).
+- [x] Sort dropdown (recent ↓ / oldest / by score / by turn).
+- [x] Push filter selection into URL query params for
       shareability + back-button.
 - [ ] Phase 4.3 orchestrator — shared-server-multi-room v1 (teach
       open4x-server to validate accounts-issued tokens; lobby
