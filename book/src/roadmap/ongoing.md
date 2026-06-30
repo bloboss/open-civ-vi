@@ -1,14 +1,37 @@
 # Ongoing Work
 
-> **Current task**: Web UI port — post-plan extensions
+## Backend features — great people / governors / climate (ACTIVE)
+
+> **Goal**: project the (already-complete) libciv great-people,
+> governor, and climate simulations to the protocol + server REST
+> surface, unblocking the in-game SPA's three placeholder tabs. Plus
+> one libciv gameplay change: **buildings deploy great-person points**
+> (today only districts do), with a test.
+> **Integration branch**: `claude/backend-gp-gov-climate` (off main).
+> **Loop**: cron `897b0367` — every 10 min, self-paced (floor 5 min).
+> Runbook + specs in the session scratchpad
+> (`loop-runbook-backend.md`, `feature-specs-backend.md`).
+> **Model**: 3 parallel worktree builder agents (one per feature, full
+> vertical → `feat/great-people` / `feat/governors` / `feat/climate`);
+> the loop merges each completed branch into the integration branch,
+> runs `cargo test -p libciv -p open4x-protocol -p open4x-server`,
+> fixes forward, and stops when all three are merged + green.
+
+### Status
+
+- [ ] `feat/great-people` — libciv buildings→GPP + test + `/great-people`
+      projection. Builder agent in flight.
+- [ ] `feat/governors` — `/governors` read-only projection. Builder
+      agent in flight.
+- [ ] `feat/climate` — `/climate` read-only projection. Builder agent
+      in flight.
+
+---
+
+> **Earlier task**: Web UI port — post-plan extensions
 > **Plan**: [book/src/roadmap/web-ui.md](./web-ui.md)
-> **Status**: All 5 phases of §7 complete. Working through the post-plan
-> backlog below. This file is a running log — each cron tick should pick the
-> next unchecked item, land a single conventional commit, then update this
-> file.
-> **Cron**: `04ad50ff` — fires hourly at :13 (session-only, expires
-> after 7 days). Cancel with `CronDelete 04ad50ff` when the backlog is
-> empty or no longer wanted.
+> **Status**: All 5 phases of §7 complete; lobby client backlog drained
+> (see below). The 17 lobby commits are merged to `main`.
 
 ## Web UI port (Leptos + REST)
 
@@ -128,39 +151,23 @@ directed decision rather than an autonomous surface-switch.
 > substrate is done except the OIDC **network half** (execution plan
 > in §2.3 part 2) and **atproto** (§2.4) — both backend-heavy and
 > tracked as directed efforts, not loop work.
-> **Active loop cron**: `72fbe410` (see the loop note below). The old
-> `dfdcd4f5` / `04ad50ff` session crons are long expired.
+> **Loop**: the lobby loop was retired (backlog drained); the active
+> loop is now the backend-features loop `897b0367` at the top of this
+> file. Old `72fbe410` / `dfdcd4f5` / `04ad50ff` crons are gone.
 
 ### In progress
 _(this section is the running tracker — items here are picked up by the
 next loop tick; mark items done in `accounts-and-login.md` and delete
 from this list when complete)_
 
-> **Lobby webui loop**: cron `72fbe410` — **self-paced**, now
-> **parked at hourly** (:37) — stepped 15m → 30m → hourly as the
-> backlog drained and ticks became docs-only; awaiting a directed
-> redirect before it produces features again (session-only, expires
-> after 7 days). Each tick reads
-> the runbook in the session scratchpad (`loop-runbook.md`), times
-> itself with `date`, lands one `git agent-commit` on branch
-> `claude/newgame-save-preset` (commits stay local — no push), then
-> recomputes its own interval from a rolling average of recent tick
-> durations (`loop-timings.log`) and reschedules itself, so the
-> cadence tracks how long the work actually takes. The job id rotates
-> on each reschedule — `CronList` to find the current one (presently
-> `72fbe410`), or `CronDelete 72fbe410` to stop it.
->
-> **⚠ Lobby client backlog is DRAINED** (as of this session). Every
-> self-contained lobby UI item is done — the new-game wizard
-> (save/load/built-in presets, ⏎ nav, custom seed, victory gate),
-> the preset round-trip, dead-control + swallowed-error fixes. What
-> remains is **not** loop-suitable: backend-blocked (OIDC network
-> half, atproto, invite-mint, identity routes) or a product decision
-> (Landing repo URL). The 12 session commits live on
-> `claude/newgame-save-preset`, unpushed. To keep producing features,
-> redirect the loop at the **in-game `open4x-server` SPA** (the
-> "Client (Leptos)" list near the top of this file — HexMap + tabs),
-> or pause and take OIDC/atproto as directed efforts.
+> **Lobby webui loop — RETIRED** (backlog drained; cron `72fbe410`
+> deleted). Its 17 commits (new-game wizard save/load/built-in
+> presets, ⏎ nav, custom seed, victory gate, preset round-trip,
+> dead-control + swallowed-error fixes) are **merged to `main`**. The
+> active loop is now the backend-features loop at the top of this file
+> (cron `897b0367`). Remaining lobby items are still backend-blocked
+> (OIDC network half, atproto, invite-mint, identity routes) or a
+> product decision (Landing repo URL).
 
 - [x] **NewGame ▸ "+ Save current" preset shortcut** — new
       `SavePreset` component in `screens/newgame.rs` lives in the
