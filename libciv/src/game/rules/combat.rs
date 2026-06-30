@@ -1,6 +1,6 @@
 //! Combat handlers: `attack`, `city_bombard`, `theological_combat`.
 
-use crate::{UnitId, UnitDomain, AgeType};
+use crate::{CivId, UnitId, UnitDomain, AgeType, GreatPersonType};
 use crate::civ::unit::Unit;
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
@@ -15,6 +15,55 @@ use crate::rules::unique::UniqueUnitAbility;
 
 /// XP thresholds: each threshold unlocks one promotion slot.
 const XP_THRESHOLDS: &[u32] = &[15, 45, 90, 150, 225, 315];
+
+/// Base Great-General / Great-Admiral points earned by a unit's owner for
+/// taking part in a single military combat (Civ VI's "combat grants GG/GA
+/// points" rule). The attacker additionally earns 1 point per 10 points of
+/// damage it deals, so decisive engagements train commanders faster. The
+/// defender's owner earns the flat base only. These awards are fully
+/// deterministic (derived from the already-rolled damage, no new RNG) so the
+/// rule is testable.
+const GP_POINTS_PER_COMBAT: u32 = 2;
+
+/// Map a unit's movement domain to the Great Person its combat experience
+/// trains: land units feed Great-General points, naval (sea) units feed
+/// Great-Admiral points, and air units train neither.
+fn combat_gp_type(domain: UnitDomain) -> Option<GreatPersonType> {
+    match domain {
+        UnitDomain::Land => Some(GreatPersonType::General),
+        UnitDomain::Sea  => Some(GreatPersonType::Admiral),
+        UnitDomain::Air  => None,
+    }
+}
+
+/// Award `points` Great-General/Great-Admiral points to `owner` for a combat
+/// fought by a unit of the given `domain`. Points are written into
+/// `civ.great_person_points` — the same map Phase 5a (district/building GPP)
+/// feeds, so the `/great-people` projection surfaces them automatically — and a
+/// `GreatPersonPointsAccumulated` delta is emitted, mirroring the accumulation
+/// phase. No-op for air units or a zero award.
+fn award_combat_gpp(
+    state:  &mut GameState,
+    owner:  CivId,
+    domain: UnitDomain,
+    points: u32,
+    diff:   &mut GameStateDiff,
+) {
+    let Some(gp_type) = combat_gp_type(domain) else { return };
+    if points == 0 {
+        return;
+    }
+    if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == owner) {
+        let total = civ.great_person_points.entry(gp_type).or_insert(0);
+        *total += points;
+        diff.push(StateDelta::GreatPersonPointsAccumulated {
+            civ:         owner,
+            person_type: gp_type,
+            points,
+            total:       *total,
+        });
+    }
+}
 
 /// Returns the number of promotions a unit is eligible for given its total XP.
 #[allow(dead_code)]
@@ -169,13 +218,13 @@ pub(crate) fn attack(
     defender_id: UnitId,
 ) -> Result<GameStateDiff, RulesError> {
     // --- validation -------------------------------------------------------
-    let (atk_coord, atk_range, atk_cs, atk_owner, atk_unit_type, _atk_domain) = {
+    let (atk_coord, atk_range, atk_cs, atk_owner, atk_unit_type, atk_domain) = {
         let u = state.unit(attacker_id).ok_or(RulesError::UnitNotFound)?;
         (u.coord, u.range, u.combat_strength, u.owner, u.unit_type, u.domain)
     };
     let atk_cs = atk_cs.ok_or(RulesError::UnitCannotAttack)?;
 
-    let (def_coord, def_cs, _def_owner, _def_domain, def_unit_type) = {
+    let (def_coord, def_cs, def_owner, def_domain, def_unit_type) = {
         let u = state.unit(defender_id).ok_or(RulesError::UnitNotFound)?;
         (u.coord, u.combat_strength.unwrap_or(0), u.owner, u.domain, u.unit_type)
     };
@@ -476,6 +525,21 @@ pub(crate) fn attack(
             });
         }
     }
+
+    // --- Great General / Great Admiral point awards ────────────────────────
+    // Fighting trains commanders: the acting unit's owner earns Great-General
+    // points (land units) or Great-Admiral points (naval units), scaled by the
+    // damage it dealt; the defender's owner earns the flat base for its domain.
+    // Air units earn neither. Written into `civ.great_person_points`, the same
+    // map Phase 5a feeds, so the `/great-people` projection surfaces them.
+    award_combat_gpp(
+        state,
+        atk_owner,
+        atk_domain,
+        GP_POINTS_PER_COMBAT + def_damage / 10,
+        &mut diff,
+    );
+    award_combat_gpp(state, def_owner, def_domain, GP_POINTS_PER_COMBAT, &mut diff);
 
     // --- Cascading events: historic moments on kill ────────────────────────
     // Only for non-barbarian attackers.

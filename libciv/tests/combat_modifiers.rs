@@ -4,7 +4,7 @@ mod common;
 
 #[allow(unused_imports)]
 use libciv::{
-    CivId, DefaultRulesEngine, GameState, PromotionClass, RulesEngine,
+    CivId, DefaultRulesEngine, GameState, GreatPersonType, PromotionClass, RulesEngine,
     UnitCategory, UnitDomain, UnitId, UnitTypeId, AgeType,
 };
 use libciv::civ::{BasicUnit, City, Civilization, Leader, BuiltinAgenda};
@@ -425,4 +425,63 @@ fn barbarian_kill_no_auto_clear() {
     // So a non-barb killing a barb DOES get BattleWon. That's correct.
     assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::HistoricMomentEarned { moment: "BattleWon", .. })),
         "non-barbarian attacker killing barbarian should get BattleWon");
+}
+
+// ── Test 10: land_combat_awards_great_general_points ─────────────────────────
+
+#[test]
+fn land_combat_awards_great_general_points() {
+    // Default scenario uses Land-domain units on adjacent tiles.
+    let (mut state, atk_civ, _def_civ, atk_unit, def_unit, _atk_type, _def_type) =
+        combat_scenario(30, 20, None, None);
+
+    let engine = DefaultRulesEngine;
+    let diff = engine.attack(&mut state, atk_unit, def_unit).unwrap();
+
+    // The attacker's owner gains Great-General points (land combat).
+    let general = state.civ(atk_civ).unwrap()
+        .great_person_points.get(&GreatPersonType::General).copied().unwrap_or(0);
+    assert!(general > 0, "land combat should award Great-General points to the attacker");
+
+    // Land combat must NOT grant Great-Admiral points.
+    let admiral = state.civ(atk_civ).unwrap()
+        .great_person_points.get(&GreatPersonType::Admiral).copied().unwrap_or(0);
+    assert_eq!(admiral, 0, "land combat must not award Great-Admiral points");
+
+    // A GreatPersonPointsAccumulated delta for General should be emitted.
+    assert!(diff.deltas.iter().any(|d| matches!(d,
+        StateDelta::GreatPersonPointsAccumulated { civ, person_type: GreatPersonType::General, .. }
+        if *civ == atk_civ
+    )), "expected a General GreatPersonPointsAccumulated delta for the attacker");
+}
+
+// ── Test 11: naval_combat_awards_great_admiral_points ────────────────────────
+
+#[test]
+fn naval_combat_awards_great_admiral_points() {
+    let (mut state, atk_civ, _def_civ, atk_unit, def_unit, _atk_type, _def_type) =
+        combat_scenario(30, 20, None, None);
+
+    // Reclassify both combatants as naval (sea-domain) units.
+    state.unit_mut(atk_unit).unwrap().domain = UnitDomain::Sea;
+    state.unit_mut(def_unit).unwrap().domain = UnitDomain::Sea;
+
+    let engine = DefaultRulesEngine;
+    let diff = engine.attack(&mut state, atk_unit, def_unit).unwrap();
+
+    // The attacker's owner gains Great-Admiral points (naval combat).
+    let admiral = state.civ(atk_civ).unwrap()
+        .great_person_points.get(&GreatPersonType::Admiral).copied().unwrap_or(0);
+    assert!(admiral > 0, "naval combat should award Great-Admiral points to the attacker");
+
+    // Naval combat must NOT grant Great-General points.
+    let general = state.civ(atk_civ).unwrap()
+        .great_person_points.get(&GreatPersonType::General).copied().unwrap_or(0);
+    assert_eq!(general, 0, "naval combat must not award Great-General points");
+
+    // A GreatPersonPointsAccumulated delta for Admiral should be emitted.
+    assert!(diff.deltas.iter().any(|d| matches!(d,
+        StateDelta::GreatPersonPointsAccumulated { civ, person_type: GreatPersonType::Admiral, .. }
+        if *civ == atk_civ
+    )), "expected an Admiral GreatPersonPointsAccumulated delta for the attacker");
 }
