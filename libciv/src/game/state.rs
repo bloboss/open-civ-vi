@@ -73,6 +73,10 @@ pub struct WonderDef {
     pub production_cost: u32,
     /// Era this wonder belongs to (for production bonus conditions).
     pub era:             Option<crate::AgeType>,
+    /// Persistent modifiers granted to the owning civilization once this wonder
+    /// is completed. Consumed by `compute_yields` (resolved through the standard
+    /// modifier pipeline). Empty for wonders whose effect is not yet modelled.
+    pub effects:         Vec<crate::rules::modifier::Modifier>,
 }
 
 /// Static descriptor for a building type; stored in `GameState.building_defs`.

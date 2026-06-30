@@ -1313,6 +1313,87 @@ mod tests {
         assert_eq!(yields_with_tech.science, base_science_per_city + 1, "Iron science visible after Bronze Working");
     }
 
+    #[test]
+    fn test_compute_yields_building_yields_summed() {
+        // A city with a Library (+2 Science) must out-yield a city without one.
+        let (mut state, civ_id) = make_state();
+        let coord = HexCoord::from_qr(5, 5);
+        let city_id = state.id_gen.next_city_id();
+        let city = City::new(city_id, "NoLibrary".to_string(), civ_id, coord);
+        state.cities.push(city);
+
+        let engine = DefaultRulesEngine;
+        let without = engine.compute_yields(&state, civ_id).science;
+
+        // Grant the city a Library (resolved from the built-in registry).
+        let library_id = state.building_defs.iter()
+            .find(|d| d.name == "Library")
+            .expect("Library building def exists")
+            .id;
+        state.cities[0].buildings.push(library_id);
+
+        let with = engine.compute_yields(&state, civ_id).science;
+        assert_eq!(with, without + 2, "Library must add its +2 Science to city yields");
+    }
+
+    #[test]
+    fn test_compute_yields_belief_raises_yield() {
+        use crate::ReligionId;
+        use crate::civ::religion::Religion;
+
+        // A yield-granting founder belief (Church Property: +2 Gold) raises gold.
+        let (mut state, civ_id) = make_state();
+        let coord = HexCoord::from_qr(5, 5);
+        let city_id = state.id_gen.next_city_id();
+        let city = City::new(city_id, "Holy".to_string(), civ_id, coord);
+        state.cities.push(city);
+
+        let engine = DefaultRulesEngine;
+        let before = engine.compute_yields(&state, civ_id).gold;
+
+        // Found a religion with the Church Property belief and make it the
+        // city's majority religion (population 1 => any follower is a majority).
+        let belief_id = state.belief_defs.iter()
+            .find(|b| b.name == "Church Property")
+            .expect("Church Property belief exists")
+            .id;
+        let religion_id = ReligionId::from_ulid(state.id_gen.next_ulid());
+        let mut religion = Religion::new(religion_id, "TestFaith".to_string(), civ_id, city_id);
+        religion.beliefs.push(belief_id);
+        state.religions.push(religion);
+        state.cities[0].religious_followers.insert(religion_id, 1);
+        assert_eq!(state.cities[0].majority_religion(), Some(religion_id));
+
+        let after = engine.compute_yields(&state, civ_id).gold;
+        assert_eq!(after, before + 2, "Church Property belief must add +2 Gold");
+    }
+
+    #[test]
+    fn test_compute_yields_wonder_effect_applied() {
+        use crate::rules::builtin_wonder_defs;
+
+        // A completed wonder applies its persistent effect (Great Library: +4 Science).
+        let (mut state, civ_id) = make_state();
+        let coord = HexCoord::from_qr(5, 5);
+        let city_id = state.id_gen.next_city_id();
+        let city = City::new(city_id, "WonderCity".to_string(), civ_id, coord);
+        state.cities.push(city);
+
+        let engine = DefaultRulesEngine;
+        let before = engine.compute_yields(&state, civ_id).science;
+
+        // Populate the wonder registry and mark the Great Library complete.
+        state.wonder_defs = builtin_wonder_defs(&mut state.id_gen);
+        let great_library_id = state.wonder_defs.iter()
+            .find(|w| w.name == "Great Library")
+            .expect("Great Library wonder def exists")
+            .id;
+        state.cities[0].wonders.push(great_library_id);
+
+        let after = engine.compute_yields(&state, civ_id).science;
+        assert_eq!(after, before + 4, "Great Library must add +4 Science once built");
+    }
+
     // ── advance_turn tests ────────────────────────────────────────────────────
 
     #[test]
