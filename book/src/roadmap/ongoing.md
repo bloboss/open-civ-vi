@@ -116,7 +116,7 @@ are unblocked._
 > substrate is done except the OIDC **network half** (execution plan
 > in §2.3 part 2) and **atproto** (§2.4) — both backend-heavy and
 > tracked as directed efforts, not loop work.
-> **Active loop cron**: `8f6aa28b` (see the loop note below). The old
+> **Active loop cron**: `b87ec61b` (see the loop note below). The old
 > `dfdcd4f5` / `04ad50ff` session crons are long expired.
 
 ### In progress
@@ -124,8 +124,9 @@ _(this section is the running tracker — items here are picked up by the
 next loop tick; mark items done in `accounts-and-login.md` and delete
 from this list when complete)_
 
-> **Lobby webui loop**: cron `8f6aa28b` — **self-paced**, currently
-> every 15 min (session-only, expires after 7 days). Each tick reads
+> **Lobby webui loop**: cron `b87ec61b` — **self-paced**, currently
+> every 30 min — backed off from 15 min now that the backlog is
+> drained (session-only, expires after 7 days). Each tick reads
 > the runbook in the session scratchpad (`loop-runbook.md`), times
 > itself with `date`, lands one `git agent-commit` on branch
 > `claude/newgame-save-preset` (commits stay local — no push), then
@@ -133,7 +134,7 @@ from this list when complete)_
 > durations (`loop-timings.log`) and reschedules itself, so the
 > cadence tracks how long the work actually takes. The job id rotates
 > on each reschedule — `CronList` to find the current one (presently
-> `8f6aa28b`), or `CronDelete 8f6aa28b` to stop it.
+> `b87ec61b`), or `CronDelete b87ec61b` to stop it.
 >
 > **⚠ Lobby client backlog is DRAINED** (as of this session). Every
 > self-contained lobby UI item is done — the new-game wizard
