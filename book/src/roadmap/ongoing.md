@@ -147,6 +147,15 @@ from this list when complete)_
       Non-wizard JSON (e.g. an imported raw body) is rejected with a
       "⚠ isn't a wizard preset" note rather than corrupting state.
       Closes the "Load-from-built-in" follow-up's wizard half.
+- [x] **NewGame ▸ custom seed override** — the Map step's "advanced"
+      toggle previously revealed nothing and the seed was always
+      auto-derived. Added a `seed_override` signal to `WizardState`
+      surfaced as a seed `<input>` that appears when advanced is on
+      (blank = derive from leader · civ · size). New `seed()` helper
+      centralises override-or-derived; `to_create_body` and the
+      Review summary (shows "… (custom)") both use it. Threaded
+      through the preset round-trip (`#[serde(default)]` so presets
+      saved before this field still deserialise).
 - [x] **Presets tab ▸ "load" → wizard** — the per-row "load" button
       on saved presets was inert. App now provides a `PendingPreset`
       context (`RwSignal<Option<String>>`); `Presets` gained an

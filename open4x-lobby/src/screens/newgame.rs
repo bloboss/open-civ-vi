@@ -68,6 +68,9 @@ struct WizardState {
     map_type: RwSignal<String>,
     map_size: RwSignal<String>,
     advanced: RwSignal<bool>,
+    /// Optional user-typed seed. Empty = derive deterministically from
+    /// (leader, civ, size). Surfaced in the Map step's advanced panel.
+    seed_override: RwSignal<String>,
     // Civ step.
     selected_leader: RwSignal<String>,
     selected_civ: RwSignal<String>,
@@ -96,6 +99,7 @@ impl WizardState {
             map_type: RwSignal::new("continents".into()),
             map_size: RwSignal::new("std".into()),
             advanced: RwSignal::new(false),
+            seed_override: RwSignal::new(String::new()),
             selected_leader: RwSignal::new("Saladin".into()),
             selected_civ: RwSignal::new("Arabia".into()),
             difficulty: RwSignal::new("prince".into()),
@@ -121,6 +125,23 @@ impl WizardState {
         }
     }
 
+    /// Effective seed: the user's trimmed override when set, otherwise
+    /// a value derived deterministically from (leader, civ, map_size)
+    /// so an unchanged wizard config reproduces the same world.
+    fn seed(&self) -> String {
+        let over = self.seed_override.get();
+        let over = over.trim();
+        if !over.is_empty() {
+            return over.to_string();
+        }
+        format!(
+            "0x{:0>4}·{:0>4}·{}",
+            self.selected_leader.get(),
+            self.selected_civ.get(),
+            self.map_size.get(),
+        )
+    }
+
     /// Build the `CreateGameBody` the lobby's `POST /api/v1/games`
     /// expects. Reads every signal current.
     #[allow(clippy::wrong_self_convention)]
@@ -131,10 +152,6 @@ impl WizardState {
         // slot doesn't promote to a real human yet); AI count is the
         // remaining slots in PLAYERS minus the human + open slot.
         let players_ai = (PLAYERS.len() as u32).saturating_sub(2);
-        // Seed: deterministic per (leader, civ, map_size) so the same
-        // wizard config produces the same world. Real seed-input UX
-        // belongs in the StepMap advanced panel — pending.
-        let seed = format!("0x{leader:0>4}·{civ:0>4}·{}", self.map_size.get());
         games_api::CreateGameBody {
             name: format!("{leader}'s {civ}"),
             leader: leader.clone(),
@@ -144,7 +161,7 @@ impl WizardState {
             players_ai,
             map_type: self.map_type.get(),
             map_size: self.map_size.get(),
-            seed,
+            seed: self.seed(),
         }
     }
 
@@ -166,6 +183,7 @@ impl WizardState {
             map_type: self.map_type.get(),
             map_size: self.map_size.get(),
             advanced: self.advanced.get(),
+            seed_override: self.seed_override.get(),
             leader: self.selected_leader.get(),
             civ: self.selected_civ.get(),
             difficulty: self.difficulty.get(),
@@ -198,6 +216,7 @@ impl WizardState {
         self.map_type.set(p.map_type.clone());
         self.map_size.set(p.map_size.clone());
         self.advanced.set(p.advanced);
+        self.seed_override.set(p.seed_override.clone());
         self.selected_leader.set(p.leader.clone());
         self.selected_civ.set(p.civ.clone());
         self.difficulty.set(p.difficulty.clone());
@@ -226,6 +245,10 @@ struct WizardPreset {
     map_type: String,
     map_size: String,
     advanced: bool,
+    /// Defaulted so presets saved before the seed-override field still
+    /// deserialise cleanly (empty = derive the seed).
+    #[serde(default)]
+    seed_override: String,
     leader: String,
     civ: String,
     difficulty: String,
@@ -619,6 +642,7 @@ fn StepMap() -> impl IntoView {
     let map_type = state.map_type;
     let map_size = state.map_size;
     let advanced = state.advanced;
+    let seed_override = state.seed_override;
 
     let map_type_opts = Signal::derive(|| {
         ["continents", "pangaea", "archipelago", "fractal", "custom"]
@@ -698,6 +722,33 @@ fn StepMap() -> impl IntoView {
                             "world age · sea level · temperature · rainfall · resources · seed"
                         </div>
                     </div>
+
+                    {move || advanced.get().then(|| view! {
+                        <div class="param-row stack">
+                            <div class="label">
+                                <span class="trigger">"seed"</span>
+                                <span class="muted xsmall" style="text-transform:none; letter-spacing:0; margin-left:6px">
+                                    "blank = derived from leader · civ · size"
+                                </span>
+                            </div>
+                            <div class="control">
+                                <input
+                                    class="input mono"
+                                    style="width:100%"
+                                    placeholder="e.g. 0xCAFE or any string"
+                                    prop:value=move || seed_override.get()
+                                    on:input=move |ev| {
+                                        use wasm_bindgen::JsCast as _;
+                                        if let Some(el) = ev.target()
+                                            .and_then(|t| t.dyn_into::<web_sys::HtmlInputElement>().ok())
+                                        {
+                                            seed_override.set(el.value());
+                                        }
+                                    }
+                                />
+                            </div>
+                        </div>
+                    })}
                 </div>
             </Panel>
 
@@ -839,7 +890,11 @@ fn StepReview() -> impl IntoView {
             if state.cross_play.get() { "web · API" } else { "web only" },
         );
         let timer_label = state.timer.get();
-        let seed = format!("0x{leader:0>4}·{civ:0>4}·{}", state.map_size.get());
+        let seed = if state.seed_override.get().trim().is_empty() {
+            state.seed()
+        } else {
+            format!("{} (custom)", state.seed())
+        };
         vec![
             ("map".into(), map),
             ("seed".into(), seed),
