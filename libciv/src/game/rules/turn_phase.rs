@@ -614,6 +614,37 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
                     }
                 }
 
+                // Deeper effects, scaled by severity (1–3). Deterministic:
+                // derived entirely from the RNG draws already taken above.
+                //
+                // City on the struck tile: lose `severity` population (never
+                // below 1) and up to `severity * 10` stored food.
+                if let Some(city) = state.cities.iter_mut().find(|c| c.coord == coord) {
+                    let pop_loss = severity as u32;
+                    city.population = city.population.saturating_sub(pop_loss).max(1);
+                    let food_loss = city.food_stored.min(severity as u32 * 10);
+                    city.food_stored -= food_loss;
+                }
+
+                // Units on the struck tile: high severity (3) destroys them,
+                // otherwise they take `severity * 25` HP damage, floored at 1.
+                if severity >= 3 {
+                    state.units.retain(|u| u.coord != coord);
+                } else {
+                    let hp_damage = severity as u32 * 25;
+                    for unit in state.units.iter_mut().filter(|u| u.coord == coord) {
+                        unit.health = unit.health.saturating_sub(hp_damage).max(1);
+                    }
+                }
+
+                // Persist the occurrence so it outlives the transient delta.
+                state.disaster_log.push(super::super::state::DisasterRecord {
+                    kind,
+                    coord,
+                    turn: state.turn,
+                    severity,
+                });
+
                 diff.push(StateDelta::DisasterOccurred { kind, coord, severity });
             }
         }

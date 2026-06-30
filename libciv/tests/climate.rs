@@ -147,6 +147,58 @@ fn disaster_can_destroy_improvement() {
 }
 
 #[test]
+fn disaster_grows_log_and_applies_effect() {
+    // Drive the real Climate & Disasters phase until a disaster fires, then
+    // assert it was recorded in the persistent log AND that its deeper effect
+    // (HP damage / destruction of units on the struck tile) was applied.
+    let mut sc = common::build_scenario();
+
+    // Max climate level → 19% disaster chance/turn.
+    sc.state.climate_level = 7;
+    sc.state.global_co2 = 1500;
+
+    // Put a full-health combat unit on every tile so whichever tile is struck
+    // is guaranteed to hold a unit we can inspect.
+    let coords = sc.state.board.all_coords();
+    for &coord in &coords {
+        common::SpawnUnit::combat(sc.warrior_type, sc.rome_id, coord).build(&mut sc.state);
+    }
+
+    assert!(sc.state.disaster_log.is_empty(), "log starts empty");
+
+    let mut struck: Option<(HexCoord, u8)> = None;
+    for _ in 0..500 {
+        let deltas = advance_one(&mut sc);
+        if let Some(StateDelta::DisasterOccurred { coord, severity, .. }) =
+            deltas.iter().find(|d| matches!(d, StateDelta::DisasterOccurred { .. }))
+        {
+            struck = Some((*coord, *severity));
+            break;
+        }
+    }
+
+    let (coord, severity) = struck.expect("a disaster should fire within 500 turns");
+
+    // The persistent log grew and its newest entry mirrors the fired disaster.
+    assert_eq!(sc.state.disaster_log.len(), 1, "exactly one disaster recorded");
+    let rec = sc.state.disaster_log.last().unwrap();
+    assert_eq!(rec.coord, coord, "record coord matches the delta");
+    assert_eq!(rec.severity, severity, "record severity matches the delta");
+
+    // The deeper effect hit the units standing on the struck tile.
+    if severity >= 3 {
+        let survivors = sc.state.units.iter().filter(|u| u.coord == coord).count();
+        assert_eq!(survivors, 0, "severity-3 disaster destroys units on the tile");
+    } else {
+        let expected_hp = 100 - severity as u32 * 25;
+        assert!(
+            sc.state.units.iter().any(|u| u.coord == coord && u.health == expected_hp),
+            "units on the struck tile drop to {expected_hp} HP (severity {severity})"
+        );
+    }
+}
+
+#[test]
 fn volcanic_eruption_adds_volcanic_soil() {
     // We need to directly test that a volcanic eruption adds VolcanicSoil.
     // Rather than relying on RNG, we test the apply_delta path.

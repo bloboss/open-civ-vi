@@ -20,12 +20,12 @@ use libhexgrid::board::HexBoard;
 use crate::server::rest::auth::{ApiError, auth_or_401, not_found};
 use crate::server::state::{AppState, GameRoom};
 use open4x_protocol::v1::ids::CivId;
-use open4x_protocol::v1::web::climate::ClimateView;
+use open4x_protocol::v1::web::climate::{ClimateView, DisasterEntry};
 
 /// `GET /api/v1/climate` — global CO2 / sea-level state plus the
 /// authenticated player's per-turn emissions and the count of submerged
-/// tiles. `recent_disasters` is best-effort and currently always empty: the
-/// libciv `GameState` keeps no persistent disaster log.
+/// tiles. `recent_disasters` lists the most recent entries from the libciv
+/// `GameState` persistent disaster log (newest first, capped at 10).
 pub async fn climate(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
@@ -73,13 +73,26 @@ pub fn build_climate(room: &GameRoom, civ: CivId) -> ClimateView {
         })
         .count() as u32;
 
+    // Most recent disasters (up to 10), newest first, projected from the
+    // authoritative `GameState.disaster_log`.
+    let recent_disasters: Vec<DisasterEntry> = state
+        .disaster_log
+        .iter()
+        .rev()
+        .take(10)
+        .map(|rec| DisasterEntry {
+            kind: format!("{:?}", rec.kind),
+            turn: rec.turn,
+            coord: Some([rec.coord.q, rec.coord.r]),
+        })
+        .collect();
+
     ClimateView {
         global_co2: state.global_co2,
         climate_level: state.climate_level,
         thresholds: libciv::world::CLIMATE_THRESHOLDS.to_vec(),
         co2_per_turn,
         submerged_tiles,
-        // No persistent disaster log on `GameState` — best-effort empty.
-        recent_disasters: Vec::new(),
+        recent_disasters,
     }
 }

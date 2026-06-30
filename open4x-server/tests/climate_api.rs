@@ -105,6 +105,37 @@ async fn climate_projects_fresh_game_baseline() {
 }
 
 #[tokio::test]
+async fn climate_surfaces_seeded_disaster() {
+    let (app, state) = build_app();
+    let token = bootstrap_token(&app).await;
+
+    // Seed a disaster directly into the (single) game's persistent log, then
+    // assert `/climate` projects it into `recent_disasters`.
+    {
+        let mut room = state.games.iter_mut().next().expect("a game exists");
+        room.state
+            .disaster_log
+            .push(libciv::game::state::DisasterRecord {
+                kind: libciv::world::disaster::DisasterKind::Hurricane,
+                coord: libhexgrid::coord::HexCoord::from_qr(4, 2),
+                turn: 5,
+                severity: 2,
+            });
+    }
+
+    let (status, c) = get_with(&app, "/api/v1/climate", &token).await;
+    assert_eq!(status, StatusCode::OK, "climate: {c:?}");
+
+    let disasters = c["recent_disasters"]
+        .as_array()
+        .expect("recent_disasters array");
+    assert_eq!(disasters.len(), 1, "seeded disaster surfaces: {c:?}");
+    assert_eq!(disasters[0]["kind"], "Hurricane");
+    assert_eq!(disasters[0]["turn"], 5);
+    assert_eq!(disasters[0]["coord"], serde_json::json!([4, 2]));
+}
+
+#[tokio::test]
 async fn climate_requires_auth() {
     let (app, _state) = build_app();
     let resp = app

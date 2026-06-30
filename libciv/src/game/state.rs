@@ -21,6 +21,8 @@ use crate::rules::promotion::{RegisteredPromotion, register_builtin_promotions};
 use rand::SeedableRng;
 use rand::rngs::SmallRng;
 use ulid::Ulid;
+use libhexgrid::coord::HexCoord;
+use crate::world::disaster::DisasterKind;
 
 use super::board::WorldBoard;
 
@@ -316,6 +318,11 @@ pub struct GameState {
     /// Current sea level rise stage (0–7), driven by `global_co2` thresholds.
     #[cfg_attr(feature = "serde", serde(default))]
     pub climate_level: u8,
+    /// Persistent, append-only history of disasters that have fired (GS-2).
+    /// The Climate & Disasters phase pushes a [`DisasterRecord`] each time a
+    /// disaster strikes; surfaced read-only via the `/climate` projection.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub disaster_log: Vec<DisasterRecord>,
     /// Active barbarian camps on the map.
     pub barbarian_camps: Vec<BarbarianCamp>,
     /// Configuration for the barbarian system.
@@ -336,6 +343,22 @@ pub struct GameState {
     /// Per-player configuration: which civs are human vs AI.
     #[cfg_attr(feature = "serde", serde(default))]
     pub player_config: Vec<PlayerSlot>,
+}
+
+/// Persistent record of an environmental disaster that fired during a turn
+/// (GS-2). Appended to [`GameState::disaster_log`] by the Climate & Disasters
+/// phase so the occurrence survives beyond the transient `StateDelta`.
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct DisasterRecord {
+    /// Which kind of disaster struck.
+    pub kind: DisasterKind,
+    /// Tile that was struck.
+    pub coord: HexCoord,
+    /// Turn on which the disaster fired.
+    pub turn: u32,
+    /// Severity 1–3 (biased upward by `climate_level`); scales the effect.
+    pub severity: u8,
 }
 
 /// Designates whether a civilization slot is controlled by a human or AI.
@@ -399,6 +422,7 @@ impl GameState {
             effect_queue: VecDeque::new(),
             global_co2: 0,
             climate_level: 0,
+            disaster_log: Vec::new(),
             barbarian_camps: Vec::new(),
             barbarian_config: BarbarianConfig::default(),
             barbarian_civ: None,
