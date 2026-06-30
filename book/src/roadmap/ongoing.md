@@ -115,6 +115,12 @@ _(this section is the running tracker — items here are picked up by the
 next loop tick; mark items done in `accounts-and-login.md` and delete
 from this list when complete)_
 
+> **Lobby webui loop**: cron `9d5a623d` — fires hourly at :23
+> (session-only, expires after 7 days). Each tick picks the next
+> unblocked lobby (Leptos) UI item, lands one `git agent-commit` on
+> branch `claude/newgame-save-preset`, leaves commits local (no
+> push). `CronDelete 9d5a623d` to stop.
+
 - [x] **NewGame ▸ "+ Save current" preset shortcut** — new
       `SavePreset` component in `screens/newgame.rs` lives in the
       shared wizard footer, so it's reachable from every step
