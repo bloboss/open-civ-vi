@@ -14,10 +14,13 @@ use crate::components::{Btn, Panel};
 #[component]
 pub fn Friends() -> impl IntoView {
     let tick = RwSignal::new(0u32);
-    let rows: LocalResource<Vec<friends_api::FriendView>> = LocalResource::new(move || {
+    // `None` (after load) means the fetch failed — distinct from a
+    // successful empty list, so we don't show "No friends yet" when the
+    // server is actually unreachable.
+    let rows: LocalResource<Option<Vec<friends_api::FriendView>>> = LocalResource::new(move || {
         // Re-fetch on every tick increment.
         let _ = tick.get();
-        async move { friends_api::list().await.unwrap_or_default() }
+        async move { friends_api::list().await.ok() }
     });
 
     let input = RwSignal::new(String::new());
@@ -126,7 +129,11 @@ pub fn Friends() -> impl IntoView {
 
             <Suspense fallback=move || view! { <p class="muted xsmall">"Loading…"</p> }>
                 {move || rows.get().map(|wrap| {
-                    let all: Vec<friends_api::FriendView> = (*wrap).clone();
+                    let Some(all) = (*wrap).clone() else {
+                        return view! {
+                            <p class="muted xsmall">"Couldn't load friends — try refreshing."</p>
+                        }.into_any();
+                    };
                     let accepted: Vec<_> = all.iter()
                         .filter(|r| r.status == "accepted")
                         .cloned()
@@ -252,7 +259,7 @@ pub fn Friends() -> impl IntoView {
                                 }.into_any()
                             }}
                         </Panel>
-                    }
+                    }.into_any()
                 })}
             </Suspense>
         </div>

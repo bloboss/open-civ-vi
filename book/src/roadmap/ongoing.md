@@ -147,6 +147,13 @@ from this list when complete)_
       Non-wizard JSON (e.g. an imported raw body) is rejected with a
       "⚠ isn't a wizard preset" note rather than corrupting state.
       Closes the "Load-from-built-in" follow-up's wizard half.
+- [x] **Friends + Presets ▸ surface list-load failures** — both
+      screens fetched with `unwrap_or_default()`, so a server/network
+      error rendered as "No friends/presets yet" (alarming + wrong).
+      Switched the `LocalResource`s to `Option<Vec<…>>` via `.ok()`
+      and added a "Couldn't load — try refreshing." branch, matching
+      the pattern OngoingGames already used. Empty-vs-failed is now
+      distinct.
 - [x] **NewGame ▸ remove dead footer "generate" control** — on the
       Review step the footer rendered an accent "⌬ generate" button
       with no handler (a dead duplicate of the real "Generate world"

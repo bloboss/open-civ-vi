@@ -24,9 +24,12 @@ pub fn Presets(
     on_load: Option<Callback<String>>,
 ) -> impl IntoView {
     let tick = RwSignal::new(0u32);
-    let rows: LocalResource<Vec<presets_api::PresetView>> = LocalResource::new(move || {
+    // `None` (after load) = the fetch failed, kept distinct from a
+    // successful empty list so a server error doesn't masquerade as
+    // "no saved presets yet".
+    let rows: LocalResource<Option<Vec<presets_api::PresetView>>> = LocalResource::new(move || {
         let _ = tick.get();
-        async move { presets_api::list().await.unwrap_or_default() }
+        async move { presets_api::list().await.ok() }
     });
 
     let show_import = RwSignal::new(false);
@@ -165,7 +168,14 @@ pub fn Presets(
                 </Panel>
             }>
                 {move || rows.get().map(|wrap| {
-                    let mine: Vec<presets_api::PresetView> = (*wrap).clone();
+                    let Some(mine) = (*wrap).clone() else {
+                        return view! {
+                            <Panel>
+                                <div class="h3" style="margin-bottom:10px">"My presets"</div>
+                                <p class="muted xsmall">"Couldn't load presets — try refreshing."</p>
+                            </Panel>
+                        }.into_any();
+                    };
                     view! {
                         <Panel>
                             <div class="h3" style="margin-bottom:10px">
@@ -222,7 +232,7 @@ pub fn Presets(
                                 }.into_any()
                             }}
                         </Panel>
-                    }
+                    }.into_any()
                 })}
             </Suspense>
 
