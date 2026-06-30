@@ -37,9 +37,11 @@ pub mod historic_moments;
 pub use great_people::{
     GreatPerson, GreatPersonAbility, GreatPersonDef, RetireEffect,
     builtin_great_person_defs, spawn_great_person,
-    district_great_person_types, next_candidate_name, recruitment_threshold,
+    district_great_person_types, building_great_person_points,
+    next_candidate_name, recruitment_threshold,
     current_era_name, era_is_current_or_earlier,
-    GP_BASE_POINTS_PER_DISTRICT, GP_BASE_THRESHOLD, GP_THRESHOLD_INCREMENT,
+    GP_BASE_POINTS_PER_DISTRICT, GP_BASE_POINTS_PER_BUILDING,
+    GP_BASE_THRESHOLD, GP_THRESHOLD_INCREMENT,
     GP_PATRONAGE_GOLD_PER_POINT, GP_PATRONAGE_FAITH_PER_POINT,
 };
 pub use governor::{

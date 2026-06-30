@@ -826,3 +826,43 @@ pub mod climate {
         pub coord: Option<[i32; 2]>,
     }
 }
+
+// ── /great-people ──────────────────────────────────────────────────────────
+
+pub mod great_people {
+    use super::*;
+
+    /// Read-only projection of the owner civ's great-people standing: per-class
+    /// point progress toward the next recruitment plus the visible roster.
+    #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+    pub struct GreatPeopleView {
+        pub points: Vec<GreatPersonProgress>,
+        pub roster: Vec<GreatPersonEntry>,
+    }
+
+    /// Accumulated points and recruitment threshold for a single great-person class.
+    #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+    pub struct GreatPersonProgress {
+        pub class: String,
+        pub points: u32,
+        pub threshold: u32,
+        pub progress: f32,
+    }
+
+    /// A single great person visible to the owner: either recruited by them or
+    /// still available in the pool.
+    #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+    pub struct GreatPersonEntry {
+        pub id: String,
+        pub name: String,
+        pub class: String,
+        pub era: String,
+        pub owned: bool,
+        pub available: bool,
+        pub retired: bool,
+        pub ability: String,
+    }
+}
