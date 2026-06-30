@@ -6,6 +6,7 @@
 //! `tower::ServiceExt::oneshot` without binding a TCP socket.
 
 pub mod auth;
+pub mod climate;
 pub mod handlers;
 
 pub use handlers::*;
@@ -47,6 +48,7 @@ pub fn v1_router() -> Router<Arc<AppState>> {
         .route("/notifications", get(handlers::notifications).delete(handlers::dismiss_all_notifications))
         .route("/notifications/{id}", delete(handlers::dismiss_notification))
         .route("/turn-queue", get(handlers::turn_queue))
+        .route("/climate", get(climate::climate))
         // writes
         .route("/cities/{id}/production", post(handlers::queue_production))
         .route("/cities/{id}/production/{pos}", delete(handlers::cancel_production))
