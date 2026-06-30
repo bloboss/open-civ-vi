@@ -752,3 +752,36 @@ pub struct ApiErrorBody {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
 }
+
+// ── /governors ───────────────────────────────────────────────────────────────
+
+/// Read-only projection of the owning civilization's governor roster, mirroring
+/// libciv's `GameState.governors` plus the per-civ `governor_titles` count.
+pub mod governors {
+    use super::*;
+
+    #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+    pub struct GovernorsView {
+        /// Unspent governor titles available to appoint or promote with.
+        pub titles_available: u32,
+        pub governors: Vec<GovernorEntry>,
+    }
+
+    #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+
+    #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+    pub struct GovernorEntry {
+        pub id: String,
+        /// Governor definition name (e.g. "Magnus", "Pingala").
+        pub name: String,
+        /// Display name of the city this governor is assigned to, if any and
+        /// resolvable.
+        pub assigned_city: Option<String>,
+        /// `true` once `turns_to_establish` has reached zero.
+        pub established: bool,
+        pub turns_to_establish: u32,
+        pub promotions: Vec<String>,
+    }
+}
