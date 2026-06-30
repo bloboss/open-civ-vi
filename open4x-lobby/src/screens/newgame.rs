@@ -822,8 +822,14 @@ fn StepReview() -> impl IntoView {
     let gen_cb = use_context::<GeneratedCb>();
     let state = expect_context::<WizardState>();
 
+    // A game with no victory condition is unwinnable; gate Generate
+    // on at least one being enabled in the Rules step.
+    let no_victory = Signal::derive(move || !state.victory.iter().any(|v| v.get()));
+
     let on_generate = move |_| {
-        if matches!(gen_state.get_untracked(), GenerateState::Pending) {
+        if matches!(gen_state.get_untracked(), GenerateState::Pending)
+            || !state.victory.iter().any(|v| v.get_untracked())
+        {
             return;
         }
         gen_state.set(GenerateState::Pending);
@@ -949,7 +955,7 @@ fn StepReview() -> impl IntoView {
                         variant="accent"
                         size="lg"
                         class="block"
-                        disabled=pending
+                        disabled=Signal::derive(move || pending.get() || no_victory.get())
                         on_click=Callback::new(on_generate)
                     >
                         {move || if pending.get() { "Generating…" } else { "⌬  Generate world" }}
@@ -957,6 +963,12 @@ fn StepReview() -> impl IntoView {
                     {move || match gen_state.get() {
                         GenerateState::Error(msg) => view! {
                             <p class="xsmall" style="color:var(--accent); margin-top:8px">{msg}</p>
+                        }.into_any(),
+                        _ if no_victory.get() => view! {
+                            <p class="xsmall" style="color:var(--accent); text-align:center; margin-top:10px; margin-bottom:0">
+                                "Enable at least one victory condition in the Rules step — "
+                                "a game with none is unwinnable."
+                            </p>
                         }.into_any(),
                         _ => view! {
                             <p class="muted xsmall" style="text-align:center; margin-top:10px; margin-bottom:0">

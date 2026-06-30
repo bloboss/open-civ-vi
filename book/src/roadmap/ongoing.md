@@ -147,6 +147,14 @@ from this list when complete)_
       Non-wizard JSON (e.g. an imported raw body) is rejected with a
       "⚠ isn't a wizard preset" note rather than corrupting state.
       Closes the "Load-from-built-in" follow-up's wizard half.
+- [x] **NewGame ▸ gate Generate on a victory condition** — the
+      Review step let you generate a game with zero victory
+      conditions (the summary only snarked "none — unwinnable").
+      Added a `no_victory` derived signal; the "Generate world" button
+      is now disabled when none is enabled (and `on_generate`
+      early-returns defensively), with an accent-coloured prompt to
+      enable one in the Rules step replacing the usual `// calls
+      POST …` hint.
 - [x] **NewGame ▸ custom seed override** — the Map step's "advanced"
       toggle previously revealed nothing and the seed was always
       auto-derived. Added a `seed_override` signal to `WizardState`
