@@ -1,343 +1,147 @@
 use crate::game::state::WonderDef;
 use crate::game::IdGenerator;
-use crate::{AgeType, WonderId};
+use crate::rules::modifier::{
+    EffectType, Modifier, ModifierSource, StackingRule, TargetSelector,
+};
+use crate::{AgeType, WonderId, YieldType};
+
+/// Convenience constructor for an unconditional, civ-wide flat yield modifier
+/// granted by a completed wonder.
+fn wonder_yield(name: &'static str, yt: YieldType, amount: i32) -> Modifier {
+    Modifier::new(
+        ModifierSource::Wonder(name),
+        TargetSelector::Global,
+        EffectType::YieldFlat(yt, amount),
+        StackingRule::Additive,
+    )
+}
+
+/// Convenience constructor for an unconditional, civ-wide percentage yield
+/// modifier granted by a completed wonder.
+fn wonder_yield_pct(name: &'static str, yt: YieldType, pct: i32) -> Modifier {
+    Modifier::new(
+        ModifierSource::Wonder(name),
+        TargetSelector::Global,
+        EffectType::YieldPercent(yt, pct),
+        StackingRule::Additive,
+    )
+}
+
+/// Persistent yield/modifier effects for a handful of iconic wonders. Wonders
+/// not listed here grant no economic effect yet (their `effects` stay empty).
+fn builtin_wonder_effects(name: &'static str) -> Vec<Modifier> {
+    match name {
+        // +2 Faith — the classic ancient faith wonder.
+        "Stonehenge" => vec![wonder_yield("Stonehenge", YieldType::Faith, 2)],
+        // +2 Culture (free Builder is not modelled here).
+        "Pyramids" => vec![wonder_yield("Pyramids", YieldType::Culture, 2)],
+        // +15% Food growth across the empire.
+        "Hanging Gardens" => vec![wonder_yield_pct("Hanging Gardens", YieldType::Food, 15)],
+        // +1 Faith and +1 Culture.
+        "Oracle" => vec![
+            wonder_yield("Oracle", YieldType::Faith, 1),
+            wonder_yield("Oracle", YieldType::Culture, 1),
+        ],
+        // +3 Gold from increased trade capacity.
+        "Colossus" => vec![wonder_yield("Colossus", YieldType::Gold, 3)],
+        // Petra's oasis: +2 Food, +2 Gold.
+        "Petra" => vec![
+            wonder_yield("Petra", YieldType::Food, 2),
+            wonder_yield("Petra", YieldType::Gold, 2),
+        ],
+        // +4 Science from the great repository.
+        "Great Library" => vec![wonder_yield("Great Library", YieldType::Science, 4)],
+        // +6 Gold from the seat of commerce.
+        "Big Ben" => vec![wonder_yield("Big Ben", YieldType::Gold, 6)],
+        _ => Vec::new(),
+    }
+}
 
 /// Returns all 29 base-game world wonder definitions.
 pub fn builtin_wonder_defs(id_gen: &mut IdGenerator) -> Vec<WonderDef> {
-    vec![
+    // Closure builds a wonder with an empty effects vec; effects are attached
+    // in a second pass below so the iconic-wonder data stays in one place.
+    let mut w = |name: &'static str, production_cost: u32, era: AgeType| WonderDef {
+        id: WonderId::from_ulid(id_gen.next_ulid()),
+        name,
+        production_cost,
+        era: Some(era),
+        effects: Vec::new(),
+    };
+
+    let mut defs = vec![
         // ── Ancient Era (3) ───────────────────────────────────────────────
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Stonehenge",
-            production_cost: 180,
-            era: Some(AgeType::Ancient),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Hanging Gardens",
-            production_cost: 180,
-            era: Some(AgeType::Ancient),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Pyramids",
-            production_cost: 220,
-            era: Some(AgeType::Ancient),
-        },
+        w("Stonehenge", 180, AgeType::Ancient),
+        w("Hanging Gardens", 180, AgeType::Ancient),
+        w("Pyramids", 220, AgeType::Ancient),
         // ── Classical Era (8) ─────────────────────────────────────────────
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Oracle",
-            production_cost: 290,
-            era: Some(AgeType::Classical),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Great Lighthouse",
-            production_cost: 290,
-            era: Some(AgeType::Classical),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Colossus",
-            production_cost: 400,
-            era: Some(AgeType::Classical),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Petra",
-            production_cost: 400,
-            era: Some(AgeType::Classical),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Colosseum",
-            production_cost: 400,
-            era: Some(AgeType::Classical),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Great Library",
-            production_cost: 400,
-            era: Some(AgeType::Classical),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Mahabodhi Temple",
-            production_cost: 400,
-            era: Some(AgeType::Classical),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Terracotta Army",
-            production_cost: 400,
-            era: Some(AgeType::Classical),
-        },
+        w("Oracle", 290, AgeType::Classical),
+        w("Great Lighthouse", 290, AgeType::Classical),
+        w("Colossus", 400, AgeType::Classical),
+        w("Petra", 400, AgeType::Classical),
+        w("Colosseum", 400, AgeType::Classical),
+        w("Great Library", 400, AgeType::Classical),
+        w("Mahabodhi Temple", 400, AgeType::Classical),
+        w("Terracotta Army", 400, AgeType::Classical),
         // ── Medieval Era (4) ──────────────────────────────────────────────
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Hagia Sophia",
-            production_cost: 710,
-            era: Some(AgeType::Medieval),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Alhambra",
-            production_cost: 710,
-            era: Some(AgeType::Medieval),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Chichen Itza",
-            production_cost: 710,
-            era: Some(AgeType::Medieval),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Mont St. Michel",
-            production_cost: 710,
-            era: Some(AgeType::Medieval),
-        },
+        w("Hagia Sophia", 710, AgeType::Medieval),
+        w("Alhambra", 710, AgeType::Medieval),
+        w("Chichen Itza", 710, AgeType::Medieval),
+        w("Mont St. Michel", 710, AgeType::Medieval),
         // ── Renaissance Era (4) ───────────────────────────────────────────
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Venetian Arsenal",
-            production_cost: 920,
-            era: Some(AgeType::Renaissance),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Great Zimbabwe",
-            production_cost: 920,
-            era: Some(AgeType::Renaissance),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Forbidden City",
-            production_cost: 920,
-            era: Some(AgeType::Renaissance),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Potala Palace",
-            production_cost: 1060,
-            era: Some(AgeType::Renaissance),
-        },
+        w("Venetian Arsenal", 920, AgeType::Renaissance),
+        w("Great Zimbabwe", 920, AgeType::Renaissance),
+        w("Forbidden City", 920, AgeType::Renaissance),
+        w("Potala Palace", 1060, AgeType::Renaissance),
         // ── Industrial Era (3) ────────────────────────────────────────────
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Ruhr Valley",
-            production_cost: 1240,
-            era: Some(AgeType::Industrial),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Bolshoi Theatre",
-            production_cost: 1240,
-            era: Some(AgeType::Industrial),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Oxford University",
-            production_cost: 1240,
-            era: Some(AgeType::Industrial),
-        },
+        w("Ruhr Valley", 1240, AgeType::Industrial),
+        w("Bolshoi Theatre", 1240, AgeType::Industrial),
+        w("Oxford University", 1240, AgeType::Industrial),
         // ── Modern Era (5) ────────────────────────────────────────────────
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Big Ben",
-            production_cost: 1450,
-            era: Some(AgeType::Modern),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Hermitage",
-            production_cost: 1450,
-            era: Some(AgeType::Modern),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Eiffel Tower",
-            production_cost: 1620,
-            era: Some(AgeType::Modern),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Broadway",
-            production_cost: 1620,
-            era: Some(AgeType::Modern),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Cristo Redentor",
-            production_cost: 1620,
-            era: Some(AgeType::Modern),
-        },
+        w("Big Ben", 1450, AgeType::Modern),
+        w("Hermitage", 1450, AgeType::Modern),
+        w("Eiffel Tower", 1620, AgeType::Modern),
+        w("Broadway", 1620, AgeType::Modern),
+        w("Cristo Redentor", 1620, AgeType::Modern),
         // ── Atomic / Information Era (2) ──────────────────────────────────
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Estadio do Maracana",
-            production_cost: 1740,
-            era: Some(AgeType::Atomic),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Sydney Opera House",
-            production_cost: 1850,
-            era: Some(AgeType::Information),
-        },
+        w("Estadio do Maracana", 1740, AgeType::Atomic),
+        w("Sydney Opera House", 1850, AgeType::Information),
 
         // ── Rise & Fall wonders ─────────────────────────────────────────────
-
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Temple of Artemis",
-            production_cost: 180,
-            era: Some(AgeType::Ancient),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Kilwa Kisiwani",
-            production_cost: 710,
-            era: Some(AgeType::Medieval),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Kotoku-in",
-            production_cost: 710,
-            era: Some(AgeType::Medieval),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Casa de Contratacion",
-            production_cost: 920,
-            era: Some(AgeType::Renaissance),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "St. Basil's Cathedral",
-            production_cost: 920,
-            era: Some(AgeType::Renaissance),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Taj Mahal",
-            production_cost: 920,
-            era: Some(AgeType::Renaissance),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Statue of Liberty",
-            production_cost: 1240,
-            era: Some(AgeType::Industrial),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Amundsen-Scott Research Station",
-            production_cost: 1620,
-            era: Some(AgeType::Atomic),
-        },
+        w("Temple of Artemis", 180, AgeType::Ancient),
+        w("Kilwa Kisiwani", 710, AgeType::Medieval),
+        w("Kotoku-in", 710, AgeType::Medieval),
+        w("Casa de Contratacion", 920, AgeType::Renaissance),
+        w("St. Basil's Cathedral", 920, AgeType::Renaissance),
+        w("Taj Mahal", 920, AgeType::Renaissance),
+        w("Statue of Liberty", 1240, AgeType::Industrial),
+        w("Amundsen-Scott Research Station", 1620, AgeType::Atomic),
 
         // ── Gathering Storm wonders ─────────────────────────────────────────
-
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Great Bath",
-            production_cost: 180,
-            era: Some(AgeType::Ancient),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Machu Picchu",
-            production_cost: 400,
-            era: Some(AgeType::Classical),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Meenakshi Temple",
-            production_cost: 710,
-            era: Some(AgeType::Medieval),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "University of Sankore",
-            production_cost: 710,
-            era: Some(AgeType::Medieval),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Orszaghaz",
-            production_cost: 920,
-            era: Some(AgeType::Industrial),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Panama Canal",
-            production_cost: 920,
-            era: Some(AgeType::Industrial),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Golden Gate Bridge",
-            production_cost: 1620,
-            era: Some(AgeType::Modern),
-        },
+        w("Great Bath", 180, AgeType::Ancient),
+        w("Machu Picchu", 400, AgeType::Classical),
+        w("Meenakshi Temple", 710, AgeType::Medieval),
+        w("University of Sankore", 710, AgeType::Medieval),
+        w("Orszaghaz", 920, AgeType::Industrial),
+        w("Panama Canal", 920, AgeType::Industrial),
+        w("Golden Gate Bridge", 1620, AgeType::Modern),
 
         // ── DLC wonders ─────────────────────────────────────────────────────
+        w("Etemenanki", 220, AgeType::Ancient),
+        w("Statue of Zeus", 400, AgeType::Classical),
+        w("Apadana", 400, AgeType::Classical),
+        w("Mausoleum at Halicarnassus", 400, AgeType::Classical),
+        w("Jebel Barkal", 400, AgeType::Classical),
+        w("Huey Teocalli", 710, AgeType::Medieval),
+        w("Angkor Wat", 710, AgeType::Medieval),
+        w("Torre de Belem", 920, AgeType::Renaissance),
+        w("Biosphere", 1740, AgeType::Atomic),
+    ];
 
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Etemenanki",
-            production_cost: 220,
-            era: Some(AgeType::Ancient),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Statue of Zeus",
-            production_cost: 400,
-            era: Some(AgeType::Classical),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Apadana",
-            production_cost: 400,
-            era: Some(AgeType::Classical),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Mausoleum at Halicarnassus",
-            production_cost: 400,
-            era: Some(AgeType::Classical),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Jebel Barkal",
-            production_cost: 400,
-            era: Some(AgeType::Classical),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Huey Teocalli",
-            production_cost: 710,
-            era: Some(AgeType::Medieval),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Angkor Wat",
-            production_cost: 710,
-            era: Some(AgeType::Medieval),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Torre de Belem",
-            production_cost: 920,
-            era: Some(AgeType::Renaissance),
-        },
-        WonderDef {
-            id: WonderId::from_ulid(id_gen.next_ulid()),
-            name: "Biosphere",
-            production_cost: 1740,
-            era: Some(AgeType::Atomic),
-        },
-    ]
+    // Attach iconic-wonder effects in a single pass.
+    for def in defs.iter_mut() {
+        def.effects = builtin_wonder_effects(def.name);
+    }
+
+    defs
 }

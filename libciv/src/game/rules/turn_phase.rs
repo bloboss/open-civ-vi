@@ -280,6 +280,7 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         struct WonderCompletion {
             city_idx: usize,
             civ_id: CivId,
+            wonder_id: crate::WonderId,
             wonder_name: &'static str,
             cost: u32,
         }
@@ -292,6 +293,7 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
                     Some(WonderCompletion {
                         city_idx: d.city_idx,
                         civ_id: d.civ_id,
+                        wonder_id: def.id,
                         wonder_name: def.name,
                         cost: def.production_cost,
                     })
@@ -306,6 +308,11 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         for wc in wonder_completions {
             state.cities[wc.city_idx].production_stored -= wc.cost;
             state.cities[wc.city_idx].production_queue.pop_front();
+            // Record the completed wonder so its persistent effects are folded
+            // into the civ's yields by `compute_yields`.
+            if !state.cities[wc.city_idx].wonders.contains(&wc.wonder_id) {
+                state.cities[wc.city_idx].wonders.push(wc.wonder_id);
+            }
             diff.push(StateDelta::WonderBuilt {
                 civ: wc.civ_id,
                 wonder: wc.wonder_name,

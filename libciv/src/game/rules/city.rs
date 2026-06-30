@@ -249,6 +249,14 @@ pub(crate) fn compute_yields(state: &GameState, civ_id: CivId) -> YieldBundle {
                 total += tile_yields_gated(tile, &known_techs);
             }
         }
+
+        // ── Building yields ───────────────────────────────────────────────
+        // Sum each owned building's static yields (previously inert data).
+        for &bid in &city.buildings {
+            if let Some(bdef) = state.building_defs.iter().find(|d| d.id == bid) {
+                total += bdef.yields.clone();
+            }
+        }
     }
 
     let city_count = state.cities.iter().filter(|c| c.owner == civ_id).count();
@@ -292,6 +300,34 @@ pub(crate) fn compute_yields(state: &GameState, civ_id: CivId) -> YieldBundle {
                 mods.extend(crate::civ::governor::get_governor_modifiers(gov));
             }
         }
+
+        // ── Religion belief yields ────────────────────────────────────────
+        // Route each city's majority-religion belief modifiers into the
+        // resolved set (mirrors how combat.rs gathers belief modifiers, but
+        // for yields). Unconditional `Global` belief modifiers stack additively
+        // once per city that follows the religion.
+        for city in state.cities.iter().filter(|c| c.owner == civ_id) {
+            if let Some(rid) = city.majority_religion()
+                && let Some(religion) = state.religions.iter().find(|r| r.id == rid)
+            {
+                for belief_id in &religion.beliefs {
+                    if let Some(bdef) = state.belief_defs.iter().find(|b| b.id == *belief_id) {
+                        mods.extend(bdef.modifiers.iter().cloned());
+                    }
+                }
+            }
+        }
+
+        // ── Completed wonder effects ──────────────────────────────────────
+        // Fold each completed wonder's persistent modifiers into the set.
+        for city in state.cities.iter().filter(|c| c.owner == civ_id) {
+            for &wid in &city.wonders {
+                if let Some(wdef) = state.wonder_defs.iter().find(|w| w.id == wid) {
+                    mods.extend(wdef.effects.iter().cloned());
+                }
+            }
+        }
+
         mods
     };
 

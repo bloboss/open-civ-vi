@@ -94,6 +94,10 @@ pub struct City {
     pub walls: WallLevel,
     pub wall_hp: u32,
     pub buildings: Vec<BuildingId>,
+    /// World wonders completed in this city. Each wonder's `WonderDef.effects`
+    /// are folded into the owning civilization's yields by `compute_yields`.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub wonders: Vec<WonderId>,
     /// District types present in this city. Each `BuiltinDistrict` may appear at most once.
     /// The corresponding `PlacedDistrict` (with coord) lives in `GameState::placed_districts`.
     pub districts: Vec<BuiltinDistrict>,
@@ -156,6 +160,7 @@ impl City {
             walls: WallLevel::None,
             wall_hp: WallLevel::None.max_hp(),
             buildings: Vec::new(),
+            wonders: Vec::new(),
             districts: Vec::new(),
             worked_tiles: vec![coord],
             locked_tiles: HashSet::new(),
