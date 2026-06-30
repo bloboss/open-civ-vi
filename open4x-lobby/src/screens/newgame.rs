@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen_futures::spawn_local;
 use web_sys::KeyboardEvent;
 
+use crate::app::PendingPreset;
 use crate::components::api::games as games_api;
 use crate::components::api::presets as presets_api;
 use crate::components::{
@@ -245,7 +246,20 @@ struct WizardPreset {
 #[component]
 pub fn NewGame(#[prop(optional)] on_generated: Option<Callback<String>>) -> impl IntoView {
     let step = RwSignal::new(Step::Map);
-    provide_context(WizardState::new());
+    let wizard = WizardState::new();
+    provide_context(wizard);
+
+    // Drain a preset queued from the Presets tab (if any) onto the
+    // fresh wizard state. Invalid bodies are ignored rather than
+    // corrupting the form. Cleared so a later visit starts blank.
+    if let Some(PendingPreset(pending)) = use_context::<PendingPreset>() {
+        if let Some(body) = pending.get_untracked() {
+            if let Ok(preset) = serde_json::from_str::<WizardPreset>(&body) {
+                wizard.apply_preset(&preset);
+            }
+            pending.set(None);
+        }
+    }
 
     // Make the on_generated callback available to StepReview via context
     // so the deeply-nested CTA can fire it without a prop chain.

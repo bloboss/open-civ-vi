@@ -22,6 +22,12 @@ pub enum Screen {
     Menu,
 }
 
+/// App-level carrier for a preset the user asked to load from the
+/// Presets tab. `NewGame` drains it on mount and applies it to the
+/// fresh `WizardState`. Holds the raw `body_json` string.
+#[derive(Copy, Clone)]
+pub struct PendingPreset(pub RwSignal<Option<String>>);
+
 impl Screen {
     fn label(self) -> &'static str {
         match self {
@@ -40,6 +46,10 @@ pub fn App() -> impl IntoView {
     let menu_tab = RwSignal::new(MenuTab::Ongoing);
     let density = RwSignal::new("comfortable".to_string());
     crate::components::thumbnail::provide_thumbnail_cache();
+
+    // A preset queued from the Presets tab, drained by NewGame on mount.
+    let pending_preset = RwSignal::new(Option::<String>::None);
+    provide_context(PendingPreset(pending_preset));
 
     // Bootstrap: try GET /api/v1/me once on mount; if the server
     // recognises our cookie, jump straight to Menu. The 401 case
@@ -60,7 +70,15 @@ pub fn App() -> impl IntoView {
     // Callbacks reused across screens.
     let go_login = Callback::new(move |_: ()| screen.set(Screen::Login));
     let go_landing = Callback::new(move |_: ()| screen.set(Screen::Landing));
+    let go_menu = Callback::new(move |_: ()| screen.set(Screen::Menu));
     let go_newgame = Callback::new(move |_: ()| {
+        screen.set(Screen::Menu);
+        menu_tab.set(MenuTab::NewGame);
+    });
+    // Presets tab → load a saved config into the wizard: queue the
+    // body and jump to the New-game tab (NewGame applies it on mount).
+    let load_preset = Callback::new(move |body_json: String| {
+        pending_preset.set(Some(body_json));
         screen.set(Screen::Menu);
         menu_tab.set(MenuTab::NewGame);
     });
@@ -102,7 +120,7 @@ pub fn App() -> impl IntoView {
                         <Landing on_signin=go_login />
                     }.into_any(),
                     Screen::Login => view! {
-                        <Login on_back=go_landing />
+                        <Login on_back=go_landing on_authenticated=go_menu />
                     }.into_any(),
                     Screen::Menu => {
                         let on_generated = Callback::new(move |_game_id: String| {
@@ -121,7 +139,9 @@ pub fn App() -> impl IntoView {
                                         <Profile on_signout=on_signout />
                                     }.into_any(),
                                     MenuTab::Friends => view! { <Friends /> }.into_any(),
-                                    MenuTab::Presets => view! { <Presets /> }.into_any(),
+                                    MenuTab::Presets => view! {
+                                        <Presets on_load=load_preset />
+                                    }.into_any(),
                                     MenuTab::Docs => view! { <Docs /> }.into_any(),
                                 }}
                             </MenuShell>

@@ -18,7 +18,11 @@ use crate::components::api::presets as presets_api;
 use crate::components::{Btn, Panel};
 
 #[component]
-pub fn Presets() -> impl IntoView {
+pub fn Presets(
+    /// Load a saved preset's `body_json` into the New-game wizard.
+    #[prop(optional)]
+    on_load: Option<Callback<String>>,
+) -> impl IntoView {
     let tick = RwSignal::new(0u32);
     let rows: LocalResource<Vec<presets_api::PresetView>> = LocalResource::new(move || {
         let _ = tick.get();
@@ -177,6 +181,7 @@ pub fn Presets() -> impl IntoView {
                                     <div class="col" style="gap:6px">
                                         {mine.into_iter().map(|p| {
                                             let id_for_del = p.id.clone();
+                                            let body_for_load = p.body_json.clone();
                                             view! {
                                                 <div class="row between center-y" style="border-bottom:1px solid var(--hairline-2); padding:6px 0">
                                                     <div>
@@ -185,17 +190,29 @@ pub fn Presets() -> impl IntoView {
                                                             {p.body_json.clone()}
                                                         </div>
                                                     </div>
-                                                    <Btn
-                                                        variant="bare"
-                                                        size="sm"
-                                                        on_click=Callback::new(move |_| {
-                                                            let id = id_for_del.clone();
-                                                            spawn_local(async move {
-                                                                let _ = presets_api::delete_preset(&id).await;
-                                                                tick.update(|t| *t += 1);
-                                                            });
-                                                        })
-                                                    >"delete"</Btn>
+                                                    <div class="row" style="gap:4px">
+                                                        {on_load.map(|cb| {
+                                                            let body = body_for_load.clone();
+                                                            view! {
+                                                                <Btn
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    on_click=Callback::new(move |_| cb.run(body.clone()))
+                                                                >"load"</Btn>
+                                                            }
+                                                        })}
+                                                        <Btn
+                                                            variant="bare"
+                                                            size="sm"
+                                                            on_click=Callback::new(move |_| {
+                                                                let id = id_for_del.clone();
+                                                                spawn_local(async move {
+                                                                    let _ = presets_api::delete_preset(&id).await;
+                                                                    tick.update(|t| *t += 1);
+                                                                });
+                                                            })
+                                                        >"delete"</Btn>
+                                                    </div>
                                                 </div>
                                             }
                                         }).collect::<Vec<_>>()}

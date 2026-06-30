@@ -147,6 +147,16 @@ from this list when complete)_
       Non-wizard JSON (e.g. an imported raw body) is rejected with a
       "⚠ isn't a wizard preset" note rather than corrupting state.
       Closes the "Load-from-built-in" follow-up's wizard half.
+- [x] **Presets tab ▸ "load" → wizard** — the per-row "load" button
+      on saved presets was inert. App now provides a `PendingPreset`
+      context (`RwSignal<Option<String>>`); `Presets` gained an
+      `on_load` callback that queues the row's `body_json` and jumps
+      to the New-game tab, and `NewGame` drains the pending preset on
+      mount, deserialises it to a `WizardPreset`, and applies it to
+      the fresh `WizardState` (invalid bodies ignored, signal cleared
+      so a later visit starts blank). Completes the cross-tab half of
+      the "Load-from-built-in" follow-up alongside the in-wizard
+      `LoadPreset` dropdown.
 - [x] **NewGame ▸ ⏎ advances the wizard** — the footer advertised
       keyboard shortcuts that were never wired. Added a
       `window_event_listener(keydown)` in `NewGame` that advances to
