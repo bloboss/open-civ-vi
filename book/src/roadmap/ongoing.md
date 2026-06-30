@@ -1,5 +1,28 @@
 # Ongoing Work
 
+## Backend round 2 — simulation depth (ACTIVE)
+
+> **Goal**: deepen the round-1 features. Integration branch
+> `claude/backend-sim-depth` (off `claude/backend-gp-gov-climate`).
+> Loop cron `972ed925` (every 10 min). Runbook + specs:
+> `loop-runbook-backend2.md` / `feature-specs-backend2.md`. 3 parallel
+> worktree builder agents; loop merges + tests each into the
+> integration branch, stops when all green.
+
+- [ ] `feat/combat-gp` — combat awards Great General (land) / Admiral
+      (naval) points + libciv test. (Was a gap: combat earned no GPP.)
+- [ ] `feat/disaster-log` — persistent `GameState.disaster_log` +
+      deeper disaster effects (city/unit damage by severity) +
+      `/climate` `recent_disasters` populated + tests.
+- [ ] `feat/co2-emitters` — broader `co2_per_turn` across industrial
+      buildings (was: only Coal/Oil plants emitted) + libciv test.
+
+_A separate read-only scout is mapping other "sources of effect" in the
+engine → will become a menu of "beyond base game" proposals for the
+user._
+
+---
+
 ## Backend features — great people / governors / climate (ACTIVE)
 
 > **Goal**: project the (already-complete) libciv great-people,
