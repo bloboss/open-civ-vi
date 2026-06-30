@@ -87,6 +87,13 @@ into the server projector.
 
 ### Client (Leptos)
 
+_This is the **in-game `open4x-server` SPA** (HexMap + per-system
+tabs), a separate surface from the `open4x-lobby` pre-game UI the
+current loop has been polishing. With the lobby client backlog
+drained, this is the natural place to redirect the loop for fresh
+self-contained client work — pending a look to confirm which items
+are unblocked._
+
 - [ ] HexMap refactor to consume `WorldSnapshot` directly (currently
       RestGamePage shows a placeholder "World w × h · N tiles" line)
 - [ ] `tabs/city.rs` — extend existing, REST-driven
@@ -104,11 +111,13 @@ into the server projector.
 ## Accounts and Login — ACTIVE
 
 > **Plan**: [book/src/roadmap/accounts-and-login.md](./accounts-and-login.md)
-> **Status**: Phase 0 + Phase 1 complete. Phase 2 (`open4x-accounts`
-> substrate — sqlite store + magic-link minting + OIDC client +
-> atproto resolver + session tokens) starting next.
-> **Cron**: `dfdcd4f5` — fires every 10 minutes (session-only, expires
-> after 7 days). `CronDelete dfdcd4f5` to cancel.
+> **Status**: Phases 0-1 ✅, 3 ✅, 4 ◐, 5 ◐, 6 ◐ (see
+> accounts-and-login.md §8 + §9 for the per-item state). Phase 2
+> substrate is done except the OIDC **network half** (execution plan
+> in §2.3 part 2) and **atproto** (§2.4) — both backend-heavy and
+> tracked as directed efforts, not loop work.
+> **Active loop cron**: `8f6aa28b` (see the loop note below). The old
+> `dfdcd4f5` / `04ad50ff` session crons are long expired.
 
 ### In progress
 _(this section is the running tracker — items here are picked up by the
@@ -123,8 +132,20 @@ from this list when complete)_
 > recomputes its own interval from a rolling average of recent tick
 > durations (`loop-timings.log`) and reschedules itself, so the
 > cadence tracks how long the work actually takes. The job id rotates
-> on each reschedule — `CronList` to find the current one, or
-> `CronDelete f11fc9e9` to stop the first generation.
+> on each reschedule — `CronList` to find the current one (presently
+> `8f6aa28b`), or `CronDelete 8f6aa28b` to stop it.
+>
+> **⚠ Lobby client backlog is DRAINED** (as of this session). Every
+> self-contained lobby UI item is done — the new-game wizard
+> (save/load/built-in presets, ⏎ nav, custom seed, victory gate),
+> the preset round-trip, dead-control + swallowed-error fixes. What
+> remains is **not** loop-suitable: backend-blocked (OIDC network
+> half, atproto, invite-mint, identity routes) or a product decision
+> (Landing repo URL). The 12 session commits live on
+> `claude/newgame-save-preset`, unpushed. To keep producing features,
+> redirect the loop at the **in-game `open4x-server` SPA** (the
+> "Client (Leptos)" list near the top of this file — HexMap + tabs),
+> or pause and take OIDC/atproto as directed efforts.
 
 - [x] **NewGame ▸ "+ Save current" preset shortcut** — new
       `SavePreset` component in `screens/newgame.rs` lives in the
