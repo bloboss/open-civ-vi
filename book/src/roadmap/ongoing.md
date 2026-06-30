@@ -147,6 +147,16 @@ from this list when complete)_
       Non-wizard JSON (e.g. an imported raw body) is rejected with a
       "⚠ isn't a wizard preset" note rather than corrupting state.
       Closes the "Load-from-built-in" follow-up's wizard half.
+- [x] **NewGame ▸ ⏎ advances the wizard** — the footer advertised
+      keyboard shortcuts that were never wired. Added a
+      `window_event_listener(keydown)` in `NewGame` that advances to
+      the next step on Enter, guarded by `is_typing_target()` (no
+      hijack while focus is in an input / textarea / select /
+      contenteditable, or while a modifier is held) and a no-op on the
+      final Review step so Generate stays an explicit click. Esc is
+      left to the popup layer. Trimmed the footer hint to the two
+      shortcuts that are actually live (`⏎ next` · `esc close popups`)
+      — dropped the unimplemented `⌘K jump` claim.
 
 ### Up next (Phase 6)
 

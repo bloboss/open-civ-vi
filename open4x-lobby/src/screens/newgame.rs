@@ -9,6 +9,7 @@ use std::sync::Arc;
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen_futures::spawn_local;
+use web_sys::KeyboardEvent;
 
 use crate::components::api::games as games_api;
 use crate::components::api::presets as presets_api;
@@ -252,6 +253,23 @@ pub fn NewGame(#[prop(optional)] on_generated: Option<Callback<String>>) -> impl
         provide_context(GeneratedCb(cb));
     }
 
+    // ⏎ advances to the next step (the footer advertises it). Ignored
+    // while the user is typing in a field or holding a modifier, and a
+    // no-op on the final Review step (Generate stays an explicit
+    // click). Esc is intentionally left to the popup layer.
+    window_event_listener(leptos::ev::keydown, move |ev: KeyboardEvent| {
+        if ev.key() != "Enter" || ev.ctrl_key() || ev.meta_key() || ev.alt_key() {
+            return;
+        }
+        if is_typing_target() {
+            return;
+        }
+        if let Some(n) = step.get_untracked().next() {
+            ev.prevent_default();
+            step.set(n);
+        }
+    });
+
     view! {
         <div style="flex:1; display:flex; flex-direction:column; min-height:0">
             <div class="content-header">
@@ -287,8 +305,7 @@ pub fn NewGame(#[prop(optional)] on_generated: Option<Callback<String>>) -> impl
                 </div>
                 <span>
                     <span class="kbd">"⏎"</span>" next · "
-                    <span class="kbd">"⌘K"</span>" jump · "
-                    <span class="kbd">"esc"</span>" cancel"
+                    <span class="kbd">"esc"</span>" close popups"
                 </span>
                 {move || if step.get() == Step::Review {
                     view! { <Btn variant="accent">"⌬ generate"</Btn> }.into_any()
@@ -341,6 +358,21 @@ fn StepStrip(step: RwSignal<Step>) -> impl IntoView {
 /// chain through every Step component.
 #[derive(Clone)]
 struct GeneratedCb(Callback<String>);
+
+/// True when keyboard focus is in a text-entry context, so wizard-level
+/// ⏎ shortcuts shouldn't hijack the keystroke (e.g. typing a preset
+/// name or a civ search query).
+fn is_typing_target() -> bool {
+    web_sys::window()
+        .and_then(|w| w.document())
+        .and_then(|d| d.active_element())
+        .map(|el| {
+            let tag = el.tag_name().to_uppercase();
+            matches!(tag.as_str(), "INPUT" | "TEXTAREA" | "SELECT")
+                || el.has_attribute("contenteditable")
+        })
+        .unwrap_or(false)
+}
 
 // ─────────────────────────── Save-preset shortcut ──────────────────────────────
 
