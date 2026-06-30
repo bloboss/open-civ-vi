@@ -85,24 +85,36 @@ into the server projector.
       Structured 400 on unknown / locked / empty. CLI: existing
       `action adopt-government` covers the arena case.
 
-### Client (Leptos)
+### Client (Leptos) — in-game SPA (`open4x-client-web`)
 
-_This is the **in-game `open4x-server` SPA** (HexMap + per-system
-tabs), a separate surface from the `open4x-lobby` pre-game UI the
-current loop has been polishing. With the lobby client backlog
-drained, this is the natural place to redirect the loop for fresh
-self-contained client work — pending a look to confirm which items
-are unblocked._
+_**Reconciled against reality this tick** (the old list below was
+stale — wrong crate, wrong tab names, HexMap already done). The
+in-game SPA lives in the **`open4x-client-web`** workspace crate, not
+`open4x-server` (which the crate-split flattened to an API-only
+service). Actual structure: `pages/{rest_game,game,replay}`,
+`components/{hexmap,hud,ws,session,client_auth}`, and
+`tabs/{city,culture,science,players,data_reports}` (live) +
+`tabs/{governors,great_people,climate}` (placeholders). HexMap already
+renders REST snapshots — the old "refactor to consume WorldSnapshot"
+item is done._
 
-- [ ] HexMap refactor to consume `WorldSnapshot` directly (currently
-      RestGamePage shows a placeholder "World w × h · N tiles" line)
-- [ ] `tabs/city.rs` — extend existing, REST-driven
-- [ ] `tabs/units.rs` — new
-- [ ] `tabs/government.rs` — new
-- [ ] `tabs/diplomacy.rs` — new
-- [ ] `tabs/empire.rs` — new
-- [ ] `tabs/victory.rs` — new
-- [ ] drawers: notifications / turn-queue / overlays
+**Scouting verdict for the loop (this tick):** the obvious gaps — the
+three placeholder tabs — are **backend-blocked**, so redirecting the
+autonomous loop here would NOT immediately yield self-contained client
+features:
+
+- [ ] `tabs/governors.rs` — placeholder; **no governor data in
+      `open4x-protocol`** → needs server/protocol work first.
+- [ ] `tabs/climate.rs` — placeholder; **no CO2 / sea-level / disaster
+      shape in protocol** → server/protocol work first.
+- [ ] `tabs/great_people.rs` — placeholder; protocol only exposes
+      `great_person_points: i32` (no roster) → needs a great-people
+      view shape before a real tab.
+
+Genuinely loop-suitable client work here (HUD / HexMap interaction
+polish, refinements to the five live tabs) is plausible but needs a
+**deeper read-only scout** before committing the loop — flagged for a
+directed decision rather than an autonomous surface-switch.
 
 ### Cleanup
 
