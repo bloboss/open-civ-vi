@@ -115,12 +115,18 @@ _(this section is the running tracker — items here are picked up by the
 next loop tick; mark items done in `accounts-and-login.md` and delete
 from this list when complete)_
 
-- [ ] **NewGame ▸ "+ Save current" preset shortcut** — the
-      wizard's Review step should expose a Btn that serializes
-      `WizardState` and POSTs to /api/v1/presets so users can
-      stash a configuration without navigating to the Presets
-      tab + pasting JSON. Mirror sites should appear on Step Civ
-      / Step Rules / Step Players so saving works from any step.
+- [x] **NewGame ▸ "+ Save current" preset shortcut** — new
+      `SavePreset` component in `screens/newgame.rs` lives in the
+      shared wizard footer, so it's reachable from every step
+      (Map / Civ / Rules / Players / Review) rather than the
+      Review-only mirror sites the plan called for. Click reveals
+      an inline name form seeded with the default `<leader>'s
+      <civ>` name; Save serialises a full `WizardPreset` snapshot
+      (map + civ + rules + dynamics + victory + turn-mode — richer
+      than `CreateGameBody` so a future "load preset → wizard" can
+      round-trip) and POSTs to `/api/v1/presets` via the existing
+      `presets_api::create`. Pending / Saved ✓ / Error feedback
+      inline.
 
 ### Up next (Phase 6)
 

@@ -7,9 +7,11 @@
 use std::sync::Arc;
 
 use leptos::prelude::*;
+use serde::Serialize;
 use wasm_bindgen_futures::spawn_local;
 
 use crate::components::api::games as games_api;
+use crate::components::api::presets as presets_api;
 use crate::components::{
     Btn, MiniMap, Panel, PanelHead, Popup, PopupActions, PopupBody, PopupList,
     PopupListItem, PopupSize, PopupTrigger, Segmented, Slider, Tag, Toggle,
@@ -119,6 +121,7 @@ impl WizardState {
 
     /// Build the `CreateGameBody` the lobby's `POST /api/v1/games`
     /// expects. Reads every signal current.
+    #[allow(clippy::wrong_self_convention)]
     fn to_create_body(&self) -> games_api::CreateGameBody {
         let leader = self.selected_leader.get();
         let civ = self.selected_civ.get();
@@ -142,6 +145,72 @@ impl WizardState {
             seed,
         }
     }
+
+    /// Snapshot every wizard signal into a serializable preset body.
+    /// Stored opaquely by `/api/v1/presets`; richer than
+    /// `CreateGameBody` because it also carries the rules / dynamics /
+    /// turn-mode fields the create-game route doesn't consume yet, so
+    /// a future "load preset → wizard" path can round-trip the full
+    /// configuration.
+    fn to_preset(&self) -> WizardPreset {
+        let victory = VICTORY_CONDITIONS
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| self.victory[*i].get())
+            .map(|(_, (name, _, _))| name.to_string())
+            .collect();
+        WizardPreset {
+            map_type: self.map_type.get(),
+            map_size: self.map_size.get(),
+            advanced: self.advanced.get(),
+            leader: self.selected_leader.get(),
+            civ: self.selected_civ.get(),
+            difficulty: self.difficulty.get(),
+            starting_era: self.starting_era.get(),
+            game_speed: self.game_speed.get(),
+            ai_personality: self.ai_personality.get(),
+            disasters: self.disasters.get(),
+            barbarians: self.barbarians.get(),
+            city_states: self.city_states.get(),
+            ai_aggression: self.ai_aggression.get(),
+            victory,
+            timer: self.timer.get(),
+            simultaneous: self.simultaneous.get(),
+            private_game: self.private_game.get(),
+            cross_play: self.cross_play.get(),
+        }
+    }
+
+    /// Default preset name — mirrors the generated game name so a
+    /// saved config reads recognisably in the Presets tab.
+    fn default_preset_name(&self) -> String {
+        format!("{}'s {}", self.selected_leader.get(), self.selected_civ.get())
+    }
+}
+
+/// Serializable snapshot of the whole wizard form. The `presets`
+/// store treats `body_json` as opaque text, so the shape lives here
+/// next to the producer rather than in the protocol crate.
+#[derive(Serialize)]
+struct WizardPreset {
+    map_type: String,
+    map_size: String,
+    advanced: bool,
+    leader: String,
+    civ: String,
+    difficulty: String,
+    starting_era: String,
+    game_speed: String,
+    ai_personality: String,
+    disasters: i32,
+    barbarians: i32,
+    city_states: i32,
+    ai_aggression: i32,
+    victory: Vec<String>,
+    timer: String,
+    simultaneous: bool,
+    private_game: bool,
+    cross_play: bool,
 }
 
 #[component]
@@ -178,13 +247,16 @@ pub fn NewGame(#[prop(optional)] on_generated: Option<Callback<String>>) -> impl
             </div>
 
             <div class="wizard-footer">
-                <Btn variant="ghost" size="sm"
-                     disabled=Signal::derive(move || step.get().prev().is_none())
-                     on_click=Callback::new(move |_| {
-                         if let Some(p) = step.get().prev() { step.set(p); }
-                     })>
-                    "← back"
-                </Btn>
+                <div style="display:flex; gap:8px; align-items:center">
+                    <Btn variant="ghost" size="sm"
+                         disabled=Signal::derive(move || step.get().prev().is_none())
+                         on_click=Callback::new(move |_| {
+                             if let Some(p) = step.get().prev() { step.set(p); }
+                         })>
+                        "← back"
+                    </Btn>
+                    <SavePreset />
+                </div>
                 <span>
                     <span class="kbd">"⏎"</span>" next · "
                     <span class="kbd">"⌘K"</span>" jump · "
@@ -241,6 +313,127 @@ fn StepStrip(step: RwSignal<Step>) -> impl IntoView {
 /// chain through every Step component.
 #[derive(Clone)]
 struct GeneratedCb(Callback<String>);
+
+// ─────────────────────────── Save-preset shortcut ──────────────────────────────
+
+#[derive(Clone, PartialEq, Default)]
+enum SaveState {
+    #[default]
+    Idle,
+    Pending,
+    Saved,
+    Error(String),
+}
+
+/// "+ save preset" button + inline name form. Reads `WizardState`
+/// from context, serialises the live configuration, and POSTs it to
+/// `/api/v1/presets` without leaving the wizard. Rendered in the
+/// shared wizard footer so it's reachable from every step.
+#[component]
+fn SavePreset() -> impl IntoView {
+    let state = expect_context::<WizardState>();
+    let open = RwSignal::new(false);
+    let name = RwSignal::new(String::new());
+    let status = RwSignal::new(SaveState::Idle);
+
+    let toggle = move |_| {
+        let now_open = !open.get_untracked();
+        open.set(now_open);
+        if now_open {
+            // Seed the field with the default name on first open.
+            if name.get_untracked().trim().is_empty() {
+                name.set(state.default_preset_name());
+            }
+            status.set(SaveState::Idle);
+        }
+    };
+
+    let on_save = move |_| {
+        if matches!(status.get_untracked(), SaveState::Pending) {
+            return;
+        }
+        let n = name.get_untracked().trim().to_string();
+        if n.is_empty() {
+            status.set(SaveState::Error("name required".into()));
+            return;
+        }
+        let body_json = match serde_json::to_string_pretty(&state.to_preset()) {
+            Ok(s) => s,
+            Err(e) => {
+                status.set(SaveState::Error(e.to_string()));
+                return;
+            }
+        };
+        status.set(SaveState::Pending);
+        spawn_local(async move {
+            match presets_api::create(n, body_json).await {
+                Ok(_) => status.set(SaveState::Saved),
+                Err(e) => status.set(SaveState::Error(e.to_string())),
+            }
+        });
+    };
+
+    view! {
+        <span style="position:relative; display:inline-block">
+            <Btn
+                variant="ghost"
+                size="sm"
+                on_click=Callback::new(toggle)
+            >
+                {move || if open.get() { "× save preset" } else { "+ save preset" }}
+            </Btn>
+            {move || open.get().then(|| view! {
+                <div
+                    class="panel"
+                    style="position:absolute; bottom:calc(100% + 6px); left:0; z-index:50; \
+                           width:260px; padding:10px; box-shadow:0 6px 24px rgba(0,0,0,.18)"
+                >
+                    <div class="muted xsmall" style="margin-bottom:6px">
+                        "Save the current wizard configuration as a preset."
+                    </div>
+                    <input
+                        class="input"
+                        style="width:100%; margin-bottom:8px"
+                        placeholder="preset name"
+                        prop:value=move || name.get()
+                        on:input=move |ev| {
+                            use wasm_bindgen::JsCast as _;
+                            if let Some(el) = ev.target()
+                                .and_then(|t| t.dyn_into::<web_sys::HtmlInputElement>().ok())
+                            {
+                                name.set(el.value());
+                            }
+                        }
+                    />
+                    <Btn
+                        variant="accent"
+                        size="sm"
+                        class="block"
+                        disabled=Signal::derive(move || status.get() == SaveState::Pending)
+                        on_click=Callback::new(on_save)
+                    >
+                        {move || match status.get() {
+                            SaveState::Pending => "Saving…",
+                            SaveState::Saved => "Saved ✓",
+                            _ => "Save preset",
+                        }}
+                    </Btn>
+                    {move || match status.get() {
+                        SaveState::Error(msg) => view! {
+                            <p class="xsmall" style="color:var(--accent); margin:6px 0 0">{msg}</p>
+                        }.into_any(),
+                        SaveState::Saved => view! {
+                            <p class="muted xsmall" style="margin:6px 0 0">
+                                "// stored · find it under the Presets tab"
+                            </p>
+                        }.into_any(),
+                        _ => view! { <></> }.into_any(),
+                    }}
+                </div>
+            })}
+        </span>
+    }
+}
 
 // ─────────────────────────────── Step: map ────────────────────────────────────
 
