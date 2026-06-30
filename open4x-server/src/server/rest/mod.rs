@@ -6,6 +6,7 @@
 //! `tower::ServiceExt::oneshot` without binding a TCP socket.
 
 pub mod auth;
+pub mod governors;
 pub mod handlers;
 
 pub use handlers::*;
@@ -39,6 +40,7 @@ pub fn v1_router() -> Router<Arc<AppState>> {
         .route("/civics", get(handlers::civics))
         .route("/government", get(handlers::government))
         .route("/government/change", post(handlers::change_government))
+        .route("/governors", get(governors::governors))
         .route("/diplomacy", get(handlers::diplomacy))
         .route("/diplomacy/civs/{id}", get(handlers::diplomacy_civ))
         .route("/empire/overview", get(handlers::empire_overview))
