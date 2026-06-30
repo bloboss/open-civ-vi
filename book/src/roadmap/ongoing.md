@@ -9,17 +9,34 @@
 > worktree builder agents; loop merges + tests each into the
 > integration branch, stops when all green.
 
-- [ ] `feat/combat-gp` — combat awards Great General (land) / Admiral
-      (naval) points + libciv test. (Was a gap: combat earned no GPP.)
-- [ ] `feat/disaster-log` — persistent `GameState.disaster_log` +
-      deeper disaster effects (city/unit damage by severity) +
-      `/climate` `recent_disasters` populated + tests.
-- [ ] `feat/co2-emitters` — broader `co2_per_turn` across industrial
-      buildings (was: only Coal/Oil plants emitted) + libciv test.
+### Round 2 — ALL MERGED ✅ (loop `972ed925` stopped)
 
-_A separate read-only scout is mapping other "sources of effect" in the
-engine → will become a menu of "beyond base game" proposals for the
-user._
+All three on `claude/backend-sim-depth`; full suite green (57 suites, 0
+failures). Unpushed.
+
+- [x] `feat/combat-gp` (`d4acad4`) — combat awards Great General (land)
+      / Admiral (naval) points (`GP_POINTS_PER_COMBAT=2` + damage
+      scaling, deterministic) + libciv tests.
+- [x] `feat/disaster-log` (`47ca275`) — persistent
+      `GameState.disaster_log` + severity-scaled effects (city pop/food
+      loss, unit HP damage/destroy) + `/climate` `recent_disasters`
+      populated + libciv & server tests.
+- [x] `feat/co2-emitters` (`485c28c`) — `co2_per_turn` across heavy
+      industry (Factory 1, Power Plant 2, Oil 2, Coal 3, Nuclear 0) +
+      libciv test.
+
+### Round 3+ — sim-extensions roadmap (user-selected, queued)
+
+Full plan in scratchpad `sim-extensions-roadmap.md`. The user picked
+ALL of Track 1 (wire inert data) + ALL of Track 2 (new systems) + added
+**politics/citizen unrest**. NB: Track 1 items share the `compute_yields`
+site, so they are bundled/sequenced, not naively 4-way parallel.
+
+- **Round 3 (Track 1):** 3A yield-pipeline foundation (building yields
+  [near-bug] + belief yields + wonder effects) ‖ 3B era + city-state
+  payoffs. Base on `claude/backend-sim-depth`.
+- **Round 4+ (Track 2):** events engine (foundation) → politics/unrest
+  → espionage → ecology → economy+ideology.
 
 ---
 
