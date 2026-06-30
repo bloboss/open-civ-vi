@@ -280,6 +280,74 @@ minting behind those types.
 - [ ] **GitHub** is OAuth2-only (no ID token) and gets its own
       module under a follow-up Phase 2.3 task.
 
+##### 2.3 part 2 — execution plan (network + verify + wiring)
+
+The deterministic half above is done; this is the actionable plan for
+the rest, grounded in the current code. Reuse `email_auth::verify` as
+the template for the callback's session-mint + cookie + `Redirect::to
+("/")` tail — it is the exact shape the OIDC callback ends in.
+
+**Decision locked in:** use the **`openidconnect`** crate behind an
+`oidc` cargo feature. The auth-URL builder was fine hand-rolled;
+JWT/JWKS signature verification is not — it is where OIDC bugs become
+auth bypasses. The crate handles discovery, JWKS rotation, and the
+full claim-validation set.
+
+1. **Substrate (`open4x-accounts`, `oidc` feature):**
+   - Discovery: GET `/.well-known/openid-configuration`, cache per
+     issuer (yields `authorization_endpoint` / `token_endpoint` /
+     `jwks_uri`). Replaces the hard-coded endpoints in
+     `build_authorization_request`.
+   - Code exchange: POST `code` + PKCE `verifier` + client creds to
+     `token_endpoint` → ID token (JWT) + access token.
+   - ID-token verification (**security-critical**): fetch JWKS, verify
+     RS256 signature, check `iss` / `aud`(== our `client_id`) / `exp`
+     / `iat` / `nonce`.
+   - Claims → `Identity::OpenId{issuer, subject, label}`. `(issuer,
+     sub)` is the unique tuple per §5.
+
+2. **Pending-flow storage:** stash `{state, nonce, pkce_verifier,
+   provider, link_target?}` (~5 min TTL) in a **signed cookie**
+   (HMAC with the existing `OPEN4X_LOBBY_HMAC_KEY`) — no new table and
+   it survives the process-per-game deploy (unlike the in-memory
+   `PubkeyChallengeStore`).
+
+3. **Routes (`open4x-lobby/src/server/rest/oidc_auth.rs`, registered
+   beside the pubkey routes in `rest/mod.rs`):**
+   - `GET /auth/oidc/{provider}/start` → build request, set pending
+     cookie, 302 to provider.
+   - `GET /auth/oidc/{provider}/callback?code&state` → validate state,
+     exchange, verify, find-or-create **or** `link_identity`, mint
+     session, set `lobby_session`, redirect `/`.
+   - `POST /auth/oidc/custom/start { issuer_url }` → discovery + 302.
+   - `POST /me/identities/oidc/{provider}` → start with link intent
+     (Profile "+ link another"), via the pending `link_target` field.
+
+4. **AppState + config:** add `oidc_configs: HashMap<OidcProvider,
+   OidcConfig>` (+ http client / JWKS cache) populated at boot from
+   env (`OIDC_GOOGLE_CLIENT_ID` / `_SECRET`, …); `redirect_uri`
+   derived from `public_base_url`. Unconfigured providers render no
+   button.
+
+5. **SPA:** Login provider buttons do a **full-page navigation** to
+   `/auth/oidc/{provider}/start` (redirect flow, not `fetch`); the
+   custom button reveals an issuer-URL input. Profile "+ link another"
+   → the `/me/identities/oidc/...` start. **GitHub is OAuth2, not
+   OIDC** (no ID token) — separate small handler, or drop its button
+   for v1.
+
+6. **Ops + tests:** rate-limit the callback per `state` (reuse the
+   `email_auth` audit-log throttle); add OIDC sign-in / link / failure
+   `AuditEventKind`s; mock discovery + token + JWKS with `wiremock` and
+   cover bad-`aud` / expired-`exp` / wrong-`nonce` / tampered-signature
+   / mismatched-`state`.
+
+**Sequencing:** (1) substrate + mocked tests, no lobby changes → (2)
+pending-cookie + the three routes + AppState config, smoke against
+Google → (3) SPA buttons (Login then Profile) → (4) GitHub OAuth2 as a
+separate follow-up. This is multi-commit, backend-heavy, security-
+sensitive work — a directed reviewed effort, not autonomous-loop fodder.
+
 #### 2.4 atproto
 
 - [ ] Handle resolution: try `_atproto.<handle>` DNS TXT, fall back to
@@ -323,6 +391,8 @@ data with a real REST call.
 |--------|--------------------------------------------|---------------------------------------|-------------------------------------------------------|
 | POST   | `/api/v1/auth/email/start` ✅              | `{email}`                             | Mint magic-link, hand to `Mailer`                     |
 | GET    | `/api/v1/auth/email/verify` ✅             | `?token=…`                            | Validate, find-or-create account, set session cookie  |
+| POST   | `/api/v1/auth/pubkey/challenge` ✅         | `{pubkey}` (32-byte hex)              | Issue a single-use 32-byte nonce (120s TTL) to sign   |
+| POST   | `/api/v1/auth/pubkey/verify` ✅            | `{pubkey, signature, email?}`         | Verify Ed25519 sig over the nonce, find-or-create account keyed on the pubkey identity, link `email` as secondary, set session cookie |
 | GET    | `/api/v1/auth/oidc/{provider}/start`       | —                                     | 302 to provider authorize URL (PKCE state in cookie)  |
 | GET    | `/api/v1/auth/oidc/{provider}/callback`    | `?code&state`                         | Code exchange, verify ID token, link identity         |
 | POST   | `/api/v1/auth/oidc/custom/start`           | `{issuer_url}`                        | Discovery + 302 like above                            |
@@ -554,9 +624,10 @@ User-visible quality once the platform basics are wired.
       DELETE /api/v1/presets/{id}. SPA screen lists "My
       presets" with per-row Delete; "↑ import JSON…" toggle
       reveals a name + textarea form + Save that persists.
-      Load-from-built-in and the wizard-tab "+ Save current"
-      ergonomic shortcut are follow-ups (deliberately out of
-      scope for the persistence slice).
+      Load-from-built-in is still a follow-up; the wizard-tab
+      "+ Save current" ergonomic shortcut landed in NewGame's
+      shared footer (`SavePreset` component — serialises the live
+      `WizardState` and POSTs to `/api/v1/presets`).
 - [x] **Docs screen** — `screens/docs.rs` ships a quick-links
       panel pointing at `/book/`, the accounts-and-login roadmap,
       and the web-client REST reference. The lobby binary mounts

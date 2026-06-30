@@ -245,8 +245,11 @@ honest. Remaining truly-open items are flagged below.)_
 
 - [ ] **Phase 2.3 ▸ OIDC code exchange + ID-token verify** — needs
       `openidconnect` + `reqwest` and a mocked-discovery test
-      harness. Land after Phase 3 surface stabilises so the lobby
-      handler shape is settled before the network plumbing.
+      harness. **Detailed execution plan now in
+      accounts-and-login.md §2.3 part 2** (substrate → routes → SPA →
+      GitHub, with the signed-cookie pending-flow + `openidconnect`
+      decisions locked). Multi-commit, security-sensitive — a
+      directed reviewed effort, not autonomous-loop fodder.
 - [ ] **Phase 2.3.x ▸ GitHub OAuth2 helper**.
 - [ ] **Phase 2.4 ▸ atproto handle/DID resolver + OAuth/DPoP flow**.
 
