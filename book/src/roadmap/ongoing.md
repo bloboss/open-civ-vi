@@ -147,6 +147,15 @@ from this list when complete)_
       Non-wizard JSON (e.g. an imported raw body) is rejected with a
       "⚠ isn't a wizard preset" note rather than corrupting state.
       Closes the "Load-from-built-in" follow-up's wizard half.
+- [x] **Presets tab ▸ built-in starter configs load** — the
+      "Built-in" panel's three rows had inert "load" buttons. Made
+      `newgame.rs` the authority: new `WizardPreset::defaults()` +
+      `builtin_presets() -> Vec<BuiltinPreset>` (Standard prince /
+      Deity duel / Slow marathon, each a serialised `WizardPreset`).
+      `Presets` renders them and wires "load" through the same
+      `on_load` callback as saved rows, so built-ins apply to the
+      wizard unchanged. Refreshed the now-stale module doc + footer
+      copy. Fully closes the "Load-from-built-in" follow-up.
 - [x] **NewGame ▸ gate Generate on a victory condition** — the
       Review step let you generate a game with zero victory
       conditions (the summary only snarked "none — unwinnable").

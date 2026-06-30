@@ -1,15 +1,15 @@
 //! Presets screen — Phase 5 polish.
 //!
 //! Wires the design's Presets tab to `/api/v1/presets`:
-//! - "Built-in" panel keeps a static list (load is inert v1).
-//! - "My presets" lists the user's saved rows, each with a Delete.
+//! - "Built-in" panel renders `newgame::builtin_presets()`; each
+//!   row's "load" pushes the config into the wizard via `on_load`.
+//! - "My presets" lists the user's saved rows, each with Load + Delete.
 //! - "↑ import JSON…" toggles a textarea where the user can paste
 //!   a name + a JSON body, then Save persists it.
 //!
-//! The wizard-state save flow ("+ Save current") is not wired
-//! here because this screen is on a different tab from the
-//! wizard — adding that ergonomic shortcut lives in NewGame's
-//! Review step as a follow-up.
+//! Saving a config lives in the New-game wizard ("+ save preset" in
+//! the footer); both built-in and saved rows here load back into that
+//! wizard via the `on_load` callback.
 
 use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
@@ -132,27 +132,29 @@ pub fn Presets(
             <Panel>
                 <div class="h3" style="margin-bottom:10px">"Built-in"</div>
                 <div class="col" style="gap:6px">
-                    <div class="row between center-y" style="border-bottom:1px solid var(--hairline-2); padding:6px 0">
-                        <div>
-                            <div style="font-weight:600">"Standard prince"</div>
-                            <div class="muted xsmall">"continents · standard · prince · 1H + 7AI"</div>
-                        </div>
-                        <Btn variant="ghost" size="sm">"load"</Btn>
-                    </div>
-                    <div class="row between center-y" style="border-bottom:1px solid var(--hairline-2); padding:6px 0">
-                        <div>
-                            <div style="font-weight:600">"Deity duel"</div>
-                            <div class="muted xsmall">"pangaea · duel · deity · 2H"</div>
-                        </div>
-                        <Btn variant="ghost" size="sm">"load"</Btn>
-                    </div>
-                    <div class="row between center-y" style="padding:6px 0">
-                        <div>
-                            <div style="font-weight:600">"Slow marathon"</div>
-                            <div class="muted xsmall">"continents · large · prince · marathon speed · 1H + 9AI"</div>
-                        </div>
-                        <Btn variant="ghost" size="sm">"load"</Btn>
-                    </div>
+                    {let builtins = crate::screens::newgame::builtin_presets();
+                     let total = builtins.len();
+                     builtins.into_iter().enumerate().map(|(i, b)| {
+                        let border = if i + 1 == total { "" } else { "border-bottom:1px solid var(--hairline-2); " };
+                        view! {
+                            <div class="row between center-y" style=format!("{border}padding:6px 0")>
+                                <div>
+                                    <div style="font-weight:600">{b.name}</div>
+                                    <div class="muted xsmall">{b.desc}</div>
+                                </div>
+                                {on_load.map(|cb| {
+                                    let body = b.body_json.clone();
+                                    view! {
+                                        <Btn
+                                            variant="ghost"
+                                            size="sm"
+                                            on_click=Callback::new(move |_| cb.run(body.clone()))
+                                        >"load"</Btn>
+                                    }
+                                })}
+                            </div>
+                        }
+                    }).collect::<Vec<_>>()}
                 </div>
             </Panel>
 
@@ -225,7 +227,7 @@ pub fn Presets(
             </Suspense>
 
             <p class="muted xsmall" style="margin-top:14px; text-align:center">
-                "// '+ Save current' on the wizard tab is the follow-up — for now, paste JSON here."
+                "// save a config with '+ save preset' in the New-game wizard, or import raw JSON above."
             </p>
         </div>
     }

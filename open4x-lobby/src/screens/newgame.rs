@@ -266,6 +266,73 @@ struct WizardPreset {
     cross_play: bool,
 }
 
+impl WizardPreset {
+    /// The canonical wizard defaults — mirrors `WizardState::new`.
+    /// Built-in presets start here and override a few fields.
+    fn defaults() -> Self {
+        Self {
+            map_type: "continents".into(),
+            map_size: "std".into(),
+            advanced: false,
+            seed_override: String::new(),
+            leader: "Saladin".into(),
+            civ: "Arabia".into(),
+            difficulty: "prince".into(),
+            starting_era: "ancient".into(),
+            game_speed: "std".into(),
+            ai_personality: "historic".into(),
+            disasters: 2,
+            barbarians: 2,
+            city_states: 12,
+            ai_aggression: 50,
+            victory: ["Science", "Culture", "Domination", "Religion", "Score"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+            timer: "off".into(),
+            simultaneous: false,
+            private_game: true,
+            cross_play: true,
+        }
+    }
+}
+
+/// A built-in starter config offered in the Presets tab. `body_json`
+/// is a serialised [`WizardPreset`] so the existing load path applies
+/// it to the wizard unchanged.
+pub struct BuiltinPreset {
+    pub name: &'static str,
+    pub desc: &'static str,
+    pub body_json: String,
+}
+
+/// The canonical built-in presets. Constructed from
+/// [`WizardPreset::defaults`] so they stay in sync with the wizard
+/// shape, then serialised for the load path.
+pub fn builtin_presets() -> Vec<BuiltinPreset> {
+    let prince = WizardPreset::defaults();
+
+    let mut deity = WizardPreset::defaults();
+    deity.map_type = "pangaea".into();
+    deity.map_size = "duel".into();
+    deity.difficulty = "deity".into();
+
+    let mut marathon = WizardPreset::defaults();
+    marathon.map_size = "large".into();
+    marathon.game_speed = "marathon".into();
+
+    let pack = |name, desc, p: &WizardPreset| BuiltinPreset {
+        name,
+        desc,
+        body_json: serde_json::to_string_pretty(p).unwrap_or_default(),
+    };
+    vec![
+        pack("Standard prince", "continents · standard · prince", &prince),
+        pack("Deity duel", "pangaea · duel · deity", &deity),
+        pack("Slow marathon", "continents · large · prince · marathon", &marathon),
+    ]
+}
+
 #[component]
 pub fn NewGame(#[prop(optional)] on_generated: Option<Callback<String>>) -> impl IntoView {
     let step = RwSignal::new(Step::Map);
