@@ -56,6 +56,7 @@ use serde::{Deserialize, Serialize};
 /// dot-grouped quads, prefixed `0x`. Internally a u64. Generated on first
 /// successful sign-in and immutable thereafter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct PlayerId(pub u64);
 
 impl PlayerId {
@@ -107,6 +108,12 @@ pub enum Identity {
     },
     /// atproto. Stored as `did:plc:…` plus the user-friendly handle.
     Atproto { did: String, handle: String },
+    /// Ed25519 public key. The lowercase-hex 32-byte key is the stable
+    /// identifier; authentication is by challenge-response signature
+    /// (the holder proves possession of the private key), so a linked
+    /// `PublicKey` identity is inherently verified. The same keypair can
+    /// authenticate against the in-game `open4x-server` bearer surface.
+    PublicKey { ed25519_hex: String, label: String },
 }
 
 impl Identity {
@@ -115,6 +122,14 @@ impl Identity {
             Identity::Email { address, .. } => address.clone(),
             Identity::OpenId { label, .. } => label.clone(),
             Identity::Atproto { handle, did } => format!("{handle} ({did})"),
+            Identity::PublicKey { ed25519_hex, label } => {
+                if !label.is_empty() {
+                    label.clone()
+                } else {
+                    // Short fingerprint: first 8 + last 4 hex chars.
+                    pubkey_fingerprint(ed25519_hex)
+                }
+            }
         }
     }
 
@@ -123,7 +138,19 @@ impl Identity {
             Identity::Email { .. } => "EMAIL",
             Identity::OpenId { .. } => "OPENID",
             Identity::Atproto { .. } => "ATPROTO",
+            Identity::PublicKey { .. } => "PUBKEY",
         }
+    }
+}
+
+/// Short human-readable fingerprint for an Ed25519 public key given as
+/// lowercase hex: `first8…last4`. Falls back to the whole string when
+/// it's too short to abbreviate.
+pub fn pubkey_fingerprint(ed25519_hex: &str) -> String {
+    if ed25519_hex.len() <= 12 {
+        ed25519_hex.to_string()
+    } else {
+        format!("{}…{}", &ed25519_hex[..8], &ed25519_hex[ed25519_hex.len() - 4..])
     }
 }
 
@@ -178,11 +205,6 @@ pub enum ColorScheme {
     Auto,
 }
 
-impl Default for PlayerId {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 // ─────────────────────────── Magic-link token ─────────────────────────────────
 
