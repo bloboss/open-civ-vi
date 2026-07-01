@@ -2405,4 +2405,138 @@ mod tests {
         assert_eq!(PillageGrievance.grievance_amount(), 5);
         assert_eq!(CapturedCityGrievance.grievance_amount(), 20);
     }
+
+    // ── Domestic politics (unrest) ─────────────────────────────────────────
+
+    #[test]
+    fn test_unrest_accumulates_from_war_dark_age_and_disaster() {
+        use crate::civ::era::EraAge;
+        use crate::game::state::DisasterRecord;
+        use crate::world::disaster::DisasterKind;
+
+        let (mut state, civ_id) = make_state();
+        // A dark-age civ.
+        state.civilizations[0].era_age = EraAge::Dark;
+
+        // An owned city.
+        let city_id = state.id_gen.next_city_id();
+        let coord   = HexCoord::from_qr(5, 5);
+        let city = City::new(city_id, "Discontent".to_string(), civ_id, coord);
+        state.civilizations[0].cities.push(city_id);
+        state.cities.push(city);
+        assert_eq!(state.cities[0].unrest, 0, "unrest starts at 0");
+
+        // The civ is at war (war-weariness).
+        let enemy_id = state.id_gen.next_civ_id();
+        let mut rel = DiplomaticRelation::new(civ_id, enemy_id);
+        rel.status = DiplomaticStatus::War;
+        rel.turns_at_war = 4;
+        state.diplomatic_relations.push(rel);
+
+        // A recent disaster one tile away from the city (this turn, turn 0).
+        state.disaster_log.push(DisasterRecord {
+            kind: DisasterKind::Flood,
+            coord: coord.neighbors()[0],
+            turn: state.turn,
+            severity: 2,
+        });
+
+        let engine = DefaultRulesEngine;
+        let diff = engine.advance_turn(&mut state);
+
+        assert!(
+            state.cities[0].unrest > 0,
+            "unrest should accumulate under war + dark age + nearby disaster, got {}",
+            state.cities[0].unrest
+        );
+        assert!(
+            diff.deltas.iter().any(|d| matches!(
+                d,
+                StateDelta::UnrestChanged { city, unrest } if *city == city_id && *unrest > 0
+            )),
+            "an UnrestChanged delta should be emitted"
+        );
+    }
+
+    #[test]
+    fn test_high_unrest_lowers_yields_exactly_once() {
+        use crate::civ::city::{city_unrest_modifiers, UNREST_RIOT_TIER};
+
+        // A city producing some production so a penalty is observable.
+        let (mut state, civ_id) = make_state();
+        let city_id = state.id_gen.next_city_id();
+        let coord   = HexCoord::from_qr(5, 5);
+        let mut city = City::new(city_id, "Rioting".to_string(), civ_id, coord);
+        add_founding_tiles(&mut city);
+        state.cities.push(city);
+
+        let engine = DefaultRulesEngine;
+        let calm = engine.compute_yields(&state, civ_id);
+
+        // Raise the city into the Rioting tier.
+        state.cities[0].unrest = UNREST_RIOT_TIER;
+        let angry = engine.compute_yields(&state, civ_id);
+
+        // The penalty must equal exactly one application of the tier modifier
+        // (no double-count): production drops by the tier's -2.
+        let expected_prod_penalty = -2; // Rioting tier production flat.
+        assert_eq!(
+            angry.production,
+            calm.production + expected_prod_penalty,
+            "unrest production penalty must apply exactly once"
+        );
+        assert_eq!(
+            angry.gold,
+            calm.gold - 2,
+            "unrest gold penalty must apply exactly once"
+        );
+        // Cross-check against the modifier source directly.
+        assert_eq!(
+            city_unrest_modifiers(UNREST_RIOT_TIER).len(),
+            3,
+            "Rioting tier defines production/gold/science penalties"
+        );
+    }
+
+    #[test]
+    fn test_unrest_threshold_fires_crisis_event() {
+        use crate::civ::city::UNREST_RIOT_TIER;
+        use crate::game::rules::events::evaluate_events;
+
+        let (mut state, civ_id) = make_state();
+        let city_id = state.id_gen.next_city_id();
+        let coord   = HexCoord::from_qr(5, 5);
+        let mut city = City::new(city_id, "Riotous".to_string(), civ_id, coord);
+
+        // Below the threshold: no crisis event.
+        city.unrest = UNREST_RIOT_TIER - 1;
+        state.cities.push(city);
+        let fired_below = evaluate_events(&[], &state);
+        assert!(
+            !fired_below.iter().any(|(_, d)| d.id == "riot"),
+            "riot must not fire below the threshold"
+        );
+
+        // At/above the threshold: the riot crisis fires for the owner.
+        state.cities[0].unrest = UNREST_RIOT_TIER;
+        let fired = evaluate_events(&[], &state);
+        assert!(
+            fired.iter().any(|(civ, d)| *civ == civ_id && d.id == "riot"),
+            "crossing the unrest threshold must fire the riot crisis event"
+        );
+
+        // Driven through a full turn: set unrest comfortably above the tier so
+        // it survives this turn's decay (the events phase 5b-1b runs after the
+        // politics phase 3c-2) and the events phase records an EventFired.
+        state.cities[0].unrest = UNREST_RIOT_TIER + 10;
+        let engine = DefaultRulesEngine;
+        let diff = engine.advance_turn(&mut state);
+        assert!(
+            diff.deltas.iter().any(|d| matches!(
+                d,
+                StateDelta::EventFired { civ, event_id } if *civ == civ_id && event_id == "riot"
+            )),
+            "the crisis event should surface as an EventFired delta"
+        );
+    }
 }

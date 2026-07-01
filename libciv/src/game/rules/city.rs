@@ -430,6 +430,16 @@ pub(crate) fn compute_yields(state: &GameState, civ_id: CivId) -> YieldBundle {
             mods.extend(crate::civ::era::era_age_modifiers(civ.era_age));
         }
 
+        // ── Domestic unrest penalties ─────────────────────────────────────
+        // Each owned city with elevated unrest imposes a tiered yield penalty.
+        // Folded exactly like `era_age_modifiers` above: the base is already
+        // frozen, so resolving these over it is recursion-safe by construction,
+        // and iterating each owned city once counts every city's penalty
+        // exactly once (no double-count).
+        for city in state.cities.iter().filter(|c| c.owner == civ_id) {
+            mods.extend(crate::civ::city::city_unrest_modifiers(city.unrest));
+        }
+
         // ── City-state suzerain & envoy payoffs ───────────────────────────
         // A civ that is suzerain of a city-state — or has envoys invested in
         // it — receives that city-state's defined modifiers. City-state city

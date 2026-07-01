@@ -17,6 +17,30 @@ use crate::rules::unique::UniqueUnitAbility;
 
 const RELIGIOUS_PRESSURE_RADIUS: u32 = 10;
 
+// ── Domestic-politics (unrest) tuning ──────────────────────────────────────
+// Per-turn unrest pressure contributed by each input, and the decay applied
+// against it. Consumed by Phase 3c-2. Kept deterministic (integer math).
+/// Unrest added per active war the city's owner is engaged in.
+const UNREST_WAR_WEARINESS: i32 = 2;
+/// Unrest added while the owner is in a Dark Age.
+const UNREST_DARK_AGE: i32 = 3;
+/// Unrest added per severity point of a recent nearby disaster.
+const UNREST_DISASTER_PER_SEVERITY: i32 = 2;
+/// A disaster counts as "recent" if it fired within this many turns.
+const UNREST_DISASTER_RECENCY: u32 = 3;
+/// A disaster counts as "nearby" within this hex distance of the city.
+const UNREST_DISASTER_RADIUS: u32 = 2;
+/// Loyalty at or above this value is "high" and boosts unrest decay.
+const UNREST_HIGH_LOYALTY_MARK: i32 = 80;
+/// Loyalty below this value adds unrest (scaled by the shortfall / 10).
+const UNREST_LOW_LOYALTY_MARK: i32 = 50;
+/// City population is divided by this to derive a size-strain contribution.
+const UNREST_POP_STRAIN_DIVISOR: i32 = 4;
+/// Base unrest decay applied every turn.
+const UNREST_BASE_DECAY: i32 = 1;
+/// Extra decay applied when loyalty is high (see `UNREST_HIGH_LOYALTY_MARK`).
+const UNREST_HIGH_LOYALTY_DECAY: i32 = 2;
+
 /// Advance the game state by one turn. Returns diff.
 pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut GameState) -> GameStateDiff {
     let mut diff = GameStateDiff::new();
@@ -990,6 +1014,81 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
                 city: city_id,
                 new_owner,
                 old_owner,
+            });
+        }
+    }
+
+    // ── Phase 3c-2: Domestic politics (unrest) ────────────────────────────
+    // Sibling of the loyalty phase, run right AFTER it so it can read the
+    // just-updated `City.loyalty`. For each owned (non-city-state) city,
+    // recompute unrest from its political-contribution inputs — the owner's
+    // war-weariness, a dark age, recent nearby disasters, low loyalty and city
+    // size — net of decay (a base rate plus a bonus when loyalty is high), then
+    // clamp and record the change. Elevated unrest penalizes yields (through
+    // `compute_yields`) and, at high tiers, fires domestic-crisis events in the
+    // Phase 5b-1b events engine.
+    {
+        use crate::civ::city::{CityKind, UNREST_MAX};
+        use crate::civ::era::EraAge;
+
+        let num_cities = state.cities.len();
+        // Compute new values first (immutable borrow of state), then apply.
+        let unrest_updates: Vec<(usize, i32)> = (0..num_cities)
+            .filter(|&i| !matches!(state.cities[i].kind, CityKind::CityState(_)))
+            .filter_map(|i| {
+                let city = &state.cities[i];
+                let civ_era = state.civ(city.owner).map(|c| c.era_age).unwrap_or(EraAge::Normal);
+
+                let mut pressure: i32 = 0;
+
+                // War-weariness: each war the owner is actively engaged in.
+                for rel in &state.diplomatic_relations {
+                    if (rel.civ_a == city.owner || rel.civ_b == city.owner)
+                        && rel.turns_at_war > 0
+                    {
+                        pressure += UNREST_WAR_WEARINESS;
+                    }
+                }
+
+                // Dark age malaise.
+                if civ_era == EraAge::Dark {
+                    pressure += UNREST_DARK_AGE;
+                }
+
+                // Recent disasters near this city (match by coord + recency).
+                for rec in &state.disaster_log {
+                    if state.turn.saturating_sub(rec.turn) <= UNREST_DISASTER_RECENCY
+                        && city.coord.distance(&rec.coord) <= UNREST_DISASTER_RADIUS
+                    {
+                        pressure += UNREST_DISASTER_PER_SEVERITY * rec.severity as i32;
+                    }
+                }
+
+                // Low loyalty breeds unrest (scaled by how far below the mark).
+                if city.loyalty < UNREST_LOW_LOYALTY_MARK {
+                    pressure += (UNREST_LOW_LOYALTY_MARK - city.loyalty) / 10;
+                }
+
+                // Larger cities strain (no amenities model yet).
+                pressure += city.population as i32 / UNREST_POP_STRAIN_DIVISOR;
+
+                // Decay: a base rate, plus a bonus when loyalty is high.
+                let mut decay = UNREST_BASE_DECAY;
+                if city.loyalty >= UNREST_HIGH_LOYALTY_MARK {
+                    decay += UNREST_HIGH_LOYALTY_DECAY;
+                }
+
+                let new_unrest = (city.unrest + pressure - decay).clamp(0, UNREST_MAX);
+                (new_unrest != city.unrest).then_some((i, new_unrest))
+            })
+            .collect();
+
+        for (city_idx, new_unrest) in unrest_updates {
+            let city = &mut state.cities[city_idx];
+            city.unrest = new_unrest;
+            diff.push(StateDelta::UnrestChanged {
+                city: city.id,
+                unrest: new_unrest,
             });
         }
     }

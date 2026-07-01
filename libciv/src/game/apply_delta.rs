@@ -298,6 +298,11 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
                 c.loyalty = *new_value;
             }
         }
+        StateDelta::UnrestChanged { city, unrest } => {
+            if let Some(c) = state.cities.iter_mut().find(|c| c.id == *city) {
+                c.unrest = *unrest;
+            }
+        }
         StateDelta::CityRevolted { city, new_owner, old_owner } => {
             if let Some(c) = state.cities.iter_mut().find(|c| c.id == *city) {
                 if let Some(owner) = new_owner {

@@ -86,6 +86,9 @@ pub enum DeltaPattern {
 pub enum Condition {
     /// Any city whose loyalty is strictly below this value fires for its owner.
     CityLoyaltyBelow(i32),
+    /// Any city whose domestic unrest is at or above this value fires for its
+    /// owner. Drives the domestic-crisis events (riot/strike).
+    CityUnrestAbove(i32),
 }
 
 /// How an event fires: either a matching delta appeared this turn, or a
@@ -144,6 +147,38 @@ static BUILTIN_EVENTS: LazyLock<Vec<EventDef>> = LazyLock::new(|| {
                 desc: "Loyalty is collapsing; the city may soon revolt.",
             },
         },
+        // Domestic unrest has boiled over into open rioting. The mechanical
+        // bite is delivered by the hardened yield pipeline
+        // (`city_unrest_modifiers`); this event surfaces the player-facing
+        // crisis. Effects are intentionally empty (mirroring `city_in_turmoil`)
+        // so nothing is re-enqueued every turn the condition persists.
+        EventDef {
+            id: "riot",
+            trigger: EventTrigger::OnCondition(Condition::CityUnrestAbove(
+                crate::civ::city::UNREST_RIOT_TIER,
+            )),
+            effects: Vec::new(),
+            notif: EventNotif {
+                kind: EventKind::Warn,
+                category: "unrest",
+                title: "Riots Break Out",
+                desc: "Discontent has spilled into the streets; your cities riot.",
+            },
+        },
+        // Unrest has escalated to a general strike — the most severe tier.
+        EventDef {
+            id: "strike",
+            trigger: EventTrigger::OnCondition(Condition::CityUnrestAbove(
+                crate::civ::city::UNREST_REVOLT_TIER,
+            )),
+            effects: Vec::new(),
+            notif: EventNotif {
+                kind: EventKind::Bad,
+                category: "unrest",
+                title: "General Strike",
+                desc: "A general strike grips your empire; production grinds to a halt.",
+            },
+        },
     ]
 });
 
@@ -185,6 +220,12 @@ fn condition_matches(cond: Condition, state: &GameState) -> Vec<CivId> {
             .cities
             .iter()
             .filter(|c| c.loyalty < threshold)
+            .map(|c| c.owner)
+            .collect(),
+        Condition::CityUnrestAbove(threshold) => state
+            .cities
+            .iter()
+            .filter(|c| c.unrest >= threshold)
             .map(|c| c.owner)
             .collect(),
     }
