@@ -5,3 +5,6 @@ target/
 *.swo
 *~
 .claude/
+.dev-loop/
+open4x-client-js/node_modules/
+open4x-client-js/dist/
