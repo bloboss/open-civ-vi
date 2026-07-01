@@ -328,6 +328,42 @@ pub(crate) fn compute_yields(state: &GameState, civ_id: CivId) -> YieldBundle {
             }
         }
 
+        // ── Era-age consequences ──────────────────────────────────────────
+        // A Golden/Heroic age grants bonus yields; a Dark age imposes
+        // penalties. Read the civ's current era age set by the era phase.
+        if let Some(civ) = state.civ(civ_id) {
+            mods.extend(crate::civ::era::era_age_modifiers(civ.era_age));
+        }
+
+        // ── City-state suzerain & envoy payoffs ───────────────────────────
+        // A civ that is suzerain of a city-state — or has envoys invested in
+        // it — receives that city-state's defined modifiers. City-state city
+        // names match their `CityStateDef` entries, so look up the def by name
+        // and fold the earned tiers (cumulative at 1/3/6 envoys) plus the
+        // suzerain bonus into the resolved set.
+        {
+            let cs_defs = crate::civ::builtin_city_state_defs();
+            for city in &state.cities {
+                if let crate::civ::city::CityKind::CityState(cs_data) = &city.kind
+                    && let Some(def) = cs_defs.iter().find(|d| d.name == city.name)
+                {
+                    let envoys = cs_data.get_influence(civ_id);
+                    if envoys >= 1 {
+                        mods.extend(def.envoy_1_modifiers.iter().cloned());
+                    }
+                    if envoys >= 3 {
+                        mods.extend(def.envoy_3_modifiers.iter().cloned());
+                    }
+                    if envoys >= 6 {
+                        mods.extend(def.envoy_6_modifiers.iter().cloned());
+                    }
+                    if cs_data.suzerain == Some(civ_id) {
+                        mods.extend(def.suzerain_modifiers.iter().cloned());
+                    }
+                }
+            }
+        }
+
         mods
     };
 

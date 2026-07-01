@@ -351,10 +351,16 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
             }
         }
         Condition::PerCityStateSuzerain => {
-            // Count city-states where this civ is suzerain.
-            // City-states are cities with CityKind::CityState.
-            // For now, return Scale(0) — full city-state suzerain tracking is a future system.
-            ConditionResult::Scale(0)
+            // Count city-states where this civ is suzerain. City-states are
+            // cities with `CityKind::CityState`; suzerainty is cached on the
+            // per-city `CityStateData`.
+            let count = ctx.state.cities.iter()
+                .filter(|c| matches!(
+                    &c.kind,
+                    crate::civ::city::CityKind::CityState(cs) if cs.suzerain == Some(ctx.civ_id)
+                ))
+                .count();
+            ConditionResult::Scale(count as i32)
         }
         Condition::PerAdjacentDistrict => {
             if let Some(coord) = ctx.tile {
