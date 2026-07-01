@@ -17,8 +17,7 @@ pub fn qr_svg(text: &str, pixel_size: u32) -> String {
             // Render a placeholder square the caller can swap in for
             // real error UI.
             return format!(
-                "<svg width=\"{0}\" height=\"{0}\" viewBox=\"0 0 1 1\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"1\" height=\"1\" fill=\"#fbbf24\"/></svg>",
-                pixel_size,
+                "<svg width=\"{pixel_size}\" height=\"{pixel_size}\" viewBox=\"0 0 1 1\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"1\" height=\"1\" fill=\"#fbbf24\"/></svg>"
             );
         }
     };
@@ -38,11 +37,9 @@ pub fn qr_svg(text: &str, pixel_size: u32) -> String {
     use std::fmt::Write as _;
     let _ = write!(
         svg,
-        "<svg width=\"{px}\" height=\"{px}\" viewBox=\"0 0 {t} {t}\" \
+        "<svg width=\"{pixel_size}\" height=\"{pixel_size}\" viewBox=\"0 0 {total} {total}\" \
          xmlns=\"http://www.w3.org/2000/svg\" shape-rendering=\"crispEdges\">\
-         <rect width=\"{t}\" height=\"{t}\" fill=\"#faf8f3\"/>",
-        px = pixel_size,
-        t = total,
+         <rect width=\"{total}\" height=\"{total}\" fill=\"#faf8f3\"/>",
     );
     for y in 0..width {
         for x in 0..width {
