@@ -35,9 +35,7 @@ struct OneshotTransport {
 
 impl OneshotTransport {
     fn new(state: Arc<AppState>) -> Self {
-        let router = Router::new()
-            .nest("/api/v1", v1_router())
-            .with_state(state);
+        let router = Router::new().nest("/api/v1", v1_router()).with_state(state);
         Self {
             router,
             token: Mutex::new(None),
@@ -175,7 +173,9 @@ async fn cities_list_units_list_and_diplomacy_round_trip() {
     let units = endpoints::units::list(&transport).await.expect("units");
     assert!(!units.units.is_empty(), "expected at least one unit");
 
-    let dip = endpoints::diplomacy::get(&transport).await.expect("diplomacy");
+    let dip = endpoints::diplomacy::get(&transport)
+        .await
+        .expect("diplomacy");
     // Single-player solo game: 0 other civs.
     assert_eq!(dip.civs.len(), 0);
 }
@@ -193,12 +193,9 @@ async fn tech_get_and_research_and_end_turn_advance() {
         .find(|t| t.status == "available")
         .map(|t| t.id.clone())
         .expect("at least one available tech");
-    endpoints::tech::research(
-        &transport,
-        &endpoints::tech::TechResearchBody { tech_id },
-    )
-    .await
-    .expect("research tech");
+    endpoints::tech::research(&transport, &endpoints::tech::TechResearchBody { tech_id })
+        .await
+        .expect("research tech");
 
     // …and a civic so 'choose_civic' clears (RulesEngine::pending_actions
     // surfaces both as required on a fresh game).
@@ -244,15 +241,29 @@ async fn smoke_remaining_endpoints_all_return_2xx() {
     let transport = build_transport();
     bootstrap(&transport).await;
 
-    endpoints::map::overlays(&transport).await.expect("map overlays");
-    endpoints::registry::get(&transport).await.expect("registry");
-    endpoints::empire::overview(&transport).await.expect("empire overview");
+    endpoints::map::overlays(&transport)
+        .await
+        .expect("map overlays");
+    endpoints::registry::get(&transport)
+        .await
+        .expect("registry");
+    endpoints::empire::overview(&transport)
+        .await
+        .expect("empire overview");
     endpoints::victory::get(&transport).await.expect("victory");
-    endpoints::government::get(&transport).await.expect("government");
-    endpoints::notifications::list(&transport).await.expect("notifications");
-    endpoints::notifications::dismiss_all(&transport).await.expect("dismiss all");
+    endpoints::government::get(&transport)
+        .await
+        .expect("government");
+    endpoints::notifications::list(&transport)
+        .await
+        .expect("notifications");
+    endpoints::notifications::dismiss_all(&transport)
+        .await
+        .expect("dismiss all");
     endpoints::armies::list(&transport).await.expect("armies");
-    endpoints::turn::queue(&transport).await.expect("turn queue");
+    endpoints::turn::queue(&transport)
+        .await
+        .expect("turn queue");
 
     // world tile lookup — pick a tile we know is in view (the snapshot
     // returned tiles around 0,0).
@@ -275,8 +286,12 @@ async fn smoke_remaining_endpoints_all_return_2xx() {
     // City detail + tiles for the first owned city.
     let cities = endpoints::cities::list(&transport).await.expect("cities");
     let city_id = cities.cities[0].id.clone();
-    endpoints::cities::detail(&transport, &city_id).await.expect("city detail");
-    endpoints::cities::tiles(&transport, &city_id).await.expect("city tiles");
+    endpoints::cities::detail(&transport, &city_id)
+        .await
+        .expect("city detail");
+    endpoints::cities::tiles(&transport, &city_id)
+        .await
+        .expect("city tiles");
 
     // Unit detail for the first owned unit.
     let units = endpoints::units::list(&transport).await.expect("units");
@@ -286,7 +301,9 @@ async fn smoke_remaining_endpoints_all_return_2xx() {
         .find(|u| u.is_own)
         .map(|u| u.id.clone())
         .expect("at least one own unit");
-    endpoints::units::detail(&transport, &unit_id).await.expect("unit detail");
+    endpoints::units::detail(&transport, &unit_id)
+        .await
+        .expect("unit detail");
 
     // Combat preview points at a tile with no defender → server returns
     // 404 with a structured body. Either way the SDK decodes it.
@@ -330,7 +347,9 @@ async fn city_mutations_round_trip() {
     assert_eq!(focus.view.focus, "production");
 
     // production queue: queue a warrior then cancel it
-    let reg = endpoints::registry::get(&transport).await.expect("registry");
+    let reg = endpoints::registry::get(&transport)
+        .await
+        .expect("registry");
     let warrior_type = reg
         .unit_types
         .iter()
@@ -368,14 +387,13 @@ async fn tech_cancel_is_idempotent() {
         .find(|t| t.status == "available")
         .map(|t| t.id.clone())
         .expect("available tech");
-    endpoints::tech::research(
-        &transport,
-        &endpoints::tech::TechResearchBody { tech_id },
-    )
-    .await
-    .expect("queue tech");
+    endpoints::tech::research(&transport, &endpoints::tech::TechResearchBody { tech_id })
+        .await
+        .expect("queue tech");
 
-    let cancel = endpoints::tech::cancel(&transport).await.expect("cancel tech");
+    let cancel = endpoints::tech::cancel(&transport)
+        .await
+        .expect("cancel tech");
     assert!(cancel.view.research_queue.is_empty());
 
     // Second cancel is a no-op.

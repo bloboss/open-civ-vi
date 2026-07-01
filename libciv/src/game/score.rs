@@ -1,6 +1,6 @@
+use super::state::GameState;
 use crate::CivId;
 use crate::civ::CityKind;
-use super::state::GameState;
 
 /// Compute a score for one civilization from current game state.
 ///
@@ -16,15 +16,18 @@ pub fn compute_score(state: &GameState, civ_id: CivId) -> u32 {
         None => return 0,
     };
 
-    let cities_owned: Vec<_> = state.cities.iter()
+    let cities_owned: Vec<_> = state
+        .cities
+        .iter()
         .filter(|c| c.owner == civ_id && !matches!(c.kind, CityKind::CityState(_)))
         .collect();
 
-    let city_score      = cities_owned.len() as u32 * 5;
-    let pop_score: u32  = cities_owned.iter().map(|c| c.population).sum();
-    let tech_score      = civ.researched_techs.len() as u32 * 3;
-    let civic_score     = civ.completed_civics.len() as u32 * 2;
-    let territory_score = cities_owned.iter()
+    let city_score = cities_owned.len() as u32 * 5;
+    let pop_score: u32 = cities_owned.iter().map(|c| c.population).sum();
+    let tech_score = civ.researched_techs.len() as u32 * 3;
+    let civic_score = civ.completed_civics.len() as u32 * 2;
+    let territory_score = cities_owned
+        .iter()
         .map(|c| c.territory.len() as u32)
         .sum::<u32>()
         / 5;
@@ -34,12 +37,15 @@ pub fn compute_score(state: &GameState, civ_id: CivId) -> u32 {
 
 /// Returns scores for all non-city-state civilizations, sorted highest first.
 pub fn all_scores(state: &GameState) -> Vec<(CivId, u32)> {
-    let mut scores: Vec<(CivId, u32)> = state.civilizations.iter()
+    let mut scores: Vec<(CivId, u32)> = state
+        .civilizations
+        .iter()
         .filter(|civ| {
             // Include only civs that own at least one regular city.
-            state.cities.iter().any(|city| {
-                city.owner == civ.id && !matches!(city.kind, CityKind::CityState(_))
-            })
+            state
+                .cities
+                .iter()
+                .any(|city| city.owner == civ.id && !matches!(city.kind, CityKind::CityState(_)))
         })
         .map(|civ| (civ.id, compute_score(state, civ.id)))
         .collect();

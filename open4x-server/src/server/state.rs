@@ -117,11 +117,16 @@ impl NotificationBuffer {
     }
 
     pub fn for_civ(&self, civ: NotifCivId) -> Vec<NotificationRecord> {
-        self.by_civ.get(&civ).map(|q| q.iter().cloned().collect()).unwrap_or_default()
+        self.by_civ
+            .get(&civ)
+            .map(|q| q.iter().cloned().collect())
+            .unwrap_or_default()
     }
 
     pub fn dismiss(&mut self, civ: NotifCivId, id: &str) -> bool {
-        let Some(q) = self.by_civ.get_mut(&civ) else { return false };
+        let Some(q) = self.by_civ.get_mut(&civ) else {
+            return false;
+        };
         let len_before = q.len();
         q.retain(|r| r.id != id);
         len_before != q.len()

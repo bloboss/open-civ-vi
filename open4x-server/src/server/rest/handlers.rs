@@ -6,16 +6,16 @@
 
 use std::sync::Arc;
 
+use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
-use axum::Json;
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 
-use crate::server::api_token::{generate_token, ApiTokenRecord};
+use crate::server::api_token::{ApiTokenRecord, generate_token};
 use crate::server::projection::project_game_view;
-use crate::server::rest::auth::{auth_or_401, ApiError};
+use crate::server::rest::auth::{ApiError, auth_or_401};
 use crate::server::state::{AppState, GameRoom, GameRoomConfig, PlayerRecord};
 use crate::server::web_projection;
 use open4x_protocol::v1::ids::{CivId, GameId};
@@ -57,11 +57,7 @@ fn view_and_turn_limit(
 }
 
 fn turn_status_block(state: &Arc<AppState>, game_id: GameId) -> TurnStatusBlock {
-    let turn = state
-        .games
-        .get(&game_id)
-        .map(|r| r.state.turn)
-        .unwrap_or(0);
+    let turn = state.games.get(&game_id).map(|r| r.state.turn).unwrap_or(0);
     TurnStatusBlock { turn, ended: false }
 }
 
@@ -131,12 +127,11 @@ pub async fn new_game(
         turn_limit: req.turn_limit.or(Some(500)),
     };
 
-    let session = crate::server::session::build_server_session(&create_req, &pubkey, &state, game_id);
-    let civ_id = session
-        .players
-        .first()
-        .map(|s| s.civ_id)
-        .ok_or_else(|| crate::server::rest::auth::bad_request("no_player_slot", "session has no player"))?;
+    let session =
+        crate::server::session::build_server_session(&create_req, &pubkey, &state, game_id);
+    let civ_id = session.players.first().map(|s| s.civ_id).ok_or_else(|| {
+        crate::server::rest::auth::bad_request("no_player_slot", "session has no player")
+    })?;
 
     let (tx, _rx) = broadcast::channel(64);
     let room = GameRoom {
@@ -213,7 +208,9 @@ pub async fn world_snapshot(
     let r = params.r.unwrap_or(0);
     // Default radius 0 = "all explored". The plan caps the radius at 32.
     let radius = params.radius.unwrap_or(0).min(32);
-    Ok(Json(web_projection::build_world_snapshot(&view, q, r, radius)))
+    Ok(Json(web_projection::build_world_snapshot(
+        &view, q, r, radius,
+    )))
 }
 
 // ── /world/tile/{q}/{r} ──────────────────────────────────────────────────────
@@ -259,11 +256,7 @@ pub async fn end_turn(
             .ok_or_else(|| crate::server::rest::auth::not_found("game not found"))?;
         web_projection::build_turn_queue_from_room(&view, &room, civ_id)
     };
-    let required: Vec<_> = queue
-        .items
-        .into_iter()
-        .filter(|i| i.required)
-        .collect();
+    let required: Vec<_> = queue.items.into_iter().filter(|i| i.required).collect();
     if !required.is_empty() {
         let body = serde_json::json!({
             "error": "unresolved_required_actions",
@@ -445,9 +438,10 @@ pub async fn queue_production(
         .map_err(|_| crate::server::rest::auth::bad_request("invalid_id", "invalid city id"))?;
     let city_id = open4x_protocol::v1::ids::CityId::from_ulid(city_ulid);
 
-    let item_ulid: ulid::Ulid = body.item_id.parse().map_err(|_| {
-        crate::server::rest::auth::bad_request("invalid_id", "invalid item id")
-    })?;
+    let item_ulid: ulid::Ulid = body
+        .item_id
+        .parse()
+        .map_err(|_| crate::server::rest::auth::bad_request("invalid_id", "invalid item id"))?;
     let item = match body.item_type.as_str() {
         "unit" => open4x_protocol::v1::enums::ProductionItemView::Unit(
             open4x_protocol::v1::ids::UnitTypeId::from_ulid(item_ulid),
@@ -470,9 +464,14 @@ pub async fn queue_production(
         }
     };
 
-    let action = open4x_protocol::v1::messages::GameAction::QueueProduction { city: city_id, item };
+    let action = open4x_protocol::v1::messages::GameAction::QueueProduction {
+        city: city_id,
+        item,
+    };
 
-    let new_turn = mutate_room(&state, game_id, |room| room.apply_action(libciv_civ, &action))?;
+    let new_turn = mutate_room(&state, game_id, |room| {
+        room.apply_action(libciv_civ, &action)
+    })?;
 
     let view = view_after_mutation_city(&state, game_id, civ_id, &id)?;
     Ok((
@@ -480,7 +479,10 @@ pub async fn queue_production(
         Json(MutationResponse {
             ok: true,
             view,
-            turn_status: TurnStatusBlock { turn: new_turn, ended: false },
+            turn_status: TurnStatusBlock {
+                turn: new_turn,
+                ended: false,
+            },
         }),
     ))
 }
@@ -499,8 +501,13 @@ pub async fn cancel_production(
         .map_err(|_| crate::server::rest::auth::bad_request("invalid_id", "invalid city id"))?;
     let city_id = open4x_protocol::v1::ids::CityId::from_ulid(city_ulid);
 
-    let action = open4x_protocol::v1::messages::GameAction::CancelProduction { city: city_id, index: pos };
-    let new_turn = mutate_room(&state, game_id, |room| room.apply_action(libciv_civ, &action))?;
+    let action = open4x_protocol::v1::messages::GameAction::CancelProduction {
+        city: city_id,
+        index: pos,
+    };
+    let new_turn = mutate_room(&state, game_id, |room| {
+        room.apply_action(libciv_civ, &action)
+    })?;
 
     let view = view_after_mutation_city(&state, game_id, civ_id, &id)?;
     Ok((
@@ -508,7 +515,10 @@ pub async fn cancel_production(
         Json(MutationResponse {
             ok: true,
             view,
-            turn_status: TurnStatusBlock { turn: new_turn, ended: false },
+            turn_status: TurnStatusBlock {
+                turn: new_turn,
+                ended: false,
+            },
         }),
     ))
 }
@@ -541,13 +551,13 @@ pub async fn assign_city_focus(
     let city_id = open4x_protocol::v1::ids::CityId::from_ulid(city_ulid);
 
     let focus = match body.focus.to_lowercase().as_str() {
-        "default"    => open4x_protocol::v1::enums::CityFocus::Default,
-        "food"       => open4x_protocol::v1::enums::CityFocus::Food,
+        "default" => open4x_protocol::v1::enums::CityFocus::Default,
+        "food" => open4x_protocol::v1::enums::CityFocus::Food,
         "production" => open4x_protocol::v1::enums::CityFocus::Production,
-        "gold"       => open4x_protocol::v1::enums::CityFocus::Gold,
-        "science"    => open4x_protocol::v1::enums::CityFocus::Science,
-        "culture"    => open4x_protocol::v1::enums::CityFocus::Culture,
-        "faith"      => open4x_protocol::v1::enums::CityFocus::Faith,
+        "gold" => open4x_protocol::v1::enums::CityFocus::Gold,
+        "science" => open4x_protocol::v1::enums::CityFocus::Science,
+        "culture" => open4x_protocol::v1::enums::CityFocus::Culture,
+        "faith" => open4x_protocol::v1::enums::CityFocus::Faith,
         other => {
             return Err(crate::server::rest::auth::bad_request(
                 "invalid_focus",
@@ -556,8 +566,13 @@ pub async fn assign_city_focus(
         }
     };
 
-    let action = open4x_protocol::v1::messages::GameAction::AssignCityFocus { city: city_id, focus };
-    let new_turn = mutate_room(&state, game_id, |room| room.apply_action(libciv_civ, &action))?;
+    let action = open4x_protocol::v1::messages::GameAction::AssignCityFocus {
+        city: city_id,
+        focus,
+    };
+    let new_turn = mutate_room(&state, game_id, |room| {
+        room.apply_action(libciv_civ, &action)
+    })?;
 
     let view = view_after_mutation_city(&state, game_id, civ_id, &id)?;
     Ok((
@@ -565,7 +580,10 @@ pub async fn assign_city_focus(
         Json(MutationResponse {
             ok: true,
             view,
-            turn_status: TurnStatusBlock { turn: new_turn, ended: false },
+            turn_status: TurnStatusBlock {
+                turn: new_turn,
+                ended: false,
+            },
         }),
     ))
 }
@@ -611,8 +629,13 @@ pub async fn rename_city(
         ));
     }
 
-    let action = open4x_protocol::v1::messages::GameAction::RenameCity { city: city_id, name: trimmed };
-    let new_turn = mutate_room(&state, game_id, |room| room.apply_action(libciv_civ, &action))?;
+    let action = open4x_protocol::v1::messages::GameAction::RenameCity {
+        city: city_id,
+        name: trimmed,
+    };
+    let new_turn = mutate_room(&state, game_id, |room| {
+        room.apply_action(libciv_civ, &action)
+    })?;
 
     let view = view_after_mutation_city(&state, game_id, civ_id, &id)?;
     Ok((
@@ -620,7 +643,10 @@ pub async fn rename_city(
         Json(MutationResponse {
             ok: true,
             view,
-            turn_status: TurnStatusBlock { turn: new_turn, ended: false },
+            turn_status: TurnStatusBlock {
+                turn: new_turn,
+                ended: false,
+            },
         }),
     ))
 }
@@ -630,7 +656,7 @@ pub async fn rename_city(
 #[derive(Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct UnitActionBody {
-    pub action_id: String,                 // "move" | "attack" | "fortify" | "sleep" | "found_city"
+    pub action_id: String, // "move" | "attack" | "fortify" | "sleep" | "found_city"
     #[serde(default)]
     pub target_q: Option<i32>,
     #[serde(default)]
@@ -663,14 +689,20 @@ pub async fn unit_action(
     let action = match body.action_id.as_str() {
         "move" => {
             let to = target.ok_or_else(|| {
-                crate::server::rest::auth::bad_request("missing_target", "move requires target_q/target_r")
+                crate::server::rest::auth::bad_request(
+                    "missing_target",
+                    "move requires target_q/target_r",
+                )
             })?;
             open4x_protocol::v1::messages::GameAction::MoveUnit { unit: unit_id, to }
         }
         "attack" => {
             // Resolve defender by coord lookup against the player's view.
             let to = target.ok_or_else(|| {
-                crate::server::rest::auth::bad_request("missing_target", "attack requires target_q/target_r")
+                crate::server::rest::auth::bad_request(
+                    "missing_target",
+                    "attack requires target_q/target_r",
+                )
             })?;
             let view = view_only(&state, game_id, civ_id)?;
             let defender = view
@@ -696,7 +728,10 @@ pub async fn unit_action(
                 Json(MutationResponse {
                     ok: true,
                     view: serde_json::Value::Null,
-                    turn_status: TurnStatusBlock { turn: new_turn, ended: false },
+                    turn_status: TurnStatusBlock {
+                        turn: new_turn,
+                        ended: false,
+                    },
                 }),
             ));
         }
@@ -708,7 +743,9 @@ pub async fn unit_action(
         }
     };
 
-    let new_turn = mutate_room(&state, game_id, |room| room.apply_action(libciv_civ, &action))?;
+    let new_turn = mutate_room(&state, game_id, |room| {
+        room.apply_action(libciv_civ, &action)
+    })?;
 
     let view = view_only(&state, game_id, civ_id)?;
     let room = state
@@ -725,18 +762,17 @@ pub async fn unit_action(
         Json(MutationResponse {
             ok: true,
             view: serde_json::to_value(unit).unwrap_or(serde_json::Value::Null),
-            turn_status: TurnStatusBlock { turn: new_turn, ended: false },
+            turn_status: TurnStatusBlock {
+                turn: new_turn,
+                ended: false,
+            },
         }),
     ))
 }
 
 // ── mutation helpers ─────────────────────────────────────────────────────────
 
-fn mutate_room<F>(
-    state: &Arc<AppState>,
-    game_id: GameId,
-    f: F,
-) -> Result<u32, ApiError>
+fn mutate_room<F>(state: &Arc<AppState>, game_id: GameId, f: F) -> Result<u32, ApiError>
 where
     F: FnOnce(&mut GameRoom) -> Result<(), String>,
 {
@@ -748,11 +784,7 @@ where
     Ok(room.state.turn)
 }
 
-fn view_only(
-    state: &Arc<AppState>,
-    game_id: GameId,
-    civ_id: CivId,
-) -> Result<GameView, ApiError> {
+fn view_only(state: &Arc<AppState>, game_id: GameId, civ_id: CivId) -> Result<GameView, ApiError> {
     let (view, _) = view_and_turn_limit(state, game_id, civ_id)?;
     Ok(view)
 }
@@ -803,14 +835,19 @@ pub async fn tech_research(
     let tech = open4x_protocol::v1::ids::TechId::from_ulid(tech_ulid);
     let action = open4x_protocol::v1::messages::GameAction::QueueResearch { tech };
 
-    let new_turn = mutate_room(&state, game_id, |room| room.apply_action(libciv_civ, &action))?;
+    let new_turn = mutate_room(&state, game_id, |room| {
+        room.apply_action(libciv_civ, &action)
+    })?;
     let view = view_only(&state, game_id, civ_id)?;
     Ok((
         StatusCode::OK,
         Json(MutationResponse {
             ok: true,
             view: web_projection::build_tech_tree(&view),
-            turn_status: TurnStatusBlock { turn: new_turn, ended: false },
+            turn_status: TurnStatusBlock {
+                turn: new_turn,
+                ended: false,
+            },
         }),
     ))
 }
@@ -825,14 +862,19 @@ pub async fn cancel_research(
     let libciv_civ = libciv::CivId::from_ulid(civ_id.as_ulid());
 
     let action = open4x_protocol::v1::messages::GameAction::CancelResearch;
-    let new_turn = mutate_room(&state, game_id, |room| room.apply_action(libciv_civ, &action))?;
+    let new_turn = mutate_room(&state, game_id, |room| {
+        room.apply_action(libciv_civ, &action)
+    })?;
     let view = view_only(&state, game_id, civ_id)?;
     Ok((
         StatusCode::OK,
         Json(MutationResponse {
             ok: true,
             view: web_projection::build_tech_tree(&view),
-            turn_status: TurnStatusBlock { turn: new_turn, ended: false },
+            turn_status: TurnStatusBlock {
+                turn: new_turn,
+                ended: false,
+            },
         }),
     ))
 }
@@ -869,14 +911,19 @@ pub async fn civic_research(
     let civic = open4x_protocol::v1::ids::CivicId::from_ulid(civic_ulid);
     let action = open4x_protocol::v1::messages::GameAction::QueueCivic { civic };
 
-    let new_turn = mutate_room(&state, game_id, |room| room.apply_action(libciv_civ, &action))?;
+    let new_turn = mutate_room(&state, game_id, |room| {
+        room.apply_action(libciv_civ, &action)
+    })?;
     let view = view_only(&state, game_id, civ_id)?;
     Ok((
         StatusCode::OK,
         Json(MutationResponse {
             ok: true,
             view: web_projection::build_civics_tree(&view),
-            turn_status: TurnStatusBlock { turn: new_turn, ended: false },
+            turn_status: TurnStatusBlock {
+                turn: new_turn,
+                ended: false,
+            },
         }),
     ))
 }
@@ -891,14 +938,19 @@ pub async fn cancel_civic(
     let libciv_civ = libciv::CivId::from_ulid(civ_id.as_ulid());
 
     let action = open4x_protocol::v1::messages::GameAction::CancelCivic;
-    let new_turn = mutate_room(&state, game_id, |room| room.apply_action(libciv_civ, &action))?;
+    let new_turn = mutate_room(&state, game_id, |room| {
+        room.apply_action(libciv_civ, &action)
+    })?;
     let view = view_only(&state, game_id, civ_id)?;
     Ok((
         StatusCode::OK,
         Json(MutationResponse {
             ok: true,
             view: web_projection::build_civics_tree(&view),
-            turn_status: TurnStatusBlock { turn: new_turn, ended: false },
+            turn_status: TurnStatusBlock {
+                turn: new_turn,
+                ended: false,
+            },
         }),
     ))
 }
@@ -915,7 +967,9 @@ pub async fn government(
         .games
         .get(&game_id)
         .ok_or_else(|| crate::server::rest::auth::not_found("game not found"))?;
-    Ok(Json(web_projection::build_government_from_room(&view, &room, civ_id)))
+    Ok(Json(web_projection::build_government_from_room(
+        &view, &room, civ_id,
+    )))
 }
 
 #[derive(Deserialize)]
@@ -948,7 +1002,9 @@ pub async fn change_government(
     let action = open4x_protocol::v1::messages::GameAction::ChangeGovernment {
         name: trimmed.to_string(),
     };
-    let new_turn = mutate_room(&state, game_id, |room| room.apply_action(libciv_civ, &action))?;
+    let new_turn = mutate_room(&state, game_id, |room| {
+        room.apply_action(libciv_civ, &action)
+    })?;
 
     let (view, _) = view_and_turn_limit(&state, game_id, civ_id)?;
     let room = state
@@ -960,7 +1016,10 @@ pub async fn change_government(
         Json(MutationResponse {
             ok: true,
             view: web_projection::build_government_from_room(&view, &room, civ_id),
-            turn_status: TurnStatusBlock { turn: new_turn, ended: false },
+            turn_status: TurnStatusBlock {
+                turn: new_turn,
+                ended: false,
+            },
         }),
     ))
 }

@@ -21,47 +21,47 @@ impl BuiltinTerrain {
     pub fn name(self) -> &'static str {
         match self {
             BuiltinTerrain::Grassland => "Grassland",
-            BuiltinTerrain::Plains    => "Plains",
-            BuiltinTerrain::Desert    => "Desert",
-            BuiltinTerrain::Tundra    => "Tundra",
-            BuiltinTerrain::Snow      => "Snow",
-            BuiltinTerrain::Coast     => "Coast",
-            BuiltinTerrain::Ocean     => "Ocean",
-            BuiltinTerrain::Mountain  => "Mountain",
+            BuiltinTerrain::Plains => "Plains",
+            BuiltinTerrain::Desert => "Desert",
+            BuiltinTerrain::Tundra => "Tundra",
+            BuiltinTerrain::Snow => "Snow",
+            BuiltinTerrain::Coast => "Coast",
+            BuiltinTerrain::Ocean => "Ocean",
+            BuiltinTerrain::Mountain => "Mountain",
         }
     }
 
     pub fn base_yields(self) -> YieldBundle {
         match self {
             BuiltinTerrain::Grassland => YieldBundle::new().with(crate::YieldType::Food, 2),
-            BuiltinTerrain::Plains    => YieldBundle::new()
+            BuiltinTerrain::Plains => YieldBundle::new()
                 .with(crate::YieldType::Food, 1)
                 .with(crate::YieldType::Production, 1),
-            BuiltinTerrain::Desert    => YieldBundle::new(),
-            BuiltinTerrain::Tundra    => YieldBundle::new().with(crate::YieldType::Food, 1),
-            BuiltinTerrain::Snow      => YieldBundle::new(),
-            BuiltinTerrain::Coast     => YieldBundle::new()
+            BuiltinTerrain::Desert => YieldBundle::new(),
+            BuiltinTerrain::Tundra => YieldBundle::new().with(crate::YieldType::Food, 1),
+            BuiltinTerrain::Snow => YieldBundle::new(),
+            BuiltinTerrain::Coast => YieldBundle::new()
                 .with(crate::YieldType::Food, 1)
                 .with(crate::YieldType::Gold, 1),
-            BuiltinTerrain::Ocean     => YieldBundle::new().with(crate::YieldType::Food, 1),
-            BuiltinTerrain::Mountain  => YieldBundle::new(),
+            BuiltinTerrain::Ocean => YieldBundle::new().with(crate::YieldType::Food, 1),
+            BuiltinTerrain::Mountain => YieldBundle::new(),
         }
     }
 
     pub fn movement_cost(self) -> MovementCost {
         match self {
             BuiltinTerrain::Mountain => MovementCost::Impassable,
-            _                        => MovementCost::ONE,
+            _ => MovementCost::ONE,
         }
     }
 
     /// Base elevation before the per-tile `hills` flag is applied.
     pub fn elevation(self) -> Elevation {
         match self {
-            BuiltinTerrain::Ocean    => Elevation::SEA_LEVEL,  // Level(0)
-            BuiltinTerrain::Coast    => Elevation::COASTAL,    // Level(1)
+            BuiltinTerrain::Ocean => Elevation::SEA_LEVEL, // Level(0)
+            BuiltinTerrain::Coast => Elevation::COASTAL,   // Level(1)
             BuiltinTerrain::Mountain => Elevation::High,
-            _                        => Elevation::FLAT,       // Level(2)
+            _ => Elevation::FLAT, // Level(2)
         }
     }
 

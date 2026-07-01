@@ -14,7 +14,6 @@
 //! GitHub is intentionally absent — it uses OAuth2 + REST userinfo,
 //! not OIDC, and gets its own module under Phase 2.3 follow-up.
 
-
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD as B64;
 use sha2::{Digest, Sha256};
@@ -323,8 +322,14 @@ mod tests {
         assert!(req.url.contains("client_id=client-123"));
         assert!(req.url.contains("response_type=code"));
         assert!(req.url.contains("code_challenge_method=S256"));
-        assert!(req.url.contains(&format!("state={}", url_encode(&req.state))));
-        assert!(req.url.contains(&format!("nonce={}", url_encode(&req.nonce))));
+        assert!(
+            req.url
+                .contains(&format!("state={}", url_encode(&req.state)))
+        );
+        assert!(
+            req.url
+                .contains(&format!("nonce={}", url_encode(&req.nonce)))
+        );
         assert!(req.url.contains("scope=openid%20email%20profile"));
     }
 

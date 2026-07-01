@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::State;
+use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::response::IntoResponse;
 use tokio::sync::broadcast;
 
@@ -33,37 +33,50 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
 
     // Wait for Authenticate message.
     let pubkey = loop {
-        let Some(Ok(msg)) = socket.recv().await else { return };
+        let Some(Ok(msg)) = socket.recv().await else {
+            return;
+        };
         let Message::Text(text) = msg else { continue };
-        let Ok(client_msg) = serde_json::from_str::<ClientMessage>(&text) else { continue };
+        let Ok(client_msg) = serde_json::from_str::<ClientMessage>(&text) else {
+            continue;
+        };
 
         match client_msg {
             ClientMessage::Authenticate { pubkey, signature } => {
                 match auth::verify_auth(&challenge, &pubkey, &signature) {
                     Ok(key) => {
                         // Look up or create player record.
-                        let profile = state.players.entry(key)
-                            .or_insert_with(|| crate::server::state::PlayerRecord {
+                        let profile = state.players.entry(key).or_insert_with(|| {
+                            crate::server::state::PlayerRecord {
                                 pubkey: key,
                                 display_name: format!("Player_{}", hex::encode(&key[..4])),
                                 selected_template: state.templates[0].id,
                                 games_played: 0,
-                            });
+                            }
+                        });
                         let profile_view = open4x_protocol::v1::profile::ProfileView {
                             pubkey: key.to_vec(),
                             display_name: profile.display_name.clone(),
                             selected_template: profile.selected_template,
                         };
-                        let _ = send_msg(&mut socket, &ServerMessage::AuthSuccess {
-                            session_token: hex::encode(&key),
-                            profile: profile_view,
-                        }).await;
+                        let _ = send_msg(
+                            &mut socket,
+                            &ServerMessage::AuthSuccess {
+                                session_token: hex::encode(&key),
+                                profile: profile_view,
+                            },
+                        )
+                        .await;
                         break key;
                     }
                     Err(e) => {
-                        let _ = send_msg(&mut socket, &ServerMessage::AuthFailure {
-                            reason: e.to_string(),
-                        }).await;
+                        let _ = send_msg(
+                            &mut socket,
+                            &ServerMessage::AuthFailure {
+                                reason: e.to_string(),
+                            },
+                        )
+                        .await;
                         return;
                     }
                 }
@@ -72,9 +85,13 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
                 let _ = send_msg(&mut socket, &ServerMessage::Pong).await;
             }
             _ => {
-                let _ = send_msg(&mut socket, &ServerMessage::Error {
-                    message: "authenticate first".into(),
-                }).await;
+                let _ = send_msg(
+                    &mut socket,
+                    &ServerMessage::Error {
+                        message: "authenticate first".into(),
+                    },
+                )
+                .await;
             }
         }
     };
@@ -84,12 +101,18 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
     let mut _rx: Option<broadcast::Receiver<ServerMessage>> = None;
 
     loop {
-        let Some(Ok(msg)) = socket.recv().await else { break };
+        let Some(Ok(msg)) = socket.recv().await else {
+            break;
+        };
         let Message::Text(text) = msg else { continue };
         let Ok(client_msg) = serde_json::from_str::<ClientMessage>(&text) else {
-            let _ = send_msg(&mut socket, &ServerMessage::Error {
-                message: "invalid message format".into(),
-            }).await;
+            let _ = send_msg(
+                &mut socket,
+                &ServerMessage::Error {
+                    message: "invalid message format".into(),
+                },
+            )
+            .await;
             continue;
         };
 
@@ -98,28 +121,31 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
                 let _ = send_msg(&mut socket, &ServerMessage::Pong).await;
             }
             ClientMessage::ListGames => {
-                let entries: Vec<_> = state.games.iter().map(|entry| {
-                    let room = entry.value();
-                    open4x_protocol::v1::messages::GameListEntry {
-                        game_id: room.game_id,
-                        name: room.name.clone(),
-                        players_joined: room.players.len() as u32,
-                        max_players: room.config.max_players,
-                        turn: room.state.turn,
-                        status: room.status,
-                    }
-                }).collect();
+                let entries: Vec<_> = state
+                    .games
+                    .iter()
+                    .map(|entry| {
+                        let room = entry.value();
+                        open4x_protocol::v1::messages::GameListEntry {
+                            game_id: room.game_id,
+                            name: room.name.clone(),
+                            players_joined: room.players.len() as u32,
+                            max_players: room.config.max_players,
+                            turn: room.state.turn,
+                            status: room.status,
+                        }
+                    })
+                    .collect();
                 let _ = send_msg(&mut socket, &ServerMessage::GamesList(entries)).await;
             }
             ClientMessage::CreateGame(req) => {
-                let game_id = open4x_protocol::v1::ids::GameId::from_ulid(
-                    ulid::Ulid::new()
-                );
+                let game_id = open4x_protocol::v1::ids::GameId::from_ulid(ulid::Ulid::new());
                 let (tx, rx) = broadcast::channel(64);
                 _rx = Some(rx);
 
                 // Build game state using the session builder pattern from civsim.
-                let session = crate::server::session::build_server_session(&req, &pubkey, &state, game_id);
+                let session =
+                    crate::server::session::build_server_session(&req, &pubkey, &state, game_id);
 
                 let room = GameRoom {
                     game_id,
@@ -147,9 +173,8 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
                     && let Some(slot) = room.players.iter().find(|s| s.pubkey == pubkey)
                 {
                     let view = project_game_view(&room.state, slot.civ_id);
-                    let _ = send_msg(&mut socket, &ServerMessage::GameJoined {
-                        game_id, view,
-                    }).await;
+                    let _ =
+                        send_msg(&mut socket, &ServerMessage::GameJoined { game_id, view }).await;
                 }
             }
             ClientMessage::JoinGame { game_id } => {
@@ -162,20 +187,25 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
                     && let Some(slot) = room.players.iter().find(|s| s.pubkey == pubkey)
                 {
                     let view = project_game_view(&room.state, slot.civ_id);
-                    let _ = send_msg(&mut socket, &ServerMessage::GameJoined {
-                        game_id, view,
-                    }).await;
+                    let _ =
+                        send_msg(&mut socket, &ServerMessage::GameJoined { game_id, view }).await;
                 }
             }
             ClientMessage::Action(action) => {
                 let Some(game_id) = current_game else {
-                    let _ = send_msg(&mut socket, &ServerMessage::Error {
-                        message: "not in a game".into(),
-                    }).await;
+                    let _ = send_msg(
+                        &mut socket,
+                        &ServerMessage::Error {
+                            message: "not in a game".into(),
+                        },
+                    )
+                    .await;
                     continue;
                 };
                 let result = if let Some(mut room) = state.games.get_mut(&game_id) {
-                    let civ_id = room.players.iter()
+                    let civ_id = room
+                        .players
+                        .iter()
                         .find(|s| s.pubkey == pubkey)
                         .map(|s| s.civ_id);
                     if let Some(civ_id) = civ_id {
@@ -189,9 +219,14 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
 
                 match result {
                     Ok(()) => {
-                        let _ = send_msg(&mut socket, &ServerMessage::ActionResult {
-                            ok: true, error: None,
-                        }).await;
+                        let _ = send_msg(
+                            &mut socket,
+                            &ServerMessage::ActionResult {
+                                ok: true,
+                                error: None,
+                            },
+                        )
+                        .await;
                         // Send updated view.
                         if let Some(room) = state.games.get(&game_id)
                             && let Some(slot) = room.players.iter().find(|s| s.pubkey == pubkey)
@@ -201,14 +236,21 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
                         }
                     }
                     Err(e) => {
-                        let _ = send_msg(&mut socket, &ServerMessage::ActionResult {
-                            ok: false, error: Some(e),
-                        }).await;
+                        let _ = send_msg(
+                            &mut socket,
+                            &ServerMessage::ActionResult {
+                                ok: false,
+                                error: Some(e),
+                            },
+                        )
+                        .await;
                     }
                 }
             }
             ClientMessage::EndTurn => {
-                let Some(game_id) = current_game else { continue };
+                let Some(game_id) = current_game else {
+                    continue;
+                };
                 let should_resolve = if let Some(mut room) = state.games.get_mut(&game_id) {
                     if let Some(slot) = room.players.iter_mut().find(|s| s.pubkey == pubkey) {
                         slot.submitted_turn = true;
@@ -227,11 +269,10 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
                         let mut snapshots = Vec::new();
                         for slot in &room.players {
                             let view = project_game_view(&room.state, slot.civ_id);
-                            let civ_api_id = open4x_protocol::v1::ids::CivId::from_ulid(slot.civ_id.as_ulid());
+                            let civ_api_id =
+                                open4x_protocol::v1::ids::CivId::from_ulid(slot.civ_id.as_ulid());
                             snapshots.push((civ_api_id, view.clone()));
-                            let _ = room.tx.send(ServerMessage::TurnResolved {
-                                new_turn, view,
-                            });
+                            let _ = room.tx.send(ServerMessage::TurnResolved { new_turn, view });
                         }
 
                         // Persist game state to disk.
@@ -242,7 +283,8 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
                     if let Some(room) = state.games.get(&game_id)
                         && let Some(slot) = room.players.iter().find(|s| s.pubkey == pubkey)
                     {
-                        let civ_id = open4x_protocol::v1::ids::CivId::from_ulid(slot.civ_id.as_ulid());
+                        let civ_id =
+                            open4x_protocol::v1::ids::CivId::from_ulid(slot.civ_id.as_ulid());
                         let _ = room.tx.send(ServerMessage::PlayerEndedTurn { civ_id });
                     }
                 }
@@ -260,9 +302,13 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
                 let _ = send_msg(&mut socket, &ServerMessage::ProfileUpdated(profile)).await;
             }
             ClientMessage::Authenticate { .. } => {
-                let _ = send_msg(&mut socket, &ServerMessage::Error {
-                    message: "already authenticated".into(),
-                }).await;
+                let _ = send_msg(
+                    &mut socket,
+                    &ServerMessage::Error {
+                        message: "already authenticated".into(),
+                    },
+                )
+                .await;
             }
         }
     }

@@ -2,8 +2,8 @@
 
 use serde::Serialize;
 
-use open4x_protocol::v1::web::unit_data::{Unit, UnitData};
 use open4x_protocol::v1::web::MutationResponse;
+use open4x_protocol::v1::web::unit_data::{Unit, UnitData};
 
 use crate::error::ApiError;
 use crate::transport::{Method, Transport};

@@ -14,9 +14,9 @@ use std::path::PathBuf;
 
 use chrono::{Duration, Utc};
 use clap::{Parser, Subcommand};
+use open4x_accounts::PlayerId;
 use open4x_accounts::audit::{AuditEventKind, AuditStore, NewAuditEvent, SqliteAuditStore};
 use open4x_accounts::store::{AccountStore, SqliteAccountStore};
-use open4x_accounts::PlayerId;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 
 #[derive(Parser)]
@@ -120,7 +120,9 @@ async fn main() {
                     "{}\t{}\t{}\t{}\t{}",
                     r.ts,
                     r.kind.as_str(),
-                    r.player_id.map(|p| p.display()).unwrap_or_else(|| "-".into()),
+                    r.player_id
+                        .map(|p| p.display())
+                        .unwrap_or_else(|| "-".into()),
                     r.ip.unwrap_or_else(|| "-".into()),
                     r.detail.replace(['\t', '\n'], " "),
                 );
@@ -181,9 +183,7 @@ async fn main() {
             // 1. Validate the source: open RO + integrity_check.
             //    Catches truncated copies and malformed databases
             //    before we replace anything live.
-            let src_opts = SqliteConnectOptions::new()
-                .filename(&from)
-                .read_only(true);
+            let src_opts = SqliteConnectOptions::new().filename(&from).read_only(true);
             let src_pool = SqlitePoolOptions::new()
                 .max_connections(1)
                 .connect_with(src_opts)
@@ -241,7 +241,12 @@ async fn main() {
                 std::process::exit(1);
             }
             let bytes = std::fs::metadata(&cli.db).map(|m| m.len()).unwrap_or(0);
-            println!("restored {} -> {} ({} bytes)", from.display(), cli.db.display(), bytes);
+            println!(
+                "restored {} -> {} ({} bytes)",
+                from.display(),
+                cli.db.display(),
+                bytes
+            );
         }
 
         Command::DeleteAccount { player_id } => {
@@ -286,10 +291,7 @@ fn parse_player_id_arg(s: &str) -> Result<PlayerId, &'static str> {
         .strip_prefix("0x")
         .or_else(|| trimmed.strip_prefix("0X"))
         .unwrap_or(trimmed);
-    let stripped: String = body
-        .chars()
-        .filter(|c| c.is_ascii_hexdigit())
-        .collect();
+    let stripped: String = body.chars().filter(|c| c.is_ascii_hexdigit()).collect();
     if stripped.len() != 16 {
         return Err("expected 16 hex digits");
     }

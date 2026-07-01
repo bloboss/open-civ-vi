@@ -1,7 +1,7 @@
-use crate::{CityId, CivicId, TechId};
 use crate::civ::civilization::Civilization;
 use crate::rules::modifier::Modifier;
 use crate::world::resource::BuiltinResource;
+use crate::{CityId, CivicId, TechId};
 
 /// Whether an effect can produce further effects when applied.
 ///
@@ -55,12 +55,18 @@ pub enum OneShotEffect {
     ///
     /// Note: full resolution requires a unit-type registry (Phase 4). For now
     /// `apply_effect` emits the `FreeUnitGranted` delta only.
-    FreeUnit { unit_type: &'static str, city: Option<CityId> },
+    FreeUnit {
+        unit_type: &'static str,
+        city: Option<CityId>,
+    },
     /// Place a free building in the given city, or the capital if `None`.
     ///
     /// Note: full resolution requires a building registry (Phase 4). For now
     /// `apply_effect` emits the `FreeBuildingGranted` delta only.
-    FreeBuilding { building: &'static str, city: Option<CityId> },
+    FreeBuilding {
+        building: &'static str,
+        city: Option<CityId>,
+    },
 
     // ── Government ───────────────────────────────────────────────────────────
     /// Unlock a government type for adoption (typically from a civic).
@@ -90,16 +96,16 @@ impl OneShotEffect {
     /// The cascade classification for this variant.
     pub fn cascade_class(&self) -> CascadeClass {
         match self {
-            OneShotEffect::RevealResource(_)        => CascadeClass::Idempotent,
-            OneShotEffect::TriggerEureka { .. }     => CascadeClass::Idempotent,
-            OneShotEffect::TriggerInspiration { .. }=> CascadeClass::Idempotent,
-            OneShotEffect::UnlockGovernment(_)      => CascadeClass::Idempotent,
-            OneShotEffect::AdoptGovernment(_)       => CascadeClass::Idempotent,
-            OneShotEffect::UnlockPolicy(_)          => CascadeClass::Idempotent,
-            OneShotEffect::GrantModifier(_)         => CascadeClass::NonCascading,
-            OneShotEffect::EnableEmbarkCoast        => CascadeClass::Idempotent,
-            OneShotEffect::EnableEmbarkOcean        => CascadeClass::Idempotent,
-            _                                       => CascadeClass::NonCascading,
+            OneShotEffect::RevealResource(_) => CascadeClass::Idempotent,
+            OneShotEffect::TriggerEureka { .. } => CascadeClass::Idempotent,
+            OneShotEffect::TriggerInspiration { .. } => CascadeClass::Idempotent,
+            OneShotEffect::UnlockGovernment(_) => CascadeClass::Idempotent,
+            OneShotEffect::AdoptGovernment(_) => CascadeClass::Idempotent,
+            OneShotEffect::UnlockPolicy(_) => CascadeClass::Idempotent,
+            OneShotEffect::GrantModifier(_) => CascadeClass::NonCascading,
+            OneShotEffect::EnableEmbarkCoast => CascadeClass::Idempotent,
+            OneShotEffect::EnableEmbarkOcean => CascadeClass::Idempotent,
+            _ => CascadeClass::NonCascading,
         }
     }
 
@@ -108,23 +114,17 @@ impl OneShotEffect {
     /// lives here on the variant, not in a global registry.
     pub fn guard(&self, civ: &Civilization) -> bool {
         match self {
-            OneShotEffect::RevealResource(r) =>
-                !civ.revealed_resources.contains(r),
-            OneShotEffect::TriggerEureka { tech } =>
-                !civ.eureka_triggered.contains(tech),
-            OneShotEffect::TriggerInspiration { civic } =>
-                !civ.inspiration_triggered.contains(civic),
-            OneShotEffect::UnlockGovernment(g) =>
-                !civ.unlocked_governments.contains(g),
-            OneShotEffect::AdoptGovernment(g) =>
-                civ.current_government_name != Some(*g),
-            OneShotEffect::UnlockPolicy(p) =>
-                !civ.unlocked_policies.contains(p),
+            OneShotEffect::RevealResource(r) => !civ.revealed_resources.contains(r),
+            OneShotEffect::TriggerEureka { tech } => !civ.eureka_triggered.contains(tech),
+            OneShotEffect::TriggerInspiration { civic } => {
+                !civ.inspiration_triggered.contains(civic)
+            }
+            OneShotEffect::UnlockGovernment(g) => !civ.unlocked_governments.contains(g),
+            OneShotEffect::AdoptGovernment(g) => civ.current_government_name != Some(*g),
+            OneShotEffect::UnlockPolicy(p) => !civ.unlocked_policies.contains(p),
             OneShotEffect::GrantModifier(_) => true,
-            OneShotEffect::EnableEmbarkCoast =>
-                !civ.can_embark_coast,
-            OneShotEffect::EnableEmbarkOcean =>
-                !civ.can_embark_ocean,
+            OneShotEffect::EnableEmbarkCoast => !civ.can_embark_coast,
+            OneShotEffect::EnableEmbarkOcean => !civ.can_embark_ocean,
             _ => true,
         }
     }
@@ -137,13 +137,19 @@ mod tests {
 
     fn empty_civ() -> Civilization {
         use crate::CivId;
-        use crate::civ::civilization::{Leader, BuiltinAgenda};
+        use crate::civ::civilization::{BuiltinAgenda, Leader};
         use ulid::Ulid;
 
         let civ_id = CivId::from_ulid(Ulid::nil());
         Civilization::new(
-            civ_id, "Test", "Test",
-            Leader { name: "L", civ_id, agenda: BuiltinAgenda::Default },
+            civ_id,
+            "Test",
+            "Test",
+            Leader {
+                name: "L",
+                civ_id,
+                agenda: BuiltinAgenda::Default,
+            },
         )
     }
 
@@ -181,7 +187,10 @@ mod tests {
         let effect = OneShotEffect::AdoptGovernment("Autocracy");
         assert!(effect.guard(&civ));
         civ.current_government_name = Some("Autocracy");
-        assert!(!effect.guard(&civ), "already active government should be skipped");
+        assert!(
+            !effect.guard(&civ),
+            "already active government should be skipped"
+        );
     }
 
     #[test]
@@ -196,8 +205,10 @@ mod tests {
 
     #[test]
     fn grant_modifier_guard_always_true() {
-        use crate::rules::modifier::{EffectType, Modifier, ModifierSource, StackingRule, TargetSelector};
         use crate::YieldType;
+        use crate::rules::modifier::{
+            EffectType, Modifier, ModifierSource, StackingRule, TargetSelector,
+        };
 
         let civ = empty_civ();
         let modifier = Modifier::new(

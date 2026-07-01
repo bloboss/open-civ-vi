@@ -1,8 +1,8 @@
 //! Static definitions for all 45 city-states (24 base-game + 9 Gathering Storm + 12 DLC).
 
+use crate::YieldType;
 use crate::civ::city_state::CityStateType;
 use crate::rules::modifier::*;
-use crate::YieldType;
 
 /// Static definition of a city-state before placement on the map.
 #[derive(Debug, Clone)]
@@ -37,7 +37,11 @@ fn suzerain_yield_flat(city_state: &'static str, yield_type: YieldType, amount: 
     )
 }
 
-fn suzerain_yield_percent(city_state: &'static str, yield_type: YieldType, percent: i32) -> Modifier {
+fn suzerain_yield_percent(
+    city_state: &'static str,
+    yield_type: YieldType,
+    percent: i32,
+) -> Modifier {
     Modifier::new(
         ModifierSource::Custom(city_state),
         TargetSelector::Global,
@@ -149,9 +153,7 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             name: "Amsterdam",
             state_type: CityStateType::Trade,
             suzerain_bonus_description: "+2 Gold per luxury resource",
-            suzerain_modifiers: vec![
-                suzerain_yield_flat("Amsterdam", YieldType::Gold, 2),
-            ],
+            suzerain_modifiers: vec![suzerain_yield_flat("Amsterdam", YieldType::Gold, 2)],
             envoy_1_modifiers: trade_envoy_1("Amsterdam"),
             envoy_3_modifiers: trade_envoy_3("Amsterdam"),
             envoy_6_modifiers: trade_envoy_6("Amsterdam"),
@@ -190,27 +192,22 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             name: "Muscat",
             state_type: CityStateType::Trade,
             suzerain_bonus_description: "+1 Amenity per luxury improvement",
-            suzerain_modifiers: vec![
-                Modifier::new(
-                    ModifierSource::Custom("Muscat"),
-                    TargetSelector::Global,
-                    EffectType::AmenityFlat(1),
-                    StackingRule::Additive,
-                ),
-            ],
+            suzerain_modifiers: vec![Modifier::new(
+                ModifierSource::Custom("Muscat"),
+                TargetSelector::Global,
+                EffectType::AmenityFlat(1),
+                StackingRule::Additive,
+            )],
             envoy_1_modifiers: trade_envoy_1("Muscat"),
             envoy_3_modifiers: trade_envoy_3("Muscat"),
             envoy_6_modifiers: trade_envoy_6("Muscat"),
         },
-
         // ── Industrial city-states ──────────────────────────────────────
         CityStateDef {
             name: "Brussels",
             state_type: CityStateType::Industrial,
             suzerain_bonus_description: "+15% Production towards wonders",
-            suzerain_modifiers: vec![
-                suzerain_production_percent("Brussels", 15),
-            ],
+            suzerain_modifiers: vec![suzerain_production_percent("Brussels", 15)],
             envoy_1_modifiers: industrial_envoy_1("Brussels"),
             envoy_3_modifiers: industrial_envoy_3("Brussels"),
             envoy_6_modifiers: industrial_envoy_6("Brussels"),
@@ -220,14 +217,12 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             state_type: CityStateType::Industrial,
             suzerain_bonus_description: "Bonus resources behave as luxury (Amenities)",
             // Complex effect: changes resource category behavior; approximate with amenity bonus.
-            suzerain_modifiers: vec![
-                Modifier::new(
-                    ModifierSource::Custom("Buenos Aires"),
-                    TargetSelector::Global,
-                    EffectType::AmenityFlat(1),
-                    StackingRule::Additive,
-                ),
-            ],
+            suzerain_modifiers: vec![Modifier::new(
+                ModifierSource::Custom("Buenos Aires"),
+                TargetSelector::Global,
+                EffectType::AmenityFlat(1),
+                StackingRule::Additive,
+            )],
             envoy_1_modifiers: industrial_envoy_1("Buenos Aires"),
             envoy_3_modifiers: industrial_envoy_3("Buenos Aires"),
             envoy_6_modifiers: industrial_envoy_6("Buenos Aires"),
@@ -236,9 +231,7 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             name: "Hong Kong",
             state_type: CityStateType::Industrial,
             suzerain_bonus_description: "+20% Production for projects",
-            suzerain_modifiers: vec![
-                suzerain_production_percent("Hong Kong", 20),
-            ],
+            suzerain_modifiers: vec![suzerain_production_percent("Hong Kong", 20)],
             envoy_1_modifiers: industrial_envoy_1("Hong Kong"),
             envoy_3_modifiers: industrial_envoy_3("Hong Kong"),
             envoy_6_modifiers: industrial_envoy_6("Hong Kong"),
@@ -253,7 +246,6 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             envoy_3_modifiers: industrial_envoy_3("Toronto"),
             envoy_6_modifiers: industrial_envoy_6("Toronto"),
         },
-
         // ── Scientific city-states ──────────────────────────────────────
         CityStateDef {
             name: "Geneva",
@@ -271,9 +263,7 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             name: "Seoul",
             state_type: CityStateType::Scientific,
             suzerain_bonus_description: "+3 Science for each tech researched",
-            suzerain_modifiers: vec![
-                suzerain_yield_flat("Seoul", YieldType::Science, 3),
-            ],
+            suzerain_modifiers: vec![suzerain_yield_flat("Seoul", YieldType::Science, 3)],
             envoy_1_modifiers: scientific_envoy_1("Seoul"),
             envoy_3_modifiers: scientific_envoy_3("Seoul"),
             envoy_6_modifiers: scientific_envoy_6("Seoul"),
@@ -282,9 +272,11 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             name: "Stockholm",
             state_type: CityStateType::Scientific,
             suzerain_bonus_description: "+1 Great Person point per specialty district",
-            suzerain_modifiers: vec![
-                suzerain_yield_flat("Stockholm", YieldType::GreatPersonPoints, 1),
-            ],
+            suzerain_modifiers: vec![suzerain_yield_flat(
+                "Stockholm",
+                YieldType::GreatPersonPoints,
+                1,
+            )],
             envoy_1_modifiers: scientific_envoy_1("Stockholm"),
             envoy_3_modifiers: scientific_envoy_3("Stockholm"),
             envoy_6_modifiers: scientific_envoy_6("Stockholm"),
@@ -299,7 +291,6 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             envoy_3_modifiers: scientific_envoy_3("Hattusa"),
             envoy_6_modifiers: scientific_envoy_6("Hattusa"),
         },
-
         // ── Cultural city-states ────────────────────────────────────────
         CityStateDef {
             name: "Kumasi",
@@ -328,14 +319,12 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             state_type: CityStateType::Cultural,
             suzerain_bonus_description: "Full housing from water in all cities",
             // Complex effect: overrides housing from water; approximate with housing bonus.
-            suzerain_modifiers: vec![
-                Modifier::new(
-                    ModifierSource::Custom("Mohenjo-Daro"),
-                    TargetSelector::Global,
-                    EffectType::HousingFlat(3),
-                    StackingRule::Additive,
-                ),
-            ],
+            suzerain_modifiers: vec![Modifier::new(
+                ModifierSource::Custom("Mohenjo-Daro"),
+                TargetSelector::Global,
+                EffectType::HousingFlat(3),
+                StackingRule::Additive,
+            )],
             envoy_1_modifiers: cultural_envoy_1("Mohenjo-Daro"),
             envoy_3_modifiers: cultural_envoy_3("Mohenjo-Daro"),
             envoy_6_modifiers: cultural_envoy_6("Mohenjo-Daro"),
@@ -350,7 +339,8 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
                     TargetSelector::Global,
                     EffectType::YieldFlat(YieldType::Culture, 2),
                     StackingRule::Additive,
-                ).with_condition(Condition::OnCoast),
+                )
+                .with_condition(Condition::OnCoast),
             ],
             envoy_1_modifiers: cultural_envoy_1("Nan Madol"),
             envoy_3_modifiers: cultural_envoy_3("Nan Madol"),
@@ -360,14 +350,11 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             name: "Vilnius",
             state_type: CityStateType::Cultural,
             suzerain_bonus_description: "+50% Faith bonus to adjacent Holy Site",
-            suzerain_modifiers: vec![
-                suzerain_yield_percent("Vilnius", YieldType::Faith, 50),
-            ],
+            suzerain_modifiers: vec![suzerain_yield_percent("Vilnius", YieldType::Faith, 50)],
             envoy_1_modifiers: cultural_envoy_1("Vilnius"),
             envoy_3_modifiers: cultural_envoy_3("Vilnius"),
             envoy_6_modifiers: cultural_envoy_6("Vilnius"),
         },
-
         // ── Religious city-states ───────────────────────────────────────
         CityStateDef {
             name: "Jerusalem",
@@ -409,7 +396,6 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             envoy_3_modifiers: religious_envoy_3("Yerevan"),
             envoy_6_modifiers: religious_envoy_6("Yerevan"),
         },
-
         // ── Militaristic city-states ────────────────────────────────────
         CityStateDef {
             name: "Kabul",
@@ -425,9 +411,7 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             name: "Preslav",
             state_type: CityStateType::Militaristic,
             suzerain_bonus_description: "+50% Production for light and heavy cavalry",
-            suzerain_modifiers: vec![
-                suzerain_production_percent("Preslav", 50),
-            ],
+            suzerain_modifiers: vec![suzerain_production_percent("Preslav", 50)],
             envoy_1_modifiers: militaristic_envoy_1("Preslav"),
             envoy_3_modifiers: militaristic_envoy_3("Preslav"),
             envoy_6_modifiers: militaristic_envoy_6("Preslav"),
@@ -437,19 +421,16 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             state_type: CityStateType::Militaristic,
             suzerain_bonus_description: "Can buy city center buildings with Faith",
             // Complex effect: faith purchase unlock; approximate with worship building cost reduction.
-            suzerain_modifiers: vec![
-                Modifier::new(
-                    ModifierSource::Custom("Valletta"),
-                    TargetSelector::Global,
-                    EffectType::WorshipBuildingCostPercent(-50),
-                    StackingRule::Additive,
-                ),
-            ],
+            suzerain_modifiers: vec![Modifier::new(
+                ModifierSource::Custom("Valletta"),
+                TargetSelector::Global,
+                EffectType::WorshipBuildingCostPercent(-50),
+                StackingRule::Additive,
+            )],
             envoy_1_modifiers: militaristic_envoy_1("Valletta"),
             envoy_3_modifiers: militaristic_envoy_3("Valletta"),
             envoy_6_modifiers: militaristic_envoy_6("Valletta"),
         },
-
         // ── Gathering Storm city-states ────────────────────────────────
 
         // ── GS Militaristic ────────────────────────────────────────────
@@ -457,14 +438,12 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             name: "Akkad",
             state_type: CityStateType::Militaristic,
             suzerain_bonus_description: "Melee class units gain +5 Combat Strength",
-            suzerain_modifiers: vec![
-                Modifier::new(
-                    ModifierSource::Custom("Akkad"),
-                    TargetSelector::Global,
-                    EffectType::CombatStrengthFlat(5),
-                    StackingRule::Additive,
-                ),
-            ],
+            suzerain_modifiers: vec![Modifier::new(
+                ModifierSource::Custom("Akkad"),
+                TargetSelector::Global,
+                EffectType::CombatStrengthFlat(5),
+                StackingRule::Additive,
+            )],
             envoy_1_modifiers: militaristic_envoy_1("Akkad"),
             envoy_3_modifiers: militaristic_envoy_3("Akkad"),
             envoy_6_modifiers: militaristic_envoy_6("Akkad"),
@@ -479,15 +458,16 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             envoy_3_modifiers: militaristic_envoy_3("Ngazargamu"),
             envoy_6_modifiers: militaristic_envoy_6("Ngazargamu"),
         },
-
         // ── GS Scientific ──────────────────────────────────────────────
         CityStateDef {
             name: "Bologna",
             state_type: CityStateType::Scientific,
             suzerain_bonus_description: "+1 Great Person point per district",
-            suzerain_modifiers: vec![
-                suzerain_yield_flat("Bologna", YieldType::GreatPersonPoints, 1),
-            ],
+            suzerain_modifiers: vec![suzerain_yield_flat(
+                "Bologna",
+                YieldType::GreatPersonPoints,
+                1,
+            )],
             envoy_1_modifiers: scientific_envoy_1("Bologna"),
             envoy_3_modifiers: scientific_envoy_3("Bologna"),
             envoy_6_modifiers: scientific_envoy_6("Bologna"),
@@ -502,7 +482,6 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             envoy_3_modifiers: scientific_envoy_3("Fez"),
             envoy_6_modifiers: scientific_envoy_6("Fez"),
         },
-
         // ── GS Trade ───────────────────────────────────────────────────
         CityStateDef {
             name: "Cahokia",
@@ -514,16 +493,13 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             envoy_3_modifiers: trade_envoy_3("Cahokia"),
             envoy_6_modifiers: trade_envoy_6("Cahokia"),
         },
-
         // ── GS Industrial ──────────────────────────────────────────────
         CityStateDef {
             name: "Cardiff",
             state_type: CityStateType::Industrial,
             suzerain_bonus_description: "+2 Power from each Harbor building",
             // Complex effect: power from harbor buildings; approximate with production bonus.
-            suzerain_modifiers: vec![
-                suzerain_yield_flat("Cardiff", YieldType::Production, 2),
-            ],
+            suzerain_modifiers: vec![suzerain_yield_flat("Cardiff", YieldType::Production, 2)],
             envoy_1_modifiers: industrial_envoy_1("Cardiff"),
             envoy_3_modifiers: industrial_envoy_3("Cardiff"),
             envoy_6_modifiers: industrial_envoy_6("Cardiff"),
@@ -532,14 +508,11 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             name: "Mexico City",
             state_type: CityStateType::Industrial,
             suzerain_bonus_description: "+2 Production from each improved tile",
-            suzerain_modifiers: vec![
-                suzerain_yield_flat("Mexico City", YieldType::Production, 2),
-            ],
+            suzerain_modifiers: vec![suzerain_yield_flat("Mexico City", YieldType::Production, 2)],
             envoy_1_modifiers: industrial_envoy_1("Mexico City"),
             envoy_3_modifiers: industrial_envoy_3("Mexico City"),
             envoy_6_modifiers: industrial_envoy_6("Mexico City"),
         },
-
         // ── GS Religious ───────────────────────────────────────────────
         CityStateDef {
             name: "Nazca",
@@ -551,7 +524,6 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             envoy_3_modifiers: religious_envoy_3("Nazca"),
             envoy_6_modifiers: religious_envoy_6("Nazca"),
         },
-
         // ── GS Cultural ────────────────────────────────────────────────
         CityStateDef {
             name: "Rapa Nui",
@@ -563,7 +535,6 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             envoy_3_modifiers: cultural_envoy_3("Rapa Nui"),
             envoy_6_modifiers: cultural_envoy_6("Rapa Nui"),
         },
-
         // ── DLC city-states ───────────────────────────────────────────
 
         // ── DLC Cultural ──────────────────────────────────────────────
@@ -571,9 +542,7 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             name: "Ayutthaya",
             state_type: CityStateType::Cultural,
             suzerain_bonus_description: "+10% culture from buildings",
-            suzerain_modifiers: vec![
-                suzerain_yield_percent("Ayutthaya", YieldType::Culture, 10),
-            ],
+            suzerain_modifiers: vec![suzerain_yield_percent("Ayutthaya", YieldType::Culture, 10)],
             envoy_1_modifiers: cultural_envoy_1("Ayutthaya"),
             envoy_3_modifiers: cultural_envoy_3("Ayutthaya"),
             envoy_6_modifiers: cultural_envoy_6("Ayutthaya"),
@@ -582,27 +551,22 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             name: "Caguana",
             state_type: CityStateType::Cultural,
             suzerain_bonus_description: "+2 culture per entertainment building",
-            suzerain_modifiers: vec![
-                suzerain_yield_flat("Caguana", YieldType::Culture, 2),
-            ],
+            suzerain_modifiers: vec![suzerain_yield_flat("Caguana", YieldType::Culture, 2)],
             envoy_1_modifiers: cultural_envoy_1("Caguana"),
             envoy_3_modifiers: cultural_envoy_3("Caguana"),
             envoy_6_modifiers: cultural_envoy_6("Caguana"),
         },
-
         // ── DLC Religious ─────────────────────────────────────────────
         CityStateDef {
             name: "Chinguetti",
             state_type: CityStateType::Religious,
             suzerain_bonus_description: "+2 faith per trade route",
-            suzerain_modifiers: vec![
-                Modifier::new(
-                    ModifierSource::Custom("Chinguetti"),
-                    TargetSelector::TradeRoutesOwned,
-                    EffectType::TradeRouteYieldFlat(YieldType::Faith, 2),
-                    StackingRule::Additive,
-                ),
-            ],
+            suzerain_modifiers: vec![Modifier::new(
+                ModifierSource::Custom("Chinguetti"),
+                TargetSelector::TradeRoutesOwned,
+                EffectType::TradeRouteYieldFlat(YieldType::Faith, 2),
+                StackingRule::Additive,
+            )],
             envoy_1_modifiers: religious_envoy_1("Chinguetti"),
             envoy_3_modifiers: religious_envoy_3("Chinguetti"),
             envoy_6_modifiers: religious_envoy_6("Chinguetti"),
@@ -611,22 +575,21 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             name: "Vatican City",
             state_type: CityStateType::Religious,
             suzerain_bonus_description: "+100% religious pressure from wonders",
-            suzerain_modifiers: vec![
-                suzerain_yield_percent("Vatican City", YieldType::Faith, 100),
-            ],
+            suzerain_modifiers: vec![suzerain_yield_percent(
+                "Vatican City",
+                YieldType::Faith,
+                100,
+            )],
             envoy_1_modifiers: religious_envoy_1("Vatican City"),
             envoy_3_modifiers: religious_envoy_3("Vatican City"),
             envoy_6_modifiers: religious_envoy_6("Vatican City"),
         },
-
         // ── DLC Industrial ────────────────────────────────────────────
         CityStateDef {
             name: "Johannesburg",
             state_type: CityStateType::Industrial,
             suzerain_bonus_description: "+3 gold per improved resource",
-            suzerain_modifiers: vec![
-                suzerain_yield_flat("Johannesburg", YieldType::Gold, 3),
-            ],
+            suzerain_modifiers: vec![suzerain_yield_flat("Johannesburg", YieldType::Gold, 3)],
             envoy_1_modifiers: industrial_envoy_1("Johannesburg"),
             envoy_3_modifiers: industrial_envoy_3("Johannesburg"),
             envoy_6_modifiers: industrial_envoy_6("Johannesburg"),
@@ -635,27 +598,22 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             name: "Singapore",
             state_type: CityStateType::Industrial,
             suzerain_bonus_description: "+2 production per foreign trade route",
-            suzerain_modifiers: vec![
-                Modifier::new(
-                    ModifierSource::Custom("Singapore"),
-                    TargetSelector::TradeRoutesOwned,
-                    EffectType::TradeRouteYieldFlat(YieldType::Production, 2),
-                    StackingRule::Additive,
-                ),
-            ],
+            suzerain_modifiers: vec![Modifier::new(
+                ModifierSource::Custom("Singapore"),
+                TargetSelector::TradeRoutesOwned,
+                EffectType::TradeRouteYieldFlat(YieldType::Production, 2),
+                StackingRule::Additive,
+            )],
             envoy_1_modifiers: industrial_envoy_1("Singapore"),
             envoy_3_modifiers: industrial_envoy_3("Singapore"),
             envoy_6_modifiers: industrial_envoy_6("Singapore"),
         },
-
         // ── DLC Scientific ────────────────────────────────────────────
         CityStateDef {
             name: "Nalanda",
             state_type: CityStateType::Scientific,
             suzerain_bonus_description: "+2 science per library",
-            suzerain_modifiers: vec![
-                suzerain_yield_flat("Nalanda", YieldType::Science, 2),
-            ],
+            suzerain_modifiers: vec![suzerain_yield_flat("Nalanda", YieldType::Science, 2)],
             envoy_1_modifiers: scientific_envoy_1("Nalanda"),
             envoy_3_modifiers: scientific_envoy_3("Nalanda"),
             envoy_6_modifiers: scientific_envoy_6("Nalanda"),
@@ -664,14 +622,11 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             name: "Taruga",
             state_type: CityStateType::Scientific,
             suzerain_bonus_description: "+1 science per strategic resource",
-            suzerain_modifiers: vec![
-                suzerain_yield_flat("Taruga", YieldType::Science, 1),
-            ],
+            suzerain_modifiers: vec![suzerain_yield_flat("Taruga", YieldType::Science, 1)],
             envoy_1_modifiers: scientific_envoy_1("Taruga"),
             envoy_3_modifiers: scientific_envoy_3("Taruga"),
             envoy_6_modifiers: scientific_envoy_6("Taruga"),
         },
-
         // ── DLC Trade ─────────────────────────────────────────────────
         CityStateDef {
             name: "Samarkand",
@@ -687,22 +642,17 @@ pub fn builtin_city_state_defs() -> Vec<CityStateDef> {
             name: "Hunza",
             state_type: CityStateType::Trade,
             suzerain_bonus_description: "+1 gold per mountain within 3 tiles",
-            suzerain_modifiers: vec![
-                suzerain_yield_flat("Hunza", YieldType::Gold, 1),
-            ],
+            suzerain_modifiers: vec![suzerain_yield_flat("Hunza", YieldType::Gold, 1)],
             envoy_1_modifiers: trade_envoy_1("Hunza"),
             envoy_3_modifiers: trade_envoy_3("Hunza"),
             envoy_6_modifiers: trade_envoy_6("Hunza"),
         },
-
         // ── DLC Militaristic ──────────────────────────────────────────
         CityStateDef {
             name: "Wolin",
             state_type: CityStateType::Militaristic,
             suzerain_bonus_description: "+2 production for naval units",
-            suzerain_modifiers: vec![
-                suzerain_yield_flat("Wolin", YieldType::Production, 2),
-            ],
+            suzerain_modifiers: vec![suzerain_yield_flat("Wolin", YieldType::Production, 2)],
             envoy_1_modifiers: militaristic_envoy_1("Wolin"),
             envoy_3_modifiers: militaristic_envoy_3("Wolin"),
             envoy_6_modifiers: militaristic_envoy_6("Wolin"),
@@ -727,7 +677,11 @@ mod tests {
     #[test]
     fn test_builtin_city_state_defs_count() {
         let defs = builtin_city_state_defs();
-        assert_eq!(defs.len(), 45, "Expected 45 city-state definitions (24 base + 9 GS + 12 DLC)");
+        assert_eq!(
+            defs.len(),
+            45,
+            "Expected 45 city-state definitions (24 base + 9 GS + 12 DLC)"
+        );
     }
 
     #[test]
@@ -742,12 +696,30 @@ mod tests {
     #[test]
     fn test_type_distribution() {
         let defs = builtin_city_state_defs();
-        let trade = defs.iter().filter(|d| d.state_type == CityStateType::Trade).count();
-        let industrial = defs.iter().filter(|d| d.state_type == CityStateType::Industrial).count();
-        let scientific = defs.iter().filter(|d| d.state_type == CityStateType::Scientific).count();
-        let cultural = defs.iter().filter(|d| d.state_type == CityStateType::Cultural).count();
-        let religious = defs.iter().filter(|d| d.state_type == CityStateType::Religious).count();
-        let militaristic = defs.iter().filter(|d| d.state_type == CityStateType::Militaristic).count();
+        let trade = defs
+            .iter()
+            .filter(|d| d.state_type == CityStateType::Trade)
+            .count();
+        let industrial = defs
+            .iter()
+            .filter(|d| d.state_type == CityStateType::Industrial)
+            .count();
+        let scientific = defs
+            .iter()
+            .filter(|d| d.state_type == CityStateType::Scientific)
+            .count();
+        let cultural = defs
+            .iter()
+            .filter(|d| d.state_type == CityStateType::Cultural)
+            .count();
+        let religious = defs
+            .iter()
+            .filter(|d| d.state_type == CityStateType::Religious)
+            .count();
+        let militaristic = defs
+            .iter()
+            .filter(|d| d.state_type == CityStateType::Militaristic)
+            .count();
 
         assert_eq!(trade, 8);
         assert_eq!(industrial, 8);

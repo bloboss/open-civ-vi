@@ -1,7 +1,7 @@
 use crate::civ::civ_identity::BuiltinCiv;
 use crate::civ::great_works::GreatWorkSlotType;
-use crate::game::state::BuildingDef;
 use crate::game::IdGenerator;
+use crate::game::state::BuildingDef;
 use crate::{YieldBundle, YieldType};
 
 /// Returns all base-game building definitions.
@@ -35,7 +35,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -55,7 +57,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -71,7 +75,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -85,7 +91,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -101,7 +109,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -115,7 +125,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -129,7 +141,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -143,7 +157,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         // ── Campus Buildings (3) ─────────────────────────────────────────────
         BuildingDef {
@@ -158,7 +174,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -174,7 +192,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -188,7 +208,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 1, power_generated: 0, co2_per_turn: 0,
+            power_cost: 1,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         // ── Holy Site Buildings (3) ──────────────────────────────────────────
         BuildingDef {
@@ -203,7 +225,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -217,7 +241,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -231,7 +257,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: Some(BuiltinCiv::Norway),
             replaces: Some("Temple"),
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         // ── Holy Site Worship Buildings (9) ──────────────────────────────────
         // Worship buildings are unlocked via a religion belief; one per religion.
@@ -248,7 +276,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![GreatWorkSlotType::Art],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -264,7 +294,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -280,7 +312,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -294,7 +328,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -310,7 +346,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -324,7 +362,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -340,7 +380,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -356,7 +398,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -372,7 +416,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         // ── Commercial Hub Buildings (3) ─────────────────────────────────────
         BuildingDef {
@@ -387,7 +433,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -401,7 +449,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -415,7 +465,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         // ── Harbor Buildings (3) ─────────────────────────────────────────────
         BuildingDef {
@@ -433,7 +485,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -447,7 +501,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -464,7 +520,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         // ── Encampment Buildings (4) ─────────────────────────────────────────
         BuildingDef {
@@ -479,7 +537,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -493,7 +553,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -507,7 +569,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -521,7 +585,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         // ── Industrial Zone Buildings (3) ────────────────────────────────────
         BuildingDef {
@@ -536,7 +602,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -550,7 +618,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 1, power_generated: 0, co2_per_turn: 1,
+            power_cost: 1,
+            power_generated: 0,
+            co2_per_turn: 1,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -564,7 +634,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 2,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 2,
         },
         // ── Entertainment Complex Buildings (3) ──────────────────────────────
         BuildingDef {
@@ -579,7 +651,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -593,7 +667,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -607,7 +683,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         // ── Theater Square Buildings (4) ─────────────────────────────────────
         BuildingDef {
@@ -619,13 +697,12 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             requires_district: Some("Theater Square"),
             prereq_building: None,
             mutually_exclusive: None,
-            great_work_slots: vec![
-                GreatWorkSlotType::Writing,
-                GreatWorkSlotType::Writing,
-            ],
+            great_work_slots: vec![GreatWorkSlotType::Writing, GreatWorkSlotType::Writing],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -643,7 +720,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             ],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -661,7 +740,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             ],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -675,7 +756,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![GreatWorkSlotType::Music],
             exclusive_to: None,
             replaces: None,
-            power_cost: 1, power_generated: 0, co2_per_turn: 0,
+            power_cost: 1,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         // ── Aerodrome Buildings (2) ──────────────────────────────────────────
         BuildingDef {
@@ -690,7 +773,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -704,7 +789,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         // ── GS Power Plant Buildings ────────────────────────────────────────
         BuildingDef {
@@ -719,7 +806,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 4, co2_per_turn: 3,
+            power_cost: 0,
+            power_generated: 4,
+            co2_per_turn: 3,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -733,7 +822,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 4, co2_per_turn: 2,
+            power_cost: 0,
+            power_generated: 4,
+            co2_per_turn: 2,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -747,7 +838,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 16, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 16,
+            co2_per_turn: 0,
         },
         // ── GS Additional City Center Buildings ─────────────────────────────
         BuildingDef {
@@ -762,7 +855,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -776,7 +871,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -790,7 +887,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: None,
             replaces: None,
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         // ── DLC Civilization Pack unique buildings ───────────────────────────
         BuildingDef {
@@ -798,14 +897,18 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             name: "Tlachtli",
             cost: 150,
             maintenance: 1,
-            yields: YieldBundle::new().with(YieldType::Faith, 2).with(YieldType::Culture, 1),
+            yields: YieldBundle::new()
+                .with(YieldType::Faith, 2)
+                .with(YieldType::Culture, 1),
             requires_district: Some("Entertainment Complex"),
             prereq_building: None,
             mutually_exclusive: None,
             great_work_slots: vec![],
             exclusive_to: Some(BuiltinCiv::Aztec),
             replaces: Some("Arena"),
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -819,7 +922,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: Some(BuiltinCiv::Khmer),
             replaces: Some("Temple"),
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -833,21 +938,27 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: Some(BuiltinCiv::Macedon),
             replaces: Some("Barracks"),
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
             name: "Sukiennice",
             cost: 120,
             maintenance: 0,
-            yields: YieldBundle::new().with(YieldType::Gold, 3).with(YieldType::Production, 2),
+            yields: YieldBundle::new()
+                .with(YieldType::Gold, 3)
+                .with(YieldType::Production, 2),
             requires_district: Some("Commercial Hub"),
             prereq_building: None,
             mutually_exclusive: None,
             great_work_slots: vec![],
             exclusive_to: Some(BuiltinCiv::Poland),
             replaces: Some("Market"),
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
         BuildingDef {
             id: id_gen.next_building_id(),
@@ -861,7 +972,9 @@ pub fn builtin_building_defs(id_gen: &mut IdGenerator) -> Vec<BuildingDef> {
             great_work_slots: vec![],
             exclusive_to: Some(BuiltinCiv::Portugal),
             replaces: Some("University"),
-            power_cost: 0, power_generated: 0, co2_per_turn: 0,
+            power_cost: 0,
+            power_generated: 0,
+            co2_per_turn: 0,
         },
     ]
 }

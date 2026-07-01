@@ -6,7 +6,7 @@
 mod common;
 
 use libciv::ai::{Agent, HeuristicAgent};
-use libciv::game::{recalculate_visibility, StateDelta};
+use libciv::game::{StateDelta, recalculate_visibility};
 use libciv::{DefaultRulesEngine, GameStateDiff, TurnEngine};
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -81,7 +81,10 @@ fn ai_game_deterministic_across_runs() {
     let (pos_a, cities_a) = run("run-1");
     let (pos_b, cities_b) = run("run-2");
 
-    assert_eq!(cities_a, cities_b, "city count must be identical across runs");
+    assert_eq!(
+        cities_a, cities_b,
+        "city count must be identical across runs"
+    );
     assert_eq!(pos_a.len(), pos_b.len(), "unit count must be identical");
     for (a, b) in pos_a.iter().zip(pos_b.iter()) {
         assert_eq!(a, b, "unit positions must match across deterministic runs");
@@ -147,13 +150,15 @@ fn ai_game_state_consistency() {
         assert!(
             is_known_civ || is_barbarian,
             "unit {:?} has owner {:?} which is not a known civ",
-            unit.id, unit.owner
+            unit.id,
+            unit.owner
         );
         // Unit coord must be on the board.
         assert!(
             s.state.board.normalize(unit.coord).is_some(),
             "unit {:?} is at {:?} which is off the board",
-            unit.id, unit.coord
+            unit.id,
+            unit.coord
         );
     }
 
@@ -162,13 +167,15 @@ fn ai_game_state_consistency() {
         assert!(
             civ_ids.contains(&city.owner),
             "city {:?} has owner {:?} which is not a known civ",
-            city.id, city.owner
+            city.id,
+            city.owner
         );
         // City coord must be on the board.
         assert!(
             s.state.board.normalize(city.coord).is_some(),
             "city {:?} is at {:?} which is off the board",
-            city.id, city.coord
+            city.id,
+            city.coord
         );
     }
 }

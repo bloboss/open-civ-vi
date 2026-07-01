@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::http::{fetch_json, ApiError};
+use super::http::{ApiError, fetch_json};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct PresetView {

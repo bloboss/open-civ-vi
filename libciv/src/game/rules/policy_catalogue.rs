@@ -13,12 +13,12 @@ use super::super::state::GameState;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PolicyCardEntry {
-    pub policy_id:    PolicyId,
-    pub name:         &'static str,
-    pub policy_type:  PolicyType,
+    pub policy_id: PolicyId,
+    pub name: &'static str,
+    pub policy_type: PolicyType,
     /// Name of the civic that unlocks this policy.
     pub prereq_civic: &'static str,
-    pub status:       PolicyCardStatus,
+    pub status: PolicyCardStatus,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,9 +51,9 @@ pub(crate) fn policy_catalogue(state: &GameState, civ: CivId) -> Vec<PolicyCardE
                 PolicyCardStatus::Locked
             };
             PolicyCardEntry {
-                policy_id:    p.id,
-                name:         p.name,
-                policy_type:  p.policy_type,
+                policy_id: p.id,
+                name: p.name,
+                policy_type: p.policy_type,
                 prereq_civic: p.prereq_civic,
                 status,
             }
@@ -71,8 +71,14 @@ mod tests {
     fn make_state() -> (GameState, CivId) {
         let mut state = GameState::new(17, 10, 10);
         let civ_id = state.id_gen.next_civ_id();
-        let leader = Leader { name: "L", civ_id, agenda: BuiltinAgenda::Default };
-        state.civilizations.push(Civilization::new(civ_id, "TestCiv", "Test", leader));
+        let leader = Leader {
+            name: "L",
+            civ_id,
+            agenda: BuiltinAgenda::Default,
+        };
+        state
+            .civilizations
+            .push(Civilization::new(civ_id, "TestCiv", "Test", leader));
         (state, civ_id)
     }
 
@@ -80,7 +86,11 @@ mod tests {
     fn fresh_civ_has_all_policies_locked() {
         let (state, civ) = make_state();
         let cat = DefaultRulesEngine.policy_catalogue(&state, civ);
-        assert_eq!(cat.len(), state.policies.len(), "one entry per registered policy");
+        assert_eq!(
+            cat.len(),
+            state.policies.len(),
+            "one entry per registered policy"
+        );
         assert!(cat.iter().all(|e| e.status == PolicyCardStatus::Locked));
     }
 
@@ -101,7 +111,12 @@ mod tests {
     fn slotted_policy_shows_as_active() {
         let (mut state, civ) = make_state();
         state.civilizations[0].unlocked_policies.push("Discipline");
-        let pid = state.policies.iter().find(|p| p.name == "Discipline").unwrap().id;
+        let pid = state
+            .policies
+            .iter()
+            .find(|p| p.name == "Discipline")
+            .unwrap()
+            .id;
         state.civilizations[0].active_policies.push(pid);
         let cat = DefaultRulesEngine.policy_catalogue(&state, civ);
         let discipline = cat.iter().find(|e| e.name == "Discipline").unwrap();
@@ -112,6 +127,10 @@ mod tests {
     fn unknown_civ_yields_empty() {
         let (state, _) = make_state();
         let bogus = CivId::from_ulid(ulid::Ulid::new());
-        assert!(DefaultRulesEngine.policy_catalogue(&state, bogus).is_empty());
+        assert!(
+            DefaultRulesEngine
+                .policy_catalogue(&state, bogus)
+                .is_empty()
+        );
     }
 }

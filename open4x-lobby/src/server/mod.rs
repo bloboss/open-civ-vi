@@ -13,7 +13,7 @@ pub mod pubkey_challenge;
 pub mod rest;
 pub mod state;
 
-pub use auth::{AuthCookie, RequireSession, session_layer, SESSION_COOKIE_NAME};
+pub use auth::{AuthCookie, RequireSession, SESSION_COOKIE_NAME, session_layer};
 pub use state::AppState;
 
 /// Assemble the `/api/v1` surface with the session-cookie middleware and

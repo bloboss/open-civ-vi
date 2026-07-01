@@ -97,10 +97,7 @@ pub fn build_world_snapshot(
         x: cam_q,
         y: cam_r,
         zoom: 1.0,
-        selection: Some(world::TileCoord {
-            q: cam_q,
-            r: cam_r,
-        }),
+        selection: Some(world::TileCoord { q: cam_q, r: cam_r }),
     };
 
     let legend = world::Legend {
@@ -126,29 +123,19 @@ pub fn build_world_snapshot(
     };
 
     // Pre-compute tile lookups for cities/units placed on tiles.
-    let cities_by_coord: std::collections::HashMap<_, _> = view
-        .cities
-        .iter()
-        .map(|c| (c.coord, c))
-        .collect();
-    let units_by_coord: std::collections::HashMap<_, _> = view
-        .units
-        .iter()
-        .map(|u| (u.coord, u))
-        .collect();
-    let unit_type_by_id: std::collections::HashMap<_, _> = view
-        .unit_type_defs
-        .iter()
-        .map(|d| (d.id, d))
-        .collect();
+    let cities_by_coord: std::collections::HashMap<_, _> =
+        view.cities.iter().map(|c| (c.coord, c)).collect();
+    let units_by_coord: std::collections::HashMap<_, _> =
+        view.units.iter().map(|u| (u.coord, u)).collect();
+    let unit_type_by_id: std::collections::HashMap<_, _> =
+        view.unit_type_defs.iter().map(|d| (d.id, d)).collect();
     let my_civ_id = view.my_civ_id;
 
     let tiles = board
         .tiles
         .iter()
         .filter(|t| {
-            radius == 0
-                || hex_distance(cam_q, cam_r, t.coord.q, t.coord.r) <= radius as i32
+            radius == 0 || hex_distance(cam_q, cam_r, t.coord.q, t.coord.r) <= radius as i32
         })
         .map(|t| {
             let owner = t.owner.map(|id| {
@@ -236,16 +223,10 @@ fn capitalize(s: &str) -> String {
 
 pub fn build_cities(view: &GameView) -> city_data::CityData {
     use open4x_protocol::v1::enums::ProductionItemView;
-    let unit_type_by_id: std::collections::HashMap<_, _> = view
-        .unit_type_defs
-        .iter()
-        .map(|d| (d.id, d))
-        .collect();
-    let building_def_by_id: std::collections::HashMap<_, _> = view
-        .building_defs
-        .iter()
-        .map(|d| (d.id, d))
-        .collect();
+    let unit_type_by_id: std::collections::HashMap<_, _> =
+        view.unit_type_defs.iter().map(|d| (d.id, d)).collect();
+    let building_def_by_id: std::collections::HashMap<_, _> =
+        view.building_defs.iter().map(|d| (d.id, d)).collect();
     let my_civ_id = view.my_civ_id;
 
     let cities = view
@@ -338,16 +319,18 @@ pub fn build_city_tiles(view: &GameView, city_id: &str) -> Option<city_tiles::Ci
 /// Map a libciv [`libciv::UnitActionKind`] to the wire `(id, label, hotkey)`
 /// triple the wireframe expects. Cosmetic strings live here, not in the
 /// engine.
-fn unit_action_wire(kind: libciv::UnitActionKind) -> (&'static str, &'static str, Option<&'static str>) {
+fn unit_action_wire(
+    kind: libciv::UnitActionKind,
+) -> (&'static str, &'static str, Option<&'static str>) {
     use libciv::UnitActionKind as K;
     match kind {
-        K::Move           => ("move",            "Move",            Some("M")),
-        K::Attack         => ("attack",          "Attack",          Some("A")),
-        K::Fortify        => ("fortify",         "Fortify",         Some("F")),
-        K::Sleep          => ("sleep",           "Sleep",           Some("Z")),
-        K::FoundCity      => ("found_city",      "Found City",      Some("B")),
-        K::Build          => ("build",           "Build",           Some("E")),
-        K::TradeRoute     => ("trade_route",     "Trade Route",     Some("T")),
+        K::Move => ("move", "Move", Some("M")),
+        K::Attack => ("attack", "Attack", Some("A")),
+        K::Fortify => ("fortify", "Fortify", Some("F")),
+        K::Sleep => ("sleep", "Sleep", Some("Z")),
+        K::FoundCity => ("found_city", "Found City", Some("B")),
+        K::Build => ("build", "Build", Some("E")),
+        K::TradeRoute => ("trade_route", "Trade Route", Some("T")),
         K::SpreadReligion => ("spread_religion", "Spread Religion", Some("R")),
     }
 }
@@ -362,11 +345,8 @@ pub fn build_units_from_room(
 ) -> unit_data::UnitData {
     use libciv::RulesEngine;
 
-    let unit_type_by_id: std::collections::HashMap<_, _> = view
-        .unit_type_defs
-        .iter()
-        .map(|d| (d.id, d))
-        .collect();
+    let unit_type_by_id: std::collections::HashMap<_, _> =
+        view.unit_type_defs.iter().map(|d| (d.id, d)).collect();
     let my_civ_id = view.my_civ_id;
 
     let units = view
@@ -374,7 +354,9 @@ pub fn build_units_from_room(
         .iter()
         .map(|u| {
             let def = unit_type_by_id.get(&u.unit_type);
-            let kind = def.map(|d| capitalize(&d.name)).unwrap_or_else(|| "Unit".into());
+            let kind = def
+                .map(|d| capitalize(&d.name))
+                .unwrap_or_else(|| "Unit".into());
             let owner = if u.owner == my_civ_id {
                 view.my_civ.name.clone()
             } else {
@@ -395,9 +377,9 @@ pub fn build_units_from_room(
                     .map(|a| {
                         let (id, label, hotkey) = unit_action_wire(a.kind);
                         unit_data::UnitAction {
-                            id:      id.into(),
-                            label:   label.into(),
-                            hotkey:  hotkey.map(|s| s.into()),
+                            id: id.into(),
+                            label: label.into(),
+                            hotkey: hotkey.map(|s| s.into()),
                             enabled: a.enabled,
                         }
                     })
@@ -407,22 +389,25 @@ pub fn build_units_from_room(
             };
 
             unit_data::Unit {
-                id:              u.id.as_ulid().to_string(),
-                name:            kind.clone(),
+                id: u.id.as_ulid().to_string(),
+                name: kind.clone(),
                 kind,
                 owner,
-                is_own:          u.is_own,
-                hp:              u.health,
-                hp_max:          100,
-                mp:              u.movement_left / 100,
-                mp_max:          u.max_movement / 100,
-                position:        world::TileCoord { q: u.coord.q, r: u.coord.r },
-                status:          "idle".into(),
+                is_own: u.is_own,
+                hp: u.health,
+                hp_max: 100,
+                mp: u.movement_left / 100,
+                mp_max: u.max_movement / 100,
+                position: world::TileCoord {
+                    q: u.coord.q,
+                    r: u.coord.r,
+                },
+                status: "idle".into(),
                 combat_strength: u.combat_strength,
-                range:           u.range,
-                vision_range:    u.vision_range,
-                category:        format!("{:?}", u.category),
-                domain:          format!("{:?}", u.domain),
+                range: u.range,
+                vision_range: u.vision_range,
+                category: format!("{:?}", u.category),
+                domain: format!("{:?}", u.domain),
                 actions,
             }
         })
@@ -432,11 +417,8 @@ pub fn build_units_from_room(
 }
 
 pub fn build_units(view: &GameView) -> unit_data::UnitData {
-    let unit_type_by_id: std::collections::HashMap<_, _> = view
-        .unit_type_defs
-        .iter()
-        .map(|d| (d.id, d))
-        .collect();
+    let unit_type_by_id: std::collections::HashMap<_, _> =
+        view.unit_type_defs.iter().map(|d| (d.id, d)).collect();
     let my_civ_id = view.my_civ_id;
 
     let units = view
@@ -444,7 +426,9 @@ pub fn build_units(view: &GameView) -> unit_data::UnitData {
         .iter()
         .map(|u| {
             let def = unit_type_by_id.get(&u.unit_type);
-            let kind = def.map(|d| capitalize(&d.name)).unwrap_or_else(|| "Unit".into());
+            let kind = def
+                .map(|d| capitalize(&d.name))
+                .unwrap_or_else(|| "Unit".into());
             let owner = if u.owner == my_civ_id {
                 view.my_civ.name.clone()
             } else {
@@ -548,8 +532,8 @@ pub fn build_combat_preview_from_room(
     view: &GameView,
     room: &crate::server::state::GameRoom,
     attacker_id: &str,
-    defender_q:  i32,
-    defender_r:  i32,
+    defender_q: i32,
+    defender_r: i32,
 ) -> Option<combat_preview::CombatPreview> {
     use libciv::RulesEngine;
 
@@ -574,22 +558,22 @@ pub fn build_combat_preview_from_room(
         .unwrap_or_else(|| "Enemy".into());
 
     let defender_info = combat_preview::DefenderInfo {
-        id:   preview.defender.as_ulid().to_string(),
+        id: preview.defender.as_ulid().to_string(),
         kind: defender_kind,
-        q:    defender_q,
-        r:    defender_r,
+        q: defender_q,
+        r: defender_r,
     };
 
     // The wire shape's `_strength` fields are i32; cast through.
     let _ = view;
     Some(combat_preview::CombatPreview {
-        attacker_id:               preview.attacker.as_ulid().to_string(),
-        defender:                  Some(defender_info),
-        attacker_strength:         preview.attacker_effective_cs as i32,
-        defender_strength:         preview.defender_effective_cs as i32,
+        attacker_id: preview.attacker.as_ulid().to_string(),
+        defender: Some(defender_info),
+        attacker_strength: preview.attacker_effective_cs as i32,
+        defender_strength: preview.defender_effective_cs as i32,
         predicted_attacker_damage: preview.predicted_attacker_damage as i32,
         predicted_defender_damage: preview.predicted_defender_damage as i32,
-        note:                      format!("{:?} preview at rng=1.0", preview.attack_type),
+        note: format!("{:?} preview at rng=1.0", preview.attack_type),
     })
 }
 
@@ -608,11 +592,8 @@ pub fn build_combat_preview(
     let attacker = view.units.iter().find(|u| u.id == attacker_uid)?;
     let attacker_str = attacker.combat_strength? as i32;
 
-    let unit_type_by_id: std::collections::HashMap<_, _> = view
-        .unit_type_defs
-        .iter()
-        .map(|d| (d.id, d))
-        .collect();
+    let unit_type_by_id: std::collections::HashMap<_, _> =
+        view.unit_type_defs.iter().map(|d| (d.id, d)).collect();
 
     let defender = view
         .units
@@ -732,7 +713,11 @@ pub fn build_civics_tree(view: &GameView) -> civics_tree::CivicsTreeView {
             } else {
                 "locked".to_string()
             };
-            let progress = if Some(n.id) == active { active_progress } else { None };
+            let progress = if Some(n.id) == active {
+                active_progress
+            } else {
+                None
+            };
             civics_tree::CivicNode {
                 id: n.id.as_ulid().to_string(),
                 name: n.name.clone(),
@@ -777,7 +762,7 @@ fn era_for_tech_cost(cost: u32) -> String {
 pub fn build_government_from_room(
     view: &GameView,
     room: &crate::server::state::GameRoom,
-    civ:  open4x_protocol::v1::ids::CivId,
+    civ: open4x_protocol::v1::ids::CivId,
 ) -> government::GovernmentPolicies {
     use libciv::{PolicyCardStatus, RulesEngine};
 
@@ -787,9 +772,9 @@ pub fn build_government_from_room(
         .iter()
         .enumerate()
         .map(|(i, pid)| government::ActivePolicy {
-            slot:   format!("slot_{i}"),
-            id:     pid.as_ulid().to_string(),
-            name:   format!("Policy {}", i + 1),
+            slot: format!("slot_{i}"),
+            id: pid.as_ulid().to_string(),
+            name: format!("Policy {}", i + 1),
             effect: String::new(),
         })
         .collect();
@@ -806,12 +791,12 @@ pub fn build_government_from_room(
             .current_government
             .clone()
             .unwrap_or_else(|| "Chiefdom".into()),
-        era:   format!("{:?}", view.my_civ.current_era),
+        era: format!("{:?}", view.my_civ.current_era),
         slots: government::Slots {
-            military:   2,
-            economic:   2,
+            military: 2,
+            economic: 2,
             diplomatic: 1,
-            wildcard:   0,
+            wildcard: 0,
         },
         legacy_bonus: String::new(),
     };
@@ -823,19 +808,19 @@ pub fn build_government_from_room(
         .into_iter()
         .map(|e| {
             let status = match e.status {
-                PolicyCardStatus::Active    => "active",
+                PolicyCardStatus::Active => "active",
                 PolicyCardStatus::Available => "available",
-                PolicyCardStatus::Locked    => "locked",
+                PolicyCardStatus::Locked => "locked",
             };
             government::PolicyCard {
-                id:            e.policy_id.as_ulid().to_string(),
-                name:          e.name.into(),
-                kind:          format!("{:?}", e.policy_type).to_lowercase(),
-                era:           String::new(),
-                dark_age:      false,
-                status:        status.into(),
-                unlock_civic:  Some(e.prereq_civic.into()),
-                effect:        String::new(),
+                id: e.policy_id.as_ulid().to_string(),
+                name: e.name.into(),
+                kind: format!("{:?}", e.policy_type).to_lowercase(),
+                era: String::new(),
+                dark_age: false,
+                status: status.into(),
+                unlock_civic: Some(e.prereq_civic.into()),
+                effect: String::new(),
             }
         })
         .collect();
@@ -848,7 +833,8 @@ pub fn build_government_from_room(
 }
 
 pub fn build_government(view: &GameView) -> government::GovernmentPolicies {
-    let government::GovernmentPolicies { catalogue, .. } = government::GovernmentPolicies::default();
+    let government::GovernmentPolicies { catalogue, .. } =
+        government::GovernmentPolicies::default();
     let active_policies: Vec<government::ActivePolicy> = view
         .my_civ
         .active_policies
@@ -988,21 +974,21 @@ pub fn build_empire_overview(view: &GameView) -> empire_overview::EmpireOverview
 fn victory_condition_wire_id(c: &libciv::game::victory::BuiltinVictoryCondition) -> &'static str {
     use libciv::game::victory::BuiltinVictoryCondition as V;
     match c {
-        V::Score { .. }      => "score",
-        V::Culture { .. }    => "culture",
+        V::Score { .. } => "score",
+        V::Culture { .. } => "culture",
         V::Domination { .. } => "domination",
-        V::Science { .. }    => "science",
+        V::Science { .. } => "science",
         V::Diplomatic { .. } => "diplomatic",
-        V::Religious { .. }  => "religious",
+        V::Religious { .. } => "religious",
     }
 }
 
 const VICTORY_CONDITION_WIRE: [(&str, &str); 6] = [
-    ("score",      "Score"),
-    ("culture",    "Culture"),
+    ("score", "Score"),
+    ("culture", "Culture"),
     ("domination", "Domination"),
-    ("science",    "Science"),
-    ("religious",  "Religious"),
+    ("science", "Science"),
+    ("religious", "Religious"),
     ("diplomatic", "Diplomatic"),
 ];
 
@@ -1013,7 +999,7 @@ const VICTORY_CONDITION_WIRE: [(&str, &str); 6] = [
 pub fn build_victory_from_room(
     view: &GameView,
     room: &crate::server::state::GameRoom,
-    civ:  open4x_protocol::v1::ids::CivId,
+    civ: open4x_protocol::v1::ids::CivId,
     turn_limit: Option<u32>,
 ) -> victory::Victory {
     use libciv::RulesEngine;
@@ -1077,8 +1063,8 @@ pub fn build_victory_from_room(
     let conditions: Vec<_> = VICTORY_CONDITION_WIRE
         .iter()
         .map(|(id, name)| victory::Condition {
-            id:         (*id).into(),
-            name:       (*name).into(),
+            id: (*id).into(),
+            name: (*name).into(),
             player_pct: pct_by_wire_id.get(*id).copied().unwrap_or(0),
         })
         .collect();
@@ -1090,13 +1076,13 @@ pub fn build_victory_from_room(
         .unwrap_or_else(|| ("score".into(), 0));
 
     victory::Victory {
-        turn:     view.turn,
+        turn: view.turn,
         turn_max: turn_limit.unwrap_or(500),
         leading_condition,
         leading_pct,
-        score:    my_score,
+        score: my_score,
         rank,
-        rank_of:  leaderboard.len() as u32,
+        rank_of: leaderboard.len() as u32,
         conditions,
         leaderboard,
     }
@@ -1219,7 +1205,7 @@ pub fn build_notifications_from_room(
 pub fn build_turn_queue_from_room(
     view: &GameView,
     room: &crate::server::state::GameRoom,
-    civ:  open4x_protocol::v1::ids::CivId,
+    civ: open4x_protocol::v1::ids::CivId,
 ) -> turn_queue::TurnQueue {
     use libciv::{PendingActionKind, RulesEngine};
 
@@ -1259,10 +1245,17 @@ pub fn build_turn_queue_from_room(
                 // Look up the unit on the GameView so the desc can include
                 // movement info; fall back to bare title if the unit isn't
                 // visible to the player (shouldn't happen — they own it).
-                let view_unit = view.units.iter().find(|u| u.id.as_ulid() == unit_id.as_ulid());
+                let view_unit = view
+                    .units
+                    .iter()
+                    .find(|u| u.id.as_ulid() == unit_id.as_ulid());
                 let desc = view_unit
                     .map(|u| {
-                        format!("{}/{} MP available", u.movement_left / 100, u.max_movement / 100)
+                        format!(
+                            "{}/{} MP available",
+                            u.movement_left / 100,
+                            u.max_movement / 100
+                        )
                     })
                     .unwrap_or_else(|| "Has movement available".into());
                 turn_queue::TurnQueueItem {
@@ -1281,7 +1274,11 @@ pub fn build_turn_queue_from_room(
             }
             PendingActionKind::CityNeedsProduction { city_id } => {
                 // Use the city's name + coord from GameState (authoritative).
-                let city = room.state.cities.iter().find(|c| c.id.as_ulid() == city_id.as_ulid());
+                let city = room
+                    .state
+                    .cities
+                    .iter()
+                    .find(|c| c.id.as_ulid() == city_id.as_ulid());
                 let (title, q, r) = match city {
                     Some(c) => (
                         format!("{} has nothing in production", c.name),
@@ -1335,13 +1332,21 @@ pub fn build_turn_queue(view: &GameView) -> turn_queue::TurnQueue {
         });
     }
 
-    for u in view.units.iter().filter(|u| u.is_own && u.movement_left > 0) {
+    for u in view
+        .units
+        .iter()
+        .filter(|u| u.is_own && u.movement_left > 0)
+    {
         items.push(turn_queue::TurnQueueItem {
             id: format!("unit_{}", u.id.as_ulid()),
             kind: "unit".into(),
             required: false,
             title: format!("Unit at ({}, {})", u.coord.q, u.coord.r),
-            desc: format!("{}/{} MP available", u.movement_left / 100, u.max_movement / 100),
+            desc: format!(
+                "{}/{} MP available",
+                u.movement_left / 100,
+                u.max_movement / 100
+            ),
             skip_label: Some("Sleep".into()),
             target: Some(notifications::NotificationTarget {
                 screen: "hud".into(),

@@ -4,8 +4,8 @@
 
 mod common;
 
-use libciv::game::{ReplayRecorder, ReplayViewer, TurnEngine};
 use libciv::DefaultRulesEngine;
+use libciv::game::{ReplayRecorder, ReplayViewer, TurnEngine};
 
 /// Helper: advance one turn and return the diff (without the movement reset /
 /// visibility refresh that `common::advance_turn` does, since we only need the

@@ -43,9 +43,7 @@ pub enum DataReportSubTab {
 
 /// Horizontal tab bar displayed below the top bar.
 #[component]
-pub fn TabBar(
-    active_tab: RwSignal<GameTab>,
-) -> impl IntoView {
+pub fn TabBar(active_tab: RwSignal<GameTab>) -> impl IntoView {
     let tab_btn = move |label: &'static str, tab: GameTab| {
         let tab_clone = tab.clone();
         let is_active = move || {

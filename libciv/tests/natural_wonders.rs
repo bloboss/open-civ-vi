@@ -1,14 +1,14 @@
+use libciv::NaturalWonderId;
 /// Tests for natural wonder yield bonuses and appeal.
 use libciv::game::WorldBoard;
 use libciv::world::terrain::BuiltinTerrain;
 use libciv::world::wonder::{
     BuiltinNaturalWonder, GrandMesa, Krakatoa, NaturalWonder, UluruAyersRock,
 };
-use libciv::NaturalWonderId;
+use libhexgrid::HexTile;
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 use libhexgrid::types::MovementCost;
-use libhexgrid::HexTile;
 
 fn wonder_id() -> NaturalWonderId {
     NaturalWonderId::from_ulid(ulid::Ulid::new())
@@ -31,13 +31,15 @@ fn wonder_tile_yields_terrain_plus_wonder_bonus() {
     // Expected total: 3 Food, 2 Production.
     if let Some(t) = board.tile_mut(coord) {
         t.terrain = BuiltinTerrain::Grassland;
-        t.natural_wonder = Some(BuiltinNaturalWonder::GrandMesa(GrandMesa { id: wonder_id() }));
+        t.natural_wonder = Some(BuiltinNaturalWonder::GrandMesa(GrandMesa {
+            id: wonder_id(),
+        }));
     }
 
     let tile = board.tile(coord).unwrap();
     let yields = tile.total_yields();
 
-    assert_eq!(yields.food,       3, "Grassland 2 + GrandMesa 1 = 3 food");
+    assert_eq!(yields.food, 3, "Grassland 2 + GrandMesa 1 = 3 food");
     assert_eq!(yields.production, 2, "GrandMesa grants +2 production");
 }
 

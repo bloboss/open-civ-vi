@@ -3,14 +3,14 @@
 //! Contains: tile/border helpers, loyalty pressure, diplomacy status computation,
 //! citizen assignment, and tile yield gating.
 
-use std::collections::HashSet;
-use crate::{AgreementId, CityId, CivId, YieldBundle};
 use crate::civ::DiplomaticRelation;
 use crate::civ::DiplomaticStatus;
 use crate::rules::modifier::EffectType;
 use crate::world::tile::WorldTile;
+use crate::{AgreementId, CityId, CivId, YieldBundle};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::{HexCoord, HexDir};
+use std::collections::HashSet;
 
 use super::board::WorldBoard;
 use super::diff::{GameStateDiff, StateDelta};
@@ -30,7 +30,7 @@ pub(crate) fn try_claim_tile(
     let newly_claimed = if let Some(t) = state.board.tile_mut(coord) {
         match t.owner {
             Some(owner) if owner == civ_id => false, // already ours, no delta
-            Some(_) => false,                         // enemy tile, skip
+            Some(_) => false,                        // enemy tile, skip
             None => {
                 t.owner = Some(civ_id);
                 true
@@ -44,7 +44,11 @@ pub(crate) fn try_claim_tile(
         if let Some(city) = state.cities.iter_mut().find(|c| c.id == city_id) {
             city.territory.insert(coord);
         }
-        diff.push(StateDelta::TileClaimed { civ: civ_id, city: city_id, coord });
+        diff.push(StateDelta::TileClaimed {
+            civ: civ_id,
+            city: city_id,
+            coord,
+        });
     }
 }
 
@@ -60,7 +64,9 @@ pub(crate) fn tile_border_cost(distance: u32) -> u32 {
 /// Used exclusively for the border expansion shadow accumulator; does not
 /// affect the civilization's culture pool.
 pub(crate) fn city_culture_output(board: &WorldBoard, city: &crate::civ::City) -> u32 {
-    let tile_culture: u32 = city.worked_tiles.iter()
+    let tile_culture: u32 = city
+        .worked_tiles
+        .iter()
         .filter_map(|&c| board.tile(c))
         .map(|t| t.total_yields().culture.max(0) as u32)
         .sum();
@@ -69,9 +75,10 @@ pub(crate) fn city_culture_output(board: &WorldBoard, city: &crate::civ::City) -
 
 /// Return the `HexDir` from `from` to an adjacent `to`, handling board wrapping.
 pub(crate) fn neighbor_dir(board: &WorldBoard, from: HexCoord, to: HexCoord) -> Option<HexDir> {
-    HexDir::ALL.iter().find(|&&dir| {
-        board.normalize(from + dir.unit_vec()) == Some(to)
-    }).copied()
+    HexDir::ALL
+        .iter()
+        .find(|&&dir| board.normalize(from + dir.unit_vec()) == Some(to))
+        .copied()
 }
 
 /// Apply a resolved set of `EffectType`s to a `YieldBundle`.
@@ -85,7 +92,7 @@ pub(crate) fn apply_effects(effects: &[EffectType], mut base: YieldBundle) -> Yi
     for &effect in effects {
         if let EffectType::YieldPercent(yt, pct) = effect {
             let current = base.get(yt);
-            let bonus   = (current * pct) / 100;
+            let bonus = (current * pct) / 100;
             base.add_yield(yt, bonus);
         }
     }
@@ -115,8 +122,7 @@ pub(crate) fn tile_yields_gated(tile: &WorldTile, known_techs: &HashSet<&str>) -
         //   2. The resource is not concealed by an overlying feature
         //      (Forest/Rainforest hide resources until the feature is cleared).
         let tech_ok = reveal_tech.is_none_or(|t| known_techs.contains(t));
-        let concealed = tile.feature
-            .is_some_and(|f| f.conceals_resources());
+        let concealed = tile.feature.is_some_and(|f| f.conceals_resources());
         if tech_ok && !concealed {
             yields += res.base_yields();
         }
@@ -128,14 +134,16 @@ pub(crate) fn tile_yields_gated(tile: &WorldTile, known_techs: &HashSet<&str>) -
 /// Assign the highest-yield unworked tile within 3 rings of the city to the
 /// city's worked set. Called automatically when a city's population grows.
 /// Locked tiles are never displaced; unlocked tiles may be reassigned later.
-pub(crate) fn auto_assign_citizen(board: &WorldBoard, city: &mut crate::civ::City) -> Option<HexCoord> {
+pub(crate) fn auto_assign_citizen(
+    board: &WorldBoard,
+    city: &mut crate::civ::City,
+) -> Option<HexCoord> {
     let best = (1u32..=3)
         .flat_map(|r| city.coord.ring(r))
-        .filter(|coord| {
-            board.tile(*coord).is_some() && !city.worked_tiles.contains(coord)
-        })
+        .filter(|coord| board.tile(*coord).is_some() && !city.worked_tiles.contains(coord))
         .max_by_key(|coord| {
-            board.tile(*coord)
+            board
+                .tile(*coord)
                 .map(|t| {
                     let y = t.total_yields();
                     y.food + y.production + y.gold + y.science + y.culture
@@ -243,11 +251,9 @@ pub(crate) fn compute_city_loyalty_delta(
     }
 
     // Governor bonus: an established governor stabilizes loyalty.
-    let has_governor = governors.iter().any(|g| {
-        g.owner == owner
-            && g.assigned_city == Some(city.id)
-            && g.is_established()
-    });
+    let has_governor = governors
+        .iter()
+        .any(|g| g.owner == owner && g.assigned_city == Some(city.id) && g.is_established());
     if has_governor {
         delta += 8;
     }
@@ -266,10 +272,7 @@ pub(crate) fn compute_city_loyalty_delta(
 
 /// Find the civilization exerting the highest foreign loyalty pressure on a city.
 /// Returns `None` if no foreign civ exerts any pressure (city becomes Free City).
-pub(crate) fn highest_pressure_civ(
-    city_idx: usize,
-    cities: &[crate::civ::City],
-) -> Option<CivId> {
+pub(crate) fn highest_pressure_civ(city_idx: usize, cities: &[crate::civ::City]) -> Option<CivId> {
     let city = &cities[city_idx];
     let owner = city.owner;
     let coord = city.coord;
@@ -306,12 +309,16 @@ pub(crate) fn highest_pressure_civ(
 /// Find the index of the `DiplomaticRelation` between two civs in `state`,
 /// creating a new `Neutral` relation and appending it if none exists.
 pub(crate) fn find_or_create_relation(state: &mut GameState, a: CivId, b: CivId) -> usize {
-    if let Some(idx) = state.diplomatic_relations.iter().position(|r| {
-        (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a)
-    }) {
+    if let Some(idx) = state
+        .diplomatic_relations
+        .iter()
+        .position(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
+    {
         return idx;
     }
-    state.diplomatic_relations.push(DiplomaticRelation::new(a, b));
+    state
+        .diplomatic_relations
+        .push(DiplomaticRelation::new(a, b));
     state.diplomatic_relations.len() - 1
 }
 

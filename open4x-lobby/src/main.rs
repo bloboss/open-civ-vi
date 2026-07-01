@@ -23,8 +23,8 @@ async fn main() {
     let static_dir = std::env::var("OPEN4X_LOBBY_STATIC_DIR")
         .ok()
         .filter(|s| !s.is_empty());
-    let data_dir = std::env::var("OPEN4X_LOBBY_DATA_DIR")
-        .unwrap_or_else(|_| "./data/lobby".to_string());
+    let data_dir =
+        std::env::var("OPEN4X_LOBBY_DATA_DIR").unwrap_or_else(|_| "./data/lobby".to_string());
     let book_dir = std::env::var("OPEN4X_LOBBY_BOOK_DIR")
         .ok()
         .filter(|s| !s.is_empty());
@@ -61,9 +61,7 @@ async fn main() {
     // .fallback_service; the embedded handler does its own.
     app = match static_dir.as_deref() {
         Some(path) => app.fallback_service(ServeDir::new(path)),
-        None if server::embed::spa_assets_present() => {
-            app.fallback(server::embed::spa_fallback)
-        }
+        None if server::embed::spa_assets_present() => app.fallback(server::embed::spa_fallback),
         None => app, // No SPA — non-SPA deploys (e.g. headless API) still work.
     };
 

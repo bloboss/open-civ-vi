@@ -1,12 +1,12 @@
 /// Tests for builder charges, road placement, and road maintenance.
 mod common;
 
-use libciv::{DefaultRulesEngine, RulesEngine, TechId, UnitCategory, UnitDomain, UnitId};
 use libciv::civ::BasicUnit;
 use libciv::game::StateDelta;
 use libciv::rules::tech::TechNode;
 use libciv::world::improvement::BuiltinImprovement;
 use libciv::world::road::{AncientRoad, BuiltinRoad, MedievalRoad};
+use libciv::{DefaultRulesEngine, RulesEngine, TechId, UnitCategory, UnitDomain, UnitId};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 
@@ -39,7 +39,11 @@ fn spawn_builder(
         vision_range: 2,
         charges: Some(3),
         trade_origin: None,
-        trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
     id
 }
@@ -54,9 +58,13 @@ fn claim_tile(state: &mut libciv::GameState, coord: HexCoord, civ_id: libciv::Ci
 /// Grant Pottery tech to a civ (needed for Farm placement).
 fn grant_pottery(state: &mut libciv::GameState, civ_id: libciv::CivId) {
     let pottery_id = state.tech_refs.pottery;
-    state.civilizations.iter_mut()
-        .find(|c| c.id == civ_id).unwrap()
-        .researched_techs.push(pottery_id);
+    state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == civ_id)
+        .unwrap()
+        .researched_techs
+        .push(pottery_id);
 }
 
 // ===========================================================================
@@ -76,9 +84,15 @@ fn builder_charges_decrement_on_improvement() {
     let builder = spawn_builder(&mut s.state, bt, rome_id, coord);
 
     let rules = DefaultRulesEngine;
-    let diff = rules.place_improvement(
-        &mut s.state, s.rome_id, coord, BuiltinImprovement::Farm, Some(builder),
-    ).expect("placement should succeed");
+    let diff = rules
+        .place_improvement(
+            &mut s.state,
+            s.rome_id,
+            coord,
+            BuiltinImprovement::Farm,
+            Some(builder),
+        )
+        .expect("placement should succeed");
 
     // Charges should have decremented from 3 to 2.
     let unit = s.state.unit(builder).expect("builder should still exist");
@@ -86,7 +100,9 @@ fn builder_charges_decrement_on_improvement() {
 
     // Diff should contain ChargesChanged.
     assert!(
-        diff.deltas.iter().any(|d| matches!(d, StateDelta::ChargesChanged { remaining: 2, .. })),
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::ChargesChanged { remaining: 2, .. })),
         "Diff should contain ChargesChanged with remaining=2"
     );
 }
@@ -113,31 +129,54 @@ fn builder_destroyed_when_charges_exhausted() {
     let builder = spawn_builder(&mut s.state, bt, rome_id, coords[0]);
 
     // First placement: 3 -> 2
-    rules.place_improvement(
-        &mut s.state, s.rome_id, coords[0], BuiltinImprovement::Farm, Some(builder),
-    ).unwrap();
+    rules
+        .place_improvement(
+            &mut s.state,
+            s.rome_id,
+            coords[0],
+            BuiltinImprovement::Farm,
+            Some(builder),
+        )
+        .unwrap();
     assert_eq!(s.state.unit(builder).unwrap().charges, Some(2));
 
     // Move builder to next tile.
     s.state.unit_mut(builder).unwrap().coord = coords[1];
 
     // Second placement: 2 -> 1
-    rules.place_improvement(
-        &mut s.state, s.rome_id, coords[1], BuiltinImprovement::Farm, Some(builder),
-    ).unwrap();
+    rules
+        .place_improvement(
+            &mut s.state,
+            s.rome_id,
+            coords[1],
+            BuiltinImprovement::Farm,
+            Some(builder),
+        )
+        .unwrap();
     assert_eq!(s.state.unit(builder).unwrap().charges, Some(1));
 
     // Move builder to next tile.
     s.state.unit_mut(builder).unwrap().coord = coords[2];
 
     // Third placement: 1 -> 0, builder destroyed.
-    let diff = rules.place_improvement(
-        &mut s.state, s.rome_id, coords[2], BuiltinImprovement::Farm, Some(builder),
-    ).unwrap();
+    let diff = rules
+        .place_improvement(
+            &mut s.state,
+            s.rome_id,
+            coords[2],
+            BuiltinImprovement::Farm,
+            Some(builder),
+        )
+        .unwrap();
 
-    assert!(s.state.unit(builder).is_none(), "Builder should be destroyed after 0 charges");
     assert!(
-        diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitDestroyed { .. })),
+        s.state.unit(builder).is_none(),
+        "Builder should be destroyed after 0 charges"
+    );
+    assert!(
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::UnitDestroyed { .. })),
         "Diff should contain UnitDestroyed"
     );
 }
@@ -152,7 +191,11 @@ fn place_improvement_without_builder_still_works() {
 
     let rules = DefaultRulesEngine;
     let result = rules.place_improvement(
-        &mut s.state, s.rome_id, coord, BuiltinImprovement::Farm, None,
+        &mut s.state,
+        s.rome_id,
+        coord,
+        BuiltinImprovement::Farm,
+        None,
     );
     assert!(result.is_ok(), "placement without builder should succeed");
     assert!(s.state.board.tile(coord).unwrap().improvement.is_some());
@@ -173,7 +216,11 @@ fn builder_must_be_at_coord_for_improvement() {
 
     let rules = DefaultRulesEngine;
     let result = rules.place_improvement(
-        &mut s.state, s.rome_id, target, BuiltinImprovement::Farm, Some(builder),
+        &mut s.state,
+        s.rome_id,
+        target,
+        BuiltinImprovement::Farm,
+        Some(builder),
     );
     assert!(
         matches!(result, Err(libciv::game::RulesError::InvalidCoord)),
@@ -191,7 +238,11 @@ fn non_builder_unit_rejected() {
 
     let rules = DefaultRulesEngine;
     let result = rules.place_improvement(
-        &mut s.state, s.rome_id, coord, BuiltinImprovement::Farm, Some(s.rome_warrior),
+        &mut s.state,
+        s.rome_id,
+        coord,
+        BuiltinImprovement::Farm,
+        Some(s.rome_warrior),
     );
     assert!(
         matches!(result, Err(libciv::game::RulesError::NotABuilder)),
@@ -215,9 +266,14 @@ fn place_road_ancient_succeeds() {
     let builder = spawn_builder(&mut s.state, bt, rome_id, coord);
 
     let rules = DefaultRulesEngine;
-    let diff = rules.place_road(
-        &mut s.state, builder, coord, BuiltinRoad::Ancient(AncientRoad),
-    ).expect("ancient road placement should succeed");
+    let diff = rules
+        .place_road(
+            &mut s.state,
+            builder,
+            coord,
+            BuiltinRoad::Ancient(AncientRoad),
+        )
+        .expect("ancient road placement should succeed");
 
     // Road should be on tile.
     let tile = s.state.board.tile(coord).unwrap();
@@ -225,13 +281,17 @@ fn place_road_ancient_succeeds() {
 
     // Diff should contain RoadPlaced.
     assert!(
-        diff.deltas.iter().any(|d| matches!(d, StateDelta::RoadPlaced { .. })),
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::RoadPlaced { .. })),
         "Diff should contain RoadPlaced"
     );
 
     // Charges should be decremented.
     assert!(
-        diff.deltas.iter().any(|d| matches!(d, StateDelta::ChargesChanged { remaining: 2, .. })),
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::ChargesChanged { remaining: 2, .. })),
         "Diff should contain ChargesChanged"
     );
 }
@@ -248,9 +308,14 @@ fn place_road_decrements_charges() {
     let builder = spawn_builder(&mut s.state, bt, rome_id, coord);
 
     let rules = DefaultRulesEngine;
-    rules.place_road(
-        &mut s.state, builder, coord, BuiltinRoad::Ancient(AncientRoad),
-    ).unwrap();
+    rules
+        .place_road(
+            &mut s.state,
+            builder,
+            coord,
+            BuiltinRoad::Ancient(AncientRoad),
+        )
+        .unwrap();
 
     let unit = s.state.unit(builder).expect("builder should still exist");
     assert_eq!(unit.charges, Some(2));
@@ -274,7 +339,10 @@ fn place_road_rejects_downgrade() {
 
     let rules = DefaultRulesEngine;
     let result = rules.place_road(
-        &mut s.state, builder, coord, BuiltinRoad::Ancient(AncientRoad),
+        &mut s.state,
+        builder,
+        coord,
+        BuiltinRoad::Ancient(AncientRoad),
     );
     assert!(
         matches!(result, Err(libciv::game::RulesError::RoadDowngrade)),
@@ -299,7 +367,10 @@ fn place_road_rejects_same_tier() {
 
     let rules = DefaultRulesEngine;
     let result = rules.place_road(
-        &mut s.state, builder, coord, BuiltinRoad::Ancient(AncientRoad),
+        &mut s.state,
+        builder,
+        coord,
+        BuiltinRoad::Ancient(AncientRoad),
     );
     assert!(
         matches!(result, Err(libciv::game::RulesError::RoadDowngrade)),
@@ -323,7 +394,10 @@ fn place_road_on_water_fails() {
 
     let rules = DefaultRulesEngine;
     let result = rules.place_road(
-        &mut s.state, builder, coord, BuiltinRoad::Ancient(AncientRoad),
+        &mut s.state,
+        builder,
+        coord,
+        BuiltinRoad::Ancient(AncientRoad),
     );
     assert!(
         matches!(result, Err(libciv::game::RulesError::InvalidImprovement)),
@@ -345,7 +419,10 @@ fn builder_must_be_at_coord_for_road() {
 
     let rules = DefaultRulesEngine;
     let result = rules.place_road(
-        &mut s.state, builder, target, BuiltinRoad::Ancient(AncientRoad),
+        &mut s.state,
+        builder,
+        target,
+        BuiltinRoad::Ancient(AncientRoad),
     );
     assert!(
         matches!(result, Err(libciv::game::RulesError::InvalidCoord)),
@@ -367,7 +444,10 @@ fn place_road_tile_not_owned() {
 
     let rules = DefaultRulesEngine;
     let result = rules.place_road(
-        &mut s.state, builder, coord, BuiltinRoad::Ancient(AncientRoad),
+        &mut s.state,
+        builder,
+        coord,
+        BuiltinRoad::Ancient(AncientRoad),
     );
     assert!(
         matches!(result, Err(libciv::game::RulesError::TileNotOwned)),
@@ -398,9 +478,13 @@ fn road_upgrade_succeeds() {
         eureka_description: "",
         eureka_effects: Vec::new(),
     });
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .researched_techs.push(eng_id);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .researched_techs
+        .push(eng_id);
 
     let rome_id = s.rome_id;
     let bt = s.builder_type;
@@ -408,9 +492,15 @@ fn road_upgrade_succeeds() {
 
     let rules = DefaultRulesEngine;
     let result = rules.place_road(
-        &mut s.state, builder, coord, BuiltinRoad::Medieval(MedievalRoad),
+        &mut s.state,
+        builder,
+        coord,
+        BuiltinRoad::Medieval(MedievalRoad),
     );
-    assert!(result.is_ok(), "upgrade from Ancient to Medieval should succeed: {result:?}");
+    assert!(
+        result.is_ok(),
+        "upgrade from Ancient to Medieval should succeed: {result:?}"
+    );
 
     let tile = s.state.board.tile(coord).unwrap();
     assert_eq!(tile.road, Some(BuiltinRoad::Medieval(MedievalRoad)));
@@ -430,7 +520,10 @@ fn place_road_requires_tech() {
     let rules = DefaultRulesEngine;
     // Without Engineering, Medieval road should fail.
     let result = rules.place_road(
-        &mut s.state, builder, coord, BuiltinRoad::Medieval(MedievalRoad),
+        &mut s.state,
+        builder,
+        coord,
+        BuiltinRoad::Medieval(MedievalRoad),
     );
     assert!(
         matches!(result, Err(libciv::game::RulesError::TechRequired)),
@@ -448,8 +541,11 @@ fn road_maintenance_deducted_per_turn() {
     let mut s = common::build_scenario();
 
     // Give Rome some gold and place a medieval road (maintenance = 1).
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
         .gold = 100;
 
     let coord = HexCoord::from_qr(4, 3);
@@ -484,8 +580,11 @@ fn road_maintenance_deducted_per_turn() {
 fn ancient_road_no_maintenance() {
     let mut s = common::build_scenario();
 
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
         .gold = 100;
 
     let coord = HexCoord::from_qr(4, 3);

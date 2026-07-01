@@ -1,16 +1,14 @@
 //! Combat handlers: `attack`, `city_bombard`, `theological_combat`.
 
-use crate::{CivId, UnitId, UnitDomain, AgeType, GreatPersonType};
 use crate::civ::unit::Unit;
+use crate::{AgeType, CivId, GreatPersonType, UnitDomain, UnitId};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 
-use super::{RulesError, lookup_bundle};
 use super::super::diff::{AttackType, GameStateDiff, StateDelta};
 use super::super::state::GameState;
-use crate::rules::modifier::{
-    ConditionContext, EffectType, Modifier, resolve_modifiers,
-};
+use super::{RulesError, lookup_bundle};
+use crate::rules::modifier::{ConditionContext, EffectType, Modifier, resolve_modifiers};
 use crate::rules::unique::UniqueUnitAbility;
 
 /// XP thresholds: each threshold unlocks one promotion slot.
@@ -31,8 +29,8 @@ const GP_POINTS_PER_COMBAT: u32 = 2;
 fn combat_gp_type(domain: UnitDomain) -> Option<GreatPersonType> {
     match domain {
         UnitDomain::Land => Some(GreatPersonType::General),
-        UnitDomain::Sea  => Some(GreatPersonType::Admiral),
-        UnitDomain::Air  => None,
+        UnitDomain::Sea => Some(GreatPersonType::Admiral),
+        UnitDomain::Air => None,
     }
 }
 
@@ -43,13 +41,15 @@ fn combat_gp_type(domain: UnitDomain) -> Option<GreatPersonType> {
 /// `GreatPersonPointsAccumulated` delta is emitted, mirroring the accumulation
 /// phase. No-op for air units or a zero award.
 fn award_combat_gpp(
-    state:  &mut GameState,
-    owner:  CivId,
+    state: &mut GameState,
+    owner: CivId,
     domain: UnitDomain,
     points: u32,
-    diff:   &mut GameStateDiff,
+    diff: &mut GameStateDiff,
 ) {
-    let Some(gp_type) = combat_gp_type(domain) else { return };
+    let Some(gp_type) = combat_gp_type(domain) else {
+        return;
+    };
     if points == 0 {
         return;
     }
@@ -57,10 +57,10 @@ fn award_combat_gpp(
         let total = civ.great_person_points.entry(gp_type).or_insert(0);
         *total += points;
         diff.push(StateDelta::GreatPersonPointsAccumulated {
-            civ:         owner,
+            civ: owner,
             person_type: gp_type,
             points,
-            total:       *total,
+            total: *total,
         });
     }
 }
@@ -167,10 +167,14 @@ pub(super) fn resolve_combat_modifiers(state: &GameState, unit_id: UnitId) -> (i
             if let Some(belief_def) = state.belief_defs.iter().find(|b| b.id == *belief_id) {
                 if belief_def.name == "Crusade" {
                     // Check if unit is within 10 tiles of a foreign holy city.
-                    let near_foreign_holy = state.religions.iter()
+                    let near_foreign_holy = state
+                        .religions
+                        .iter()
                         .filter(|r| r.founded_by != civ_id)
                         .any(|r| {
-                            state.cities.iter()
+                            state
+                                .cities
+                                .iter()
                                 .find(|c| c.id == r.holy_city)
                                 .is_some_and(|c| c.coord.distance(&unit_coord) <= 10)
                         });
@@ -213,20 +217,33 @@ pub(super) fn resolve_combat_modifiers(state: &GameState, unit_id: UnitId) -> (i
 
 /// Resolve combat between `attacker` and `defender`.
 pub(crate) fn attack(
-    state:       &mut GameState,
+    state: &mut GameState,
     attacker_id: UnitId,
     defender_id: UnitId,
 ) -> Result<GameStateDiff, RulesError> {
     // --- validation -------------------------------------------------------
     let (atk_coord, atk_range, atk_cs, atk_owner, atk_unit_type, atk_domain) = {
         let u = state.unit(attacker_id).ok_or(RulesError::UnitNotFound)?;
-        (u.coord, u.range, u.combat_strength, u.owner, u.unit_type, u.domain)
+        (
+            u.coord,
+            u.range,
+            u.combat_strength,
+            u.owner,
+            u.unit_type,
+            u.domain,
+        )
     };
     let atk_cs = atk_cs.ok_or(RulesError::UnitCannotAttack)?;
 
     let (def_coord, def_cs, def_owner, def_domain, def_unit_type) = {
         let u = state.unit(defender_id).ok_or(RulesError::UnitNotFound)?;
-        (u.coord, u.combat_strength.unwrap_or(0), u.owner, u.domain, u.unit_type)
+        (
+            u.coord,
+            u.combat_strength.unwrap_or(0),
+            u.owner,
+            u.domain,
+            u.unit_type,
+        )
     };
 
     if atk_owner == state.unit(defender_id).unwrap().owner {
@@ -239,7 +256,9 @@ pub(crate) fn attack(
 
     let dist = atk_coord.distance(&def_coord);
     if atk_range == 0 {
-        if dist != 1 { return Err(RulesError::NotInRange); }
+        if dist != 1 {
+            return Err(RulesError::NotInRange);
+        }
     } else if dist > atk_range as u32 {
         return Err(RulesError::NotInRange);
     }
@@ -250,13 +269,17 @@ pub(crate) fn attack(
 
     // Look up unique unit abilities for the attacker.
     if let Some(atk_unit) = state.unit(attacker_id) {
-        let atk_civ_identity = state.civilizations.iter()
+        let atk_civ_identity = state
+            .civilizations
+            .iter()
             .find(|c| c.id == atk_owner)
             .and_then(|c| c.civ_identity);
         if let Some(bundle) = lookup_bundle(atk_civ_identity)
             && let Some(uu) = &bundle.unique_unit
         {
-            let atk_type_name = state.unit_type_defs.iter()
+            let atk_type_name = state
+                .unit_type_defs
+                .iter()
                 .find(|d| d.id == atk_unit.unit_type)
                 .map(|d| d.name);
             if atk_type_name == Some(uu.name) {
@@ -288,13 +311,17 @@ pub(crate) fn attack(
 
     // Look up unique unit abilities for the defender (e.g., Varu debuffs adjacent attackers).
     if let Some(def_unit) = state.unit(defender_id) {
-        let def_civ_identity = state.civilizations.iter()
+        let def_civ_identity = state
+            .civilizations
+            .iter()
             .find(|c| c.id == def_unit.owner)
             .and_then(|c| c.civ_identity);
         if let Some(bundle) = lookup_bundle(def_civ_identity)
             && let Some(uu) = &bundle.unique_unit
         {
-            let def_type_name = state.unit_type_defs.iter()
+            let def_type_name = state
+                .unit_type_defs
+                .iter()
                 .find(|d| d.id == def_unit.unit_type)
                 .map(|d| d.name);
             if def_type_name == Some(uu.name) {
@@ -311,20 +338,25 @@ pub(crate) fn attack(
 
     // --- damage calculation -----------------------------------------------
     // Terrain defense bonus applies to the defender's tile.
-    let terrain_def_bonus = state.board
+    let terrain_def_bonus = state
+        .board
         .tile(def_coord)
         .map(|t| t.terrain_defense_bonus())
         .unwrap_or(0);
     // Wall defense bonus: if the defender is on a city tile with walls,
     // the wall's defense_bonus is added to effective combat strength.
-    let wall_def_bonus = state.cities.iter()
+    let wall_def_bonus = state
+        .cities
+        .iter()
         .find(|c| c.coord == def_coord)
         .map(|c| c.walls.defense_bonus())
         .unwrap_or(0);
     // Siege bonus: extra attack strength when attacking a unit on a city tile.
     let is_city_tile = state.cities.iter().any(|c| c.coord == def_coord);
     let siege_bonus = if is_city_tile {
-        state.unit_type_defs.iter()
+        state
+            .unit_type_defs
+            .iter()
             .find(|d| d.id == atk_unit_type)
             .map(|d| d.siege_bonus)
             .unwrap_or(0)
@@ -338,9 +370,14 @@ pub(crate) fn attack(
     let (def_mod_flat, def_mod_pct) = resolve_combat_modifiers(state, defender_id);
 
     let effective_atk_cs = ((atk_cs as i32 + atk_mod_flat + atk_cs_bonus + siege_bonus as i32)
-        * (100 + atk_mod_pct) / 100).max(1) as u32;
-    let effective_def_cs = ((def_cs as i32 + terrain_def_bonus + wall_def_bonus + def_cs_bonus + def_mod_flat)
-        * (100 + def_mod_pct) / 100).max(1) as u32;
+        * (100 + atk_mod_pct)
+        / 100)
+        .max(1) as u32;
+    let effective_def_cs =
+        ((def_cs as i32 + terrain_def_bonus + wall_def_bonus + def_cs_bonus + def_mod_flat)
+            * (100 + def_mod_pct)
+            / 100)
+            .max(1) as u32;
 
     // Formula: 30 * exp((cs_atk - cs_def_effective) / 25) * rng[0.75, 1.25]
     let rng_a = 0.75 + state.id_gen.next_f32() * 0.5;
@@ -350,9 +387,7 @@ pub(crate) fn attack(
 
     let (attack_type, atk_damage) = if atk_range == 0 {
         let rng_b = 0.75 + state.id_gen.next_f32() * 0.5;
-        let d = (30.0_f32
-            * f32::exp((def_cs as f32 - atk_cs as f32) / 25.0)
-            * rng_b) as u32;
+        let d = (30.0_f32 * f32::exp((def_cs as f32 - atk_cs as f32) / 25.0) * rng_b) as u32;
         (AttackType::Melee, d)
     } else {
         (AttackType::Ranged, 0u32)
@@ -361,8 +396,8 @@ pub(crate) fn attack(
     // --- mutate state and build diff --------------------------------------
     let mut diff = GameStateDiff::new();
     diff.push(StateDelta::UnitAttacked {
-        attacker:        attacker_id,
-        defender:        defender_id,
+        attacker: attacker_id,
+        defender: defender_id,
         attack_type,
         attacker_damage: atk_damage,
         defender_damage: def_damage,
@@ -422,49 +457,48 @@ pub(crate) fn attack(
     {
         let old_owner = state.cities[city_idx].owner;
         // Only capture if no remaining defenders on the tile.
-        let defenders_left = state.units.iter()
+        let defenders_left = state
+            .units
+            .iter()
             .any(|u| u.coord == def_coord && u.owner == old_owner);
         if old_owner != atk_owner && !defenders_left {
+            // Transfer city ownership.
+            let city = &mut state.cities[city_idx];
+            city.owner = atk_owner;
+            city.ownership = crate::civ::city::CityOwnership::Occupied;
+            let city_id = city.id;
+            diff.push(StateDelta::CityCaptured {
+                city: city_id,
+                new_owner: atk_owner,
+                old_owner,
+            });
 
-                // Transfer city ownership.
-                let city = &mut state.cities[city_idx];
-                city.owner     = atk_owner;
-                city.ownership = crate::civ::city::CityOwnership::Occupied;
-                let city_id    = city.id;
-                diff.push(StateDelta::CityCaptured {
-                    city:      city_id,
-                    new_owner: atk_owner,
-                    old_owner,
-                });
+            // Update civilization city lists.
+            if let Some(old_civ) = state.civilizations.iter_mut().find(|c| c.id == old_owner) {
+                old_civ.cities.retain(|&id| id != city_id);
+            }
+            if let Some(new_civ) = state.civilizations.iter_mut().find(|c| c.id == atk_owner) {
+                new_civ.cities.push(city_id);
+            }
 
-                // Update civilization city lists.
-                if let Some(old_civ) = state.civilizations.iter_mut()
-                    .find(|c| c.id == old_owner)
-                {
-                    old_civ.cities.retain(|&id| id != city_id);
-                }
-                if let Some(new_civ) = state.civilizations.iter_mut()
-                    .find(|c| c.id == atk_owner)
-                {
-                    new_civ.cities.push(city_id);
-                }
-
-                // Transfer tile ownership for the city's territory.
-                let territory: Vec<HexCoord> = state.cities.iter()
-                    .find(|c| c.id == city_id)
-                    .map(|c| c.territory.iter().copied().collect())
-                    .unwrap_or_default();
-                for coord in &territory {
-                    if let Some(tile) = state.board.tile_mut(*coord) {
-                        tile.owner = Some(atk_owner);
-                    }
-                }
-
-                // Move the attacker onto the city tile.
-                if let Some(u) = state.unit_mut(attacker_id) {
-                    u.coord = def_coord;
+            // Transfer tile ownership for the city's territory.
+            let territory: Vec<HexCoord> = state
+                .cities
+                .iter()
+                .find(|c| c.id == city_id)
+                .map(|c| c.territory.iter().copied().collect())
+                .unwrap_or_default();
+            for coord in &territory {
+                if let Some(tile) = state.board.tile_mut(*coord) {
+                    tile.owner = Some(atk_owner);
                 }
             }
+
+            // Move the attacker onto the city tile.
+            if let Some(u) = state.unit_mut(attacker_id) {
+                u.coord = def_coord;
+            }
+        }
     }
 
     if let Some(u) = state.unit_mut(attacker_id) {
@@ -473,10 +507,14 @@ pub(crate) fn attack(
 
     // --- XP awards ─────────────────────────────────────────────────────────
     // Look up eras for scaling.
-    let atk_era = state.unit_type_defs.iter()
+    let atk_era = state
+        .unit_type_defs
+        .iter()
         .find(|d| d.id == atk_unit_type)
         .and_then(|d| d.era);
-    let def_era = state.unit_type_defs.iter()
+    let def_era = state
+        .unit_type_defs
+        .iter()
         .find(|d| d.id == def_unit_type)
         .and_then(|d| d.era);
     let era_diff = era_index(def_era) - era_index(atk_era);
@@ -539,7 +577,13 @@ pub(crate) fn attack(
         GP_POINTS_PER_COMBAT + def_damage / 10,
         &mut diff,
     );
-    award_combat_gpp(state, def_owner, def_domain, GP_POINTS_PER_COMBAT, &mut diff);
+    award_combat_gpp(
+        state,
+        def_owner,
+        def_domain,
+        GP_POINTS_PER_COMBAT,
+        &mut diff,
+    );
 
     // --- Cascading events: historic moments on kill ────────────────────────
     // Only for non-barbarian attackers.
@@ -564,7 +608,9 @@ pub(crate) fn attack(
 
         // HigherEraUnitKilled: +3 era score (first time only).
         if era_index(def_era) > era_index(atk_era) {
-            let already_earned = state.civilizations.iter()
+            let already_earned = state
+                .civilizations
+                .iter()
                 .find(|c| c.id == atk_owner)
                 .is_some_and(|c| c.earned_moments.contains("HigherEraUnitKilled"));
             if !already_earned {
@@ -595,10 +641,13 @@ pub(crate) fn attack(
 pub(crate) fn city_bombard(
     state: &mut GameState,
     city_id: crate::CityId,
-    target:  UnitId,
+    target: UnitId,
 ) -> Result<GameStateDiff, RulesError> {
     // 1. Validate city exists and has walls.
-    let city_idx = state.cities.iter().position(|c| c.id == city_id)
+    let city_idx = state
+        .cities
+        .iter()
+        .position(|c| c.id == city_id)
         .ok_or(RulesError::CityNotFound)?;
     let city = &state.cities[city_idx];
     if city.walls == crate::civ::city::WallLevel::None {
@@ -628,16 +677,14 @@ pub(crate) fn city_bombard(
 
     // 3. Damage formula (same exponential; no terrain bonus for city offense).
     let rng = 0.75 + state.id_gen.next_f32() * 0.5;
-    let damage = (30.0_f32
-        * f32::exp((city_cs as f32 - def_cs as f32) / 25.0)
-        * rng) as u32;
+    let damage = (30.0_f32 * f32::exp((city_cs as f32 - def_cs as f32) / 25.0) * rng) as u32;
 
     // 4. Apply damage to target; no counter-damage to city.
     let mut diff = GameStateDiff::new();
     diff.push(StateDelta::UnitAttacked {
-        attacker:        UnitId::nil(),
-        defender:        target,
-        attack_type:     AttackType::CityBombard,
+        attacker: UnitId::nil(),
+        defender: target,
+        attack_type: AttackType::CityBombard,
         attacker_damage: 0,
         defender_damage: damage,
     });
@@ -658,9 +705,15 @@ pub(crate) fn city_bombard(
 /// Check if a religion has the Scripture enhancer belief (+25% combat strength).
 fn religion_has_scripture(state: &GameState, religion_id: Option<crate::ReligionId>) -> bool {
     let Some(rid) = religion_id else { return false };
-    let Some(religion) = state.religions.iter().find(|r| r.id == rid) else { return false };
-    religion.beliefs.iter().any(|bid|
-        state.belief_defs.iter().any(|b| b.id == *bid && b.name == "Scripture"))
+    let Some(religion) = state.religions.iter().find(|r| r.id == rid) else {
+        return false;
+    };
+    religion.beliefs.iter().any(|bid| {
+        state
+            .belief_defs
+            .iter()
+            .any(|b| b.id == *bid && b.name == "Scripture")
+    })
 }
 
 /// Apply +250 followers of a winning religion to all cities within 10 tiles of combat.
@@ -669,7 +722,9 @@ fn apply_theological_victory_pressure(
     religion_id: crate::ReligionId,
     combat_coord: libhexgrid::coord::HexCoord,
 ) {
-    let nearby_cities: Vec<crate::CityId> = state.cities.iter()
+    let nearby_cities: Vec<crate::CityId> = state
+        .cities
+        .iter()
         .filter(|c| c.coord.distance(&combat_coord) <= 10)
         .map(|c| c.id)
         .collect();
@@ -688,18 +743,24 @@ pub(crate) fn theological_combat(
     defender_id: UnitId,
 ) -> Result<GameStateDiff, RulesError> {
     // Validate attacker.
-    let attacker = state.units.iter()
+    let attacker = state
+        .units
+        .iter()
         .find(|u| u.id == attacker_id)
         .ok_or(RulesError::UnitNotFound)?;
     if attacker.category != crate::UnitCategory::Religious {
         return Err(RulesError::NotAReligiousUnit);
     }
-    let mut atk_str = attacker.religious_strength.ok_or(RulesError::NoReligiousStrength)?;
+    let mut atk_str = attacker
+        .religious_strength
+        .ok_or(RulesError::NoReligiousStrength)?;
     let atk_religion = attacker.religion_id;
     let atk_coord = attacker.coord;
 
     // Validate defender.
-    let defender = state.units.iter()
+    let defender = state
+        .units
+        .iter()
         .find(|u| u.id == defender_id)
         .ok_or(RulesError::UnitNotFound)?;
     if defender.category != crate::UnitCategory::Religious {
@@ -743,10 +804,18 @@ pub(crate) fn theological_combat(
     let attacker_damage = counter_damage.max(1.0) as u32;
 
     // Apply damage to religious strength (use original, un-buffed values for storage).
-    let atk_orig = state.units.iter().find(|u| u.id == attacker_id)
-        .and_then(|u| u.religious_strength).unwrap_or(110);
-    let def_orig = state.units.iter().find(|u| u.id == defender_id)
-        .and_then(|u| u.religious_strength).unwrap_or(100);
+    let atk_orig = state
+        .units
+        .iter()
+        .find(|u| u.id == attacker_id)
+        .and_then(|u| u.religious_strength)
+        .unwrap_or(110);
+    let def_orig = state
+        .units
+        .iter()
+        .find(|u| u.id == defender_id)
+        .and_then(|u| u.religious_strength)
+        .unwrap_or(100);
     let def_new_str = def_orig.saturating_sub(defender_damage);
     let atk_new_str = atk_orig.saturating_sub(attacker_damage);
 
@@ -805,7 +874,9 @@ pub(crate) fn promote_unit(
     promotion_name: &str,
 ) -> Result<GameStateDiff, RulesError> {
     // 1. Find the registered promotion by name.
-    let rp = state.promotion_defs.iter()
+    let rp = state
+        .promotion_defs
+        .iter()
         .find(|rp| rp.def.name == promotion_name)
         .ok_or(RulesError::UnitPromotionNotFound)?;
     let promo_id = rp.id;
@@ -817,7 +888,9 @@ pub(crate) fn promote_unit(
     let unit = state.unit(unit_id).ok_or(RulesError::UnitNotFound)?;
 
     // 3. Check promotion class matches the unit's promotion class.
-    let unit_promo_class = state.unit_type_defs.iter()
+    let unit_promo_class = state
+        .unit_type_defs
+        .iter()
         .find(|d| d.id == unit.unit_type)
         .and_then(|d| d.promotion_class);
     if unit_promo_class != Some(promo_class) {
@@ -841,7 +914,9 @@ pub(crate) fn promote_unit(
 
     // 6. Check prerequisites: all prerequisite promotions must be present.
     for prereq_name in &promo_prereqs {
-        let prereq_id = state.promotion_defs.iter()
+        let prereq_id = state
+            .promotion_defs
+            .iter()
             .find(|rp2| rp2.def.name == *prereq_name)
             .map(|rp2| rp2.id);
         if let Some(pid) = prereq_id
@@ -886,7 +961,8 @@ pub(crate) fn raid_barbarian_camp(
     let unit_owner = unit.owner;
     let unit_coord = unit.coord;
 
-    let camp = state.barbarian_camp(camp_id)
+    let camp = state
+        .barbarian_camp(camp_id)
         .ok_or(RulesError::BarbarianCampNotFound)?;
     let camp_coord = camp.coord;
 
@@ -901,7 +977,10 @@ pub(crate) fn raid_barbarian_camp(
     if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == unit_owner) {
         civ.gold += 25;
     }
-    diff.push(StateDelta::GoldChanged { civ: unit_owner, delta: 25 });
+    diff.push(StateDelta::GoldChanged {
+        civ: unit_owner,
+        delta: 25,
+    });
 
     // Reduce conversion progress by 5.
     if let Some(camp) = state.barbarian_camp_mut(camp_id) {
@@ -929,7 +1008,9 @@ pub(crate) fn rock_band_perform(
     let unit_type_id = unit.unit_type;
 
     // 2. Validate unit is a Rock Band.
-    let is_rock_band = state.unit_type_defs.iter()
+    let is_rock_band = state
+        .unit_type_defs
+        .iter()
         .find(|d| d.id == unit_type_id)
         .is_some_and(|d| d.name == "Rock Band");
     if !is_rock_band {
@@ -937,7 +1018,9 @@ pub(crate) fn rock_band_perform(
     }
 
     // 3. Validate unit is on a foreign city tile.
-    let target_city = state.cities.iter()
+    let target_city = state
+        .cities
+        .iter()
         .find(|c| c.coord == unit_coord && c.owner != unit_owner);
     let target_city_id = match target_city {
         Some(c) => c.id,
@@ -945,7 +1028,9 @@ pub(crate) fn rock_band_perform(
     };
 
     // 4. Calculate tourism: base 500 + 250 per district in target city.
-    let district_count = state.cities.iter()
+    let district_count = state
+        .cities
+        .iter()
         .find(|c| c.id == target_city_id)
         .map(|c| c.districts.len() as u32)
         .unwrap_or(0);
@@ -974,11 +1059,17 @@ pub(crate) fn rock_band_perform(
             unit.charges = None;
             let uid = unit.id;
             state.units.retain(|u| u.id != uid);
-            diff.push(StateDelta::ChargesChanged { unit: unit_id, remaining: 0 });
+            diff.push(StateDelta::ChargesChanged {
+                unit: unit_id,
+                remaining: 0,
+            });
             diff.push(StateDelta::UnitDestroyed { unit: unit_id });
         } else {
             unit.charges = Some(new_charges);
-            diff.push(StateDelta::ChargesChanged { unit: unit_id, remaining: new_charges });
+            diff.push(StateDelta::ChargesChanged {
+                unit: unit_id,
+                remaining: new_charges,
+            });
         }
     }
 

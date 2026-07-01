@@ -12,7 +12,7 @@ use super::super::state::GameState;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnitAction {
-    pub kind:    UnitActionKind,
+    pub kind: UnitActionKind,
     /// `false` when the action is conceptually applicable but cannot run
     /// right now (e.g. attack without movement remaining). Greyed-out in
     /// the UI; still listed so the player sees the full action set.
@@ -44,13 +44,13 @@ pub(crate) fn available_unit_actions(state: &GameState, unit: UnitId) -> Vec<Uni
     let def = state.unit_type_defs.iter().find(|d| d.id == u.unit_type);
 
     let has_movement = u.movement_left > 0;
-    let has_combat   = u.combat_strength.is_some();
+    let has_combat = u.combat_strength.is_some();
 
     let mut out = Vec::new();
 
     // Move — every unit. Enabled iff movement remains.
     out.push(UnitAction {
-        kind:    UnitActionKind::Move,
+        kind: UnitActionKind::Move,
         enabled: has_movement,
     });
 
@@ -59,7 +59,7 @@ pub(crate) fn available_unit_actions(state: &GameState, unit: UnitId) -> Vec<Uni
     // can prompt for a target.)
     if has_combat {
         out.push(UnitAction {
-            kind:    UnitActionKind::Attack,
+            kind: UnitActionKind::Attack,
             enabled: has_movement,
         });
     }
@@ -68,21 +68,21 @@ pub(crate) fn available_unit_actions(state: &GameState, unit: UnitId) -> Vec<Uni
     // movement-consuming action).
     if has_combat {
         out.push(UnitAction {
-            kind:    UnitActionKind::Fortify,
+            kind: UnitActionKind::Fortify,
             enabled: true,
         });
     }
 
     // Sleep — every unit.
     out.push(UnitAction {
-        kind:    UnitActionKind::Sleep,
+        kind: UnitActionKind::Sleep,
         enabled: true,
     });
 
     // Found city — settler-class.
     if def.is_some_and(|d| d.can_found_city) {
         out.push(UnitAction {
-            kind:    UnitActionKind::FoundCity,
+            kind: UnitActionKind::FoundCity,
             enabled: has_movement,
         });
     }
@@ -90,7 +90,7 @@ pub(crate) fn available_unit_actions(state: &GameState, unit: UnitId) -> Vec<Uni
     // Build — builder with remaining charges.
     if u.charges.is_some_and(|c| c > 0) {
         out.push(UnitAction {
-            kind:    UnitActionKind::Build,
+            kind: UnitActionKind::Build,
             enabled: has_movement,
         });
     }
@@ -99,7 +99,7 @@ pub(crate) fn available_unit_actions(state: &GameState, unit: UnitId) -> Vec<Uni
     // assigned (otherwise the unit is en route to its destination).
     if matches!(u.category, crate::UnitCategory::Trader) {
         out.push(UnitAction {
-            kind:    UnitActionKind::TradeRoute,
+            kind: UnitActionKind::TradeRoute,
             enabled: has_movement && u.trade_origin.is_none(),
         });
     }
@@ -107,7 +107,7 @@ pub(crate) fn available_unit_actions(state: &GameState, unit: UnitId) -> Vec<Uni
     // Spread religion — religious unit with charges.
     if u.spread_charges.is_some_and(|c| c > 0) {
         out.push(UnitAction {
-            kind:    UnitActionKind::SpreadReligion,
+            kind: UnitActionKind::SpreadReligion,
             enabled: has_movement,
         });
     }
@@ -121,16 +121,14 @@ mod tests {
     use crate::civ::civilization::Civilization;
     use crate::civ::{BasicUnit, BuiltinAgenda, Leader};
     use crate::game::state::UnitTypeDef;
-    use crate::{
-        CivId, DefaultRulesEngine, RulesEngine, UnitCategory, UnitDomain, UnitTypeId,
-    };
+    use crate::{CivId, DefaultRulesEngine, RulesEngine, UnitCategory, UnitDomain, UnitTypeId};
     use libhexgrid::coord::HexCoord;
 
     fn make_state() -> (GameState, CivId) {
         let mut state = GameState::new(11, 10, 10);
         let civ_id = state.id_gen.next_civ_id();
         let leader = Leader {
-            name:   "TestLeader",
+            name: "TestLeader",
             civ_id,
             agenda: BuiltinAgenda::Default,
         };
@@ -142,13 +140,13 @@ mod tests {
 
     fn push_unit(
         state: &mut GameState,
-        civ:   CivId,
-        category:        UnitCategory,
+        civ: CivId,
+        category: UnitCategory,
         combat_strength: Option<u32>,
-        movement:        u32,
-        can_found_city:  bool,
-        charges:         Option<u8>,
-        spread_charges:  Option<u8>,
+        movement: u32,
+        can_found_city: bool,
+        charges: Option<u8>,
+        spread_charges: Option<u8>,
     ) -> UnitId {
         let unit_id = state.id_gen.next_unit_id();
         let type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
@@ -172,27 +170,27 @@ mod tests {
             promotion_class: None,
         });
         state.units.push(BasicUnit {
-            id:                unit_id,
-            unit_type:         type_id,
-            owner:             civ,
-            coord:             HexCoord::from_qr(0, 0),
-            domain:            UnitDomain::Land,
+            id: unit_id,
+            unit_type: type_id,
+            owner: civ,
+            coord: HexCoord::from_qr(0, 0),
+            domain: UnitDomain::Land,
             category,
-            movement_left:     movement,
-            max_movement:      200,
+            movement_left: movement,
+            max_movement: 200,
             combat_strength,
-            promotions:        Vec::new(),
-            experience:        0,
-            health:            100,
-            range:             0,
-            vision_range:      2,
+            promotions: Vec::new(),
+            experience: 0,
+            health: 100,
+            range: 0,
+            vision_range: 2,
             charges,
-            trade_origin:      None,
+            trade_origin: None,
             trade_destination: None,
-            religion_id:       None,
+            religion_id: None,
             spread_charges,
             religious_strength: None,
-            is_embarked:       false,
+            is_embarked: false,
         });
         unit_id
     }
@@ -200,7 +198,16 @@ mod tests {
     #[test]
     fn warrior_has_move_attack_fortify_sleep() {
         let (mut state, civ) = make_state();
-        let warrior = push_unit(&mut state, civ, UnitCategory::Combat, Some(20), 200, false, None, None);
+        let warrior = push_unit(
+            &mut state,
+            civ,
+            UnitCategory::Combat,
+            Some(20),
+            200,
+            false,
+            None,
+            None,
+        );
         let actions = DefaultRulesEngine.available_unit_actions(&state, warrior);
         let kinds: Vec<_> = actions.iter().map(|a| a.kind).collect();
         assert!(kinds.contains(&UnitActionKind::Move));
@@ -215,35 +222,83 @@ mod tests {
     #[test]
     fn settler_gets_found_city() {
         let (mut state, civ) = make_state();
-        let settler = push_unit(&mut state, civ, UnitCategory::Civilian, None, 200, true, None, None);
+        let settler = push_unit(
+            &mut state,
+            civ,
+            UnitCategory::Civilian,
+            None,
+            200,
+            true,
+            None,
+            None,
+        );
         let actions = DefaultRulesEngine.available_unit_actions(&state, settler);
-        assert!(actions.iter().any(|a| a.kind == UnitActionKind::FoundCity && a.enabled));
+        assert!(
+            actions
+                .iter()
+                .any(|a| a.kind == UnitActionKind::FoundCity && a.enabled)
+        );
         assert!(!actions.iter().any(|a| a.kind == UnitActionKind::Attack));
     }
 
     #[test]
     fn builder_with_charges_gets_build() {
         let (mut state, civ) = make_state();
-        let builder = push_unit(&mut state, civ, UnitCategory::Civilian, None, 200, false, Some(3), None);
+        let builder = push_unit(
+            &mut state,
+            civ,
+            UnitCategory::Civilian,
+            None,
+            200,
+            false,
+            Some(3),
+            None,
+        );
         let actions = DefaultRulesEngine.available_unit_actions(&state, builder);
-        assert!(actions.iter().any(|a| a.kind == UnitActionKind::Build && a.enabled));
+        assert!(
+            actions
+                .iter()
+                .any(|a| a.kind == UnitActionKind::Build && a.enabled)
+        );
     }
 
     #[test]
     fn move_disabled_when_no_movement_remaining() {
         let (mut state, civ) = make_state();
-        let warrior = push_unit(&mut state, civ, UnitCategory::Combat, Some(20), 0, false, None, None);
+        let warrior = push_unit(
+            &mut state,
+            civ,
+            UnitCategory::Combat,
+            Some(20),
+            0,
+            false,
+            None,
+            None,
+        );
         let actions = DefaultRulesEngine.available_unit_actions(&state, warrior);
-        let move_a = actions.iter().find(|a| a.kind == UnitActionKind::Move).expect("move action");
+        let move_a = actions
+            .iter()
+            .find(|a| a.kind == UnitActionKind::Move)
+            .expect("move action");
         assert!(!move_a.enabled);
-        let fortify = actions.iter().find(|a| a.kind == UnitActionKind::Fortify).expect("fortify action");
-        assert!(fortify.enabled, "fortify is a stance and remains usable without movement");
+        let fortify = actions
+            .iter()
+            .find(|a| a.kind == UnitActionKind::Fortify)
+            .expect("fortify action");
+        assert!(
+            fortify.enabled,
+            "fortify is a stance and remains usable without movement"
+        );
     }
 
     #[test]
     fn unknown_unit_yields_empty() {
         let (state, _) = make_state();
         let bogus = UnitId::from_ulid(ulid::Ulid::new());
-        assert!(DefaultRulesEngine.available_unit_actions(&state, bogus).is_empty());
+        assert!(
+            DefaultRulesEngine
+                .available_unit_actions(&state, bogus)
+                .is_empty()
+        );
     }
 }

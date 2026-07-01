@@ -33,14 +33,20 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
         StateDelta::UnitDestroyed { unit } => {
             state.units.retain(|u| u.id != *unit);
         }
-        StateDelta::UnitHealed { unit, new_health, .. } => {
+        StateDelta::UnitHealed {
+            unit, new_health, ..
+        } => {
             if let Some(u) = state.unit_mut(*unit) {
                 u.health = *new_health;
             }
         }
         StateDelta::ChargesChanged { unit, remaining } => {
             if let Some(u) = state.unit_mut(*unit) {
-                u.charges = if *remaining == 0 { None } else { Some(*remaining) };
+                u.charges = if *remaining == 0 {
+                    None
+                } else {
+                    Some(*remaining)
+                };
             }
         }
 
@@ -48,7 +54,11 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
         StateDelta::CityFounded { .. } => {
             // Informational: city was already added to state.cities.
         }
-        StateDelta::CityCaptured { city, new_owner, old_owner } => {
+        StateDelta::CityCaptured {
+            city,
+            new_owner,
+            old_owner,
+        } => {
             // Update the city's owner.
             if let Some(c) = state.cities.iter_mut().find(|c| c.id == *city) {
                 c.owner = *new_owner;
@@ -63,7 +73,10 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
                 new_civ.cities.push(*city);
             }
         }
-        StateDelta::PopulationGrew { city, new_population } => {
+        StateDelta::PopulationGrew {
+            city,
+            new_population,
+        } => {
             if let Some(c) = state.cities.iter_mut().find(|c| c.id == *city) {
                 c.population = *new_population;
             }
@@ -83,7 +96,11 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
                 c.faith = (c.faith as i32 + d).max(0) as u32;
             }
         }
-        StateDelta::StrategicResourceChanged { civ, resource, delta: d } => {
+        StateDelta::StrategicResourceChanged {
+            civ,
+            resource,
+            delta: d,
+        } => {
             if let Some(c) = state.civilizations.iter_mut().find(|c| c.id == *civ) {
                 let entry = c.strategic_resources.entry(*resource).or_insert(0);
                 *entry = (*entry as i32 + d).max(0) as u32;
@@ -92,8 +109,12 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
 
         // ── Tech & Civics ───────────────────────────────────────────────
         StateDelta::TechResearched { civ, tech } => {
-            let tid = state.tech_tree.nodes.values()
-                .find(|n| n.name == *tech).map(|n| n.id);
+            let tid = state
+                .tech_tree
+                .nodes
+                .values()
+                .find(|n| n.name == *tech)
+                .map(|n| n.id);
             if let Some(tid) = tid {
                 if let Some(c) = state.civilizations.iter_mut().find(|c| c.id == *civ)
                     && !c.researched_techs.contains(&tid)
@@ -103,8 +124,12 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
             }
         }
         StateDelta::CivicCompleted { civ, civic } => {
-            let cid = state.civic_tree.nodes.values()
-                .find(|n| n.name == *civic).map(|n| n.id);
+            let cid = state
+                .civic_tree
+                .nodes
+                .values()
+                .find(|n| n.name == *civic)
+                .map(|n| n.id);
             if let Some(cid) = cid {
                 if let Some(c) = state.civilizations.iter_mut().find(|c| c.id == *civ)
                     && !c.completed_civics.contains(&cid)
@@ -115,11 +140,14 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
         }
 
         // ── Diplomacy ───────────────────────────────────────────────────
-        StateDelta::DiplomacyChanged { civ_a, civ_b, new_status } => {
-            if let Some(rel) = state.diplomatic_relations.iter_mut()
-                .find(|r| (r.civ_a == *civ_a && r.civ_b == *civ_b) ||
-                          (r.civ_a == *civ_b && r.civ_b == *civ_a))
-            {
+        StateDelta::DiplomacyChanged {
+            civ_a,
+            civ_b,
+            new_status,
+        } => {
+            if let Some(rel) = state.diplomatic_relations.iter_mut().find(|r| {
+                (r.civ_a == *civ_a && r.civ_b == *civ_b) || (r.civ_a == *civ_b && r.civ_b == *civ_a)
+            }) {
                 rel.status = *new_status;
             }
         }
@@ -133,15 +161,14 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
         StateDelta::ResourceRevealed { .. } => {
             // Informational: resource reveal is tracked via researched_techs.
         }
-        StateDelta::EurekaTriggered { .. } |
-        StateDelta::InspirationTriggered { .. } => {
+        StateDelta::EurekaTriggered { .. } | StateDelta::InspirationTriggered { .. } => {
             // Informational: boost applied during tech/civic progress.
         }
-        StateDelta::UnitUnlocked { .. } |
-        StateDelta::BuildingUnlocked { .. } |
-        StateDelta::ImprovementUnlocked { .. } |
-        StateDelta::GovernmentUnlocked { .. } |
-        StateDelta::PolicyUnlocked { .. } => {
+        StateDelta::UnitUnlocked { .. }
+        | StateDelta::BuildingUnlocked { .. }
+        | StateDelta::ImprovementUnlocked { .. }
+        | StateDelta::GovernmentUnlocked { .. }
+        | StateDelta::PolicyUnlocked { .. } => {
             // Informational: unlock tracking is derived from researched techs/civics.
         }
         StateDelta::GovernmentAdopted { civ, government } => {
@@ -170,8 +197,11 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
 
         // ── Production ──────────────────────────────────────────────────
         StateDelta::BuildingCompleted { city, building } => {
-            let bid = state.building_defs.iter()
-                .find(|d| d.name == *building).map(|d| d.id);
+            let bid = state
+                .building_defs
+                .iter()
+                .find(|d| d.name == *building)
+                .map(|d| d.id);
             if let Some(bid) = bid {
                 if let Some(c) = state.cities.iter_mut().find(|c| c.id == *city)
                     && !c.buildings.contains(&bid)
@@ -180,7 +210,11 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
                 }
             }
         }
-        StateDelta::DistrictBuilt { city: _, district: _, coord: _ } => {
+        StateDelta::DistrictBuilt {
+            city: _,
+            district: _,
+            coord: _,
+        } => {
             // Informational: district already placed by rules engine.
         }
         StateDelta::WonderBuilt { .. } => {
@@ -200,12 +234,16 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
             // Informational: damage was applied to units directly by the
             // combat handler before this delta was emitted.
         }
-        StateDelta::ExperienceGained { unit, new_total, .. } => {
+        StateDelta::ExperienceGained {
+            unit, new_total, ..
+        } => {
             if let Some(u) = state.unit_mut(*unit) {
                 u.experience = *new_total;
             }
         }
-        StateDelta::UnitPromoted { unit, promotion, .. } => {
+        StateDelta::UnitPromoted {
+            unit, promotion, ..
+        } => {
             if let Some(u) = state.unit_mut(*unit) {
                 if !u.promotions.contains(promotion) {
                     u.promotions.push(*promotion);
@@ -249,7 +287,12 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
                 c.territory.insert(*coord);
             }
         }
-        StateDelta::TileReassigned { civ: _, from_city, to_city, coord } => {
+        StateDelta::TileReassigned {
+            civ: _,
+            from_city,
+            to_city,
+            coord,
+        } => {
             if let Some(c) = state.cities.iter_mut().find(|c| c.id == *from_city) {
                 c.territory.remove(coord);
             }
@@ -273,7 +316,9 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
         }
 
         // ── City defense ────────────────────────────────────────────────
-        StateDelta::WallDamaged { city, hp_remaining, .. } => {
+        StateDelta::WallDamaged {
+            city, hp_remaining, ..
+        } => {
             if let Some(c) = state.cities.iter_mut().find(|c| c.id == *city) {
                 c.wall_hp = *hp_remaining;
             }
@@ -286,14 +331,20 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
         }
 
         // ── Tourism ─────────────────────────────────────────────────────
-        StateDelta::TourismGenerated { civ, tourism: _, lifetime_culture } => {
+        StateDelta::TourismGenerated {
+            civ,
+            tourism: _,
+            lifetime_culture,
+        } => {
             if let Some(c) = state.civilizations.iter_mut().find(|c| c.id == *civ) {
                 c.lifetime_culture = *lifetime_culture;
             }
         }
 
         // ── Loyalty ─────────────────────────────────────────────────────
-        StateDelta::LoyaltyChanged { city, new_value, .. } => {
+        StateDelta::LoyaltyChanged {
+            city, new_value, ..
+        } => {
             if let Some(c) = state.cities.iter_mut().find(|c| c.id == *city) {
                 c.loyalty = *new_value;
             }
@@ -303,7 +354,11 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
                 c.unrest = *unrest;
             }
         }
-        StateDelta::CityRevolted { city, new_owner, old_owner } => {
+        StateDelta::CityRevolted {
+            city,
+            new_owner,
+            old_owner,
+        } => {
             if let Some(c) = state.cities.iter_mut().find(|c| c.id == *city) {
                 if let Some(owner) = new_owner {
                     c.owner = *owner;
@@ -325,7 +380,11 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
         StateDelta::HistoricMomentEarned { .. } => {
             // Informational: era score already updated.
         }
-        StateDelta::EraAdvanced { civ, new_era: _, era_age } => {
+        StateDelta::EraAdvanced {
+            civ,
+            new_era: _,
+            era_age,
+        } => {
             if let Some(c) = state.civilizations.iter_mut().find(|c| c.id == *civ) {
                 c.era_age = *era_age;
             }
@@ -345,24 +404,38 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
 
         // ── Great persons ───────────────────────────────────────────────
         StateDelta::GreatPersonRetired { great_person, .. } => {
-            if let Some(gp) = state.great_people.iter_mut().find(|g| g.id == *great_person) {
+            if let Some(gp) = state
+                .great_people
+                .iter_mut()
+                .find(|g| g.id == *great_person)
+            {
                 gp.is_retired = true;
             }
         }
         StateDelta::GreatPersonPointsAccumulated { .. } => {
             // Informational: points already accumulated in advance_turn.
         }
-        StateDelta::GreatPersonRecruited { great_person, civ, .. } => {
-            if let Some(gp) = state.great_people.iter_mut().find(|g| g.id == *great_person) {
+        StateDelta::GreatPersonRecruited {
+            great_person, civ, ..
+        } => {
+            if let Some(gp) = state
+                .great_people
+                .iter_mut()
+                .find(|g| g.id == *great_person)
+            {
                 gp.owner = Some(*civ);
             }
         }
-        StateDelta::GreatPersonPatronized { civ, gold_spent, .. } => {
+        StateDelta::GreatPersonPatronized {
+            civ, gold_spent, ..
+        } => {
             if let Some(c) = state.civilizations.iter_mut().find(|c| c.id == *civ) {
                 c.gold -= *gold_spent as i32;
             }
         }
-        StateDelta::GreatPersonPatronizedWithFaith { civ, faith_spent, .. } => {
+        StateDelta::GreatPersonPatronizedWithFaith {
+            civ, faith_spent, ..
+        } => {
             if let Some(c) = state.civilizations.iter_mut().find(|c| c.id == *civ) {
                 c.faith = c.faith.saturating_sub(*faith_spent);
             }
@@ -383,7 +456,10 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
                 g.turns_to_establish = 0;
             }
         }
-        StateDelta::GovernorPromoted { governor, promotion } => {
+        StateDelta::GovernorPromoted {
+            governor,
+            promotion,
+        } => {
             if let Some(g) = state.governors.iter_mut().find(|g| g.id == *governor) {
                 if !g.promotions.contains(promotion) {
                     g.promotions.push(promotion);
@@ -457,16 +533,16 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
         }
 
         // ── Barbarians ──────────────────────────────────────────────────
-        StateDelta::BarbarianCampSpawned { .. } |
-        StateDelta::BarbarianCampDestroyed { .. } |
-        StateDelta::BarbarianScoutSpawned { .. } |
-        StateDelta::BarbarianScoutDiscovered { .. } |
-        StateDelta::BarbarianScoutReturned { .. } |
-        StateDelta::BarbarianUnitGenerated { .. } |
-        StateDelta::BarbarianClanHired { .. } |
-        StateDelta::BarbarianClanBribed { .. } |
-        StateDelta::BarbarianClanIncited { .. } |
-        StateDelta::BarbarianCampConverted { .. } => {
+        StateDelta::BarbarianCampSpawned { .. }
+        | StateDelta::BarbarianCampDestroyed { .. }
+        | StateDelta::BarbarianScoutSpawned { .. }
+        | StateDelta::BarbarianScoutDiscovered { .. }
+        | StateDelta::BarbarianScoutReturned { .. }
+        | StateDelta::BarbarianUnitGenerated { .. }
+        | StateDelta::BarbarianClanHired { .. }
+        | StateDelta::BarbarianClanBribed { .. }
+        | StateDelta::BarbarianClanIncited { .. }
+        | StateDelta::BarbarianCampConverted { .. } => {
             // Informational: barbarian state is managed directly by the
             // barbarian system in advance_turn.
         }
@@ -476,8 +552,11 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
             // Informational: congress session state already updated in advance_turn.
         }
         StateDelta::DiplomaticVPEarned { civ, points } => {
-            *state.world_congress.diplomatic_victory_points
-                .entry(*civ).or_insert(0) += points;
+            *state
+                .world_congress
+                .diplomatic_victory_points
+                .entry(*civ)
+                .or_insert(0) += points;
         }
 
         // ── Rock Band / Cultural Combat (GS-16) ─────���──────────────────
@@ -507,8 +586,7 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
         }
 
         // ── Alliances (Rise & Fall) ────────────────────────────────────────
-        StateDelta::AllianceFormed { .. } |
-        StateDelta::AllianceLevelUp { .. } => {
+        StateDelta::AllianceFormed { .. } | StateDelta::AllianceLevelUp { .. } => {
             // Informational: alliance state is managed directly by form_alliance
             // and advance_turn.
         }

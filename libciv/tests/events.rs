@@ -44,18 +44,21 @@ fn eureka_delta_fires_scientific_breakthrough_and_enqueues_effect() {
         })
         .collect();
     assert!(
-        fired.iter().any(|id| id.as_str() == "scientific_breakthrough"),
+        fired
+            .iter()
+            .any(|id| id.as_str() == "scientific_breakthrough"),
         "expected a scientific_breakthrough EventFired delta, got {fired:?}"
     );
 
     // The event enqueued its effect (drains next turn), so it must still be on
     // the queue now.
-    let enqueued = s
-        .state
-        .effect_queue
-        .iter()
-        .any(|(civ, eff)| *civ == s.rome_id && matches!(eff, OneShotEffect::UnlockPolicy("Rationalism")));
-    assert!(enqueued, "scientific_breakthrough effect should be queued for next turn");
+    let enqueued = s.state.effect_queue.iter().any(|(civ, eff)| {
+        *civ == s.rome_id && matches!(eff, OneShotEffect::UnlockPolicy("Rationalism"))
+    });
+    assert!(
+        enqueued,
+        "scientific_breakthrough effect should be queued for next turn"
+    );
 }
 
 /// The events phase must terminate and never grow without bound. Even if a
@@ -99,7 +102,12 @@ fn low_loyalty_condition_fires_city_in_turmoil() {
     let mut s = common::build_scenario();
 
     // Drive Rome's capital into turmoil.
-    let city = s.state.cities.iter_mut().find(|c| c.id == s.rome_city).unwrap();
+    let city = s
+        .state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.rome_city)
+        .unwrap();
     city.loyalty = 10;
 
     let fired = evaluate_events(&[], &s.state);
@@ -112,7 +120,12 @@ fn low_loyalty_condition_fires_city_in_turmoil() {
     );
 
     // A healthy city produces no such event.
-    let city = s.state.cities.iter_mut().find(|c| c.id == s.rome_city).unwrap();
+    let city = s
+        .state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.rome_city)
+        .unwrap();
     city.loyalty = 100;
     let calm = evaluate_events(&[], &s.state);
     assert!(

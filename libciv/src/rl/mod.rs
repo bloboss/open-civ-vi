@@ -20,5 +20,5 @@ pub mod reward;
 
 pub use action::Action;
 pub use env::{CivEnv, StepInfo, StepResult};
-pub use observation::{observe, Observation};
+pub use observation::{Observation, observe};
 pub use reward::compute_reward;

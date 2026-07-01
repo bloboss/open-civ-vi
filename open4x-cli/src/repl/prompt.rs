@@ -16,7 +16,7 @@
 //! The default format is: `T{turn} {city} {unit}> `
 
 use libciv::civ::district::BuiltinDistrict;
-use libciv::{compute_score, CityId, CivId, GameState, UnitId};
+use libciv::{CityId, CivId, GameState, UnitId, compute_score};
 
 use super::short_ids::ShortIds;
 
@@ -60,7 +60,10 @@ pub fn render_prompt(config: &PromptConfig, ctx: &PromptContext<'_>) -> String {
         result = result.replace("{civ}", ctx.civ_name);
     }
     if result.contains("{gold}") {
-        let gold = ctx.state.civilizations.iter()
+        let gold = ctx
+            .state
+            .civilizations
+            .iter()
             .find(|c| c.id == ctx.civ_id)
             .map(|c| c.gold)
             .unwrap_or(0);
@@ -71,17 +74,22 @@ pub fn render_prompt(config: &PromptConfig, ctx: &PromptContext<'_>) -> String {
         result = result.replace("{score}", &score.to_string());
     }
     if result.contains("{city}") {
-        let city_str = ctx.selected_city
+        let city_str = ctx
+            .selected_city
             .and_then(|cid| ctx.state.cities.iter().find(|c| c.id == cid))
             .map(|c| c.name.as_str())
             .unwrap_or("");
         result = result.replace("{city}", city_str);
     }
     if result.contains("{unit}") {
-        let unit_str = ctx.selected_unit
+        let unit_str = ctx
+            .selected_unit
             .and_then(|uid| {
                 let unit = ctx.state.units.iter().find(|u| u.id == uid)?;
-                let type_name = ctx.state.unit_type_defs.iter()
+                let type_name = ctx
+                    .state
+                    .unit_type_defs
+                    .iter()
                     .find(|d| d.id == unit.unit_type)
                     .map(|d| d.name)
                     .unwrap_or("?");
@@ -92,9 +100,7 @@ pub fn render_prompt(config: &PromptConfig, ctx: &PromptContext<'_>) -> String {
         result = result.replace("{unit}", &unit_str);
     }
     if result.contains("{district}") {
-        let dist_str = ctx.selected_district
-            .map(|d| d.name())
-            .unwrap_or("");
+        let dist_str = ctx.selected_district.map(|d| d.name()).unwrap_or("");
         result = result.replace("{district}", dist_str);
     }
 
@@ -104,7 +110,9 @@ pub fn render_prompt(config: &PromptConfig, ctx: &PromptContext<'_>) -> String {
         .chars()
         .filter(|&c| {
             if c == ' ' {
-                if prev_space { return false; }
+                if prev_space {
+                    return false;
+                }
                 prev_space = true;
             } else {
                 prev_space = false;

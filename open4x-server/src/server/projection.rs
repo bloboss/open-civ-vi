@@ -1,19 +1,23 @@
 //! Converts a `GameState` into a fog-of-war-filtered `GameView` for one player.
 
+use libciv::game::score::{all_scores, compute_score};
 use libciv::game::state::GameState;
 use libciv::{CivId, DefaultRulesEngine, RulesEngine};
-use libciv::game::score::{all_scores, compute_score};
 use libhexgrid::board::{HexBoard, HexEdge};
 
-use open4x_protocol::v1::enums::*;
-use open4x_protocol::v1::view::*;
 use open4x_protocol::v1::coord::HexCoord as ApiCoord;
+use open4x_protocol::v1::enums::*;
 use open4x_protocol::v1::ids as api;
+use open4x_protocol::v1::view::*;
 
 // ── Coordinate conversion ────────────────────────────────────────────────────
 
 fn conv_coord(c: libhexgrid::coord::HexCoord) -> ApiCoord {
-    ApiCoord { q: c.q, r: c.r, s: c.s }
+    ApiCoord {
+        q: c.q,
+        r: c.r,
+        s: c.s,
+    }
 }
 
 fn conv_civ_id(id: libciv::CivId) -> api::CivId {
@@ -71,30 +75,36 @@ fn conv_project_id(id: libciv::ProjectId) -> api::ProjectId {
 fn conv_terrain(t: libciv::world::terrain::BuiltinTerrain) -> BuiltinTerrain {
     match t {
         libciv::world::terrain::BuiltinTerrain::Grassland => BuiltinTerrain::Grassland,
-        libciv::world::terrain::BuiltinTerrain::Plains    => BuiltinTerrain::Plains,
-        libciv::world::terrain::BuiltinTerrain::Desert    => BuiltinTerrain::Desert,
-        libciv::world::terrain::BuiltinTerrain::Tundra    => BuiltinTerrain::Tundra,
-        libciv::world::terrain::BuiltinTerrain::Snow      => BuiltinTerrain::Snow,
-        libciv::world::terrain::BuiltinTerrain::Coast     => BuiltinTerrain::Coast,
-        libciv::world::terrain::BuiltinTerrain::Ocean     => BuiltinTerrain::Ocean,
-        libciv::world::terrain::BuiltinTerrain::Mountain  => BuiltinTerrain::Mountain,
+        libciv::world::terrain::BuiltinTerrain::Plains => BuiltinTerrain::Plains,
+        libciv::world::terrain::BuiltinTerrain::Desert => BuiltinTerrain::Desert,
+        libciv::world::terrain::BuiltinTerrain::Tundra => BuiltinTerrain::Tundra,
+        libciv::world::terrain::BuiltinTerrain::Snow => BuiltinTerrain::Snow,
+        libciv::world::terrain::BuiltinTerrain::Coast => BuiltinTerrain::Coast,
+        libciv::world::terrain::BuiltinTerrain::Ocean => BuiltinTerrain::Ocean,
+        libciv::world::terrain::BuiltinTerrain::Mountain => BuiltinTerrain::Mountain,
     }
 }
 
 fn conv_feature(f: libciv::world::feature::BuiltinFeature) -> BuiltinFeature {
     match f {
-        libciv::world::feature::BuiltinFeature::Forest      => BuiltinFeature::Forest,
-        libciv::world::feature::BuiltinFeature::Rainforest  => BuiltinFeature::Rainforest,
-        libciv::world::feature::BuiltinFeature::Marsh       => BuiltinFeature::Marsh,
-        libciv::world::feature::BuiltinFeature::Floodplain  => BuiltinFeature::Floodplain,
-        libciv::world::feature::BuiltinFeature::Reef        => BuiltinFeature::Reef,
-        libciv::world::feature::BuiltinFeature::Ice         => BuiltinFeature::Ice,
+        libciv::world::feature::BuiltinFeature::Forest => BuiltinFeature::Forest,
+        libciv::world::feature::BuiltinFeature::Rainforest => BuiltinFeature::Rainforest,
+        libciv::world::feature::BuiltinFeature::Marsh => BuiltinFeature::Marsh,
+        libciv::world::feature::BuiltinFeature::Floodplain => BuiltinFeature::Floodplain,
+        libciv::world::feature::BuiltinFeature::Reef => BuiltinFeature::Reef,
+        libciv::world::feature::BuiltinFeature::Ice => BuiltinFeature::Ice,
         libciv::world::feature::BuiltinFeature::VolcanicSoil => BuiltinFeature::VolcanicSoil,
-        libciv::world::feature::BuiltinFeature::Oasis       => BuiltinFeature::Oasis,
-        libciv::world::feature::BuiltinFeature::GeothermalFissure  => BuiltinFeature::GeothermalFissure,
-        libciv::world::feature::BuiltinFeature::Volcano            => BuiltinFeature::Volcano,
-        libciv::world::feature::BuiltinFeature::FloodplainGrassland => BuiltinFeature::FloodplainGrassland,
-        libciv::world::feature::BuiltinFeature::FloodplainPlains   => BuiltinFeature::FloodplainPlains,
+        libciv::world::feature::BuiltinFeature::Oasis => BuiltinFeature::Oasis,
+        libciv::world::feature::BuiltinFeature::GeothermalFissure => {
+            BuiltinFeature::GeothermalFissure
+        }
+        libciv::world::feature::BuiltinFeature::Volcano => BuiltinFeature::Volcano,
+        libciv::world::feature::BuiltinFeature::FloodplainGrassland => {
+            BuiltinFeature::FloodplainGrassland
+        }
+        libciv::world::feature::BuiltinFeature::FloodplainPlains => {
+            BuiltinFeature::FloodplainPlains
+        }
     }
 }
 
@@ -102,49 +112,83 @@ fn conv_resource(r: libciv::world::resource::BuiltinResource) -> BuiltinResource
     // Both enums have identical variant names; match exhaustively.
     use libciv::world::resource::BuiltinResource as R;
     match r {
-        R::Wheat => BuiltinResource::Wheat, R::Rice => BuiltinResource::Rice,
-        R::Cattle => BuiltinResource::Cattle, R::Sheep => BuiltinResource::Sheep,
-        R::Fish => BuiltinResource::Fish, R::Stone => BuiltinResource::Stone,
-        R::Copper => BuiltinResource::Copper, R::Deer => BuiltinResource::Deer,
-        R::Wine => BuiltinResource::Wine, R::Silk => BuiltinResource::Silk,
-        R::Spices => BuiltinResource::Spices, R::Incense => BuiltinResource::Incense,
-        R::Cotton => BuiltinResource::Cotton, R::Ivory => BuiltinResource::Ivory,
-        R::Sugar => BuiltinResource::Sugar, R::Salt => BuiltinResource::Salt,
-        R::Horses => BuiltinResource::Horses, R::Iron => BuiltinResource::Iron,
-        R::Coal => BuiltinResource::Coal, R::Oil => BuiltinResource::Oil,
-        R::Aluminum => BuiltinResource::Aluminum, R::Niter => BuiltinResource::Niter,
+        R::Wheat => BuiltinResource::Wheat,
+        R::Rice => BuiltinResource::Rice,
+        R::Cattle => BuiltinResource::Cattle,
+        R::Sheep => BuiltinResource::Sheep,
+        R::Fish => BuiltinResource::Fish,
+        R::Stone => BuiltinResource::Stone,
+        R::Copper => BuiltinResource::Copper,
+        R::Deer => BuiltinResource::Deer,
+        R::Wine => BuiltinResource::Wine,
+        R::Silk => BuiltinResource::Silk,
+        R::Spices => BuiltinResource::Spices,
+        R::Incense => BuiltinResource::Incense,
+        R::Cotton => BuiltinResource::Cotton,
+        R::Ivory => BuiltinResource::Ivory,
+        R::Sugar => BuiltinResource::Sugar,
+        R::Salt => BuiltinResource::Salt,
+        R::Horses => BuiltinResource::Horses,
+        R::Iron => BuiltinResource::Iron,
+        R::Coal => BuiltinResource::Coal,
+        R::Oil => BuiltinResource::Oil,
+        R::Aluminum => BuiltinResource::Aluminum,
+        R::Niter => BuiltinResource::Niter,
         R::Uranium => BuiltinResource::Uranium,
-        R::Bananas => BuiltinResource::Bananas, R::Crabs => BuiltinResource::Crabs,
-        R::Citrus => BuiltinResource::Citrus, R::Cocoa => BuiltinResource::Cocoa,
-        R::Coffee => BuiltinResource::Coffee, R::Diamonds => BuiltinResource::Diamonds,
-        R::Dyes => BuiltinResource::Dyes, R::Furs => BuiltinResource::Furs,
-        R::Gypsum => BuiltinResource::Gypsum, R::Jade => BuiltinResource::Jade,
-        R::Marble => BuiltinResource::Marble, R::Mercury => BuiltinResource::Mercury,
-        R::Pearls => BuiltinResource::Pearls, R::Silver => BuiltinResource::Silver,
-        R::Tea => BuiltinResource::Tea, R::Tobacco => BuiltinResource::Tobacco,
-        R::Truffles => BuiltinResource::Truffles, R::Whales => BuiltinResource::Whales,
+        R::Bananas => BuiltinResource::Bananas,
+        R::Crabs => BuiltinResource::Crabs,
+        R::Citrus => BuiltinResource::Citrus,
+        R::Cocoa => BuiltinResource::Cocoa,
+        R::Coffee => BuiltinResource::Coffee,
+        R::Diamonds => BuiltinResource::Diamonds,
+        R::Dyes => BuiltinResource::Dyes,
+        R::Furs => BuiltinResource::Furs,
+        R::Gypsum => BuiltinResource::Gypsum,
+        R::Jade => BuiltinResource::Jade,
+        R::Marble => BuiltinResource::Marble,
+        R::Mercury => BuiltinResource::Mercury,
+        R::Pearls => BuiltinResource::Pearls,
+        R::Silver => BuiltinResource::Silver,
+        R::Tea => BuiltinResource::Tea,
+        R::Tobacco => BuiltinResource::Tobacco,
+        R::Truffles => BuiltinResource::Truffles,
+        R::Whales => BuiltinResource::Whales,
     }
 }
 
 fn conv_improvement(i: libciv::world::improvement::BuiltinImprovement) -> BuiltinImprovement {
     use libciv::world::improvement::BuiltinImprovement as I;
     match i {
-        I::Farm => BuiltinImprovement::Farm, I::Mine => BuiltinImprovement::Mine,
-        I::LumberMill => BuiltinImprovement::LumberMill, I::TradingPost => BuiltinImprovement::TradingPost,
-        I::Fort => BuiltinImprovement::Fort, I::Airstrip => BuiltinImprovement::Airstrip,
+        I::Farm => BuiltinImprovement::Farm,
+        I::Mine => BuiltinImprovement::Mine,
+        I::LumberMill => BuiltinImprovement::LumberMill,
+        I::TradingPost => BuiltinImprovement::TradingPost,
+        I::Fort => BuiltinImprovement::Fort,
+        I::Airstrip => BuiltinImprovement::Airstrip,
         I::MissileSilo => BuiltinImprovement::MissileSilo,
-        I::Quarry => BuiltinImprovement::Quarry, I::Plantation => BuiltinImprovement::Plantation,
-        I::Camp => BuiltinImprovement::Camp, I::FishingBoats => BuiltinImprovement::FishingBoats,
+        I::Quarry => BuiltinImprovement::Quarry,
+        I::Plantation => BuiltinImprovement::Plantation,
+        I::Camp => BuiltinImprovement::Camp,
+        I::FishingBoats => BuiltinImprovement::FishingBoats,
         I::Pasture => BuiltinImprovement::Pasture,
-        I::Sphinx => BuiltinImprovement::Sphinx, I::Stepwell => BuiltinImprovement::Stepwell,
-        I::OilWell => BuiltinImprovement::OilWell, I::OffshoreOilRig => BuiltinImprovement::OffshoreOilRig,
-        I::BeachResort => BuiltinImprovement::BeachResort, I::Chateau => BuiltinImprovement::Chateau,
-        I::ColossalHead => BuiltinImprovement::ColossalHead, I::GreatWall => BuiltinImprovement::GreatWall,
-        I::Kurgan => BuiltinImprovement::Kurgan, I::Mission => BuiltinImprovement::Mission,
-        I::RomanFort => BuiltinImprovement::RomanFort, I::Ziggurat => BuiltinImprovement::Ziggurat,
-        I::SolarFarm => BuiltinImprovement::SolarFarm, I::WindFarm => BuiltinImprovement::WindFarm,
-        I::OffshoreWindFarm => BuiltinImprovement::OffshoreWindFarm, I::GeothermalPlant => BuiltinImprovement::GeothermalPlant,
-        I::Seastead => BuiltinImprovement::Seastead, I::MountainTunnel => BuiltinImprovement::MountainTunnel,
+        I::Sphinx => BuiltinImprovement::Sphinx,
+        I::Stepwell => BuiltinImprovement::Stepwell,
+        I::OilWell => BuiltinImprovement::OilWell,
+        I::OffshoreOilRig => BuiltinImprovement::OffshoreOilRig,
+        I::BeachResort => BuiltinImprovement::BeachResort,
+        I::Chateau => BuiltinImprovement::Chateau,
+        I::ColossalHead => BuiltinImprovement::ColossalHead,
+        I::GreatWall => BuiltinImprovement::GreatWall,
+        I::Kurgan => BuiltinImprovement::Kurgan,
+        I::Mission => BuiltinImprovement::Mission,
+        I::RomanFort => BuiltinImprovement::RomanFort,
+        I::Ziggurat => BuiltinImprovement::Ziggurat,
+        I::SolarFarm => BuiltinImprovement::SolarFarm,
+        I::WindFarm => BuiltinImprovement::WindFarm,
+        I::OffshoreWindFarm => BuiltinImprovement::OffshoreWindFarm,
+        I::GeothermalPlant => BuiltinImprovement::GeothermalPlant,
+        I::Seastead => BuiltinImprovement::Seastead,
+        I::MountainTunnel => BuiltinImprovement::MountainTunnel,
         I::SkiResort => BuiltinImprovement::SkiResort,
     }
 }
@@ -152,110 +196,120 @@ fn conv_improvement(i: libciv::world::improvement::BuiltinImprovement) -> Builti
 fn conv_road(r: &libciv::world::road::BuiltinRoad) -> BuiltinRoad {
     use libciv::world::road::BuiltinRoad as R;
     match r {
-        R::Ancient(_)    => BuiltinRoad::Ancient,
-        R::Medieval(_)   => BuiltinRoad::Medieval,
+        R::Ancient(_) => BuiltinRoad::Ancient,
+        R::Medieval(_) => BuiltinRoad::Medieval,
         R::Industrial(_) => BuiltinRoad::Industrial,
-        R::Railroad(_)   => BuiltinRoad::Railroad,
+        R::Railroad(_) => BuiltinRoad::Railroad,
     }
 }
 
 fn conv_domain(d: libciv::UnitDomain) -> UnitDomain {
     match d {
         libciv::UnitDomain::Land => UnitDomain::Land,
-        libciv::UnitDomain::Sea  => UnitDomain::Sea,
-        libciv::UnitDomain::Air  => UnitDomain::Air,
+        libciv::UnitDomain::Sea => UnitDomain::Sea,
+        libciv::UnitDomain::Air => UnitDomain::Air,
     }
 }
 
 fn conv_category(c: libciv::UnitCategory) -> UnitCategory {
     match c {
-        libciv::UnitCategory::Civilian    => UnitCategory::Civilian,
-        libciv::UnitCategory::Combat      => UnitCategory::Combat,
-        libciv::UnitCategory::Support     => UnitCategory::Support,
-        libciv::UnitCategory::Religious   => UnitCategory::Religious,
+        libciv::UnitCategory::Civilian => UnitCategory::Civilian,
+        libciv::UnitCategory::Combat => UnitCategory::Combat,
+        libciv::UnitCategory::Support => UnitCategory::Support,
+        libciv::UnitCategory::Religious => UnitCategory::Religious,
         libciv::UnitCategory::GreatPerson => UnitCategory::GreatPerson,
-        libciv::UnitCategory::Trader      => UnitCategory::Trader,
+        libciv::UnitCategory::Trader => UnitCategory::Trader,
     }
 }
 
 fn conv_diplo_status(s: libciv::civ::DiplomaticStatus) -> DiplomaticStatus {
     match s {
-        libciv::civ::DiplomaticStatus::War       => DiplomaticStatus::War,
-        libciv::civ::DiplomaticStatus::Denounced  => DiplomaticStatus::Denounced,
-        libciv::civ::DiplomaticStatus::Neutral    => DiplomaticStatus::Neutral,
-        libciv::civ::DiplomaticStatus::Friendly   => DiplomaticStatus::Friendly,
-        libciv::civ::DiplomaticStatus::Alliance   => DiplomaticStatus::Alliance,
+        libciv::civ::DiplomaticStatus::War => DiplomaticStatus::War,
+        libciv::civ::DiplomaticStatus::Denounced => DiplomaticStatus::Denounced,
+        libciv::civ::DiplomaticStatus::Neutral => DiplomaticStatus::Neutral,
+        libciv::civ::DiplomaticStatus::Friendly => DiplomaticStatus::Friendly,
+        libciv::civ::DiplomaticStatus::Alliance => DiplomaticStatus::Alliance,
     }
 }
 
 fn conv_wall_level(w: libciv::civ::city::WallLevel) -> WallLevel {
     match w {
-        libciv::civ::city::WallLevel::None        => WallLevel::None,
-        libciv::civ::city::WallLevel::Ancient      => WallLevel::Ancient,
-        libciv::civ::city::WallLevel::Medieval     => WallLevel::Medieval,
-        libciv::civ::city::WallLevel::Renaissance  => WallLevel::Renaissance,
+        libciv::civ::city::WallLevel::None => WallLevel::None,
+        libciv::civ::city::WallLevel::Ancient => WallLevel::Ancient,
+        libciv::civ::city::WallLevel::Medieval => WallLevel::Medieval,
+        libciv::civ::city::WallLevel::Renaissance => WallLevel::Renaissance,
     }
 }
 
 fn conv_ownership(o: libciv::civ::city::CityOwnership) -> CityOwnership {
     match o {
-        libciv::civ::city::CityOwnership::Normal   => CityOwnership::Normal,
-        libciv::civ::city::CityOwnership::Occupied  => CityOwnership::Occupied,
-        libciv::civ::city::CityOwnership::Puppet    => CityOwnership::Puppet,
-        libciv::civ::city::CityOwnership::Razed     => CityOwnership::Razed,
+        libciv::civ::city::CityOwnership::Normal => CityOwnership::Normal,
+        libciv::civ::city::CityOwnership::Occupied => CityOwnership::Occupied,
+        libciv::civ::city::CityOwnership::Puppet => CityOwnership::Puppet,
+        libciv::civ::city::CityOwnership::Razed => CityOwnership::Razed,
     }
 }
 
 fn conv_topology(t: libhexgrid::board::BoardTopology) -> BoardTopology {
     match t {
-        libhexgrid::board::BoardTopology::Flat          => BoardTopology::Flat,
+        libhexgrid::board::BoardTopology::Flat => BoardTopology::Flat,
         libhexgrid::board::BoardTopology::CylindricalEW => BoardTopology::CylindricalEW,
-        libhexgrid::board::BoardTopology::Toroidal      => BoardTopology::Toroidal,
+        libhexgrid::board::BoardTopology::Toroidal => BoardTopology::Toroidal,
     }
 }
 
 fn conv_yields(y: &libciv::YieldBundle) -> YieldBundleView {
     YieldBundleView {
-        food: y.food, production: y.production, gold: y.gold,
-        science: y.science, culture: y.culture, faith: y.faith,
-        housing: y.housing, amenities: y.amenities, tourism: y.tourism,
+        food: y.food,
+        production: y.production,
+        gold: y.gold,
+        science: y.science,
+        culture: y.culture,
+        faith: y.faith,
+        housing: y.housing,
+        amenities: y.amenities,
+        tourism: y.tourism,
         great_person_points: y.great_person_points,
     }
 }
 
 fn conv_production_item(item: &libciv::civ::ProductionItem) -> ProductionItemView {
     match item {
-        libciv::civ::ProductionItem::Unit(id)     => ProductionItemView::Unit(conv_unit_type_id(*id)),
-        libciv::civ::ProductionItem::Building(id)  => ProductionItemView::Building(conv_building_id(*id)),
-        libciv::civ::ProductionItem::District(d)   => ProductionItemView::District(conv_district(*d)),
-        libciv::civ::ProductionItem::Wonder(id)    => ProductionItemView::Wonder(conv_wonder_id(*id)),
-        libciv::civ::ProductionItem::Project(id)   => ProductionItemView::Project(conv_project_id(*id)),
+        libciv::civ::ProductionItem::Unit(id) => ProductionItemView::Unit(conv_unit_type_id(*id)),
+        libciv::civ::ProductionItem::Building(id) => {
+            ProductionItemView::Building(conv_building_id(*id))
+        }
+        libciv::civ::ProductionItem::District(d) => ProductionItemView::District(conv_district(*d)),
+        libciv::civ::ProductionItem::Wonder(id) => ProductionItemView::Wonder(conv_wonder_id(*id)),
+        libciv::civ::ProductionItem::Project(id) => {
+            ProductionItemView::Project(conv_project_id(*id))
+        }
     }
 }
 
 fn conv_district(d: libciv::civ::district::BuiltinDistrict) -> BuiltinDistrict {
     use libciv::civ::district::BuiltinDistrict as D;
     match d {
-        D::Campus               => BuiltinDistrict::Campus,
-        D::TheaterSquare         => BuiltinDistrict::TheaterSquare,
-        D::CommercialHub         => BuiltinDistrict::CommercialHub,
-        D::Harbor                => BuiltinDistrict::Harbor,
-        D::HolySite              => BuiltinDistrict::HolySite,
-        D::Encampment            => BuiltinDistrict::Encampment,
-        D::IndustrialZone        => BuiltinDistrict::IndustrialZone,
-        D::EntertainmentComplex  => BuiltinDistrict::EntertainmentComplex,
-        D::WaterPark             => BuiltinDistrict::WaterPark,
-        D::Aqueduct              => BuiltinDistrict::Aqueduct,
-        D::Dam                   => BuiltinDistrict::Dam,
-        D::Canal                 => BuiltinDistrict::Canal,
-        D::Aerodrome             => BuiltinDistrict::Aerodrome,
-        D::Neighborhood          => BuiltinDistrict::Neighborhood,
-        D::Spaceport             => BuiltinDistrict::Spaceport,
-        D::CityCenter            => BuiltinDistrict::CityCenter,
-        D::Lavra                 => BuiltinDistrict::Lavra,
-        D::Mbanza                => BuiltinDistrict::Mbanza,
-        D::StreetCarnival        => BuiltinDistrict::StreetCarnival,
-        D::RoyalNavyDockyard     => BuiltinDistrict::RoyalNavyDockyard,
+        D::Campus => BuiltinDistrict::Campus,
+        D::TheaterSquare => BuiltinDistrict::TheaterSquare,
+        D::CommercialHub => BuiltinDistrict::CommercialHub,
+        D::Harbor => BuiltinDistrict::Harbor,
+        D::HolySite => BuiltinDistrict::HolySite,
+        D::Encampment => BuiltinDistrict::Encampment,
+        D::IndustrialZone => BuiltinDistrict::IndustrialZone,
+        D::EntertainmentComplex => BuiltinDistrict::EntertainmentComplex,
+        D::WaterPark => BuiltinDistrict::WaterPark,
+        D::Aqueduct => BuiltinDistrict::Aqueduct,
+        D::Dam => BuiltinDistrict::Dam,
+        D::Canal => BuiltinDistrict::Canal,
+        D::Aerodrome => BuiltinDistrict::Aerodrome,
+        D::Neighborhood => BuiltinDistrict::Neighborhood,
+        D::Spaceport => BuiltinDistrict::Spaceport,
+        D::CityCenter => BuiltinDistrict::CityCenter,
+        D::Lavra => BuiltinDistrict::Lavra,
+        D::Mbanza => BuiltinDistrict::Mbanza,
+        D::StreetCarnival => BuiltinDistrict::StreetCarnival,
+        D::RoyalNavyDockyard => BuiltinDistrict::RoyalNavyDockyard,
     }
 }
 
@@ -263,7 +317,9 @@ fn conv_district(d: libciv::civ::district::BuiltinDistrict) -> BuiltinDistrict {
 
 /// Build a `GameView` for `viewer`, filtering by fog-of-war.
 pub fn project_game_view(state: &GameState, viewer: CivId) -> GameView {
-    let civ = state.civilizations.iter()
+    let civ = state
+        .civilizations
+        .iter()
         .find(|c| c.id == viewer)
         .expect("viewer civ must exist");
 
@@ -280,7 +336,9 @@ pub fn project_game_view(state: &GameState, viewer: CivId) -> GameView {
         if !civ.explored_tiles.contains(&coord) {
             continue;
         }
-        let Some(tile) = state.board.tile(coord) else { continue };
+        let Some(tile) = state.board.tile(coord) else {
+            continue;
+        };
         let visibility = if civ.visible_tiles.contains(&coord) {
             TileVisibility::Visible
         } else {
@@ -316,7 +374,10 @@ pub fn project_game_view(state: &GameState, viewer: CivId) -> GameView {
         use libhexgrid::coord::HexDir;
         for dir in [HexDir::E, HexDir::NE, HexDir::NW] {
             if let Some(edge) = state.board.edge(coord, dir)
-                && edge.feature.as_ref().is_some_and(|f| matches!(f, libciv::world::edge::BuiltinEdgeFeature::River(_)))
+                && edge
+                    .feature
+                    .as_ref()
+                    .is_some_and(|f| matches!(f, libciv::world::edge::BuiltinEdgeFeature::River(_)))
             {
                 let (a, b) = edge.endpoints();
                 river_edges.push((conv_coord(a), conv_coord(b)));
@@ -325,7 +386,13 @@ pub fn project_game_view(state: &GameState, viewer: CivId) -> GameView {
     }
 
     let topology = conv_topology(state.board.topology());
-    let board = BoardView { width: board_w, height: board_h, topology, tiles, river_edges };
+    let board = BoardView {
+        width: board_w,
+        height: board_h,
+        topology,
+        tiles,
+        river_edges,
+    };
 
     // ── Own civilization ──────────────────────────────────────────────────
     let my_civ = CivView {
@@ -335,26 +402,53 @@ pub fn project_game_view(state: &GameState, viewer: CivId) -> GameView {
         leader_name: civ.leader.name.to_string(),
         gold: civ.gold,
         current_era: AgeType::Ancient, // TODO: map from civ.current_era
-        researched_techs: civ.researched_techs.iter().map(|t| conv_tech_id(*t)).collect(),
-        research_queue: civ.research_queue.iter().map(|tp| TechProgressView {
-            tech_id: conv_tech_id(tp.tech_id),
-            progress: tp.progress,
-            boosted: tp.boosted,
-        }).collect(),
-        completed_civics: civ.completed_civics.iter().map(|c| conv_civic_id(*c)).collect(),
+        researched_techs: civ
+            .researched_techs
+            .iter()
+            .map(|t| conv_tech_id(*t))
+            .collect(),
+        research_queue: civ
+            .research_queue
+            .iter()
+            .map(|tp| TechProgressView {
+                tech_id: conv_tech_id(tp.tech_id),
+                progress: tp.progress,
+                boosted: tp.boosted,
+            })
+            .collect(),
+        completed_civics: civ
+            .completed_civics
+            .iter()
+            .map(|c| conv_civic_id(*c))
+            .collect(),
         civic_in_progress: civ.civic_in_progress.as_ref().map(|cp| CivicProgressView {
             civic_id: conv_civic_id(cp.civic_id),
             progress: cp.progress,
             inspired: cp.inspired,
         }),
-        current_government: civ.current_government
+        current_government: civ
+            .current_government
             .and_then(|g| state.governments.iter().find(|gov| gov.id == g))
             .map(|g| g.name.to_string()),
-        active_policies: civ.active_policies.iter().map(|p| conv_policy_id(*p)).collect(),
+        active_policies: civ
+            .active_policies
+            .iter()
+            .map(|p| conv_policy_id(*p))
+            .collect(),
         unlocked_units: civ.unlocked_units.iter().map(|s| s.to_string()).collect(),
-        unlocked_buildings: civ.unlocked_buildings.iter().map(|s| s.to_string()).collect(),
-        unlocked_improvements: civ.unlocked_improvements.iter().map(|s| s.to_string()).collect(),
-        strategic_resources: civ.strategic_resources.iter()
+        unlocked_buildings: civ
+            .unlocked_buildings
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
+        unlocked_improvements: civ
+            .unlocked_improvements
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
+        strategic_resources: civ
+            .strategic_resources
+            .iter()
             .map(|(r, &qty)| (format!("{r:?}"), qty))
             .collect(),
         yields: civ_yields,
@@ -364,12 +458,17 @@ pub fn project_game_view(state: &GameState, viewer: CivId) -> GameView {
     };
 
     // ── Other civilizations ──────────────────────────────────────────────
-    let other_civs: Vec<PublicCivView> = state.civilizations.iter()
+    let other_civs: Vec<PublicCivView> = state
+        .civilizations
+        .iter()
         .filter(|c| c.id != viewer)
         .map(|c| {
-            let diplo_status = state.diplomatic_relations.iter()
-                .find(|r| (r.civ_a == viewer && r.civ_b == c.id) ||
-                          (r.civ_a == c.id && r.civ_b == viewer))
+            let diplo_status = state
+                .diplomatic_relations
+                .iter()
+                .find(|r| {
+                    (r.civ_a == viewer && r.civ_b == c.id) || (r.civ_a == c.id && r.civ_b == viewer)
+                })
                 .map(|r| conv_diplo_status(r.status))
                 .unwrap_or(DiplomaticStatus::Neutral);
             PublicCivView {
@@ -383,7 +482,9 @@ pub fn project_game_view(state: &GameState, viewer: CivId) -> GameView {
         .collect();
 
     // ── Cities ───────────────────────────────────────────────────────────
-    let cities: Vec<CityView> = state.cities.iter()
+    let cities: Vec<CityView> = state
+        .cities
+        .iter()
         .filter(|c| civ.explored_tiles.contains(&c.coord))
         .map(|c| {
             let is_own = c.owner == viewer;
@@ -397,13 +498,19 @@ pub fn project_game_view(state: &GameState, viewer: CivId) -> GameView {
                 food_stored: c.food_stored,
                 food_to_grow: c.food_to_grow,
                 production_stored: c.production_stored,
-                production_queue: c.production_queue.iter().map(conv_production_item).collect(),
+                production_queue: c
+                    .production_queue
+                    .iter()
+                    .map(conv_production_item)
+                    .collect(),
                 buildings: c.buildings.iter().map(|b| conv_building_id(*b)).collect(),
                 worked_tiles: c.worked_tiles.iter().map(|t| conv_coord(*t)).collect(),
                 territory: c.territory.iter().map(|t| conv_coord(*t)).collect(),
                 ownership: conv_ownership(c.ownership),
                 walls: conv_wall_level(c.walls),
-                religious_followers: c.religious_followers.iter()
+                religious_followers: c
+                    .religious_followers
+                    .iter()
                     .map(|(&rid, &count)| (conv_religion_id(rid), count))
                     .collect(),
                 majority_religion: c.majority_religion().map(conv_religion_id),
@@ -414,7 +521,9 @@ pub fn project_game_view(state: &GameState, viewer: CivId) -> GameView {
         .collect();
 
     // ── Units (only visible) ─────────────────────────────────────────────
-    let units: Vec<UnitView> = state.units.iter()
+    let units: Vec<UnitView> = state
+        .units
+        .iter()
         .filter(|u| civ.visible_tiles.contains(&u.coord))
         .map(|u| UnitView {
             id: conv_unit_id(u.id),
@@ -435,27 +544,39 @@ pub fn project_game_view(state: &GameState, viewer: CivId) -> GameView {
 
     // ── Tech tree ────────────────────────────────────────────────────────
     let tech_tree = TechTreeView {
-        nodes: state.tech_tree.nodes.values().map(|n| TechNodeView {
-            id: conv_tech_id(n.id),
-            name: n.name.to_string(),
-            cost: n.cost,
-            prerequisites: n.prerequisites.iter().map(|t| conv_tech_id(*t)).collect(),
-            eureka_description: n.eureka_description.to_string(),
-        }).collect(),
+        nodes: state
+            .tech_tree
+            .nodes
+            .values()
+            .map(|n| TechNodeView {
+                id: conv_tech_id(n.id),
+                name: n.name.to_string(),
+                cost: n.cost,
+                prerequisites: n.prerequisites.iter().map(|t| conv_tech_id(*t)).collect(),
+                eureka_description: n.eureka_description.to_string(),
+            })
+            .collect(),
     };
 
     let civic_tree = CivicTreeView {
-        nodes: state.civic_tree.nodes.values().map(|n| CivicNodeView {
-            id: conv_civic_id(n.id),
-            name: n.name.to_string(),
-            cost: n.cost,
-            prerequisites: n.prerequisites.iter().map(|c| conv_civic_id(*c)).collect(),
-            inspiration_description: n.inspiration_description.to_string(),
-        }).collect(),
+        nodes: state
+            .civic_tree
+            .nodes
+            .values()
+            .map(|n| CivicNodeView {
+                id: conv_civic_id(n.id),
+                name: n.name.to_string(),
+                cost: n.cost,
+                prerequisites: n.prerequisites.iter().map(|c| conv_civic_id(*c)).collect(),
+                inspiration_description: n.inspiration_description.to_string(),
+            })
+            .collect(),
     };
 
     // ── Trade routes ─────────────────────────────────────────────────────
-    let trade_routes: Vec<TradeRouteView> = state.trade_routes.iter()
+    let trade_routes: Vec<TradeRouteView> = state
+        .trade_routes
+        .iter()
         .filter(|tr| tr.owner == viewer)
         .map(|tr| TradeRouteView {
             id: conv_trade_route_id(tr.id),
@@ -469,8 +590,10 @@ pub fn project_game_view(state: &GameState, viewer: CivId) -> GameView {
         .collect();
 
     // ── Unit type defs ───────────────────────────────────────────────────
-    let unit_type_defs: Vec<UnitTypeDefView> = state.unit_type_defs.iter().map(|d| {
-        UnitTypeDefView {
+    let unit_type_defs: Vec<UnitTypeDefView> = state
+        .unit_type_defs
+        .iter()
+        .map(|d| UnitTypeDefView {
             id: conv_unit_type_id(d.id),
             name: d.name.to_string(),
             production_cost: d.production_cost,
@@ -482,21 +605,24 @@ pub fn project_game_view(state: &GameState, viewer: CivId) -> GameView {
             vision_range: d.vision_range,
             can_found_city: d.can_found_city,
             resource_cost: d.resource_cost.map(|(r, q)| (conv_resource(r), q)),
-        }
-    }).collect();
+        })
+        .collect();
 
-    let building_defs: Vec<BuildingDefView> = state.building_defs.iter().map(|d| {
-        BuildingDefView {
+    let building_defs: Vec<BuildingDefView> = state
+        .building_defs
+        .iter()
+        .map(|d| BuildingDefView {
             id: conv_building_id(d.id),
             name: d.name.to_string(),
             cost: d.cost,
             maintenance: d.maintenance,
             yields: conv_yields(&d.yields),
-        }
-    }).collect();
+        })
+        .collect();
 
     // ── Scores ───────────────────────────────────────────────────────────
-    let scores: Vec<(api::CivId, u32)> = all_scores(state).into_iter()
+    let scores: Vec<(api::CivId, u32)> = all_scores(state)
+        .into_iter()
         .map(|(cid, s)| (conv_civ_id(cid), s))
         .collect();
 
@@ -521,31 +647,49 @@ pub fn project_game_view(state: &GameState, viewer: CivId) -> GameView {
         unit_type_defs,
         building_defs,
         scores,
-        religions: state.religions.iter().map(|r| {
-            ReligionView {
+        religions: state
+            .religions
+            .iter()
+            .map(|r| ReligionView {
                 id: conv_religion_id(r.id),
                 name: r.name.clone(),
                 founded_by: conv_civ_id(r.founded_by),
                 holy_city: conv_city_id(r.holy_city),
-                beliefs: r.beliefs.iter().filter_map(|bid| {
-                    state.belief_defs.iter().find(|b| b.id == *bid).map(|b| {
-                        BeliefView {
-                            id: conv_belief_id(b.id),
-                            name: b.name.to_string(),
-                            description: b.description.to_string(),
-                            category: match b.category {
-                                libciv::civ::religion::BeliefCategory::Pantheon => BeliefCategory::Pantheon,
-                                libciv::civ::religion::BeliefCategory::Founder => BeliefCategory::Founder,
-                                libciv::civ::religion::BeliefCategory::Follower => BeliefCategory::Follower,
-                                libciv::civ::religion::BeliefCategory::Worship => BeliefCategory::Worship,
-                                libciv::civ::religion::BeliefCategory::Enhancer => BeliefCategory::Enhancer,
-                            },
-                        }
+                beliefs: r
+                    .beliefs
+                    .iter()
+                    .filter_map(|bid| {
+                        state
+                            .belief_defs
+                            .iter()
+                            .find(|b| b.id == *bid)
+                            .map(|b| BeliefView {
+                                id: conv_belief_id(b.id),
+                                name: b.name.to_string(),
+                                description: b.description.to_string(),
+                                category: match b.category {
+                                    libciv::civ::religion::BeliefCategory::Pantheon => {
+                                        BeliefCategory::Pantheon
+                                    }
+                                    libciv::civ::religion::BeliefCategory::Founder => {
+                                        BeliefCategory::Founder
+                                    }
+                                    libciv::civ::religion::BeliefCategory::Follower => {
+                                        BeliefCategory::Follower
+                                    }
+                                    libciv::civ::religion::BeliefCategory::Worship => {
+                                        BeliefCategory::Worship
+                                    }
+                                    libciv::civ::religion::BeliefCategory::Enhancer => {
+                                        BeliefCategory::Enhancer
+                                    }
+                                },
+                            })
                     })
-                }).collect(),
+                    .collect(),
                 total_followers: r.total_followers(&state.cities),
-            }
-        }).collect(),
+            })
+            .collect(),
         game_over,
     }
 }

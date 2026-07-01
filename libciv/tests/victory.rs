@@ -1,11 +1,8 @@
 /// Integration tests for the victory condition infrastructure.
 mod common;
 
-use libciv::{
-    all_scores, compute_score,
-    BuiltinVictoryCondition, DefaultRulesEngine, RulesEngine,
-};
 use libciv::game::StateDelta;
+use libciv::{BuiltinVictoryCondition, DefaultRulesEngine, RulesEngine, all_scores, compute_score};
 
 // ── Score computation ─────────────────────────────────────────────────────────
 
@@ -14,7 +11,10 @@ fn score_increases_with_cities_and_techs() {
     let s = common::build_scenario();
     let initial = compute_score(&s.state, s.rome_id);
     // Rome starts with 1 city (pop 1) + territory tiles. Score > 0.
-    assert!(initial > 0, "expected non-zero initial score, got {initial}");
+    assert!(
+        initial > 0,
+        "expected non-zero initial score, got {initial}"
+    );
 }
 
 #[test]
@@ -44,18 +44,32 @@ fn score_victory_fires_at_turn_limit() {
 
     // Register a ScoreVictory that expires at turn 3.
     let vc_id = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(BuiltinVictoryCondition::Score { id: vc_id, turn_limit: 3 });
+    s.state
+        .victory_conditions
+        .push(BuiltinVictoryCondition::Score {
+            id: vc_id,
+            turn_limit: 3,
+        });
 
     // Advance 2 turns — game should still be running.
     rules.advance_turn(&mut s.state);
     rules.advance_turn(&mut s.state);
-    assert!(s.state.game_over.is_none(), "game should not be over before turn limit");
+    assert!(
+        s.state.game_over.is_none(),
+        "game should not be over before turn limit"
+    );
 
     // Advance 1 more — turn counter reaches 3, victory should fire.
     let diff = rules.advance_turn(&mut s.state);
-    assert!(s.state.game_over.is_some(), "game should be over at turn limit");
+    assert!(
+        s.state.game_over.is_some(),
+        "game should be over at turn limit"
+    );
 
-    let victory_delta = diff.deltas.iter().any(|d| matches!(d, StateDelta::VictoryAchieved { .. }));
+    let victory_delta = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::VictoryAchieved { .. }));
     assert!(victory_delta, "expected VictoryAchieved delta in diff");
 }
 
@@ -65,7 +79,12 @@ fn score_victory_winner_is_highest_scorer() {
     let mut s = common::build_scenario();
 
     let vc_id = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(BuiltinVictoryCondition::Score { id: vc_id, turn_limit: 3 });
+    s.state
+        .victory_conditions
+        .push(BuiltinVictoryCondition::Score {
+            id: vc_id,
+            turn_limit: 3,
+        });
 
     rules.advance_turn(&mut s.state);
     rules.advance_turn(&mut s.state);
@@ -85,11 +104,20 @@ fn score_victory_condition_name_in_delta() {
     let mut s = common::build_scenario();
 
     let vc_id = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(BuiltinVictoryCondition::Score { id: vc_id, turn_limit: 1 });
+    s.state
+        .victory_conditions
+        .push(BuiltinVictoryCondition::Score {
+            id: vc_id,
+            turn_limit: 1,
+        });
 
     let diff = rules.advance_turn(&mut s.state);
     let delta = diff.deltas.iter().find_map(|d| {
-        if let StateDelta::VictoryAchieved { condition, .. } = d { Some(*condition) } else { None }
+        if let StateDelta::VictoryAchieved { condition, .. } = d {
+            Some(*condition)
+        } else {
+            None
+        }
     });
     assert_eq!(delta, Some("Score Victory"));
 }
@@ -103,7 +131,10 @@ fn no_victory_conditions_game_never_ends() {
     for _ in 0..10 {
         rules.advance_turn(&mut s.state);
     }
-    assert!(s.state.game_over.is_none(), "no conditions means no game over");
+    assert!(
+        s.state.game_over.is_none(),
+        "no conditions means no game over"
+    );
 }
 
 #[test]
@@ -112,7 +143,12 @@ fn game_over_blocks_further_victory_evaluation() {
     let mut s = common::build_scenario();
 
     let vc_id = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(BuiltinVictoryCondition::Score { id: vc_id, turn_limit: 1 });
+    s.state
+        .victory_conditions
+        .push(BuiltinVictoryCondition::Score {
+            id: vc_id,
+            turn_limit: 1,
+        });
 
     // First evaluation fires the victory.
     rules.advance_turn(&mut s.state);
@@ -122,5 +158,8 @@ fn game_over_blocks_further_victory_evaluation() {
     rules.advance_turn(&mut s.state);
     let winner_after_second = s.state.game_over.as_ref().map(|g| g.winner);
 
-    assert_eq!(winner_after_first, winner_after_second, "winner should not change once game is over");
+    assert_eq!(
+        winner_after_first, winner_after_second,
+        "winner should not change once game is over"
+    );
 }

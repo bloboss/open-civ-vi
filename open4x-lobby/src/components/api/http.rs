@@ -106,6 +106,10 @@ pub async fn fetch_json<T: DeserializeOwned, B: Serialize>(
         });
     }
 
-    let payload = if text.trim().is_empty() { "null" } else { &text };
+    let payload = if text.trim().is_empty() {
+        "null"
+    } else {
+        &text
+    };
     serde_json::from_str::<T>(payload).map_err(|e| ApiError::transport(e.to_string()))
 }

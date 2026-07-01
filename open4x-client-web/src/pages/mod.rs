@@ -4,8 +4,8 @@ pub mod rest_game;
 
 pub use rest_game::RestGamePage;
 
+use crate::components::session::{DemoConfig, GameConfig};
 use leptos::prelude::*;
-use crate::components::session::{GameConfig, DemoConfig};
 
 // ---------------------------------------------------------------------------
 // Home page
@@ -15,8 +15,8 @@ use crate::components::session::{GameConfig, DemoConfig};
 pub fn HomePage(
     on_new_game: impl Fn() + 'static,
     on_settings: impl Fn() + 'static,
-    on_players:  impl Fn() + 'static,
-    on_demo:     impl Fn() + 'static,
+    on_players: impl Fn() + 'static,
+    on_demo: impl Fn() + 'static,
 ) -> impl IntoView {
     view! {
         <div class="page-center">
@@ -48,20 +48,25 @@ pub fn HomePage(
 #[component]
 pub fn MapConfigPage(
     on_start: impl Fn(GameConfig) + 'static,
-    on_back:  impl Fn() + 'static,
+    on_back: impl Fn() + 'static,
 ) -> impl IntoView {
-    let size    = RwSignal::new("medium");
+    let size = RwSignal::new("medium");
     let seed_str = RwSignal::new("42".to_string());
-    let num_ai  = RwSignal::new(1u32);
+    let num_ai = RwSignal::new(1u32);
 
     let start = move || {
         let (w, h) = match size.get() {
             "small" => (20u32, 14u32),
             "large" => (60u32, 36u32),
-            _       => (40u32, 24u32),
+            _ => (40u32, 24u32),
         };
         let seed: u64 = seed_str.get().parse().unwrap_or(42);
-        on_start(GameConfig { width: w, height: h, seed, num_ai: num_ai.get() });
+        on_start(GameConfig {
+            width: w,
+            height: h,
+            seed,
+            num_ai: num_ai.get(),
+        });
     };
 
     view! {
@@ -183,22 +188,28 @@ pub fn PlayersPage(on_back: impl Fn() + 'static) -> impl IntoView {
 #[component]
 pub fn DemoConfigPage(
     on_start: impl Fn(DemoConfig) + 'static,
-    on_back:  impl Fn() + 'static,
+    on_back: impl Fn() + 'static,
 ) -> impl IntoView {
-    let size        = RwSignal::new("small");
-    let seed_str    = RwSignal::new("42".to_string());
-    let turns_str   = RwSignal::new("100".to_string());
+    let size = RwSignal::new("small");
+    let seed_str = RwSignal::new("42".to_string());
+    let turns_str = RwSignal::new("100".to_string());
     let num_players = RwSignal::new(2u32);
 
     let start = move || {
         let (w, h) = match size.get() {
             "medium" => (40u32, 24u32),
-            "large"  => (60u32, 36u32),
-            _        => (20u32, 14u32),
+            "large" => (60u32, 36u32),
+            _ => (20u32, 14u32),
         };
         let seed: u64 = seed_str.get().parse().unwrap_or(42);
         let num_turns: u32 = turns_str.get().parse().unwrap_or(100);
-        on_start(DemoConfig { width: w, height: h, seed, num_turns, num_players: num_players.get() });
+        on_start(DemoConfig {
+            width: w,
+            height: h,
+            seed,
+            num_turns,
+            num_players: num_players.get(),
+        });
     };
 
     view! {

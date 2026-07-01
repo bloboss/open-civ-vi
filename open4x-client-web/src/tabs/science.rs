@@ -1,9 +1,9 @@
-use leptos::prelude::*;
+use crate::components::ws::WsClient;
 use leptos::prelude::LocalStorage;
+use leptos::prelude::*;
 use open4x_protocol::v1::ids::TechId;
 use open4x_protocol::v1::messages::{ClientMessage, GameAction};
 use open4x_protocol::v1::view::GameView;
-use crate::components::ws::WsClient;
 
 #[component]
 pub fn ScienceTab(
@@ -20,11 +20,17 @@ pub fn ScienceTab(
         let science_pt = gv.my_civ.yields.science;
 
         let current_info = queue.first().map(|tp| {
-            let name = gv.tech_tree.nodes.iter()
+            let name = gv
+                .tech_tree
+                .nodes
+                .iter()
                 .find(|n| n.id == tp.tech_id)
                 .map(|n| n.name.clone())
                 .unwrap_or_else(|| "?".into());
-            let cost = gv.tech_tree.nodes.iter()
+            let cost = gv
+                .tech_tree
+                .nodes
+                .iter()
                 .find(|n| n.id == tp.tech_id)
                 .map(|n| n.cost)
                 .unwrap_or(0);
@@ -34,19 +40,34 @@ pub fn ScienceTab(
         let queued_ids: Vec<TechId> = queue.iter().map(|tp| tp.tech_id).collect();
 
         // Categorize all tech nodes.
-        let nodes: Vec<_> = gv.tech_tree.nodes.iter().map(|n| {
-            let status = if researched.contains(&n.id) {
-                "researched"
-            } else if queued_ids.contains(&n.id) {
-                "in-progress"
-            } else if n.prerequisites.iter().all(|p| researched.contains(p)) {
-                "available"
-            } else {
-                "locked"
-            };
-            let progress = queue.iter().find(|tp| tp.tech_id == n.id).map(|tp| tp.progress);
-            (n.id, n.name.clone(), n.cost, status, progress, n.eureka_description.clone())
-        }).collect();
+        let nodes: Vec<_> = gv
+            .tech_tree
+            .nodes
+            .iter()
+            .map(|n| {
+                let status = if researched.contains(&n.id) {
+                    "researched"
+                } else if queued_ids.contains(&n.id) {
+                    "in-progress"
+                } else if n.prerequisites.iter().all(|p| researched.contains(p)) {
+                    "available"
+                } else {
+                    "locked"
+                };
+                let progress = queue
+                    .iter()
+                    .find(|tp| tp.tech_id == n.id)
+                    .map(|tp| tp.progress);
+                (
+                    n.id,
+                    n.name.clone(),
+                    n.cost,
+                    status,
+                    progress,
+                    n.eureka_description.clone(),
+                )
+            })
+            .collect();
 
         view! {
             <div class="tab-content">

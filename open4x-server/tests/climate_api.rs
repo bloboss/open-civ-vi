@@ -59,7 +59,10 @@ async fn bootstrap_token(app: &Router) -> String {
         .unwrap();
     let (status, body) = json_body(resp).await;
     assert_eq!(status, StatusCode::CREATED, "games/new: {body:?}");
-    body["token"].as_str().expect("token in response").to_string()
+    body["token"]
+        .as_str()
+        .expect("token in response")
+        .to_string()
 }
 
 async fn get_with(app: &Router, path: &str, token: &str) -> (StatusCode, Value) {
@@ -95,7 +98,10 @@ async fn climate_projects_fresh_game_baseline() {
     // Thresholds mirror libciv's CLIMATE_THRESHOLDS exactly.
     let thresholds = c["thresholds"].as_array().expect("thresholds array");
     assert_eq!(
-        thresholds.iter().map(|v| v.as_u64().unwrap()).collect::<Vec<_>>(),
+        thresholds
+            .iter()
+            .map(|v| v.as_u64().unwrap())
+            .collect::<Vec<_>>(),
         vec![200, 400, 600, 800, 1000, 1200, 1500],
     );
 

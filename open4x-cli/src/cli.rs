@@ -20,7 +20,7 @@ pub struct Cli {
         long,
         env = "OPEN4X_TOKEN_FILE",
         global = true,
-        default_value = ".open4x-session.json",
+        default_value = ".open4x-session.json"
     )]
     pub token_file: PathBuf,
 
@@ -150,7 +150,6 @@ pub enum Command {
 #[derive(Subcommand, Debug)]
 pub enum ActionKind {
     // ── Movement & Combat ────────────────────────────────────────────────
-
     /// Move a unit to a hex coordinate
     Move {
         #[arg(long)]
@@ -195,7 +194,6 @@ pub enum ActionKind {
     },
 
     // ── City & Production ────────────────────────────────────────────────
-
     /// Found a city with a settler unit
     FoundCity {
         #[arg(long)]
@@ -305,7 +303,6 @@ pub enum ActionKind {
     },
 
     // ── Tech & Civics ────────────────────────────────────────────────────
-
     /// Queue a technology for research
     Research {
         #[arg(long)]
@@ -333,7 +330,6 @@ pub enum ActionKind {
     },
 
     // ── Diplomacy ────────────────────────────────────────────────────────
-
     /// Declare war on another civilization
     DeclareWar {
         #[arg(long)]
@@ -353,7 +349,6 @@ pub enum ActionKind {
     },
 
     // ── Trade ────────────────────────────────────────────────────────────
-
     /// Assign a trade route via a trader unit
     AssignTradeRoute {
         #[arg(long)]
@@ -370,7 +365,6 @@ pub enum ActionKind {
     },
 
     // ── Religion ─────────────────────────────────────────────────────────
-
     /// Found a pantheon with a chosen belief
     FoundPantheon {
         #[arg(long)]
@@ -421,7 +415,6 @@ pub enum ActionKind {
     },
 
     // ── Great People ─────────────────────────────────────────────────────
-
     /// Retire a Great Person for their unique ability
     RetireGreatPerson {
         #[arg(long)]
@@ -444,7 +437,6 @@ pub enum ActionKind {
     },
 
     // ── Governors ────────────────────────────────────────────────────────
-
     /// Assign a governor to a city
     AssignGovernor {
         #[arg(long)]
@@ -461,12 +453,10 @@ pub enum ActionKind {
     },
 
     // ── Victory ──────────────────────────────────────────────────────────
-
     /// Complete a science victory milestone
     CompleteScienceMilestone,
 
     // ── Barbarians ───────────────────────────────────────────────────────
-
     /// Hire a barbarian from a camp
     HireBarbarian {
         #[arg(long)]

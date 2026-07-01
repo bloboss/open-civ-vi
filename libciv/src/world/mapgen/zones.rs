@@ -46,32 +46,51 @@ impl EcoZone {
         match self {
             // Polar: rises steeply above lat 0.80
             EcoZone::Polar => {
-                if lat < 0.80 { 0.0 }
-                else { (lat - 0.80) / 0.20 }
+                if lat < 0.80 {
+                    0.0
+                } else {
+                    (lat - 0.80) / 0.20
+                }
             }
             // Tundra: peaks ~0.9 at lat 0.70, zero below 0.45
             EcoZone::Tundra => {
-                if lat < 0.45 { 0.0 }
-                else if lat < 0.70 { (lat - 0.45) / 0.25 }
-                else if lat < 0.80 { 1.0 - (lat - 0.70) / 0.10 }
-                else { 0.0 }
+                if lat < 0.45 {
+                    0.0
+                } else if lat < 0.70 {
+                    (lat - 0.45) / 0.25
+                } else if lat < 0.80 {
+                    1.0 - (lat - 0.70) / 0.10
+                } else {
+                    0.0
+                }
             }
             // Temperate: wide bell centred ~0.40, zero outside 0.15..0.70
             EcoZone::Temperate => {
-                if !(0.15..=0.70).contains(&lat) { 0.0 }
-                else if lat < 0.40 { (lat - 0.15) / 0.25 }
-                else               { 1.0 - (lat - 0.40) / 0.30 }
+                if !(0.15..=0.70).contains(&lat) {
+                    0.0
+                } else if lat < 0.40 {
+                    (lat - 0.15) / 0.25
+                } else {
+                    1.0 - (lat - 0.40) / 0.30
+                }
             }
             // Desert: centred ~0.25, zero outside 0.05..0.45
             EcoZone::Desert => {
-                if !(0.05..=0.45).contains(&lat) { 0.0 }
-                else if lat < 0.25 { (lat - 0.05) / 0.20 }
-                else               { 1.0 - (lat - 0.25) / 0.20 }
+                if !(0.05..=0.45).contains(&lat) {
+                    0.0
+                } else if lat < 0.25 {
+                    (lat - 0.05) / 0.20
+                } else {
+                    1.0 - (lat - 0.25) / 0.20
+                }
             }
             // Tropical: rises to 1.0 at equator, zero above 0.15
             EcoZone::Tropical => {
-                if lat > 0.15 { 0.0 }
-                else { 1.0 - lat / 0.15 }
+                if lat > 0.15 {
+                    0.0
+                } else {
+                    1.0 - lat / 0.15
+                }
             }
         }
     }
@@ -84,23 +103,21 @@ impl EcoZone {
 /// Run Phase 2.  Returns an `EcoZone` for every tile on the board.
 pub fn generate(
     config: &MapGenConfig,
-    board:  &WorldBoard,
-    rng:    &mut SmallRng,
+    board: &WorldBoard,
+    rng: &mut SmallRng,
 ) -> HashMap<HexCoord, EcoZone> {
-    let k          = config.resolved_num_zone_seeds() as usize;
-    let half_h     = (config.height as f32) / 2.0;
+    let k = config.resolved_num_zone_seeds() as usize;
+    let half_h = (config.height as f32) / 2.0;
     let all_coords = board.all_coords();
 
     // Helper: normalised latitude for a coord.
-    let lat = |c: HexCoord| -> f32 {
-        (c.r as f32 - half_h).abs() / half_h
-    };
+    let lat = |c: HexCoord| -> f32 { (c.r as f32 - half_h).abs() / half_h };
 
     // --- 1. Seed placement (weighted by zone affinity) ----------------------
 
     // Build a cumulative-weight table once per zone.
     let mut queues: Vec<VecDeque<HexCoord>> = Vec::with_capacity(5);
-    let mut zone_order: Vec<EcoZone>        = Vec::with_capacity(5);
+    let mut zone_order: Vec<EcoZone> = Vec::with_capacity(5);
 
     for &zone in &EcoZone::ALL {
         // Weighted reservoir sampling: draw k seeds from all_coords weighted
@@ -136,7 +153,9 @@ pub fn generate(
         let mut any_progress = false;
 
         for qi in 0..queues.len() {
-            let Some(coord) = queues[qi].pop_front() else { continue };
+            let Some(coord) = queues[qi].pop_front() else {
+                continue;
+            };
             let zone = zone_order[qi];
 
             for neighbor in board.neighbors(coord) {
@@ -178,15 +197,10 @@ pub fn generate(
 /// Uses the simple O(n * k) algorithm: shuffle a weighted random selection
 /// by iterating the list and accepting each item with probability
 /// `w(item) / max_weight` (scaled reservoir).
-fn weighted_sample<T, F>(
-    items: &[T],
-    k:     usize,
-    rng:   &mut SmallRng,
-    weight: F,
-) -> Vec<T>
+fn weighted_sample<T, F>(items: &[T], k: usize, rng: &mut SmallRng, weight: F) -> Vec<T>
 where
-    T:     Copy,
-    F:     Fn(&T) -> f32,
+    T: Copy,
+    F: Fn(&T) -> f32,
 {
     if items.is_empty() || k == 0 {
         return Vec::new();
@@ -201,11 +215,7 @@ where
 
     if weighted.is_empty() {
         // Fallback: uniform sample.
-        return items
-            .iter()
-            .take(k)
-            .copied()
-            .collect();
+        return items.iter().take(k).copied().collect();
     }
 
     // Shuffle so the order is random, then pick the top-k by weight after
@@ -222,7 +232,9 @@ where
 
     let mut selected: Vec<T> = Vec::with_capacity(k);
     for (item, w) in &weighted {
-        if selected.len() >= k { break; }
+        if selected.len() >= k {
+            break;
+        }
         if rng.random::<f32>() < *w {
             selected.push(*item);
         }
@@ -230,7 +242,9 @@ where
 
     // If we didn't get enough (low-weight zones on small maps), top up from front.
     for (item, _) in &weighted {
-        if selected.len() >= k { break; }
+        if selected.len() >= k {
+            break;
+        }
         if !selected.iter().any(|_s| {
             // Can't PartialEq T generically; just fill unconditionally.
             false

@@ -24,17 +24,34 @@ fn temp_game_file() -> PathBuf {
 fn new_game_creates_valid_file() {
     let path = temp_game_file();
     let output = open4x()
-        .args(["new-game", "--game-file", path.to_str().unwrap(),
-               "--player", "Rome", "--ai", "Babylon",
-               "--width", "20", "--height", "12"])
+        .args([
+            "new-game",
+            "--game-file",
+            path.to_str().unwrap(),
+            "--player",
+            "Rome",
+            "--ai",
+            "Babylon",
+            "--width",
+            "20",
+            "--height",
+            "12",
+        ])
         .output()
         .expect("failed to run open4x");
 
-    assert!(output.status.success(), "new-game failed: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "new-game failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert!(path.exists(), "game file should exist");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("\"success\": true"), "should report success");
+    assert!(
+        stdout.contains("\"success\": true"),
+        "should report success"
+    );
     assert!(stdout.contains("\"turn\": 0"), "should be turn 0");
 
     std::fs::remove_file(&path).ok();
@@ -44,14 +61,31 @@ fn new_game_creates_valid_file() {
 fn list_units_returns_json_array() {
     let path = temp_game_file();
     open4x()
-        .args(["new-game", "--game-file", path.to_str().unwrap(),
-               "--player", "Rome", "--width", "20", "--height", "12"])
-        .output().unwrap();
+        .args([
+            "new-game",
+            "--game-file",
+            path.to_str().unwrap(),
+            "--player",
+            "Rome",
+            "--width",
+            "20",
+            "--height",
+            "12",
+        ])
+        .output()
+        .unwrap();
 
     let output = open4x()
-        .args(["list", "--game-file", path.to_str().unwrap(),
-               "--player", "Rome", "units"])
-        .output().unwrap();
+        .args([
+            "list",
+            "--game-file",
+            path.to_str().unwrap(),
+            "--player",
+            "Rome",
+            "units",
+        ])
+        .output()
+        .unwrap();
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -65,14 +99,30 @@ fn list_units_returns_json_array() {
 fn end_turn_advances_game() {
     let path = temp_game_file();
     open4x()
-        .args(["new-game", "--game-file", path.to_str().unwrap(),
-               "--player", "Rome", "--width", "20", "--height", "12"])
-        .output().unwrap();
+        .args([
+            "new-game",
+            "--game-file",
+            path.to_str().unwrap(),
+            "--player",
+            "Rome",
+            "--width",
+            "20",
+            "--height",
+            "12",
+        ])
+        .output()
+        .unwrap();
 
     let output = open4x()
-        .args(["end-turn", "--game-file", path.to_str().unwrap(),
-               "--player", "Rome"])
-        .output().unwrap();
+        .args([
+            "end-turn",
+            "--game-file",
+            path.to_str().unwrap(),
+            "--player",
+            "Rome",
+        ])
+        .output()
+        .unwrap();
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -85,19 +135,41 @@ fn end_turn_advances_game() {
 fn view_returns_player_view() {
     let path = temp_game_file();
     open4x()
-        .args(["new-game", "--game-file", path.to_str().unwrap(),
-               "--player", "Rome", "--width", "20", "--height", "12"])
-        .output().unwrap();
+        .args([
+            "new-game",
+            "--game-file",
+            path.to_str().unwrap(),
+            "--player",
+            "Rome",
+            "--width",
+            "20",
+            "--height",
+            "12",
+        ])
+        .output()
+        .unwrap();
 
     let output = open4x()
-        .args(["view", "--game-file", path.to_str().unwrap(),
-               "--player", "Rome"])
-        .output().unwrap();
+        .args([
+            "view",
+            "--game-file",
+            path.to_str().unwrap(),
+            "--player",
+            "Rome",
+        ])
+        .output()
+        .unwrap();
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("\"civ_name\": \"Rome\""), "should show Rome's view");
-    assert!(stdout.contains("\"visible_tiles\""), "should have visible tiles");
+    assert!(
+        stdout.contains("\"civ_name\": \"Rome\""),
+        "should show Rome's view"
+    );
+    assert!(
+        stdout.contains("\"visible_tiles\""),
+        "should have visible tiles"
+    );
 
     std::fs::remove_file(&path).ok();
 }
@@ -108,28 +180,57 @@ fn view_returns_player_view() {
 fn multiplayer_both_must_end_turn() {
     let path = temp_game_file();
     open4x()
-        .args(["new-game", "--game-file", path.to_str().unwrap(),
-               "--player", "Rome", "--player", "Babylon",
-               "--width", "20", "--height", "12"])
-        .output().unwrap();
+        .args([
+            "new-game",
+            "--game-file",
+            path.to_str().unwrap(),
+            "--player",
+            "Rome",
+            "--player",
+            "Babylon",
+            "--width",
+            "20",
+            "--height",
+            "12",
+        ])
+        .output()
+        .unwrap();
 
     // Rome ends turn — should NOT advance (Babylon hasn't ended)
     let output1 = open4x()
-        .args(["end-turn", "--game-file", path.to_str().unwrap(),
-               "--player", "Rome"])
-        .output().unwrap();
+        .args([
+            "end-turn",
+            "--game-file",
+            path.to_str().unwrap(),
+            "--player",
+            "Rome",
+        ])
+        .output()
+        .unwrap();
     assert!(output1.status.success());
     let stdout1 = String::from_utf8_lossy(&output1.stdout);
-    assert!(stdout1.contains("\"turn\": 0"), "turn should still be 0 (Babylon hasn't ended)");
+    assert!(
+        stdout1.contains("\"turn\": 0"),
+        "turn should still be 0 (Babylon hasn't ended)"
+    );
 
     // Babylon ends turn — now it should advance
     let output2 = open4x()
-        .args(["end-turn", "--game-file", path.to_str().unwrap(),
-               "--player", "Babylon"])
-        .output().unwrap();
+        .args([
+            "end-turn",
+            "--game-file",
+            path.to_str().unwrap(),
+            "--player",
+            "Babylon",
+        ])
+        .output()
+        .unwrap();
     assert!(output2.status.success());
     let stdout2 = String::from_utf8_lossy(&output2.stdout);
-    assert!(stdout2.contains("\"turn\": 1"), "turn should advance to 1 after both end");
+    assert!(
+        stdout2.contains("\"turn\": 1"),
+        "turn should advance to 1 after both end"
+    );
 
     std::fs::remove_file(&path).ok();
 }
@@ -140,14 +241,31 @@ fn multiplayer_both_must_end_turn() {
 fn status_scores_returns_json() {
     let path = temp_game_file();
     open4x()
-        .args(["new-game", "--game-file", path.to_str().unwrap(),
-               "--player", "Rome", "--width", "20", "--height", "12"])
-        .output().unwrap();
+        .args([
+            "new-game",
+            "--game-file",
+            path.to_str().unwrap(),
+            "--player",
+            "Rome",
+            "--width",
+            "20",
+            "--height",
+            "12",
+        ])
+        .output()
+        .unwrap();
 
     let output = open4x()
-        .args(["status", "--game-file", path.to_str().unwrap(),
-               "--player", "Rome", "scores"])
-        .output().unwrap();
+        .args([
+            "status",
+            "--game-file",
+            path.to_str().unwrap(),
+            "--player",
+            "Rome",
+            "scores",
+        ])
+        .output()
+        .unwrap();
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);

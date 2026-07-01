@@ -1,18 +1,18 @@
 //! Turn phase: advance_turn implementation.
 
-use crate::{CityId, CivId, TechId, UnitId, UnitTypeId, YieldBundle};
 use crate::civ::DiplomaticStatus;
 use crate::civ::civ_ability::RuleOverride;
+use crate::{CityId, CivId, TechId, UnitId, UnitTypeId, YieldBundle};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 
-use super::{RulesError, lookup_bundle, has_rule_override};
 use super::super::diff::{GameStateDiff, StateDelta};
 use super::super::rules_helpers::{
     auto_assign_citizen, city_culture_output, compute_city_loyalty_delta,
     compute_diplomatic_status, highest_pressure_civ, tile_border_cost, try_claim_tile,
 };
 use super::super::state::GameState;
+use super::{RulesError, has_rule_override, lookup_bundle};
 use crate::rules::unique::UniqueUnitAbility;
 
 const RELIGIOUS_PRESSURE_RADIUS: u32 = 10;
@@ -42,7 +42,10 @@ const UNREST_BASE_DECAY: i32 = 1;
 const UNREST_HIGH_LOYALTY_DECAY: i32 = 2;
 
 /// Advance the game state by one turn. Returns diff.
-pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut GameState) -> GameStateDiff {
+pub(crate) fn advance_turn(
+    _engine: &super::DefaultRulesEngine,
+    state: &mut GameState,
+) -> GameStateDiff {
     let mut diff = GameStateDiff::new();
 
     // ── Reset per-turn city bombardment flag ─────────────────────────────
@@ -54,13 +57,20 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
     // Collect food from worked_tiles (immutable board borrow), then mutate cities.
     let city_food: Vec<(usize, i32)> = {
         let board = &state.board;
-        state.cities.iter().enumerate().map(|(i, city)| {
-            let food: i32 = city.worked_tiles.iter()
-                .filter_map(|&coord| board.tile(coord))
-                .map(|t| t.total_yields().food)
-                .sum();
-            (i, food)
-        }).collect()
+        state
+            .cities
+            .iter()
+            .enumerate()
+            .map(|(i, city)| {
+                let food: i32 = city
+                    .worked_tiles
+                    .iter()
+                    .filter_map(|&coord| board.tile(coord))
+                    .map(|t| t.total_yields().food)
+                    .sum();
+                (i, food)
+            })
+            .collect()
     };
 
     // Track cities that grew so we can auto-assign a new citizen after the loop.
@@ -72,8 +82,8 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
             city.food_stored += food as u32;
         }
         if city.food_stored >= city.food_to_grow {
-            city.food_stored  = 0;
-            city.population  += 1;
+            city.food_stored = 0;
+            city.population += 1;
             city.food_to_grow = 15 + 6 * (city.population - 1);
             diff.push(StateDelta::PopulationGrew {
                 city: city.id,
@@ -87,52 +97,65 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
     for i in grew_cities {
         let city_id = state.cities[i].id;
         if let Some(coord) = auto_assign_citizen(&state.board, &mut state.cities[i]) {
-            diff.push(StateDelta::CitizenAssigned { city: city_id, tile: coord });
+            diff.push(StateDelta::CitizenAssigned {
+                city: city_id,
+                tile: coord,
+            });
         }
     }
 
     // ── Per-city production accumulation + strategic resource yield ────────
     // Collect production yield and strategic resource tiles from worked tiles
     // (immutable board borrow), then apply mutations in separate passes.
-    use crate::world::resource::BuiltinResource;
     use crate::enums::ResourceCategory;
+    use crate::world::resource::BuiltinResource;
     use std::collections::HashMap as StdHashMap;
 
     struct CityTurnData {
         city_idx: usize,
-        civ_id:   CivId,
-        coord:    HexCoord,
-        prod:     u32,
+        civ_id: CivId,
+        coord: HexCoord,
+        prod: u32,
         /// Strategic resources yielded this turn by worked tiles with an improvement.
         resource_yields: Vec<BuiltinResource>,
     }
 
     let city_turn_data: Vec<CityTurnData> = {
         let board = &state.board;
-        state.cities.iter().enumerate().map(|(i, city)| {
-            let prod: i32 = city.worked_tiles.iter()
-                .filter_map(|&coord| board.tile(coord))
-                .map(|t| t.total_yields().production)
-                .sum();
-            let resource_yields: Vec<BuiltinResource> = city.worked_tiles.iter()
-                .filter_map(|&coord| board.tile(coord))
-                .filter_map(|t| {
-                    let res = t.resource?;
-                    if res.category() == ResourceCategory::Strategic && t.improvement.is_some() {
-                        Some(res)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            CityTurnData {
-                city_idx: i,
-                civ_id:   city.owner,
-                coord:    city.coord,
-                prod:     prod.max(0) as u32,
-                resource_yields,
-            }
-        }).collect()
+        state
+            .cities
+            .iter()
+            .enumerate()
+            .map(|(i, city)| {
+                let prod: i32 = city
+                    .worked_tiles
+                    .iter()
+                    .filter_map(|&coord| board.tile(coord))
+                    .map(|t| t.total_yields().production)
+                    .sum();
+                let resource_yields: Vec<BuiltinResource> = city
+                    .worked_tiles
+                    .iter()
+                    .filter_map(|&coord| board.tile(coord))
+                    .filter_map(|t| {
+                        let res = t.resource?;
+                        if res.category() == ResourceCategory::Strategic && t.improvement.is_some()
+                        {
+                            Some(res)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                CityTurnData {
+                    city_idx: i,
+                    civ_id: city.owner,
+                    coord: city.coord,
+                    prod: prod.max(0) as u32,
+                    resource_yields,
+                }
+            })
+            .collect()
     };
 
     // Apply production accumulation.
@@ -150,66 +173,78 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
     for ((civ_id, resource), amount) in resource_gains {
         if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == civ_id) {
             *civ.strategic_resources.entry(resource).or_insert(0) += amount;
-            diff.push(StateDelta::StrategicResourceChanged { civ: civ_id, resource, delta: amount as i32 });
+            diff.push(StateDelta::StrategicResourceChanged {
+                civ: civ_id,
+                resource,
+                delta: amount as i32,
+            });
         }
     }
 
     // Complete unit production for cities whose stored production meets the cost.
     // Units with a strategic resource cost are blocked if the civ lacks the resource.
     struct UnitCompletion {
-        city_idx:        usize,
-        civ_id:          CivId,
-        coord:           HexCoord,
-        type_id:         UnitTypeId,
+        city_idx: usize,
+        civ_id: CivId,
+        coord: HexCoord,
+        type_id: UnitTypeId,
         production_cost: u32,
-        resource_cost:   Option<(BuiltinResource, u32)>,
-        domain:          crate::UnitDomain,
-        category:        crate::UnitCategory,
-        max_movement:    u32,
+        resource_cost: Option<(BuiltinResource, u32)>,
+        domain: crate::UnitDomain,
+        category: crate::UnitCategory,
+        max_movement: u32,
         combat_strength: Option<u32>,
-        range:           u8,
-        vision_range:    u8,
-        max_charges:     u8,
+        range: u8,
+        vision_range: u8,
+        max_charges: u8,
     }
 
-    let unit_completions: Vec<UnitCompletion> = city_turn_data.iter().filter_map(|d| {
-        use crate::civ::city::ProductionItem;
-        use crate::game::production_helpers::resolve_unit_replacement;
-        let city = &state.cities[d.city_idx];
-        if let Some(ProductionItem::Unit(tid)) = city.production_queue.front() {
-            // Resolve civ-exclusive replacement: the queue stores the generic
-            // unit (e.g. "Swordsman") and we swap in the civ's unique variant
-            // (e.g. "Legion" for Rome) at completion time.
-            let (resolved_tid, _) = resolve_unit_replacement(state, d.civ_id, *tid);
-            let def = state.unit_type_defs.iter().find(|def| def.id == resolved_tid)?;
-            if city.production_stored >= def.production_cost {
-                Some(UnitCompletion {
-                    city_idx:        d.city_idx,
-                    civ_id:          d.civ_id,
-                    coord:           d.coord,
-                    type_id:         def.id,
-                    production_cost: def.production_cost,
-                    resource_cost:   def.resource_cost,
-                    domain:          def.domain,
-                    category:        def.category,
-                    max_movement:    def.max_movement,
-                    combat_strength: def.combat_strength,
-                    range:           def.range,
-                    vision_range:    def.vision_range,
-                    max_charges:     def.max_charges,
-                })
+    let unit_completions: Vec<UnitCompletion> = city_turn_data
+        .iter()
+        .filter_map(|d| {
+            use crate::civ::city::ProductionItem;
+            use crate::game::production_helpers::resolve_unit_replacement;
+            let city = &state.cities[d.city_idx];
+            if let Some(ProductionItem::Unit(tid)) = city.production_queue.front() {
+                // Resolve civ-exclusive replacement: the queue stores the generic
+                // unit (e.g. "Swordsman") and we swap in the civ's unique variant
+                // (e.g. "Legion" for Rome) at completion time.
+                let (resolved_tid, _) = resolve_unit_replacement(state, d.civ_id, *tid);
+                let def = state
+                    .unit_type_defs
+                    .iter()
+                    .find(|def| def.id == resolved_tid)?;
+                if city.production_stored >= def.production_cost {
+                    Some(UnitCompletion {
+                        city_idx: d.city_idx,
+                        civ_id: d.civ_id,
+                        coord: d.coord,
+                        type_id: def.id,
+                        production_cost: def.production_cost,
+                        resource_cost: def.resource_cost,
+                        domain: def.domain,
+                        category: def.category,
+                        max_movement: def.max_movement,
+                        combat_strength: def.combat_strength,
+                        range: def.range,
+                        vision_range: def.vision_range,
+                        max_charges: def.max_charges,
+                    })
+                } else {
+                    None
+                }
             } else {
                 None
             }
-        } else {
-            None
-        }
-    }).collect();
+        })
+        .collect();
 
     for uc in unit_completions {
         // Check and deduct strategic resource cost.
         if let Some((resource, required)) = uc.resource_cost {
-            let available = state.civilizations.iter()
+            let available = state
+                .civilizations
+                .iter()
                 .find(|c| c.id == uc.civ_id)
                 .map(|c| *c.strategic_resources.get(&resource).unwrap_or(&0))
                 .unwrap_or(0);
@@ -219,7 +254,9 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
             if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == uc.civ_id) {
                 *civ.strategic_resources.entry(resource).or_insert(0) -= required;
                 diff.push(StateDelta::StrategicResourceChanged {
-                    civ: uc.civ_id, resource, delta: -(required as i32),
+                    civ: uc.civ_id,
+                    resource,
+                    delta: -(required as i32),
                 });
             }
         }
@@ -229,27 +266,39 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         state.cities[uc.city_idx].production_queue.pop_front();
 
         let unit_id = state.id_gen.next_unit_id();
-        let charges = if uc.max_charges > 0 { Some(uc.max_charges) } else { None };
+        let charges = if uc.max_charges > 0 {
+            Some(uc.max_charges)
+        } else {
+            None
+        };
         state.units.push(crate::civ::BasicUnit {
-            id:              unit_id,
-            unit_type:       uc.type_id,
-            owner:           uc.civ_id,
-            coord:           uc.coord,
-            domain:          uc.domain,
-            category:        uc.category,
-            movement_left:   uc.max_movement,
-            max_movement:    uc.max_movement,
+            id: unit_id,
+            unit_type: uc.type_id,
+            owner: uc.civ_id,
+            coord: uc.coord,
+            domain: uc.domain,
+            category: uc.category,
+            movement_left: uc.max_movement,
+            max_movement: uc.max_movement,
             combat_strength: uc.combat_strength,
-            promotions:      Vec::new(),
-            experience:      0,
-            health:          100,
-            range:           uc.range,
-            vision_range:    uc.vision_range,
+            promotions: Vec::new(),
+            experience: 0,
+            health: 100,
+            range: uc.range,
+            vision_range: uc.vision_range,
             charges,
             trade_origin: None,
-            trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+            trade_destination: None,
+            religion_id: None,
+            spread_charges: None,
+            religious_strength: None,
+            is_embarked: false,
         });
-        diff.push(StateDelta::UnitCreated { unit: unit_id, coord: uc.coord, owner: uc.civ_id });
+        diff.push(StateDelta::UnitCreated {
+            unit: unit_id,
+            coord: uc.coord,
+            owner: uc.civ_id,
+        });
     }
 
     // ── Phase 2a-1b: Building completion ────────────────────────────────
@@ -264,30 +313,36 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
             cost: u32,
         }
 
-        let bldg_completions: Vec<BuildingCompletion> = city_turn_data.iter().filter_map(|d| {
-            let city = &state.cities[d.city_idx];
-            if let Some(ProductionItem::Building(bid)) = city.production_queue.front() {
-                let (resolved_bid, _) = resolve_building_replacement(state, d.civ_id, *bid);
-                let def = state.building_defs.iter().find(|b| b.id == resolved_bid)?;
-                if city.production_stored >= def.cost {
-                    Some(BuildingCompletion {
-                        city_idx: d.city_idx,
-                        building_id: def.id,
-                        building_name: def.name,
-                        cost: def.cost,
-                    })
+        let bldg_completions: Vec<BuildingCompletion> = city_turn_data
+            .iter()
+            .filter_map(|d| {
+                let city = &state.cities[d.city_idx];
+                if let Some(ProductionItem::Building(bid)) = city.production_queue.front() {
+                    let (resolved_bid, _) = resolve_building_replacement(state, d.civ_id, *bid);
+                    let def = state.building_defs.iter().find(|b| b.id == resolved_bid)?;
+                    if city.production_stored >= def.cost {
+                        Some(BuildingCompletion {
+                            city_idx: d.city_idx,
+                            building_id: def.id,
+                            building_name: def.name,
+                            cost: def.cost,
+                        })
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
-            } else {
-                None
-            }
-        }).collect();
+            })
+            .collect();
 
         for bc in bldg_completions {
             state.cities[bc.city_idx].production_stored -= bc.cost;
             state.cities[bc.city_idx].production_queue.pop_front();
-            if !state.cities[bc.city_idx].buildings.contains(&bc.building_id) {
+            if !state.cities[bc.city_idx]
+                .buildings
+                .contains(&bc.building_id)
+            {
                 state.cities[bc.city_idx].buildings.push(bc.building_id);
             }
             diff.push(StateDelta::BuildingCompleted {
@@ -309,25 +364,28 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
             cost: u32,
         }
 
-        let wonder_completions: Vec<WonderCompletion> = city_turn_data.iter().filter_map(|d| {
-            let city = &state.cities[d.city_idx];
-            if let Some(ProductionItem::Wonder(wid)) = city.production_queue.front() {
-                let def = state.wonder_defs.iter().find(|w| w.id == *wid)?;
-                if city.production_stored >= def.production_cost {
-                    Some(WonderCompletion {
-                        city_idx: d.city_idx,
-                        civ_id: d.civ_id,
-                        wonder_id: def.id,
-                        wonder_name: def.name,
-                        cost: def.production_cost,
-                    })
+        let wonder_completions: Vec<WonderCompletion> = city_turn_data
+            .iter()
+            .filter_map(|d| {
+                let city = &state.cities[d.city_idx];
+                if let Some(ProductionItem::Wonder(wid)) = city.production_queue.front() {
+                    let def = state.wonder_defs.iter().find(|w| w.id == *wid)?;
+                    if city.production_stored >= def.production_cost {
+                        Some(WonderCompletion {
+                            city_idx: d.city_idx,
+                            civ_id: d.civ_id,
+                            wonder_id: def.id,
+                            wonder_name: def.name,
+                            cost: def.production_cost,
+                        })
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
-            } else {
-                None
-            }
-        }).collect();
+            })
+            .collect();
 
         for wc in wonder_completions {
             state.cities[wc.city_idx].production_stored -= wc.cost;
@@ -348,43 +406,47 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
     // ── Phase 2a-2: Project completion ──────────────────────────────────
     // Complete projects when stored production meets the cost.
     {
-        use crate::civ::city::ProductionItem;
         use crate::ProjectId;
+        use crate::civ::city::ProductionItem;
 
         struct ProjectCompletion {
             city_idx: usize,
-            civ_id:   CivId,
+            civ_id: CivId,
             project_id: ProjectId,
             project_name: &'static str,
             production_cost: u32,
         }
 
-        let completions: Vec<ProjectCompletion> = city_turn_data.iter().filter_map(|d| {
-            let city = &state.cities[d.city_idx];
-            if let Some(ProductionItem::Project(pid)) = city.production_queue.front() {
-                let def = state.project_defs.iter().find(|def| def.id == *pid)?;
-                if city.production_stored >= def.production_cost {
-                    // Validate district requirement.
-                    if let Some(req_district) = def.requires_district {
-                        let has_district = city.districts.iter().any(|d| d.name() == req_district);
-                        if !has_district {
-                            return None;
+        let completions: Vec<ProjectCompletion> = city_turn_data
+            .iter()
+            .filter_map(|d| {
+                let city = &state.cities[d.city_idx];
+                if let Some(ProductionItem::Project(pid)) = city.production_queue.front() {
+                    let def = state.project_defs.iter().find(|def| def.id == *pid)?;
+                    if city.production_stored >= def.production_cost {
+                        // Validate district requirement.
+                        if let Some(req_district) = def.requires_district {
+                            let has_district =
+                                city.districts.iter().any(|d| d.name() == req_district);
+                            if !has_district {
+                                return None;
+                            }
                         }
+                        Some(ProjectCompletion {
+                            city_idx: d.city_idx,
+                            civ_id: d.civ_id,
+                            project_id: def.id,
+                            project_name: def.name,
+                            production_cost: def.production_cost,
+                        })
+                    } else {
+                        None
                     }
-                    Some(ProjectCompletion {
-                        city_idx: d.city_idx,
-                        civ_id: d.civ_id,
-                        project_id: def.id,
-                        project_name: def.name,
-                        production_cost: def.production_cost,
-                    })
                 } else {
                     None
                 }
-            } else {
-                None
-            }
-        }).collect();
+            })
+            .collect();
 
         let science_milestone_names: &[&str] = &[
             "Launch Earth Satellite",
@@ -420,7 +482,9 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
 
             // Non-repeatable projects: prevent re-queuing by removing from defs.
             // (Repeatable projects stay in the registry.)
-            let is_repeatable = state.project_defs.iter()
+            let is_repeatable = state
+                .project_defs
+                .iter()
                 .find(|d| d.id == pc.project_id)
                 .map(|d| d.repeatable)
                 .unwrap_or(false);
@@ -435,7 +499,9 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
     // delivered on all their turns), then decrement remaining routes.
     {
         use crate::TradeRouteId;
-        let expired: Vec<TradeRouteId> = state.trade_routes.iter()
+        let expired: Vec<TradeRouteId> = state
+            .trade_routes
+            .iter()
             .filter(|r| r.turns_remaining == Some(0))
             .map(|r| r.id)
             .collect();
@@ -456,7 +522,9 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
     // route is automatically established and the trader is consumed.
     {
         // Collect traders with assigned destinations (sorted for determinism).
-        let mut trader_ids: Vec<UnitId> = state.units.iter()
+        let mut trader_ids: Vec<UnitId> = state
+            .units
+            .iter()
             .filter(|u| u.category == crate::UnitCategory::Trader && u.trade_destination.is_some())
             .map(|u| u.id)
             .collect();
@@ -464,7 +532,9 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
 
         for trader_id in trader_ids {
             // Re-read each iteration since state is mutated.
-            let info = state.units.iter()
+            let info = state
+                .units
+                .iter()
                 .find(|u| u.id == trader_id)
                 .map(|u| (u.trade_origin, u.trade_destination, u.max_movement));
             let Some((Some(_origin), Some(dest_city_id), max_movement)) = info else {
@@ -477,10 +547,14 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
             }
 
             // Find the destination city's coord.
-            let dest_coord = state.cities.iter()
+            let dest_coord = state
+                .cities
+                .iter()
                 .find(|c| c.id == dest_city_id)
                 .map(|c| c.coord);
-            let Some(dest_coord) = dest_coord else { continue };
+            let Some(dest_coord) = dest_coord else {
+                continue;
+            };
 
             // Move the trader toward the destination using Dijkstra pathfinding.
             let move_deltas = match super::movement::move_unit(state, trader_id, dest_coord) {
@@ -499,7 +573,9 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
             diff.deltas.extend(move_deltas);
 
             // Check if the trader has arrived at the destination city tile.
-            let arrived = state.units.iter()
+            let arrived = state
+                .units
+                .iter()
                 .find(|u| u.id == trader_id)
                 .map(|u| u.coord == dest_coord)
                 .unwrap_or(false);
@@ -541,7 +617,10 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
                 && let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == civ_id)
             {
                 civ.gold -= cost;
-                diff.push(StateDelta::GoldChanged { civ: civ_id, delta: -cost });
+                diff.push(StateDelta::GoldChanged {
+                    civ: civ_id,
+                    delta: -cost,
+                });
             }
         }
     }
@@ -550,7 +629,10 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
     // For each city, recompute power balance and accumulate CO2 from fossil fuel plants.
     {
         // Collect per-city power data (immutable borrow of both cities + building_defs).
-        let city_power: Vec<(usize, u32, u32, u32)> = state.cities.iter().enumerate()
+        let city_power: Vec<(usize, u32, u32, u32)> = state
+            .cities
+            .iter()
+            .enumerate()
             .map(|(i, city)| {
                 let mut consumed: u32 = 0;
                 let mut generated: u32 = 0;
@@ -573,7 +655,9 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         }
         if co2_this_turn > 0 {
             state.global_co2 += co2_this_turn;
-            diff.push(StateDelta::CO2Accumulated { total: state.global_co2 });
+            diff.push(StateDelta::CO2Accumulated {
+                total: state.global_co2,
+            });
         }
     }
 
@@ -591,7 +675,10 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         }
 
         // (b) Submerge coastal lowland tiles whose elevation <= climate_level.
-        let coords_to_submerge: Vec<HexCoord> = state.board.all_coords().into_iter()
+        let coords_to_submerge: Vec<HexCoord> = state
+            .board
+            .all_coords()
+            .into_iter()
             .filter(|&coord| {
                 if let Some(tile) = state.board.tile(coord) {
                     if let Some(elev) = tile.coastal_lowland {
@@ -669,14 +756,20 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
                 }
 
                 // Persist the occurrence so it outlives the transient delta.
-                state.disaster_log.push(super::super::state::DisasterRecord {
+                state
+                    .disaster_log
+                    .push(super::super::state::DisasterRecord {
+                        kind,
+                        coord,
+                        turn: state.turn,
+                        severity,
+                    });
+
+                diff.push(StateDelta::DisasterOccurred {
                     kind,
                     coord,
-                    turn: state.turn,
                     severity,
                 });
-
-                diff.push(StateDelta::DisasterOccurred { kind, coord, severity });
             }
         }
     }
@@ -686,13 +779,19 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
 
     // Collect yields while state is immutably borrowed.
     // Apply civ-specific yield multipliers (e.g., Babylon's -50% science).
-    let civ_yields: Vec<(CivId, YieldBundle)> = civ_ids.iter()
+    let civ_yields: Vec<(CivId, YieldBundle)> = civ_ids
+        .iter()
         .map(|&id| {
             let mut y = super::city::compute_yields(state, id);
             // Babylon: -50% science per turn.
-            if has_rule_override(state, id, &|o| matches!(o, RuleOverride::SciencePerTurnMultiplier(_))) {
-                let civ_identity = state.civilizations.iter()
-                    .find(|c| c.id == id).and_then(|c| c.civ_identity);
+            if has_rule_override(state, id, &|o| {
+                matches!(o, RuleOverride::SciencePerTurnMultiplier(_))
+            }) {
+                let civ_identity = state
+                    .civilizations
+                    .iter()
+                    .find(|c| c.id == id)
+                    .and_then(|c| c.civ_identity);
                 if let Some(bundle) = lookup_bundle(civ_identity) {
                     for ovr in &bundle.rule_overrides {
                         if let RuleOverride::SciencePerTurnMultiplier(pct) = ovr {
@@ -713,26 +812,39 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
             && yields.gold != 0
         {
             civ.gold += yields.gold;
-            diff.push(StateDelta::GoldChanged { civ: *civ_id, delta: yields.gold });
+            diff.push(StateDelta::GoldChanged {
+                civ: *civ_id,
+                delta: yields.gold,
+            });
         }
     }
 
     // Apply science -> tech progress and check completion.
     // Two-pass: first update progress (mutates civilizations), then check
     // tech_tree (different field, disjoint borrow).
-    struct TechCheck { civ_idx: usize, civ_id: CivId, tech_id: TechId, progress: u32 }
+    struct TechCheck {
+        civ_idx: usize,
+        civ_id: CivId,
+        tech_id: TechId,
+        progress: u32,
+    }
     let mut tech_checks: Vec<TechCheck> = Vec::new();
 
     for (civ_id, yields) in &civ_yields {
-        if yields.science <= 0 { continue; }
-        if let Some((idx, civ)) = state.civilizations.iter_mut()
-            .enumerate().find(|(_, c)| c.id == *civ_id)
+        if yields.science <= 0 {
+            continue;
+        }
+        if let Some((idx, civ)) = state
+            .civilizations
+            .iter_mut()
+            .enumerate()
+            .find(|(_, c)| c.id == *civ_id)
             && let Some(tp) = civ.research_queue.front_mut()
         {
             tp.progress += yields.science as u32;
             tech_checks.push(TechCheck {
                 civ_idx: idx,
-                civ_id:  *civ_id,
+                civ_id: *civ_id,
                 tech_id: tp.tech_id,
                 progress: tp.progress,
             });
@@ -740,18 +852,26 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
     }
 
     for tc in tech_checks {
-        let node_info = state.tech_tree.get(tc.tech_id)
+        let node_info = state
+            .tech_tree
+            .get(tc.tech_id)
             .map(|n| (n.cost, n.name, n.effects.clone()));
         if let Some((cost, name, effects)) = node_info {
             let boosted = state.civilizations[tc.civ_idx]
-                .research_queue.front()
+                .research_queue
+                .front()
                 .map(|tp| tp.boosted)
                 .unwrap_or(false);
             let effective_cost = if boosted { cost / 2 } else { cost };
             if tc.progress >= effective_cost {
-                state.civilizations[tc.civ_idx].researched_techs.push(tc.tech_id);
+                state.civilizations[tc.civ_idx]
+                    .researched_techs
+                    .push(tc.tech_id);
                 state.civilizations[tc.civ_idx].research_queue.pop_front();
-                diff.push(StateDelta::TechResearched { civ: tc.civ_id, tech: name });
+                diff.push(StateDelta::TechResearched {
+                    civ: tc.civ_id,
+                    tech: name,
+                });
                 for effect in effects {
                     state.effect_queue.push_back((tc.civ_id, effect));
                 }
@@ -760,19 +880,29 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
     }
 
     // Apply culture -> civic progress (same pattern as science).
-    struct CivicCheck { civ_idx: usize, civ_id: CivId, civic_id: crate::CivicId, progress: u32 }
+    struct CivicCheck {
+        civ_idx: usize,
+        civ_id: CivId,
+        civic_id: crate::CivicId,
+        progress: u32,
+    }
     let mut civic_checks: Vec<CivicCheck> = Vec::new();
 
     for (civ_id, yields) in &civ_yields {
-        if yields.culture <= 0 { continue; }
-        if let Some((idx, civ)) = state.civilizations.iter_mut()
-            .enumerate().find(|(_, c)| c.id == *civ_id)
+        if yields.culture <= 0 {
+            continue;
+        }
+        if let Some((idx, civ)) = state
+            .civilizations
+            .iter_mut()
+            .enumerate()
+            .find(|(_, c)| c.id == *civ_id)
             && let Some(cp) = civ.civic_in_progress.as_mut()
         {
             cp.progress += yields.culture as u32;
             civic_checks.push(CivicCheck {
                 civ_idx: idx,
-                civ_id:  *civ_id,
+                civ_id: *civ_id,
                 civic_id: cp.civic_id,
                 progress: cp.progress,
             });
@@ -780,18 +910,26 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
     }
 
     for cc in civic_checks {
-        let node_info = state.civic_tree.get(cc.civic_id)
+        let node_info = state
+            .civic_tree
+            .get(cc.civic_id)
             .map(|n| (n.cost, n.name, n.effects.clone()));
         if let Some((cost, name, effects)) = node_info {
             let inspired = state.civilizations[cc.civ_idx]
-                .civic_in_progress.as_ref()
+                .civic_in_progress
+                .as_ref()
                 .map(|cp| cp.inspired)
                 .unwrap_or(false);
             let effective_cost = if inspired { cost / 2 } else { cost };
             if cc.progress >= effective_cost {
-                state.civilizations[cc.civ_idx].completed_civics.push(cc.civic_id);
+                state.civilizations[cc.civ_idx]
+                    .completed_civics
+                    .push(cc.civic_id);
                 state.civilizations[cc.civ_idx].civic_in_progress = None;
-                diff.push(StateDelta::CivicCompleted { civ: cc.civ_id, civic: name });
+                diff.push(StateDelta::CivicCompleted {
+                    civ: cc.civ_id,
+                    civic: name,
+                });
                 for effect in effects {
                     state.effect_queue.push_back((cc.civ_id, effect));
                 }
@@ -823,17 +961,18 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
 
         // Compute tourism and distribute to all other civs.
         // Must collect tourism values first (immutable borrow) then mutate.
-        let tourism_outputs: Vec<(CivId, u32)> = civ_ids_for_tourism.iter()
+        let tourism_outputs: Vec<(CivId, u32)> = civ_ids_for_tourism
+            .iter()
             .map(|&id| (id, compute_tourism(state, id)))
             .collect();
 
         for (civ_id, tourism) in &tourism_outputs {
-            if *tourism == 0 { continue; }
+            if *tourism == 0 {
+                continue;
+            }
 
             // Find the civ's lifetime culture for the delta.
-            let lifetime_culture = state.civ(*civ_id)
-                .map(|c| c.lifetime_culture)
-                .unwrap_or(0);
+            let lifetime_culture = state.civ(*civ_id).map(|c| c.lifetime_culture).unwrap_or(0);
 
             diff.push(StateDelta::TourismGenerated {
                 civ: *civ_id,
@@ -843,7 +982,9 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
 
             // Distribute tourism equally to all other civs.
             let other_count = civ_ids_for_tourism.len().saturating_sub(1);
-            if other_count == 0 { continue; }
+            if other_count == 0 {
+                continue;
+            }
 
             let per_civ = *tourism; // Each other civ gets full tourism pressure.
             if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == *civ_id) {
@@ -872,19 +1013,27 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         }
         let (city_coord, civ_id, culture) = {
             let city = &state.cities[city_idx];
-            (city.coord, city.owner, city_culture_output(&state.board, city))
+            (
+                city.coord,
+                city.owner,
+                city_culture_output(&state.board, city),
+            )
         };
         state.cities[city_idx].culture_border += culture;
 
         loop {
             // Collect unclaimed candidates at radius 2–5 (re-evaluated each
             // iteration so that tiles claimed in this same turn are not re-selected).
-            let candidates: Vec<(u32, HexCoord)> = state.board.all_coords()
+            let candidates: Vec<(u32, HexCoord)> = state
+                .board
+                .all_coords()
                 .into_iter()
                 .filter(|&coord| {
                     let dist = city_coord.distance(&coord);
                     (2..=5).contains(&dist)
-                        && state.board.tile(coord)
+                        && state
+                            .board
+                            .tile(coord)
                             .map(|t| t.owner != Some(civ_id))
                             .unwrap_or(false)
                 })
@@ -898,7 +1047,8 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
                 break;
             }
 
-            let cheapest: Vec<HexCoord> = candidates.iter()
+            let cheapest: Vec<HexCoord> = candidates
+                .iter()
                 .filter(|(c, _)| *c == min_cost)
                 .map(|(_, coord)| *coord)
                 .collect();
@@ -925,7 +1075,12 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         let num_cities = state.cities.len();
         // Compute deltas first (immutable borrow of cities slice).
         let loyalty_deltas: Vec<(usize, i32)> = (0..num_cities)
-            .map(|i| (i, compute_city_loyalty_delta(i, &state.cities, &state.governors)))
+            .map(|i| {
+                (
+                    i,
+                    compute_city_loyalty_delta(i, &state.cities, &state.governors),
+                )
+            })
             .filter(|(_, d)| *d != 0)
             .collect();
 
@@ -947,9 +1102,7 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         let revolts: Vec<(usize, CityId, CivId)> = (0..state.cities.len())
             .filter_map(|i| {
                 let c = &state.cities[i];
-                if c.loyalty == 0
-                    && !matches!(c.kind, crate::civ::city::CityKind::CityState(_))
-                {
+                if c.loyalty == 0 && !matches!(c.kind, crate::civ::city::CityKind::CityState(_)) {
                     Some((i, c.id, c.owner))
                 } else {
                     None
@@ -958,7 +1111,8 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
             .collect();
 
         // Determine new owner for each revolting city.
-        let revolt_targets: Vec<(usize, CityId, CivId, Option<CivId>)> = revolts.iter()
+        let revolt_targets: Vec<(usize, CityId, CivId, Option<CivId>)> = revolts
+            .iter()
             .map(|&(idx, cid, old_owner)| {
                 let new_owner = highest_pressure_civ(idx, &state.cities);
                 (idx, cid, old_owner, new_owner)
@@ -977,7 +1131,8 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
                 if let Some(old_civ) = state.civilizations.iter_mut().find(|c| c.id == old_owner) {
                     old_civ.cities.retain(|&id| id != city_id);
                 }
-                if let Some(new_civ_obj) = state.civilizations.iter_mut().find(|c| c.id == new_civ) {
+                if let Some(new_civ_obj) = state.civilizations.iter_mut().find(|c| c.id == new_civ)
+                {
                     new_civ_obj.cities.push(city_id);
                 }
 
@@ -1037,14 +1192,16 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
             .filter(|&i| !matches!(state.cities[i].kind, CityKind::CityState(_)))
             .filter_map(|i| {
                 let city = &state.cities[i];
-                let civ_era = state.civ(city.owner).map(|c| c.era_age).unwrap_or(EraAge::Normal);
+                let civ_era = state
+                    .civ(city.owner)
+                    .map(|c| c.era_age)
+                    .unwrap_or(EraAge::Normal);
 
                 let mut pressure: i32 = 0;
 
                 // War-weariness: each war the owner is actively engaged in.
                 for rel in &state.diplomatic_relations {
-                    if (rel.civ_a == city.owner || rel.civ_b == city.owner)
-                        && rel.turns_at_war > 0
+                    if (rel.civ_a == city.owner || rel.civ_b == city.owner) && rel.turns_at_war > 0
                     {
                         pressure += UNREST_WAR_WEARINESS;
                     }
@@ -1103,9 +1260,17 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         let mut pressure_deltas: Vec<(usize, crate::ReligionId, i32)> = Vec::new();
 
         // Pre-compute: which religions have Itinerant Preachers.
-        let itinerant_religions: std::collections::HashSet<crate::ReligionId> = state.religions.iter()
-            .filter(|r| r.beliefs.iter().any(|bid|
-                state.belief_defs.iter().any(|b| b.id == *bid && b.name == "Itinerant Preachers")))
+        let itinerant_religions: std::collections::HashSet<crate::ReligionId> = state
+            .religions
+            .iter()
+            .filter(|r| {
+                r.beliefs.iter().any(|bid| {
+                    state
+                        .belief_defs
+                        .iter()
+                        .any(|b| b.id == *bid && b.name == "Itinerant Preachers")
+                })
+            })
             .map(|r| r.id)
             .collect();
 
@@ -1122,14 +1287,20 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
                 std::collections::HashMap::new();
 
             for source_idx in 0..num_cities {
-                if source_idx == target_idx { continue; }
+                if source_idx == target_idx {
+                    continue;
+                }
                 let source = &state.cities[source_idx];
                 let dist = source.coord.distance(&target_coord);
-                if dist == 0 { continue; }
+                if dist == 0 {
+                    continue;
+                }
 
                 // Determine majority religion of source city.
                 let source_majority = source.majority_religion();
-                let Some(majority_rid) = source_majority else { continue };
+                let Some(majority_rid) = source_majority else {
+                    continue;
+                };
 
                 // Itinerant Preachers extends radius by 3.
                 let radius = if itinerant_religions.contains(&majority_rid) {
@@ -1137,21 +1308,28 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
                 } else {
                     RELIGIOUS_PRESSURE_RADIUS
                 };
-                if dist > radius { continue; }
+                if dist > radius {
+                    continue;
+                }
 
                 // Canonical pressure formula:
                 let mut pressure: i32 = 1; // Base: city has majority religion.
 
                 // +2 if source city has Holy Site district.
-                let has_holy_site = state.placed_districts.iter()
-                    .any(|pd| pd.city_id == source.id
-                        && pd.district_type == crate::civ::district::BuiltinDistrict::HolySite);
+                let has_holy_site = state.placed_districts.iter().any(|pd| {
+                    pd.city_id == source.id
+                        && pd.district_type == crate::civ::district::BuiltinDistrict::HolySite
+                });
                 if has_holy_site {
                     pressure += 2;
                 }
 
                 // +4 if source city is a Holy City.
-                if state.religions.iter().any(|r| r.id == majority_rid && r.holy_city == source.id) {
+                if state
+                    .religions
+                    .iter()
+                    .any(|r| r.id == majority_rid && r.holy_city == source.id)
+                {
                     pressure += 4;
                 }
 
@@ -1180,7 +1358,9 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
 
             // Convert pressure to follower change (scaled down).
             for (rid, pressure) in religion_pressure {
-                if pressure <= 0 { continue; }
+                if pressure <= 0 {
+                    continue;
+                }
                 let delta = (pressure / 50).max(1).min(target_pop as i32);
                 pressure_deltas.push((target_idx, rid, delta));
             }
@@ -1227,7 +1407,10 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
             && let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == *civ_id)
         {
             civ.faith += yields.faith as u32;
-            diff.push(StateDelta::FaithChanged { civ: *civ_id, delta: yields.faith });
+            diff.push(StateDelta::FaithChanged {
+                civ: *civ_id,
+                delta: yields.faith,
+            });
         }
     }
 
@@ -1267,7 +1450,9 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
     // apply_effect returns () and never re-enqueues, so the loop terminates.
     let pending = std::mem::take(&mut state.effect_queue);
     for (civ_id, effect) in &pending {
-        let should_apply = state.civilizations.iter()
+        let should_apply = state
+            .civilizations
+            .iter()
             .find(|c| c.id == *civ_id)
             .map(|civ| effect.guard(civ))
             .unwrap_or(false);
@@ -1280,13 +1465,17 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
 
     // ── Phase 4b: Unique unit abilities — end-of-turn healing (Mamluk) ────
     for unit in &mut state.units {
-        let civ_identity = state.civilizations.iter()
+        let civ_identity = state
+            .civilizations
+            .iter()
             .find(|c| c.id == unit.owner)
             .and_then(|c| c.civ_identity);
         if let Some(bundle) = lookup_bundle(civ_identity)
             && let Some(uu) = &bundle.unique_unit
         {
-            let unit_type_name = state.unit_type_defs.iter()
+            let unit_type_name = state
+                .unit_type_defs
+                .iter()
                 .find(|d| d.id == unit.unit_type)
                 .map(|d| d.name);
             if unit_type_name == Some(uu.name)
@@ -1309,7 +1498,9 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
     // heal passively: +20 HP in friendly territory, +10 HP elsewhere.
     for unit in &mut state.units {
         if unit.health < 100 && unit.movement_left == unit.max_movement {
-            let in_friendly = state.board.tile(unit.coord)
+            let in_friendly = state
+                .board
+                .tile(unit.coord)
                 .and_then(|t| t.owner)
                 .is_some_and(|owner| owner == unit.owner);
             let heal = if in_friendly { 20 } else { 10 };
@@ -1350,12 +1541,18 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         }
     }
     for (civ_a, civ_b, new_status) in status_changes {
-        if let Some(rel) = state.diplomatic_relations.iter_mut()
+        if let Some(rel) = state
+            .diplomatic_relations
+            .iter_mut()
             .find(|r| r.civ_a == civ_a && r.civ_b == civ_b)
         {
             rel.status = new_status;
         }
-        diff.push(StateDelta::DiplomacyChanged { civ_a, civ_b, new_status });
+        diff.push(StateDelta::DiplomacyChanged {
+            civ_a,
+            civ_b,
+            new_status,
+        });
     }
 
     // ── Phase 5 (cont.): Alliance leveling ──────────────────────────────
@@ -1374,7 +1571,11 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         }
     }
     for (civ_a, civ_b, new_level) in alliance_levelups {
-        diff.push(StateDelta::AllianceLevelUp { civ_a, civ_b, new_level });
+        diff.push(StateDelta::AllianceLevelUp {
+            civ_a,
+            civ_b,
+            new_level,
+        });
     }
 
     // NOTE: Trade route yields, expiry, and religion spread are handled in
@@ -1401,15 +1602,18 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
     // available candidate is automatically recruited.
     {
         use crate::civ::great_people::{
-            district_great_person_types, building_great_person_points,
-            recruitment_threshold, next_candidate_name,
-            spawn_great_person, GP_BASE_POINTS_PER_DISTRICT,
+            GP_BASE_POINTS_PER_DISTRICT, building_great_person_points, district_great_person_types,
+            next_candidate_name, recruitment_threshold, spawn_great_person,
         };
 
         // Collect per-civ GP point increments (immutable pass over cities/districts/buildings).
-        let mut civ_gp_increments: Vec<(CivId, std::collections::HashMap<crate::GreatPersonType, u32>)> = Vec::new();
+        let mut civ_gp_increments: Vec<(
+            CivId,
+            std::collections::HashMap<crate::GreatPersonType, u32>,
+        )> = Vec::new();
         for civ in &state.civilizations {
-            let mut increments: std::collections::HashMap<crate::GreatPersonType, u32> = std::collections::HashMap::new();
+            let mut increments: std::collections::HashMap<crate::GreatPersonType, u32> =
+                std::collections::HashMap::new();
             for city in state.cities.iter().filter(|c| c.owner == civ.id) {
                 for district in &city.districts {
                     for &gp_type in district_great_person_types(*district) {
@@ -1433,7 +1637,8 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         // Add modifier-derived GP point bonus (from policies, buildings, wonders)
         // to each GP type the civ is actively generating points for.
         for (civ_id, increments) in &mut civ_gp_increments {
-            let bonus = civ_yields.iter()
+            let bonus = civ_yields
+                .iter()
                 .find(|(id, _)| id == civ_id)
                 .map(|(_, y)| y.great_person_points.max(0) as u32)
                 .unwrap_or(0);
@@ -1462,12 +1667,19 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
 
         // Check thresholds and auto-recruit.
         // Collect recruitment actions first (need immutable state for lookups).
-        struct GpRecruit { civ_id: CivId, gp_type: crate::GreatPersonType, def_name: &'static str, threshold: u32 }
+        struct GpRecruit {
+            civ_id: CivId,
+            gp_type: crate::GreatPersonType,
+            def_name: &'static str,
+            threshold: u32,
+        }
         let mut recruits: Vec<GpRecruit> = Vec::new();
 
         for (civ_id, increments) in &civ_gp_increments {
             for &gp_type in increments.keys() {
-                let current_points = state.civilizations.iter()
+                let current_points = state
+                    .civilizations
+                    .iter()
                     .find(|c| c.id == *civ_id)
                     .and_then(|c| c.great_person_points.get(&gp_type).copied())
                     .unwrap_or(0);
@@ -1475,7 +1687,12 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
                 if current_points >= threshold
                     && let Some(name) = next_candidate_name(gp_type, state)
                 {
-                    recruits.push(GpRecruit { civ_id: *civ_id, gp_type, def_name: name, threshold });
+                    recruits.push(GpRecruit {
+                        civ_id: *civ_id,
+                        gp_type,
+                        def_name: name,
+                        threshold,
+                    });
                 }
             }
         }
@@ -1483,12 +1700,16 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         // Execute recruitments (mutable state).
         for recruit in recruits {
             // Find the civ's capital coord for spawning.
-            let spawn_coord = state.cities.iter()
+            let spawn_coord = state
+                .cities
+                .iter()
                 .find(|c| c.owner == recruit.civ_id && c.is_capital)
                 .map(|c| c.coord)
                 .unwrap_or_else(|| {
                     // Fallback: first owned city.
-                    state.cities.iter()
+                    state
+                        .cities
+                        .iter()
                         .find(|c| c.owner == recruit.civ_id)
                         .map(|c| c.coord)
                         .unwrap_or(HexCoord::from_qr(0, 0))
@@ -1497,7 +1718,10 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
             let gp_id = spawn_great_person(state, recruit.civ_id, recruit.def_name, spawn_coord);
 
             // Subtract threshold from accumulated points.
-            if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == recruit.civ_id)
+            if let Some(civ) = state
+                .civilizations
+                .iter_mut()
+                .find(|c| c.id == recruit.civ_id)
                 && let Some(pts) = civ.great_person_points.get_mut(&recruit.gp_type)
             {
                 *pts = pts.saturating_sub(recruit.threshold);
@@ -1527,8 +1751,8 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
     // ── Phase 5b-1: Era score observer ──────────────────────────────────────
     // Scan deltas produced so far and award era score for matching historic moments.
     {
-        use crate::civ::historic_moments::observe_deltas;
         use crate::civ::era::{HistoricMoment, compute_era_age, should_advance_era};
+        use crate::civ::historic_moments::observe_deltas;
 
         let moments = observe_deltas(&diff.deltas, state);
         for (civ_id, moment_def) in moments {
@@ -1554,10 +1778,8 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
 
         // ── Phase 5b-2: Era advancement check ───────────────────────────────
         if !state.eras.is_empty() && state.current_era_index < state.eras.len() {
-            let should_advance = should_advance_era(
-                &state.eras[state.current_era_index],
-                &state.civilizations,
-            );
+            let should_advance =
+                should_advance_era(&state.eras[state.current_era_index], &state.civilizations);
             if should_advance && state.current_era_index + 1 < state.eras.len() {
                 state.current_era_index += 1;
                 let new_era = &state.eras[state.current_era_index];
@@ -1642,49 +1864,68 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
             if let Some(civ) = state.civilizations.iter_mut().find(|c| c.id == civ_id) {
                 civ.diplomatic_favor = civ.diplomatic_favor.saturating_add(favor as u32);
             }
-            diff.push(StateDelta::DiplomaticFavorChanged { civ: civ_id, delta: favor });
+            diff.push(StateDelta::DiplomaticFavorChanged {
+                civ: civ_id,
+                delta: favor,
+            });
         }
     }
 
     // ── Phase 5c-0: World Congress session ─────────────────────────────────
     // If the current turn reaches the next scheduled session, hold a session.
     // The civ with the most diplomatic_favor wins and earns +1 Diplomatic VP.
-    if state.turn >= state.world_congress.next_session_turn
-        && !state.civilizations.is_empty()
-    {
+    if state.turn >= state.world_congress.next_session_turn && !state.civilizations.is_empty() {
         // Schedule next session.
         state.world_congress.next_session_turn += state.world_congress.session_interval;
 
         // Find the civ with the most diplomatic favor (skip barbarian civ).
-        let winner = state.civilizations.iter()
+        let winner = state
+            .civilizations
+            .iter()
             .filter(|c| Some(c.id) != state.barbarian_civ)
             .max_by_key(|c| c.diplomatic_favor)
             .map(|c| c.id);
 
         if let Some(winner_id) = winner {
-            *state.world_congress.diplomatic_victory_points
-                .entry(winner_id).or_insert(0) += 1;
+            *state
+                .world_congress
+                .diplomatic_victory_points
+                .entry(winner_id)
+                .or_insert(0) += 1;
             diff.push(StateDelta::CongressSessionHeld { winner: winner_id });
-            diff.push(StateDelta::DiplomaticVPEarned { civ: winner_id, points: 1 });
+            diff.push(StateDelta::DiplomaticVPEarned {
+                civ: winner_id,
+                points: 1,
+            });
         }
     }
 
     // ── Phase 5c: Victory condition evaluation ─────────────────────────────
     if state.game_over.is_none() {
-        use super::super::victory::{GameOver, VictoryKind};
         use super::super::score::all_scores;
+        use super::super::victory::{GameOver, VictoryKind};
 
         let civ_ids: Vec<CivId> = state.civilizations.iter().map(|c| c.id).collect();
 
         // Check ImmediateWin conditions every turn; first match wins.
         'immediate: for vc_idx in 0..state.victory_conditions.len() {
-            if matches!(state.victory_conditions[vc_idx].kind(), VictoryKind::ImmediateWin) {
+            if matches!(
+                state.victory_conditions[vc_idx].kind(),
+                VictoryKind::ImmediateWin
+            ) {
                 for &civ_id in &civ_ids {
                     let progress = state.victory_conditions[vc_idx].check_progress(civ_id, state);
                     if progress.is_won() {
                         let name = state.victory_conditions[vc_idx].name();
-                        state.game_over = Some(GameOver { winner: civ_id, condition: name, turn: state.turn });
-                        diff.push(StateDelta::VictoryAchieved { civ: civ_id, condition: name });
+                        state.game_over = Some(GameOver {
+                            winner: civ_id,
+                            condition: name,
+                            turn: state.turn,
+                        });
+                        diff.push(StateDelta::VictoryAchieved {
+                            civ: civ_id,
+                            condition: name,
+                        });
                         break 'immediate;
                     }
                 }
@@ -1696,14 +1937,22 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         // is incremented; `turn + 1` is the turn that will be completed.
         if state.game_over.is_none() {
             for vc_idx in 0..state.victory_conditions.len() {
-                if let VictoryKind::TurnLimit { turn_limit } = state.victory_conditions[vc_idx].kind()
+                if let VictoryKind::TurnLimit { turn_limit } =
+                    state.victory_conditions[vc_idx].kind()
                     && state.turn + 1 >= turn_limit
                 {
                     let name = state.victory_conditions[vc_idx].name();
                     let completed_turn = state.turn + 1;
                     if let Some((winner, _)) = all_scores(state).into_iter().next() {
-                        state.game_over = Some(GameOver { winner, condition: name, turn: completed_turn });
-                        diff.push(StateDelta::VictoryAchieved { civ: winner, condition: name });
+                        state.game_over = Some(GameOver {
+                            winner,
+                            condition: name,
+                            turn: completed_turn,
+                        });
+                        diff.push(StateDelta::VictoryAchieved {
+                            civ: winner,
+                            condition: name,
+                        });
                     }
                     break;
                 }
@@ -1717,7 +1966,10 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
     // ── Advance turn counter ──────────────────────────────────────────────
     let prev = state.turn;
     state.turn += 1;
-    diff.push(StateDelta::TurnAdvanced { from: prev, to: state.turn });
+    diff.push(StateDelta::TurnAdvanced {
+        from: prev,
+        to: state.turn,
+    });
 
     diff
 }

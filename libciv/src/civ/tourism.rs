@@ -1,5 +1,5 @@
-use crate::CivId;
 use super::civilization::Civilization;
+use crate::CivId;
 use crate::game::state::GameState;
 
 /// A built wonder that generates tourism. Registered on `GameState::wonder_tourism`.
@@ -76,7 +76,9 @@ pub fn has_cultural_dominance(state: &GameState, civ_id: CivId) -> bool {
         None => return false,
     };
 
-    let other_civs: Vec<&Civilization> = state.civilizations.iter()
+    let other_civs: Vec<&Civilization> = state
+        .civilizations
+        .iter()
         .filter(|c| c.id != civ_id)
         .collect();
 
@@ -86,10 +88,7 @@ pub fn has_cultural_dominance(state: &GameState, civ_id: CivId) -> bool {
     }
 
     for other in &other_civs {
-        let tourists_sent = civ.tourism_accumulated
-            .get(&other.id)
-            .copied()
-            .unwrap_or(0);
+        let tourists_sent = civ.tourism_accumulated.get(&other.id).copied().unwrap_or(0);
         let their_domestic = domestic_tourists(other);
         // Must strictly exceed domestic tourists.
         if tourists_sent <= their_domestic {
@@ -103,14 +102,22 @@ pub fn has_cultural_dominance(state: &GameState, civ_id: CivId) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::civ::civilization::{Leader, Civilization, BuiltinAgenda};
-    use ulid::Ulid;
+    use crate::civ::civilization::{BuiltinAgenda, Civilization, Leader};
     use std::collections::HashMap;
+    use ulid::Ulid;
 
     fn make_civ(n: u64) -> Civilization {
         let id = CivId::from_ulid(Ulid::from_parts(n, 0));
-        Civilization::new(id, "Test", "Test",
-            Leader { name: "L", civ_id: id, agenda: BuiltinAgenda::Default })
+        Civilization::new(
+            id,
+            "Test",
+            "Test",
+            Leader {
+                name: "L",
+                civ_id: id,
+                agenda: BuiltinAgenda::Default,
+            },
+        )
     }
 
     #[test]
@@ -145,7 +152,9 @@ mod tests {
 
         // Increase to 3 — now exceeds.
         let target_id = state.civilizations[1].id;
-        state.civilizations[0].tourism_accumulated.insert(target_id, 3);
+        state.civilizations[0]
+            .tourism_accumulated
+            .insert(target_id, 3);
         assert!(has_cultural_dominance(&state, civ_a_id));
     }
 
@@ -161,10 +170,7 @@ mod tests {
         civ_c.lifetime_culture = 500;
 
         // A dominates B (1 > 0) but not C (1 <= 5).
-        civ_a.tourism_accumulated = HashMap::from([
-            (civ_b.id, 1),
-            (civ_c.id, 1),
-        ]);
+        civ_a.tourism_accumulated = HashMap::from([(civ_b.id, 1), (civ_c.id, 1)]);
 
         let civ_a_id = civ_a.id;
         state.civilizations.push(civ_a);

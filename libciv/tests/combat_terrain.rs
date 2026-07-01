@@ -1,9 +1,9 @@
 /// Tests verifying that terrain grants or penalizes combat defense bonuses.
 mod common;
 
-use libciv::{DefaultRulesEngine, RulesEngine};
 use libciv::game::StateDelta;
 use libciv::world::feature::BuiltinFeature;
+use libciv::{DefaultRulesEngine, RulesEngine};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 
@@ -30,16 +30,24 @@ fn defender_damage_at(
 
     // Perform the attack.
     let rules = DefaultRulesEngine;
-    let diff = rules.attack(&mut s.state, s.rome_warrior, s.babylon_warrior).unwrap();
+    let diff = rules
+        .attack(&mut s.state, s.rome_warrior, s.babylon_warrior)
+        .unwrap();
 
     // Extract defender_damage from the diff.
-    diff.deltas.iter().find_map(|d| {
-        if let StateDelta::UnitAttacked { defender_damage, .. } = d {
-            Some(*defender_damage)
-        } else {
-            None
-        }
-    }).expect("UnitAttacked delta missing")
+    diff.deltas
+        .iter()
+        .find_map(|d| {
+            if let StateDelta::UnitAttacked {
+                defender_damage, ..
+            } = d
+            {
+                Some(*defender_damage)
+            } else {
+                None
+            }
+        })
+        .expect("UnitAttacked delta missing")
 }
 
 // ---------------------------------------------------------------------------

@@ -1,7 +1,9 @@
-use crate::{CityId, CivId, GovernorId, GreatPersonId, GreatPersonType, PolicyId, UnitId, YieldBundle};
 use crate::civ::civ_ability::{CivAbilityBundle, RuleOverride};
 use crate::civ::civ_identity::BuiltinCiv;
 use crate::rules::civ_registry;
+use crate::{
+    CityId, CivId, GovernorId, GreatPersonId, GreatPersonType, PolicyId, UnitId, YieldBundle,
+};
 use libhexgrid::coord::HexCoord;
 
 use super::diff::GameStateDiff;
@@ -35,65 +37,71 @@ pub use unit_actions::{UnitAction, UnitActionKind};
 pub(crate) fn lookup_bundle(civ_identity: Option<BuiltinCiv>) -> Option<CivAbilityBundle> {
     let civ = civ_identity?;
     Some(match civ {
-        BuiltinCiv::Rome    => civ_registry::rome(),
-        BuiltinCiv::Greece  => civ_registry::greece(),
-        BuiltinCiv::Egypt   => civ_registry::egypt(),
+        BuiltinCiv::Rome => civ_registry::rome(),
+        BuiltinCiv::Greece => civ_registry::greece(),
+        BuiltinCiv::Egypt => civ_registry::egypt(),
         BuiltinCiv::Babylon => civ_registry::babylon(),
         BuiltinCiv::Germany => civ_registry::germany(),
-        BuiltinCiv::Japan   => civ_registry::japan(),
-        BuiltinCiv::India   => civ_registry::india(),
-        BuiltinCiv::Arabia  => civ_registry::arabia(),
+        BuiltinCiv::Japan => civ_registry::japan(),
+        BuiltinCiv::India => civ_registry::india(),
+        BuiltinCiv::Arabia => civ_registry::arabia(),
         BuiltinCiv::America => civ_registry::america(),
-        BuiltinCiv::Brazil  => civ_registry::brazil(),
-        BuiltinCiv::China   => civ_registry::china(),
+        BuiltinCiv::Brazil => civ_registry::brazil(),
+        BuiltinCiv::China => civ_registry::china(),
         BuiltinCiv::England => civ_registry::england(),
-        BuiltinCiv::France  => civ_registry::france(),
-        BuiltinCiv::Kongo   => civ_registry::kongo(),
-        BuiltinCiv::Norway  => civ_registry::norway(),
-        BuiltinCiv::Russia  => civ_registry::russia(),
+        BuiltinCiv::France => civ_registry::france(),
+        BuiltinCiv::Kongo => civ_registry::kongo(),
+        BuiltinCiv::Norway => civ_registry::norway(),
+        BuiltinCiv::Russia => civ_registry::russia(),
         BuiltinCiv::Scythia => civ_registry::scythia(),
-        BuiltinCiv::Spain   => civ_registry::spain(),
+        BuiltinCiv::Spain => civ_registry::spain(),
         BuiltinCiv::Sumeria => civ_registry::sumeria(),
         // Gathering Storm
-        BuiltinCiv::Canada    => civ_registry::canada(),
-        BuiltinCiv::Hungary   => civ_registry::hungary(),
-        BuiltinCiv::Inca      => civ_registry::inca(),
-        BuiltinCiv::Mali      => civ_registry::mali(),
-        BuiltinCiv::Maori     => civ_registry::maori(),
-        BuiltinCiv::Ottoman   => civ_registry::ottoman(),
+        BuiltinCiv::Canada => civ_registry::canada(),
+        BuiltinCiv::Hungary => civ_registry::hungary(),
+        BuiltinCiv::Inca => civ_registry::inca(),
+        BuiltinCiv::Mali => civ_registry::mali(),
+        BuiltinCiv::Maori => civ_registry::maori(),
+        BuiltinCiv::Ottoman => civ_registry::ottoman(),
         BuiltinCiv::Phoenicia => civ_registry::phoenicia(),
-        BuiltinCiv::Sweden    => civ_registry::sweden(),
+        BuiltinCiv::Sweden => civ_registry::sweden(),
         // Rise & Fall
-        BuiltinCiv::Cree        => civ_registry::cree(),
-        BuiltinCiv::Georgia     => civ_registry::georgia(),
-        BuiltinCiv::Korea       => civ_registry::korea(),
-        BuiltinCiv::Mapuche     => civ_registry::mapuche(),
-        BuiltinCiv::Mongolia    => civ_registry::mongolia(),
+        BuiltinCiv::Cree => civ_registry::cree(),
+        BuiltinCiv::Georgia => civ_registry::georgia(),
+        BuiltinCiv::Korea => civ_registry::korea(),
+        BuiltinCiv::Mapuche => civ_registry::mapuche(),
+        BuiltinCiv::Mongolia => civ_registry::mongolia(),
         BuiltinCiv::Netherlands => civ_registry::netherlands(),
-        BuiltinCiv::Scotland    => civ_registry::scotland(),
-        BuiltinCiv::Zulu        => civ_registry::zulu(),
+        BuiltinCiv::Scotland => civ_registry::scotland(),
+        BuiltinCiv::Zulu => civ_registry::zulu(),
         // DLC Civilization Packs
-        BuiltinCiv::Australia    => civ_registry::australia(),
-        BuiltinCiv::Aztec        => civ_registry::aztec(),
-        BuiltinCiv::Byzantium    => civ_registry::byzantium(),
-        BuiltinCiv::Gaul         => civ_registry::gaul(),
-        BuiltinCiv::Ethiopia     => civ_registry::ethiopia(),
+        BuiltinCiv::Australia => civ_registry::australia(),
+        BuiltinCiv::Aztec => civ_registry::aztec(),
+        BuiltinCiv::Byzantium => civ_registry::byzantium(),
+        BuiltinCiv::Gaul => civ_registry::gaul(),
+        BuiltinCiv::Ethiopia => civ_registry::ethiopia(),
         BuiltinCiv::GranColombia => civ_registry::gran_colombia(),
-        BuiltinCiv::Maya         => civ_registry::maya(),
-        BuiltinCiv::Indonesia    => civ_registry::indonesia(),
-        BuiltinCiv::Khmer        => civ_registry::khmer(),
-        BuiltinCiv::Vietnam      => civ_registry::vietnam(),
-        BuiltinCiv::Macedon      => civ_registry::macedon(),
-        BuiltinCiv::Persia       => civ_registry::persia(),
-        BuiltinCiv::Nubia        => civ_registry::nubia(),
-        BuiltinCiv::Poland       => civ_registry::poland(),
-        BuiltinCiv::Portugal     => civ_registry::portugal(),
+        BuiltinCiv::Maya => civ_registry::maya(),
+        BuiltinCiv::Indonesia => civ_registry::indonesia(),
+        BuiltinCiv::Khmer => civ_registry::khmer(),
+        BuiltinCiv::Vietnam => civ_registry::vietnam(),
+        BuiltinCiv::Macedon => civ_registry::macedon(),
+        BuiltinCiv::Persia => civ_registry::persia(),
+        BuiltinCiv::Nubia => civ_registry::nubia(),
+        BuiltinCiv::Poland => civ_registry::poland(),
+        BuiltinCiv::Portugal => civ_registry::portugal(),
     })
 }
 
 /// Check if a civ has a specific rule override.
-pub(crate) fn has_rule_override(state: &GameState, civ_id: CivId, check: &dyn Fn(&RuleOverride) -> bool) -> bool {
-    state.civilizations.iter()
+pub(crate) fn has_rule_override(
+    state: &GameState,
+    civ_id: CivId,
+    check: &dyn Fn(&RuleOverride) -> bool,
+) -> bool {
+    state
+        .civilizations
+        .iter()
         .find(|c| c.id == civ_id)
         .and_then(|c| lookup_bundle(c.civ_identity))
         .is_some_and(|b| b.rule_overrides.iter().any(check))
@@ -147,8 +155,8 @@ pub trait RulesEngine: std::fmt::Debug {
     /// [`combat_preview::preview_combat`] for limitations.
     fn preview_combat(
         &self,
-        state:          &GameState,
-        attacker:       UnitId,
+        state: &GameState,
+        attacker: UnitId,
         defender_coord: HexCoord,
     ) -> Option<CombatPreview> {
         combat_preview::preview_combat(state, attacker, defender_coord)
@@ -245,7 +253,7 @@ pub trait RulesEngine: std::fmt::Debug {
     /// Attacker loses all remaining movement.
     fn attack(
         &self,
-        state:    &mut GameState,
+        state: &mut GameState,
         attacker: UnitId,
         defender: UnitId,
     ) -> Result<GameStateDiff, RulesError>;
@@ -258,9 +266,9 @@ pub trait RulesEngine: std::fmt::Debug {
     /// for the civ (if unowned), and auto-assigns the first citizen.
     fn found_city(
         &self,
-        state:   &mut GameState,
+        state: &mut GameState,
         settler: UnitId,
-        name:    String,
+        name: String,
     ) -> Result<GameStateDiff, RulesError>;
 
     /// Place an improvement on `coord`. Validates `valid_on()` for the tile's
@@ -519,11 +527,7 @@ pub trait RulesEngine: std::fmt::Debug {
 
     /// Use a Guru to heal nearby friendly religious units by up to 40 HP.
     /// Consumes one heal charge; destroys unit at zero.
-    fn guru_heal(
-        &self,
-        state: &mut GameState,
-        guru: UnitId,
-    ) -> Result<GameStateDiff, RulesError>;
+    fn guru_heal(&self, state: &mut GameState, guru: UnitId) -> Result<GameStateDiff, RulesError>;
 
     /// Complete the next science milestone for `civ_id`. Milestones must be
     /// completed in order: "Launch Earth Satellite", "Land on Moon",
@@ -801,97 +805,144 @@ pub enum RulesError {
 impl std::fmt::Display for RulesError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RulesError::UnitNotFound              => write!(f, "unit not found"),
-            RulesError::CityNotFound              => write!(f, "city not found"),
-            RulesError::CivNotFound               => write!(f, "civilization not found"),
-            RulesError::PolicyNotFound            => write!(f, "policy not found"),
-            RulesError::PolicyNotUnlocked         => write!(f, "policy not unlocked"),
-            RulesError::InsufficientPolicySlots   => write!(f, "no free policy slot in current government"),
-            RulesError::NoGovernment              => write!(f, "no active government"),
-            RulesError::InsufficientGold          => write!(f, "insufficient gold for policy maintenance"),
-            RulesError::DestinationImpassable     => write!(f, "destination is impassable"),
-            RulesError::InsufficientMovement(_)   => write!(f, "insufficient movement points"),
-            RulesError::InvalidCoord              => write!(f, "invalid coordinate"),
-            RulesError::NotYourTurn               => write!(f, "not your turn"),
-            RulesError::SameCivilization          => write!(f, "both IDs refer to the same civilization"),
-            RulesError::AlreadyAtWar              => write!(f, "civilizations are already at war"),
-            RulesError::NotAtWar                  => write!(f, "civilizations are not at war"),
-            RulesError::RelationNotFound          => write!(f, "no diplomatic relation between the civilizations"),
-            RulesError::NoValidTarget             => write!(f, "no enemy unit at target tile"),
-            RulesError::UnitCannotAttack          => write!(f, "unit has no combat strength"),
-            RulesError::NotInRange                => write!(f, "target is not within attack range"),
-            RulesError::NotASettler               => write!(f, "unit cannot found cities"),
-            RulesError::TileOccupied              => write!(f, "a city already exists at that location"),
-            RulesError::TooCloseToCity            => write!(f, "too close to an existing city"),
-            RulesError::InvalidFoundingTerrain    => write!(f, "cannot found a city on this terrain"),
-            RulesError::TileOccupiedByUnit        => write!(f, "destination tile is occupied by another unit"),
-            RulesError::InvalidImprovement        => write!(f, "improvement cannot be placed on this terrain"),
-            RulesError::ResourceRequired          => write!(f, "improvement requires a resource not present on the tile"),
-            RulesError::ProximityRequired         => write!(f, "improvement requires an adjacent tile condition not satisfied"),
-            RulesError::TechRequired              => write!(f, "requires a tech not yet researched"),
-            RulesError::CivicRequired             => write!(f, "requires a civic not yet completed"),
-            RulesError::TileNotOwned              => write!(f, "tile is not owned by the acting civilization"),
-            RulesError::InvalidDistrict           => write!(f, "district cannot be placed on this terrain"),
-            RulesError::DistrictAlreadyPresent    => write!(f, "city already has a district of this type"),
-            RulesError::TileNotInCityRange        => write!(f, "tile is not within 1–3 tiles of the city center"),
-            RulesError::TileOccupiedByDistrict    => write!(f, "tile is already occupied by a district"),
-            RulesError::TileOwnedByEnemy          => write!(f, "tile is owned by a different civilization"),
-            RulesError::CitiesNotSameCiv          => write!(f, "tile reassignment requires both cities to belong to the same civilization"),
-            RulesError::InsufficientStrategicResource => write!(f, "insufficient strategic resource to train this unit"),
-            RulesError::NotATrader                    => write!(f, "unit is not a trader"),
-            RulesError::NoOriginCity                  => write!(f, "trader is not located at a city owned by this civilization"),
-            RulesError::SameCity                      => write!(f, "origin and destination are the same city"),
-            RulesError::CityCannotAttack              => write!(f, "city has no walls and cannot bombard"),
-            RulesError::CityAlreadyAttacked           => write!(f, "city has already attacked this turn"),
-            RulesError::NotABuilder                   => write!(f, "unit is not a builder"),
-            RulesError::NoChargesRemaining            => write!(f, "builder has no charges remaining"),
-            RulesError::RoadDowngrade                 => write!(f, "cannot downgrade to a lower-tier road"),
-            RulesError::GreatPersonNotFound            => write!(f, "great person not found"),
-            RulesError::GreatPersonAlreadyRetired      => write!(f, "great person already retired"),
-            RulesError::GreatPersonDefNotFound         => write!(f, "great person definition not found"),
-            RulesError::InvalidGreatPersonType         => write!(f, "great person type cannot create great works"),
-            RulesError::NoGreatWorkSlot                => write!(f, "no matching great work slot available in any owned city"),
-            RulesError::NoGreatPersonAvailable         => write!(f, "no great person candidate of the requested type is available"),
-            RulesError::GovernorNotFound               => write!(f, "governor not found"),
-            RulesError::GovernorNotOwned               => write!(f, "governor is not owned by the acting civilization"),
-            RulesError::InsufficientGovernorTitles     => write!(f, "no unspent governor titles"),
-            RulesError::PromotionNotFound              => write!(f, "promotion not found for this governor"),
-            RulesError::PromotionPrerequisiteNotMet    => write!(f, "prerequisite promotion not yet unlocked"),
-            RulesError::PromotionAlreadyUnlocked       => write!(f, "promotion already unlocked"),
-            RulesError::GovernorAlreadyInCity           => write!(f, "governor is already assigned to this city"),
-            RulesError::PantheonAlreadyFounded         => write!(f, "pantheon already founded"),
-            RulesError::ReligionAlreadyFounded         => write!(f, "religion already founded"),
-            RulesError::NotAGreatProphet               => write!(f, "unit is not a Great Prophet"),
-            RulesError::NoHolySite                     => write!(f, "no Holy Site district at unit location"),
-            RulesError::ReligionNameTaken              => write!(f, "religion name already taken"),
-            RulesError::InvalidBelief                  => write!(f, "invalid belief selection"),
-            RulesError::NoSpreadCharges                => write!(f, "no spread charges remaining"),
-            RulesError::NotAReligiousUnit              => write!(f, "unit is not a religious unit"),
-            RulesError::NoReligiousStrength            => write!(f, "unit has no religious combat strength"),
-            RulesError::InsufficientFaith              => write!(f, "insufficient faith"),
-            RulesError::MissingPrerequisite            => write!(f, "missing prerequisite building or district"),
-            RulesError::MaxReligionsReached             => write!(f, "maximum number of religions reached"),
-            RulesError::NotAnApostle                    => write!(f, "unit is not an Apostle"),
-            RulesError::NotAnInquisitor                 => write!(f, "unit is not an Inquisitor"),
-            RulesError::InquisitionNotLaunched          => write!(f, "inquisition has not been launched"),
-            RulesError::ReligionFullyEnhanced           => write!(f, "religion already has maximum beliefs"),
-            RulesError::NoHealCharges                   => write!(f, "no heal charges remaining"),
-            RulesError::AllMilestonesCompleted         => write!(f, "all science milestones already completed"),
-            RulesError::BarbarianCampNotFound          => write!(f, "barbarian camp not found"),
-            RulesError::BarbarianClansNotEnabled       => write!(f, "barbarian clans mode is not enabled"),
-            RulesError::BarbarianHireOnCooldown        => write!(f, "barbarian hire is on cooldown"),
-            RulesError::PromotionNotEligible           => write!(f, "unit not eligible for this promotion"),
-            RulesError::UnitPromotionNotFound          => write!(f, "unit promotion not found"),
-            RulesError::NotARockBand                   => write!(f, "unit is not a Rock Band"),
-            RulesError::NotOnForeignCity               => write!(f, "unit is not on a foreign city tile"),
-            RulesError::CannotAllyAtWar                => write!(f, "cannot form alliance while at war"),
-            RulesError::InvalidAllianceStatus          => write!(f, "status must be Friendly or Neutral to form alliance"),
+            RulesError::UnitNotFound => write!(f, "unit not found"),
+            RulesError::CityNotFound => write!(f, "city not found"),
+            RulesError::CivNotFound => write!(f, "civilization not found"),
+            RulesError::PolicyNotFound => write!(f, "policy not found"),
+            RulesError::PolicyNotUnlocked => write!(f, "policy not unlocked"),
+            RulesError::InsufficientPolicySlots => {
+                write!(f, "no free policy slot in current government")
+            }
+            RulesError::NoGovernment => write!(f, "no active government"),
+            RulesError::InsufficientGold => write!(f, "insufficient gold for policy maintenance"),
+            RulesError::DestinationImpassable => write!(f, "destination is impassable"),
+            RulesError::InsufficientMovement(_) => write!(f, "insufficient movement points"),
+            RulesError::InvalidCoord => write!(f, "invalid coordinate"),
+            RulesError::NotYourTurn => write!(f, "not your turn"),
+            RulesError::SameCivilization => write!(f, "both IDs refer to the same civilization"),
+            RulesError::AlreadyAtWar => write!(f, "civilizations are already at war"),
+            RulesError::NotAtWar => write!(f, "civilizations are not at war"),
+            RulesError::RelationNotFound => {
+                write!(f, "no diplomatic relation between the civilizations")
+            }
+            RulesError::NoValidTarget => write!(f, "no enemy unit at target tile"),
+            RulesError::UnitCannotAttack => write!(f, "unit has no combat strength"),
+            RulesError::NotInRange => write!(f, "target is not within attack range"),
+            RulesError::NotASettler => write!(f, "unit cannot found cities"),
+            RulesError::TileOccupied => write!(f, "a city already exists at that location"),
+            RulesError::TooCloseToCity => write!(f, "too close to an existing city"),
+            RulesError::InvalidFoundingTerrain => write!(f, "cannot found a city on this terrain"),
+            RulesError::TileOccupiedByUnit => {
+                write!(f, "destination tile is occupied by another unit")
+            }
+            RulesError::InvalidImprovement => {
+                write!(f, "improvement cannot be placed on this terrain")
+            }
+            RulesError::ResourceRequired => {
+                write!(f, "improvement requires a resource not present on the tile")
+            }
+            RulesError::ProximityRequired => write!(
+                f,
+                "improvement requires an adjacent tile condition not satisfied"
+            ),
+            RulesError::TechRequired => write!(f, "requires a tech not yet researched"),
+            RulesError::CivicRequired => write!(f, "requires a civic not yet completed"),
+            RulesError::TileNotOwned => write!(f, "tile is not owned by the acting civilization"),
+            RulesError::InvalidDistrict => write!(f, "district cannot be placed on this terrain"),
+            RulesError::DistrictAlreadyPresent => {
+                write!(f, "city already has a district of this type")
+            }
+            RulesError::TileNotInCityRange => {
+                write!(f, "tile is not within 1–3 tiles of the city center")
+            }
+            RulesError::TileOccupiedByDistrict => {
+                write!(f, "tile is already occupied by a district")
+            }
+            RulesError::TileOwnedByEnemy => write!(f, "tile is owned by a different civilization"),
+            RulesError::CitiesNotSameCiv => write!(
+                f,
+                "tile reassignment requires both cities to belong to the same civilization"
+            ),
+            RulesError::InsufficientStrategicResource => {
+                write!(f, "insufficient strategic resource to train this unit")
+            }
+            RulesError::NotATrader => write!(f, "unit is not a trader"),
+            RulesError::NoOriginCity => write!(
+                f,
+                "trader is not located at a city owned by this civilization"
+            ),
+            RulesError::SameCity => write!(f, "origin and destination are the same city"),
+            RulesError::CityCannotAttack => write!(f, "city has no walls and cannot bombard"),
+            RulesError::CityAlreadyAttacked => write!(f, "city has already attacked this turn"),
+            RulesError::NotABuilder => write!(f, "unit is not a builder"),
+            RulesError::NoChargesRemaining => write!(f, "builder has no charges remaining"),
+            RulesError::RoadDowngrade => write!(f, "cannot downgrade to a lower-tier road"),
+            RulesError::GreatPersonNotFound => write!(f, "great person not found"),
+            RulesError::GreatPersonAlreadyRetired => write!(f, "great person already retired"),
+            RulesError::GreatPersonDefNotFound => write!(f, "great person definition not found"),
+            RulesError::InvalidGreatPersonType => {
+                write!(f, "great person type cannot create great works")
+            }
+            RulesError::NoGreatWorkSlot => {
+                write!(f, "no matching great work slot available in any owned city")
+            }
+            RulesError::NoGreatPersonAvailable => write!(
+                f,
+                "no great person candidate of the requested type is available"
+            ),
+            RulesError::GovernorNotFound => write!(f, "governor not found"),
+            RulesError::GovernorNotOwned => {
+                write!(f, "governor is not owned by the acting civilization")
+            }
+            RulesError::InsufficientGovernorTitles => write!(f, "no unspent governor titles"),
+            RulesError::PromotionNotFound => write!(f, "promotion not found for this governor"),
+            RulesError::PromotionPrerequisiteNotMet => {
+                write!(f, "prerequisite promotion not yet unlocked")
+            }
+            RulesError::PromotionAlreadyUnlocked => write!(f, "promotion already unlocked"),
+            RulesError::GovernorAlreadyInCity => {
+                write!(f, "governor is already assigned to this city")
+            }
+            RulesError::PantheonAlreadyFounded => write!(f, "pantheon already founded"),
+            RulesError::ReligionAlreadyFounded => write!(f, "religion already founded"),
+            RulesError::NotAGreatProphet => write!(f, "unit is not a Great Prophet"),
+            RulesError::NoHolySite => write!(f, "no Holy Site district at unit location"),
+            RulesError::ReligionNameTaken => write!(f, "religion name already taken"),
+            RulesError::InvalidBelief => write!(f, "invalid belief selection"),
+            RulesError::NoSpreadCharges => write!(f, "no spread charges remaining"),
+            RulesError::NotAReligiousUnit => write!(f, "unit is not a religious unit"),
+            RulesError::NoReligiousStrength => write!(f, "unit has no religious combat strength"),
+            RulesError::InsufficientFaith => write!(f, "insufficient faith"),
+            RulesError::MissingPrerequisite => {
+                write!(f, "missing prerequisite building or district")
+            }
+            RulesError::MaxReligionsReached => write!(f, "maximum number of religions reached"),
+            RulesError::NotAnApostle => write!(f, "unit is not an Apostle"),
+            RulesError::NotAnInquisitor => write!(f, "unit is not an Inquisitor"),
+            RulesError::InquisitionNotLaunched => write!(f, "inquisition has not been launched"),
+            RulesError::ReligionFullyEnhanced => write!(f, "religion already has maximum beliefs"),
+            RulesError::NoHealCharges => write!(f, "no heal charges remaining"),
+            RulesError::AllMilestonesCompleted => {
+                write!(f, "all science milestones already completed")
+            }
+            RulesError::BarbarianCampNotFound => write!(f, "barbarian camp not found"),
+            RulesError::BarbarianClansNotEnabled => {
+                write!(f, "barbarian clans mode is not enabled")
+            }
+            RulesError::BarbarianHireOnCooldown => write!(f, "barbarian hire is on cooldown"),
+            RulesError::PromotionNotEligible => write!(f, "unit not eligible for this promotion"),
+            RulesError::UnitPromotionNotFound => write!(f, "unit promotion not found"),
+            RulesError::NotARockBand => write!(f, "unit is not a Rock Band"),
+            RulesError::NotOnForeignCity => write!(f, "unit is not on a foreign city tile"),
+            RulesError::CannotAllyAtWar => write!(f, "cannot form alliance while at war"),
+            RulesError::InvalidAllianceStatus => {
+                write!(f, "status must be Friendly or Neutral to form alliance")
+            }
         }
     }
 }
 
 impl std::error::Error for RulesError {}
-
 
 // ── DefaultRulesEngine ────────────────────────────────────────────────────────
 
@@ -899,7 +950,12 @@ impl std::error::Error for RulesError {}
 pub struct DefaultRulesEngine;
 
 impl RulesEngine for DefaultRulesEngine {
-    fn move_unit(&self, state: &GameState, unit_id: UnitId, to: HexCoord) -> Result<GameStateDiff, RulesError> {
+    fn move_unit(
+        &self,
+        state: &GameState,
+        unit_id: UnitId,
+        to: HexCoord,
+    ) -> Result<GameStateDiff, RulesError> {
         movement::move_unit(state, unit_id, to)
     }
 
@@ -911,119 +967,269 @@ impl RulesEngine for DefaultRulesEngine {
         turn_phase::advance_turn(self, state)
     }
 
-    fn assign_citizen(&self, state: &mut GameState, city_id: CityId, tile: HexCoord, lock: bool) -> Result<GameStateDiff, RulesError> {
+    fn assign_citizen(
+        &self,
+        state: &mut GameState,
+        city_id: CityId,
+        tile: HexCoord,
+        lock: bool,
+    ) -> Result<GameStateDiff, RulesError> {
         city::assign_citizen(state, city_id, tile, lock)
     }
 
-    fn assign_policy(&self, state: &mut GameState, civ: CivId, policy: PolicyId) -> Result<GameStateDiff, RulesError> {
+    fn assign_policy(
+        &self,
+        state: &mut GameState,
+        civ: CivId,
+        policy: PolicyId,
+    ) -> Result<GameStateDiff, RulesError> {
         diplomacy::assign_policy(state, civ, policy)
     }
 
-    fn form_alliance(&self, state: &mut GameState, civ_a: CivId, civ_b: CivId, alliance_type: crate::civ::diplomacy::AllianceType) -> Result<GameStateDiff, RulesError> {
+    fn form_alliance(
+        &self,
+        state: &mut GameState,
+        civ_a: CivId,
+        civ_b: CivId,
+        alliance_type: crate::civ::diplomacy::AllianceType,
+    ) -> Result<GameStateDiff, RulesError> {
         diplomacy::form_alliance(state, civ_a, civ_b, alliance_type)
     }
 
-    fn declare_war(&self, state: &mut GameState, aggressor: CivId, target: CivId) -> Result<GameStateDiff, RulesError> {
+    fn declare_war(
+        &self,
+        state: &mut GameState,
+        aggressor: CivId,
+        target: CivId,
+    ) -> Result<GameStateDiff, RulesError> {
         diplomacy::declare_war(state, aggressor, target)
     }
 
-    fn make_peace(&self, state: &mut GameState, civ_a: CivId, civ_b: CivId) -> Result<GameStateDiff, RulesError> {
+    fn make_peace(
+        &self,
+        state: &mut GameState,
+        civ_a: CivId,
+        civ_b: CivId,
+    ) -> Result<GameStateDiff, RulesError> {
         diplomacy::make_peace(state, civ_a, civ_b)
     }
 
-    fn attack(&self, state: &mut GameState, attacker: UnitId, defender: UnitId) -> Result<GameStateDiff, RulesError> {
+    fn attack(
+        &self,
+        state: &mut GameState,
+        attacker: UnitId,
+        defender: UnitId,
+    ) -> Result<GameStateDiff, RulesError> {
         combat::attack(state, attacker, defender)
     }
 
-    fn found_city(&self, state: &mut GameState, settler: UnitId, name: String) -> Result<GameStateDiff, RulesError> {
+    fn found_city(
+        &self,
+        state: &mut GameState,
+        settler: UnitId,
+        name: String,
+    ) -> Result<GameStateDiff, RulesError> {
         city::found_city(state, settler, name)
     }
 
-    fn place_improvement(&self, state: &mut GameState, civ_id: CivId, coord: HexCoord, improvement: crate::world::improvement::BuiltinImprovement, builder: Option<UnitId>) -> Result<GameStateDiff, RulesError> {
+    fn place_improvement(
+        &self,
+        state: &mut GameState,
+        civ_id: CivId,
+        coord: HexCoord,
+        improvement: crate::world::improvement::BuiltinImprovement,
+        builder: Option<UnitId>,
+    ) -> Result<GameStateDiff, RulesError> {
         production::place_improvement(state, civ_id, coord, improvement, builder)
     }
 
-    fn place_road(&self, state: &mut GameState, unit_id: UnitId, coord: HexCoord, road: crate::world::road::BuiltinRoad) -> Result<GameStateDiff, RulesError> {
+    fn place_road(
+        &self,
+        state: &mut GameState,
+        unit_id: UnitId,
+        coord: HexCoord,
+        road: crate::world::road::BuiltinRoad,
+    ) -> Result<GameStateDiff, RulesError> {
         production::place_road(state, unit_id, coord, road)
     }
 
-    fn place_district(&self, state: &mut GameState, city_id: CityId, district: crate::civ::district::BuiltinDistrict, coord: HexCoord) -> Result<GameStateDiff, RulesError> {
+    fn place_district(
+        &self,
+        state: &mut GameState,
+        city_id: CityId,
+        district: crate::civ::district::BuiltinDistrict,
+        coord: HexCoord,
+    ) -> Result<GameStateDiff, RulesError> {
         production::place_district(state, city_id, district, coord)
     }
 
-    fn claim_tile(&self, state: &mut GameState, city_id: CityId, coord: HexCoord, force: bool) -> Result<GameStateDiff, RulesError> {
+    fn claim_tile(
+        &self,
+        state: &mut GameState,
+        city_id: CityId,
+        coord: HexCoord,
+        force: bool,
+    ) -> Result<GameStateDiff, RulesError> {
         city::claim_tile(state, city_id, coord, force)
     }
 
-    fn reassign_tile(&self, state: &mut GameState, from_city: CityId, to_city: CityId, coord: HexCoord) -> Result<GameStateDiff, RulesError> {
+    fn reassign_tile(
+        &self,
+        state: &mut GameState,
+        from_city: CityId,
+        to_city: CityId,
+        coord: HexCoord,
+    ) -> Result<GameStateDiff, RulesError> {
         city::reassign_tile(state, from_city, to_city, coord)
     }
 
-    fn assign_trade_route(&self, state: &mut GameState, trader_unit: UnitId, destination: CityId) -> Result<GameStateDiff, RulesError> {
+    fn assign_trade_route(
+        &self,
+        state: &mut GameState,
+        trader_unit: UnitId,
+        destination: CityId,
+    ) -> Result<GameStateDiff, RulesError> {
         trade::assign_trade_route(state, trader_unit, destination)
     }
 
-    fn establish_trade_route(&self, state: &mut GameState, trader_unit: UnitId, destination: CityId) -> Result<GameStateDiff, RulesError> {
+    fn establish_trade_route(
+        &self,
+        state: &mut GameState,
+        trader_unit: UnitId,
+        destination: CityId,
+    ) -> Result<GameStateDiff, RulesError> {
         trade::establish_trade_route(state, trader_unit, destination)
     }
 
-    fn city_bombard(&self, state: &mut GameState, city_id: CityId, target: UnitId) -> Result<GameStateDiff, RulesError> {
+    fn city_bombard(
+        &self,
+        state: &mut GameState,
+        city_id: CityId,
+        target: UnitId,
+    ) -> Result<GameStateDiff, RulesError> {
         combat::city_bombard(state, city_id, target)
     }
 
-    fn retire_great_person(&self, state: &mut GameState, great_person_id: GreatPersonId) -> Result<GameStateDiff, RulesError> {
+    fn retire_great_person(
+        &self,
+        state: &mut GameState,
+        great_person_id: GreatPersonId,
+    ) -> Result<GameStateDiff, RulesError> {
         great_people::retire_great_person(state, great_person_id)
     }
 
-    fn create_great_work(&self, state: &mut GameState, great_person_id: GreatPersonId) -> Result<GameStateDiff, RulesError> {
+    fn create_great_work(
+        &self,
+        state: &mut GameState,
+        great_person_id: GreatPersonId,
+    ) -> Result<GameStateDiff, RulesError> {
         great_people::create_great_work(state, great_person_id)
     }
 
-    fn recruit_great_person(&self, state: &mut GameState, civ_id: CivId, person_type: GreatPersonType) -> Result<GameStateDiff, RulesError> {
+    fn recruit_great_person(
+        &self,
+        state: &mut GameState,
+        civ_id: CivId,
+        person_type: GreatPersonType,
+    ) -> Result<GameStateDiff, RulesError> {
         great_people::recruit_great_person(state, civ_id, person_type)
     }
 
-    fn recruit_great_person_with_faith(&self, state: &mut GameState, civ_id: CivId, person_type: GreatPersonType) -> Result<GameStateDiff, RulesError> {
+    fn recruit_great_person_with_faith(
+        &self,
+        state: &mut GameState,
+        civ_id: CivId,
+        person_type: GreatPersonType,
+    ) -> Result<GameStateDiff, RulesError> {
         great_people::recruit_great_person_with_faith(state, civ_id, person_type)
     }
 
-    fn assign_governor(&self, state: &mut GameState, governor_id: GovernorId, city_id: CityId) -> Result<GameStateDiff, RulesError> {
+    fn assign_governor(
+        &self,
+        state: &mut GameState,
+        governor_id: GovernorId,
+        city_id: CityId,
+    ) -> Result<GameStateDiff, RulesError> {
         governors::assign_governor(state, governor_id, city_id)
     }
 
-    fn promote_governor(&self, state: &mut GameState, governor_id: GovernorId, promotion_name: &'static str) -> Result<GameStateDiff, RulesError> {
+    fn promote_governor(
+        &self,
+        state: &mut GameState,
+        governor_id: GovernorId,
+        promotion_name: &'static str,
+    ) -> Result<GameStateDiff, RulesError> {
         governors::promote_governor(state, governor_id, promotion_name)
     }
 
-    fn found_pantheon(&self, state: &mut GameState, civ: CivId, belief: crate::BeliefId) -> Result<GameStateDiff, RulesError> {
+    fn found_pantheon(
+        &self,
+        state: &mut GameState,
+        civ: CivId,
+        belief: crate::BeliefId,
+    ) -> Result<GameStateDiff, RulesError> {
         religion::found_pantheon(state, civ, belief)
     }
 
-    fn found_religion(&self, state: &mut GameState, prophet: UnitId, name: String, beliefs: Vec<crate::BeliefId>) -> Result<GameStateDiff, RulesError> {
+    fn found_religion(
+        &self,
+        state: &mut GameState,
+        prophet: UnitId,
+        name: String,
+        beliefs: Vec<crate::BeliefId>,
+    ) -> Result<GameStateDiff, RulesError> {
         religion::found_religion(state, prophet, name, beliefs)
     }
 
-    fn spread_religion(&self, state: &mut GameState, unit: UnitId) -> Result<GameStateDiff, RulesError> {
+    fn spread_religion(
+        &self,
+        state: &mut GameState,
+        unit: UnitId,
+    ) -> Result<GameStateDiff, RulesError> {
         religion::spread_religion(state, unit)
     }
 
-    fn theological_combat(&self, state: &mut GameState, attacker: UnitId, defender: UnitId) -> Result<GameStateDiff, RulesError> {
+    fn theological_combat(
+        &self,
+        state: &mut GameState,
+        attacker: UnitId,
+        defender: UnitId,
+    ) -> Result<GameStateDiff, RulesError> {
         combat::theological_combat(state, attacker, defender)
     }
 
-    fn purchase_with_faith(&self, state: &mut GameState, civ: CivId, city: CityId, item: FaithPurchaseItem) -> Result<GameStateDiff, RulesError> {
+    fn purchase_with_faith(
+        &self,
+        state: &mut GameState,
+        civ: CivId,
+        city: CityId,
+        item: FaithPurchaseItem,
+    ) -> Result<GameStateDiff, RulesError> {
         religion::purchase_with_faith(state, civ, city, item)
     }
 
-    fn evangelize_belief(&self, state: &mut GameState, apostle: UnitId, belief: crate::BeliefId) -> Result<GameStateDiff, RulesError> {
+    fn evangelize_belief(
+        &self,
+        state: &mut GameState,
+        apostle: UnitId,
+        belief: crate::BeliefId,
+    ) -> Result<GameStateDiff, RulesError> {
         religion::evangelize_belief(state, apostle, belief)
     }
 
-    fn launch_inquisition(&self, state: &mut GameState, apostle: UnitId) -> Result<GameStateDiff, RulesError> {
+    fn launch_inquisition(
+        &self,
+        state: &mut GameState,
+        apostle: UnitId,
+    ) -> Result<GameStateDiff, RulesError> {
         religion::launch_inquisition(state, apostle)
     }
 
-    fn remove_heresy(&self, state: &mut GameState, inquisitor: UnitId) -> Result<GameStateDiff, RulesError> {
+    fn remove_heresy(
+        &self,
+        state: &mut GameState,
+        inquisitor: UnitId,
+    ) -> Result<GameStateDiff, RulesError> {
         religion::remove_heresy(state, inquisitor)
     }
 
@@ -1031,67 +1237,117 @@ impl RulesEngine for DefaultRulesEngine {
         religion::guru_heal(state, guru)
     }
 
-    fn complete_science_milestone(&self, state: &mut GameState, civ_id: CivId) -> Result<GameStateDiff, RulesError> {
-        use super::victory::SCIENCE_MILESTONES;
+    fn complete_science_milestone(
+        &self,
+        state: &mut GameState,
+        civ_id: CivId,
+    ) -> Result<GameStateDiff, RulesError> {
         use super::diff::StateDelta;
+        use super::victory::SCIENCE_MILESTONES;
 
-        let civ = state.civilizations.iter().find(|c| c.id == civ_id)
+        let civ = state
+            .civilizations
+            .iter()
+            .find(|c| c.id == civ_id)
             .ok_or(RulesError::CivNotFound)?;
         let completed = civ.science_milestones_completed as usize;
         if completed >= SCIENCE_MILESTONES.len() {
             return Err(RulesError::AllMilestonesCompleted);
         }
         let milestone = SCIENCE_MILESTONES[completed];
-        let civ = state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap();
+        let civ = state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap();
         civ.science_milestones_completed += 1;
 
         let mut diff = GameStateDiff::new();
-        diff.push(StateDelta::ScienceMilestoneCompleted { civ: civ_id, milestone });
+        diff.push(StateDelta::ScienceMilestoneCompleted {
+            civ: civ_id,
+            milestone,
+        });
         Ok(diff)
     }
 
-    fn rock_band_perform(&self, state: &mut GameState, unit_id: UnitId) -> Result<GameStateDiff, RulesError> {
+    fn rock_band_perform(
+        &self,
+        state: &mut GameState,
+        unit_id: UnitId,
+    ) -> Result<GameStateDiff, RulesError> {
         combat::rock_band_perform(state, unit_id)
     }
 
-    fn hire_from_barbarian_camp(&self, state: &mut GameState, camp_id: crate::BarbarianCampId, civ_id: CivId) -> Result<GameStateDiff, RulesError> {
+    fn hire_from_barbarian_camp(
+        &self,
+        state: &mut GameState,
+        camp_id: crate::BarbarianCampId,
+        civ_id: CivId,
+    ) -> Result<GameStateDiff, RulesError> {
         barbarians::hire_from_camp(state, camp_id, civ_id)
     }
 
-    fn bribe_barbarian_camp(&self, state: &mut GameState, camp_id: crate::BarbarianCampId, civ_id: CivId) -> Result<GameStateDiff, RulesError> {
+    fn bribe_barbarian_camp(
+        &self,
+        state: &mut GameState,
+        camp_id: crate::BarbarianCampId,
+        civ_id: CivId,
+    ) -> Result<GameStateDiff, RulesError> {
         barbarians::bribe_camp(state, camp_id, civ_id)
     }
 
-    fn incite_barbarian_camp(&self, state: &mut GameState, camp_id: crate::BarbarianCampId, civ_id: CivId, target: CivId) -> Result<GameStateDiff, RulesError> {
+    fn incite_barbarian_camp(
+        &self,
+        state: &mut GameState,
+        camp_id: crate::BarbarianCampId,
+        civ_id: CivId,
+        target: CivId,
+    ) -> Result<GameStateDiff, RulesError> {
         barbarians::incite_camp(state, camp_id, civ_id, target)
     }
 
-    fn promote_unit(&self, state: &mut GameState, unit_id: UnitId, promotion_name: &str) -> Result<GameStateDiff, RulesError> {
+    fn promote_unit(
+        &self,
+        state: &mut GameState,
+        unit_id: UnitId,
+        promotion_name: &str,
+    ) -> Result<GameStateDiff, RulesError> {
         combat::promote_unit(state, unit_id, promotion_name)
     }
 
-    fn raid_barbarian_camp(&self, state: &mut GameState, unit_id: UnitId, camp_id: crate::BarbarianCampId) -> Result<GameStateDiff, RulesError> {
+    fn raid_barbarian_camp(
+        &self,
+        state: &mut GameState,
+        unit_id: UnitId,
+        camp_id: crate::BarbarianCampId,
+    ) -> Result<GameStateDiff, RulesError> {
         combat::raid_barbarian_camp(state, unit_id, camp_id)
     }
 
-    fn clear_barbarian_camp(&self, state: &mut GameState, camp_id: crate::BarbarianCampId, cleared_by: CivId) -> Result<GameStateDiff, RulesError> {
+    fn clear_barbarian_camp(
+        &self,
+        state: &mut GameState,
+        camp_id: crate::BarbarianCampId,
+        cleared_by: CivId,
+    ) -> Result<GameStateDiff, RulesError> {
         Ok(barbarians::clear_camp(state, camp_id, cleared_by))
     }
 }
-
-
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::civ::{BasicUnit, Civilization, City, DiplomaticRelation, DiplomaticStatus, GrievanceRecord, Leader};
-    use crate::civ::civilization::BuiltinAgenda;
-    use crate::{CivId, PolicyType, UnitCategory, UnitDomain, UnitTypeId};
-    use crate::rules::effect::OneShotEffect;
-    use super::effects::apply_effect;
     use super::super::diff::StateDelta;
+    use super::effects::apply_effect;
+    use super::*;
+    use crate::civ::civilization::BuiltinAgenda;
+    use crate::civ::{
+        BasicUnit, City, Civilization, DiplomaticRelation, DiplomaticStatus, GrievanceRecord,
+        Leader,
+    };
+    use crate::rules::effect::OneShotEffect;
+    use crate::{CivId, PolicyType, UnitCategory, UnitDomain, UnitTypeId};
     use libhexgrid::board::HexBoard;
     use libhexgrid::coord::HexCoord;
 
@@ -1113,28 +1369,37 @@ mod tests {
         (state, civ_id)
     }
 
-    fn spawn_unit(state: &mut GameState, civ_id: CivId, coord: HexCoord, movement: u32) -> crate::UnitId {
-        let unit_id   = state.id_gen.next_unit_id();
+    fn spawn_unit(
+        state: &mut GameState,
+        civ_id: CivId,
+        coord: HexCoord,
+        movement: u32,
+    ) -> crate::UnitId {
+        let unit_id = state.id_gen.next_unit_id();
         let unit_type = state.id_gen.next_ulid();
         let unit_type_id = crate::UnitTypeId::from_ulid(unit_type);
         state.units.push(BasicUnit {
-            id:             unit_id,
-            unit_type:      unit_type_id,
-            owner:          civ_id,
+            id: unit_id,
+            unit_type: unit_type_id,
+            owner: civ_id,
             coord,
-            domain:         UnitDomain::Land,
-            category:       UnitCategory::Combat,
-            movement_left:  movement,
-            max_movement:   movement,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            movement_left: movement,
+            max_movement: movement,
             combat_strength: Some(20),
-            promotions:     Vec::new(),
-            experience:     0,
-            health:         100,
-            range:          0,
-            vision_range:   2,
-            charges:        None,
-            trade_origin:   None,
-            trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+            promotions: Vec::new(),
+            experience: 0,
+            health: 100,
+            range: 0,
+            vision_range: 2,
+            charges: None,
+            trade_origin: None,
+            trade_destination: None,
+            religion_id: None,
+            spread_charges: None,
+            religious_strength: None,
+            is_embarked: false,
         });
         unit_id
     }
@@ -1154,14 +1419,18 @@ mod tests {
     fn test_move_unit_full_move() {
         let (mut state, civ_id) = make_state();
         let start = HexCoord::from_qr(2, 2);
-        let dest  = HexCoord::from_qr(4, 2);
+        let dest = HexCoord::from_qr(4, 2);
         // Hex distance = 2. Each Grassland tile costs 100. Budget = 300 (ample).
         let uid = spawn_unit(&mut state, civ_id, start, 300);
 
         let engine = DefaultRulesEngine;
         let result = engine.move_unit(&state, uid, dest);
 
-        assert!(result.is_ok(), "full move should succeed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "full move should succeed: {:?}",
+            result.err()
+        );
         let diff = result.unwrap();
         assert_eq!(diff.len(), 1);
         match &diff.deltas[0] {
@@ -1204,7 +1473,8 @@ mod tests {
         let result = engine.move_unit(&state, uid, mountain);
         assert!(
             matches!(result, Err(RulesError::DestinationImpassable)),
-            "move to impassable tile should fail: {:?}", result
+            "move to impassable tile should fail: {:?}",
+            result
         );
         // State must be unaffected.
         assert_eq!(state.unit(uid).unwrap().coord, start);
@@ -1214,7 +1484,7 @@ mod tests {
     fn test_move_unit_partial_move() {
         let (mut state, civ_id) = make_state();
         let start = HexCoord::from_qr(0, 5);
-        let far   = HexCoord::from_qr(4, 5);
+        let far = HexCoord::from_qr(4, 5);
 
         // Budget = 150. Each Grassland tile costs 100.
         // Direct path (4 steps): total cost = 400. Unit can only do 1 step (100 <= 150).
@@ -1225,14 +1495,17 @@ mod tests {
 
         match result {
             Err(RulesError::InsufficientMovement(diff)) => {
-                assert!(!diff.is_empty(), "partial diff must record the move that occurred");
+                assert!(
+                    !diff.is_empty(),
+                    "partial diff must record the move that occurred"
+                );
                 match &diff.deltas[0] {
                     StateDelta::UnitMoved { unit, from, to, .. } => {
                         assert_eq!(*unit, uid);
                         assert_eq!(*from, start);
                         // Moved one step (100 <= 150) but not all four.
                         assert_ne!(*to, start, "unit must have moved at least one tile");
-                        assert_ne!(*to, far,   "unit must not have reached the destination");
+                        assert_ne!(*to, far, "unit must not have reached the destination");
                     }
                     other => panic!("unexpected delta: {:?}", other),
                 }
@@ -1250,20 +1523,26 @@ mod tests {
         // from Grassland). Adding 6 neighbors raises it to 14.
         let (mut state, civ_id) = make_state();
         let city_id = state.id_gen.next_city_id();
-        let coord   = HexCoord::from_qr(5, 5);
-        let city    = City::new(city_id, "TestCity".to_string(), civ_id, coord);
+        let coord = HexCoord::from_qr(5, 5);
+        let city = City::new(city_id, "TestCity".to_string(), civ_id, coord);
         state.cities.push(city);
 
         let engine = DefaultRulesEngine;
 
         // City center only: 2 food.
         let yields = engine.compute_yields(&state, civ_id);
-        assert_eq!(yields.food, 2, "only city center worked: 1 Grassland tile = 2 food");
+        assert_eq!(
+            yields.food, 2,
+            "only city center worked: 1 Grassland tile = 2 food"
+        );
 
         // Add the 6 neighbors manually.
         add_founding_tiles(state.cities.last_mut().unwrap());
         let yields = engine.compute_yields(&state, civ_id);
-        assert_eq!(yields.food, 14, "7 Grassland tiles (center + 6 neighbors) = 14 food");
+        assert_eq!(
+            yields.food, 14,
+            "7 Grassland tiles (center + 6 neighbors) = 14 food"
+        );
     }
 
     #[test]
@@ -1272,7 +1551,7 @@ mod tests {
 
         let (mut state, civ_id) = make_state();
         let city_id = state.id_gen.next_city_id();
-        let coord   = HexCoord::from_qr(5, 5);
+        let coord = HexCoord::from_qr(5, 5);
         let mut city = City::new(city_id, "TestCity".to_string(), civ_id, coord);
 
         // Place Iron (reveal_tech = "Bronze Working") on the city center tile.
@@ -1290,15 +1569,18 @@ mod tests {
         // Grassland base = 2 food, 0 science + 1 base science per city.
         // Iron adds 1 science but is gated by reveal tech.
         let base_science_per_city = 1;
-        assert_eq!(yields_no_tech.science, base_science_per_city, "Iron science must be suppressed without Bronze Working");
+        assert_eq!(
+            yields_no_tech.science, base_science_per_city,
+            "Iron science must be suppressed without Bronze Working"
+        );
 
         // "Grant" the civ a fake tech named "Bronze Working" by pushing a fake TechId.
         // Use a TechId whose node in the tech tree has name = "Bronze Working".
-        use crate::rules::tech::{TechNode};
+        use crate::rules::tech::TechNode;
         let tech_id = state.id_gen.next_ulid();
         let tech_id = crate::TechId::from_ulid(tech_id);
         state.tech_tree.add_node(TechNode {
-            id:   tech_id,
+            id: tech_id,
             name: "Bronze Working",
             cost: 100,
             prerequisites: vec![],
@@ -1306,13 +1588,20 @@ mod tests {
             eureka_description: "",
             eureka_effects: vec![],
         });
-        state.civilizations.iter_mut()
+        state
+            .civilizations
+            .iter_mut()
             .find(|c| c.id == civ_id)
             .unwrap()
-            .researched_techs.push(tech_id);
+            .researched_techs
+            .push(tech_id);
 
         let yields_with_tech = engine.compute_yields(&state, civ_id);
-        assert_eq!(yields_with_tech.science, base_science_per_city + 1, "Iron science visible after Bronze Working");
+        assert_eq!(
+            yields_with_tech.science,
+            base_science_per_city + 1,
+            "Iron science visible after Bronze Working"
+        );
     }
 
     #[test]
@@ -1328,14 +1617,20 @@ mod tests {
         let without = engine.compute_yields(&state, civ_id).science;
 
         // Grant the city a Library (resolved from the built-in registry).
-        let library_id = state.building_defs.iter()
+        let library_id = state
+            .building_defs
+            .iter()
             .find(|d| d.name == "Library")
             .expect("Library building def exists")
             .id;
         state.cities[0].buildings.push(library_id);
 
         let with = engine.compute_yields(&state, civ_id).science;
-        assert_eq!(with, without + 2, "Library must add its +2 Science to city yields");
+        assert_eq!(
+            with,
+            without + 2,
+            "Library must add its +2 Science to city yields"
+        );
     }
 
     #[test]
@@ -1355,7 +1650,9 @@ mod tests {
 
         // Found a religion with the Church Property belief and make it the
         // city's majority religion (population 1 => any follower is a majority).
-        let belief_id = state.belief_defs.iter()
+        let belief_id = state
+            .belief_defs
+            .iter()
             .find(|b| b.name == "Church Property")
             .expect("Church Property belief exists")
             .id;
@@ -1386,14 +1683,20 @@ mod tests {
 
         // Populate the wonder registry and mark the Great Library complete.
         state.wonder_defs = builtin_wonder_defs(&mut state.id_gen);
-        let great_library_id = state.wonder_defs.iter()
+        let great_library_id = state
+            .wonder_defs
+            .iter()
             .find(|w| w.name == "Great Library")
             .expect("Great Library wonder def exists")
             .id;
         state.cities[0].wonders.push(great_library_id);
 
         let after = engine.compute_yields(&state, civ_id).science;
-        assert_eq!(after, before + 4, "Great Library must add +4 Science once built");
+        assert_eq!(
+            after,
+            before + 4,
+            "Great Library must add +4 Science once built"
+        );
     }
 
     #[test]
@@ -1414,7 +1717,11 @@ mod tests {
         state.civilizations[0].era_age = EraAge::Dark;
         let dark = engine.compute_yields(&state, civ_id).culture;
 
-        assert_eq!(dark, normal - 2, "Dark Age must impose a -2 Culture penalty");
+        assert_eq!(
+            dark,
+            normal - 2,
+            "Dark Age must impose a -2 Culture penalty"
+        );
     }
 
     #[test]
@@ -1433,7 +1740,12 @@ mod tests {
         // Seoul, a scientific city-state owned by its own independent civ.
         let cs_civ_id = state.id_gen.next_civ_id();
         let cs_id = state.id_gen.next_city_id();
-        let mut seoul = City::new(cs_id, "Seoul".to_string(), cs_civ_id, HexCoord::from_qr(1, 1));
+        let mut seoul = City::new(
+            cs_id,
+            "Seoul".to_string(),
+            cs_civ_id,
+            HexCoord::from_qr(1, 1),
+        );
         seoul.kind = CityKind::CityState(CityStateData::new(CityStateType::Scientific));
         state.cities.push(seoul);
 
@@ -1447,7 +1759,11 @@ mod tests {
         }
 
         let after = engine.compute_yields(&state, civ_id).science;
-        assert_eq!(after, before + 3, "Seoul suzerain bonus must add +3 Science");
+        assert_eq!(
+            after,
+            before + 3,
+            "Seoul suzerain bonus must add +3 Science"
+        );
     }
 
     // ── compute_yields hardening / adversarial tests ──────────────────────────
@@ -1476,7 +1792,9 @@ mod tests {
             eureka_description: "",
             eureka_effects: vec![],
         });
-        state.civilizations.iter_mut()
+        state
+            .civilizations
+            .iter_mut()
             .find(|c| c.id == civ_id)
             .expect("civ exists")
             .researched_techs
@@ -1485,21 +1803,26 @@ mod tests {
 
     #[test]
     fn test_yield_hardening_wonder_self_referential_count() {
-        use crate::rules::modifier::{Condition, EffectType, Modifier, ModifierSource,
-            StackingRule, TargetSelector};
         use crate::game::state::WonderDef;
+        use crate::rules::modifier::{
+            Condition, EffectType, Modifier, ModifierSource, StackingRule, TargetSelector,
+        };
 
         // A wonder whose effect scales by the number of wonders the civ owns.
         // The self-referential count must terminate, read the wonder COUNT from
         // state (never recurse into yield calc), and fold the wonder's own effect
         // EXACTLY once — even though its id is duplicated in the city's list.
         let (mut state, civ_id) = make_state();
-        let mut city = City::new(state.id_gen.next_city_id(), "Rome".to_string(),
-            civ_id, HexCoord::from_qr(5, 5));
+        let mut city = City::new(
+            state.id_gen.next_city_id(),
+            "Rome".to_string(),
+            civ_id,
+            HexCoord::from_qr(5, 5),
+        );
 
         let w_scaling = crate::WonderId::from_ulid(state.id_gen.next_ulid());
-        let w_x       = crate::WonderId::from_ulid(state.id_gen.next_ulid());
-        let w_y       = crate::WonderId::from_ulid(state.id_gen.next_ulid());
+        let w_x = crate::WonderId::from_ulid(state.id_gen.next_ulid());
+        let w_y = crate::WonderId::from_ulid(state.id_gen.next_ulid());
         // Three distinct wonders; the scaling wonder appears TWICE.
         city.wonders = vec![w_scaling, w_x, w_y, w_scaling];
         state.cities.push(city);
@@ -1509,7 +1832,8 @@ mod tests {
             TargetSelector::Global,
             EffectType::YieldFlat(crate::YieldType::Production, 2),
             StackingRule::Additive,
-        ).with_condition(Condition::PerWonderOwned);
+        )
+        .with_condition(Condition::PerWonderOwned);
 
         for (id, name, effects) in [
             (w_scaling, "SelfCount", vec![scaling]),
@@ -1517,7 +1841,11 @@ mod tests {
             (w_y, "Y", vec![]),
         ] {
             state.wonder_defs.push(WonderDef {
-                id, name, production_cost: 0, era: None, effects,
+                id,
+                name,
+                production_cost: 0,
+                era: None,
+                effects,
             });
         }
 
@@ -1525,23 +1853,34 @@ mod tests {
         let with_effect = engine.compute_yields(&state, civ_id).production;
 
         // Strip the scaling wonder's effect to isolate its contribution.
-        state.wonder_defs.iter_mut()
-            .find(|w| w.id == w_scaling).unwrap()
-            .effects.clear();
+        state
+            .wonder_defs
+            .iter_mut()
+            .find(|w| w.id == w_scaling)
+            .unwrap()
+            .effects
+            .clear();
         let without_effect = engine.compute_yields(&state, civ_id).production;
 
         // 3 distinct wonders => Scale(3); +2 each => +6; folded ONCE (not +12).
-        assert_eq!(with_effect - without_effect, 6,
-            "wonder effect must be folded once and scaled by the distinct wonder count (3)");
+        assert_eq!(
+            with_effect - without_effect,
+            6,
+            "wonder effect must be folded once and scaled by the distinct wonder count (3)"
+        );
 
         // Recomputation is stable (deterministic, terminates).
-        assert_eq!(engine.compute_yields(&state, civ_id).production, without_effect);
+        assert_eq!(
+            engine.compute_yields(&state, civ_id).production,
+            without_effect
+        );
     }
 
     #[test]
     fn test_yield_hardening_feedback_modifier_no_divergence() {
-        use crate::rules::modifier::{EffectType, Modifier, ModifierSource,
-            StackingRule, TargetSelector};
+        use crate::rules::modifier::{
+            EffectType, Modifier, ModifierSource, StackingRule, TargetSelector,
+        };
 
         // A percentage modifier that contributes to the very yield it scales must
         // resolve over the FROZEN base captured before any modifier is applied.
@@ -1549,8 +1888,12 @@ mod tests {
         // modifier can never read the yield it contributes to; the result is
         // exactly base + 100% (single pass), never runaway feedback.
         let (mut state, civ_id) = make_state();
-        let mut city = City::new(state.id_gen.next_city_id(), "Rome".to_string(),
-            civ_id, HexCoord::from_qr(5, 5));
+        let mut city = City::new(
+            state.id_gen.next_city_id(),
+            "Rome".to_string(),
+            civ_id,
+            HexCoord::from_qr(5, 5),
+        );
         add_founding_tiles(&mut city); // 7 Grassland => 14 base food
         state.cities.push(city);
 
@@ -1558,31 +1901,43 @@ mod tests {
         let base = engine.compute_yields(&state, civ_id).food;
         assert!(base > 0, "sanity: base food must be non-zero");
 
-        grant_civ_modifier(&mut state, civ_id, Modifier::new(
-            ModifierSource::Custom("feedback"),
-            TargetSelector::Global,
-            EffectType::YieldPercent(crate::YieldType::Food, 100),
-            StackingRule::Additive,
-        ));
+        grant_civ_modifier(
+            &mut state,
+            civ_id,
+            Modifier::new(
+                ModifierSource::Custom("feedback"),
+                TargetSelector::Global,
+                EffectType::YieldPercent(crate::YieldType::Food, 100),
+                StackingRule::Additive,
+            ),
+        );
 
         let boosted = engine.compute_yields(&state, civ_id).food;
-        assert_eq!(boosted, base * 2,
-            "percent modifier must apply once over the frozen base (base={base}), not diverge");
+        assert_eq!(
+            boosted,
+            base * 2,
+            "percent modifier must apply once over the frozen base (base={base}), not diverge"
+        );
     }
 
     #[test]
     fn test_yield_hardening_suzerain_condition_terminates_without_recursion() {
         use crate::civ::city::CityKind;
         use crate::civ::city_state::{CityStateData, CityStateType};
-        use crate::rules::modifier::{Condition, EffectType, Modifier, ModifierSource,
-            StackingRule, TargetSelector};
+        use crate::rules::modifier::{
+            Condition, EffectType, Modifier, ModifierSource, StackingRule, TargetSelector,
+        };
 
         // A cross-entity per-city condition (PerCityStateSuzerain) evaluated during
         // the civ's yield calc must read state COUNTS only — never trigger a nested
         // compute_yields — and terminate with a correct single count.
         let (mut state, civ_id) = make_state();
-        let mut home = City::new(state.id_gen.next_city_id(), "Home".to_string(),
-            civ_id, HexCoord::from_qr(5, 5));
+        let mut home = City::new(
+            state.id_gen.next_city_id(),
+            "Home".to_string(),
+            civ_id,
+            HexCoord::from_qr(5, 5),
+        );
         add_founding_tiles(&mut home);
         state.cities.push(home);
 
@@ -1593,8 +1948,12 @@ mod tests {
         for (name, q) in [("TestCS_A", 1), ("TestCS_B", 8)] {
             let mut cs = CityStateData::new(CityStateType::Scientific);
             cs.suzerain = Some(civ_id);
-            let mut cs_city = City::new(state.id_gen.next_city_id(), name.to_string(),
-                cs_civ, HexCoord::from_qr(q, q));
+            let mut cs_city = City::new(
+                state.id_gen.next_city_id(),
+                name.to_string(),
+                cs_civ,
+                HexCoord::from_qr(q, q),
+            );
             cs_city.kind = CityKind::CityState(cs);
             state.cities.push(cs_city);
         }
@@ -1602,17 +1961,25 @@ mod tests {
         let engine = DefaultRulesEngine;
         let base_science = engine.compute_yields(&state, civ_id).science;
 
-        grant_civ_modifier(&mut state, civ_id, Modifier::new(
-            ModifierSource::Custom("suzerain_scaled"),
-            TargetSelector::Global,
-            EffectType::YieldFlat(crate::YieldType::Science, 3),
-            StackingRule::Additive,
-        ).with_condition(Condition::PerCityStateSuzerain));
+        grant_civ_modifier(
+            &mut state,
+            civ_id,
+            Modifier::new(
+                ModifierSource::Custom("suzerain_scaled"),
+                TargetSelector::Global,
+                EffectType::YieldFlat(crate::YieldType::Science, 3),
+                StackingRule::Additive,
+            )
+            .with_condition(Condition::PerCityStateSuzerain),
+        );
 
         let scaled = engine.compute_yields(&state, civ_id).science;
         // 2 suzerained city-states => +3 each => +6, and the call terminates.
-        assert_eq!(scaled - base_science, 6,
-            "suzerain-scaled science must terminate and count each suzerain exactly once");
+        assert_eq!(
+            scaled - base_science,
+            6,
+            "suzerain-scaled science must terminate and count each suzerain exactly once"
+        );
     }
 
     #[test]
@@ -1623,17 +1990,29 @@ mod tests {
         let (mut state, civ_id) = make_state();
 
         let shared = HexCoord::from_qr(5, 6);
-        let mut city_a = City::new(state.id_gen.next_city_id(), "A".to_string(),
-            civ_id, HexCoord::from_qr(5, 5));
-        let mut city_b = City::new(state.id_gen.next_city_id(), "B".to_string(),
-            civ_id, HexCoord::from_qr(6, 6));
+        let mut city_a = City::new(
+            state.id_gen.next_city_id(),
+            "A".to_string(),
+            civ_id,
+            HexCoord::from_qr(5, 5),
+        );
+        let mut city_b = City::new(
+            state.id_gen.next_city_id(),
+            "B".to_string(),
+            civ_id,
+            HexCoord::from_qr(6, 6),
+        );
         // Both cities work ONLY the shared tile (overrides the default center).
         city_a.worked_tiles = vec![shared];
         city_b.worked_tiles = vec![shared];
 
         // Duplicate a Library (+2 Science) in city A's building list.
-        let library_id = state.building_defs.iter()
-            .find(|d| d.name == "Library").expect("Library def exists").id;
+        let library_id = state
+            .building_defs
+            .iter()
+            .find(|d| d.name == "Library")
+            .expect("Library def exists")
+            .id;
         city_a.buildings = vec![library_id, library_id];
 
         state.cities.push(city_a);
@@ -1643,11 +2022,17 @@ mod tests {
         let y = engine.compute_yields(&state, civ_id);
 
         // Shared Grassland tile => 2 food, counted ONCE (not 4).
-        assert_eq!(y.food, 2, "a tile worked by two cities must be counted once");
+        assert_eq!(
+            y.food, 2,
+            "a tile worked by two cities must be counted once"
+        );
         // Library +2 Science, counted ONCE (not +4), plus 1 base science per city
         // (2 cities => 2).
-        assert_eq!(y.science, 2 + 2,
-            "a building listed twice must be counted once (base 2 per-city + 2 Library)");
+        assert_eq!(
+            y.science,
+            2 + 2,
+            "a building listed twice must be counted once (base 2 per-city + 2 Library)"
+        );
     }
 
     // ── advance_turn tests ────────────────────────────────────────────────────
@@ -1656,7 +2041,7 @@ mod tests {
     fn test_advance_turn_population_grows() {
         let (mut state, civ_id) = make_state();
         let city_id = state.id_gen.next_city_id();
-        let coord   = HexCoord::from_qr(5, 5);
+        let coord = HexCoord::from_qr(5, 5);
         let mut city = City::new(city_id, "TestCity".to_string(), civ_id, coord);
         // Give the city 7 worked tiles so it produces 14 food/turn.
         add_founding_tiles(&mut city);
@@ -1669,10 +2054,18 @@ mod tests {
 
         let diff1 = engine.advance_turn(&mut state);
         assert_eq!(state.cities[0].population, 1, "no growth after turn 1");
-        assert!(!diff1.deltas.iter().any(|d| matches!(d, StateDelta::PopulationGrew { .. })));
+        assert!(
+            !diff1
+                .deltas
+                .iter()
+                .any(|d| matches!(d, StateDelta::PopulationGrew { .. }))
+        );
 
         let diff2 = engine.advance_turn(&mut state);
-        assert_eq!(state.cities[0].population, 2, "population should grow after turn 2");
+        assert_eq!(
+            state.cities[0].population, 2,
+            "population should grow after turn 2"
+        );
         assert!(diff2.deltas.iter().any(|d| matches!(
             d,
             StateDelta::PopulationGrew { city, new_population: 2 } if *city == city_id
@@ -1684,7 +2077,7 @@ mod tests {
         // When a city grows, a new worked tile should be auto-assigned.
         let (mut state, civ_id) = make_state();
         let city_id = state.id_gen.next_city_id();
-        let coord   = HexCoord::from_qr(5, 5);
+        let coord = HexCoord::from_qr(5, 5);
         let mut city = City::new(city_id, "TestCity".to_string(), civ_id, coord);
         add_founding_tiles(&mut city);
         state.cities.push(city);
@@ -1721,8 +2114,8 @@ mod tests {
         // production_stored does not change on tiles with no production yield.
         let (mut state, civ_id) = make_state();
         let city_id = state.id_gen.next_city_id();
-        let coord   = HexCoord::from_qr(3, 3);
-        let city    = City::new(city_id, "Forge".to_string(), civ_id, coord);
+        let coord = HexCoord::from_qr(3, 3);
+        let city = City::new(city_id, "Forge".to_string(), civ_id, coord);
         state.cities.push(city);
 
         let engine = DefaultRulesEngine;
@@ -1738,8 +2131,8 @@ mod tests {
     fn test_assign_citizen_adds_worked_tile() {
         let (mut state, civ_id) = make_state();
         let city_id = state.id_gen.next_city_id();
-        let coord   = HexCoord::from_qr(5, 5);
-        let city    = City::new(city_id, "TestCity".to_string(), civ_id, coord);
+        let coord = HexCoord::from_qr(5, 5);
+        let city = City::new(city_id, "TestCity".to_string(), civ_id, coord);
         state.cities.push(city);
 
         let engine = DefaultRulesEngine;
@@ -1749,25 +2142,34 @@ mod tests {
         assert!(result.is_ok(), "assign should succeed: {:?}", result);
 
         let city = state.cities.iter().find(|c| c.id == city_id).unwrap();
-        assert!(city.worked_tiles.contains(&neighbor), "neighbor added to worked_tiles");
+        assert!(
+            city.worked_tiles.contains(&neighbor),
+            "neighbor added to worked_tiles"
+        );
         assert!(!city.locked_tiles.contains(&neighbor), "not locked");
 
         let diff = result.unwrap();
-        assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::CitizenAssigned { .. })));
+        assert!(
+            diff.deltas
+                .iter()
+                .any(|d| matches!(d, StateDelta::CitizenAssigned { .. }))
+        );
     }
 
     #[test]
     fn test_assign_citizen_lock_persists() {
         let (mut state, civ_id) = make_state();
         let city_id = state.id_gen.next_city_id();
-        let coord   = HexCoord::from_qr(5, 5);
-        let city    = City::new(city_id, "TestCity".to_string(), civ_id, coord);
+        let coord = HexCoord::from_qr(5, 5);
+        let city = City::new(city_id, "TestCity".to_string(), civ_id, coord);
         state.cities.push(city);
 
         let engine = DefaultRulesEngine;
         let neighbor = HexCoord::from_qr(5, 6); // one step SE
 
-        engine.assign_citizen(&mut state, city_id, neighbor, true).unwrap();
+        engine
+            .assign_citizen(&mut state, city_id, neighbor, true)
+            .unwrap();
         let city = state.cities.iter().find(|c| c.id == city_id).unwrap();
         assert!(city.locked_tiles.contains(&neighbor), "tile is locked");
     }
@@ -1776,15 +2178,18 @@ mod tests {
     fn test_assign_citizen_out_of_range_fails() {
         let (mut state, civ_id) = make_state();
         let city_id = state.id_gen.next_city_id();
-        let coord   = HexCoord::from_qr(5, 5);
-        let city    = City::new(city_id, "TestCity".to_string(), civ_id, coord);
+        let coord = HexCoord::from_qr(5, 5);
+        let city = City::new(city_id, "TestCity".to_string(), civ_id, coord);
         state.cities.push(city);
 
         let engine = DefaultRulesEngine;
         // 4 hexes away -- out of the 3-tile working radius.
         let far = HexCoord::from_qr(9, 5);
         let result = engine.assign_citizen(&mut state, city_id, far, false);
-        assert!(matches!(result, Err(RulesError::InvalidCoord)), "out-of-range tile should fail");
+        assert!(
+            matches!(result, Err(RulesError::InvalidCoord)),
+            "out-of-range tile should fail"
+        );
     }
 
     // ── capital() method test ─────────────────────────────────────────────────
@@ -1822,18 +2227,44 @@ mod tests {
         // Set up two techs in the tree.
         let tid1 = crate::TechId::from_ulid(state.id_gen.next_ulid());
         let tid2 = crate::TechId::from_ulid(state.id_gen.next_ulid());
-        state.tech_tree.add_node(TechNode { id: tid1, name: "Pottery", cost: 25,
-            prerequisites: vec![], effects: vec![], eureka_description: "", eureka_effects: vec![] });
-        state.tech_tree.add_node(TechNode { id: tid2, name: "Animal Husbandry", cost: 25,
-            prerequisites: vec![], effects: vec![], eureka_description: "", eureka_effects: vec![] });
+        state.tech_tree.add_node(TechNode {
+            id: tid1,
+            name: "Pottery",
+            cost: 25,
+            prerequisites: vec![],
+            effects: vec![],
+            eureka_description: "",
+            eureka_effects: vec![],
+        });
+        state.tech_tree.add_node(TechNode {
+            id: tid2,
+            name: "Animal Husbandry",
+            cost: 25,
+            prerequisites: vec![],
+            effects: vec![],
+            eureka_description: "",
+            eureka_effects: vec![],
+        });
 
         // Aluminum gives 1 science but requires "Refining". Add Refining to
         // researched_techs so it is ungated, then place Aluminum on the city tile.
         let tid_refining = crate::TechId::from_ulid(state.id_gen.next_ulid());
-        state.tech_tree.add_node(TechNode { id: tid_refining, name: "Refining", cost: 9999,
-            prerequisites: vec![], effects: vec![], eureka_description: "", eureka_effects: vec![] });
-        state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap()
-            .researched_techs.push(tid_refining);
+        state.tech_tree.add_node(TechNode {
+            id: tid_refining,
+            name: "Refining",
+            cost: 9999,
+            prerequisites: vec![],
+            effects: vec![],
+            eureka_description: "",
+            eureka_effects: vec![],
+        });
+        state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap()
+            .researched_techs
+            .push(tid_refining);
 
         let coord = HexCoord::from_qr(1, 1);
         if let Some(tile) = state.board.tile_mut(coord) {
@@ -1846,9 +2277,21 @@ mod tests {
         state.cities.push(city);
 
         // Queue both techs; first one needs just 1 more science to complete.
-        let civ = state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap();
-        civ.research_queue.push_back(TechProgress { tech_id: tid1, progress: 24, boosted: false });
-        civ.research_queue.push_back(TechProgress { tech_id: tid2, progress: 0, boosted: false });
+        let civ = state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap();
+        civ.research_queue.push_back(TechProgress {
+            tech_id: tid1,
+            progress: 24,
+            boosted: false,
+        });
+        civ.research_queue.push_back(TechProgress {
+            tech_id: tid2,
+            progress: 0,
+            boosted: false,
+        });
 
         let engine = DefaultRulesEngine;
         let diff = engine.advance_turn(&mut state);
@@ -1857,18 +2300,29 @@ mod tests {
         let civ = state.civilizations.iter().find(|c| c.id == civ_id).unwrap();
         assert!(civ.researched_techs.contains(&tid1), "first tech completed");
         assert_eq!(civ.research_queue.len(), 1, "second tech still queued");
-        assert_eq!(civ.research_queue.front().unwrap().tech_id, tid2, "second tech is now front");
+        assert_eq!(
+            civ.research_queue.front().unwrap().tech_id,
+            tid2,
+            "second tech is now front"
+        );
 
-        assert!(diff.deltas.iter().any(|d| matches!(
-            d, StateDelta::TechResearched { tech: "Pottery", .. }
-        )), "TechResearched delta emitted");
+        assert!(
+            diff.deltas.iter().any(|d| matches!(
+                d,
+                StateDelta::TechResearched {
+                    tech: "Pottery",
+                    ..
+                }
+            )),
+            "TechResearched delta emitted"
+        );
     }
 
     // ── assign_policy tests ───────────────────────────────────────────────────
 
     fn make_state_with_govt() -> (GameState, CivId) {
-        use crate::rules::policy::{Government, PolicySlots};
         use crate::GovernmentId;
+        use crate::rules::policy::{Government, PolicySlots};
 
         let (mut state, civ_id) = make_state();
 
@@ -1878,14 +2332,23 @@ mod tests {
             name: "Autocracy",
             era: crate::AgeType::Classical,
             prereq_civic: "Political Philosophy",
-            slots: PolicySlots { military: 1, economic: 1, diplomatic: 0, wildcard: 0 },
+            slots: PolicySlots {
+                military: 1,
+                economic: 1,
+                diplomatic: 0,
+                wildcard: 0,
+            },
             inherent_modifiers: vec![],
             legacy_bonus: None,
         };
         state.governments.push(gov);
 
         // Adopt the government on the civ.
-        let civ = state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap();
+        let civ = state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap();
         civ.current_government = Some(gov_id);
         civ.current_government_name = Some("Autocracy");
 
@@ -1910,17 +2373,29 @@ mod tests {
         });
 
         // Unlock the policy for the civ.
-        state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap()
-            .unlocked_policies.push("Strategos");
+        state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap()
+            .unlocked_policies
+            .push("Strategos");
 
         let result = engine.assign_policy(&mut state, civ_id, pol_id);
         assert!(result.is_ok(), "assign_policy should succeed: {:?}", result);
 
         let civ = state.civilizations.iter().find(|c| c.id == civ_id).unwrap();
-        assert!(civ.active_policies.contains(&pol_id), "policy is now active");
+        assert!(
+            civ.active_policies.contains(&pol_id),
+            "policy is now active"
+        );
 
         let diff = result.unwrap();
-        assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::PolicyAssigned { .. })));
+        assert!(
+            diff.deltas
+                .iter()
+                .any(|d| matches!(d, StateDelta::PolicyAssigned { .. }))
+        );
     }
 
     #[test]
@@ -1944,7 +2419,8 @@ mod tests {
         let result = engine.assign_policy(&mut state, civ_id, pol_id);
         assert!(
             matches!(result, Err(RulesError::PolicyNotUnlocked)),
-            "unlocked check should fail: {:?}", result
+            "unlocked check should fail: {:?}",
+            result
         );
     }
 
@@ -1958,16 +2434,28 @@ mod tests {
         // Fill the one military slot.
         let pol1_id = crate::PolicyId::from_ulid(state.id_gen.next_ulid());
         state.policies.push(Policy {
-            id: pol1_id, name: "First", policy_type: PolicyType::Military,
-            prereq_civic: "Code of Laws", modifiers: vec![], maintenance: 0,
+            id: pol1_id,
+            name: "First",
+            policy_type: PolicyType::Military,
+            prereq_civic: "Code of Laws",
+            modifiers: vec![],
+            maintenance: 0,
         });
         let pol2_id = crate::PolicyId::from_ulid(state.id_gen.next_ulid());
         state.policies.push(Policy {
-            id: pol2_id, name: "Second", policy_type: PolicyType::Military,
-            prereq_civic: "Code of Laws", modifiers: vec![], maintenance: 0,
+            id: pol2_id,
+            name: "Second",
+            policy_type: PolicyType::Military,
+            prereq_civic: "Code of Laws",
+            modifiers: vec![],
+            maintenance: 0,
         });
 
-        let civ = state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap();
+        let civ = state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap();
         civ.unlocked_policies.push("First");
         civ.unlocked_policies.push("Second");
         civ.active_policies.push(pol1_id); // slot already used
@@ -1975,7 +2463,8 @@ mod tests {
         let result = engine.assign_policy(&mut state, civ_id, pol2_id);
         assert!(
             matches!(result, Err(RulesError::InsufficientPolicySlots)),
-            "slot check should fail: {:?}", result
+            "slot check should fail: {:?}",
+            result
         );
     }
 
@@ -1988,50 +2477,97 @@ mod tests {
 
         let pol_id = crate::PolicyId::from_ulid(state.id_gen.next_ulid());
         state.policies.push(Policy {
-            id: pol_id, name: "Free", policy_type: PolicyType::Economic,
-            prereq_civic: "Code of Laws", modifiers: vec![], maintenance: 0,
+            id: pol_id,
+            name: "Free",
+            policy_type: PolicyType::Economic,
+            prereq_civic: "Code of Laws",
+            modifiers: vec![],
+            maintenance: 0,
         });
-        state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap()
-            .unlocked_policies.push("Free");
+        state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap()
+            .unlocked_policies
+            .push("Free");
 
         // No government adopted; current_government is None.
         let result = engine.assign_policy(&mut state, civ_id, pol_id);
-        assert!(matches!(result, Err(RulesError::NoGovernment)), "{:?}", result);
+        assert!(
+            matches!(result, Err(RulesError::NoGovernment)),
+            "{:?}",
+            result
+        );
     }
 
     // ── AdoptGovernment tests ─────────────────────────────────────────────────
 
     #[test]
     fn test_adopt_government_sets_id_and_evicts_policies() {
-        use crate::rules::policy::{Government, Policy, PolicySlots};
         use crate::GovernmentId;
+        use crate::rules::policy::{Government, Policy, PolicySlots};
 
         let (mut state, civ_id) = make_state();
 
         // Old government: 2 military slots.
         let old_gov_id = GovernmentId::from_ulid(state.id_gen.next_ulid());
         state.governments.push(Government {
-            id: old_gov_id, name: "OldGov",
-            era: crate::AgeType::Ancient, prereq_civic: "Code of Laws",
-            slots: PolicySlots { military: 2, economic: 0, diplomatic: 0, wildcard: 0 },
-            inherent_modifiers: vec![], legacy_bonus: None,
+            id: old_gov_id,
+            name: "OldGov",
+            era: crate::AgeType::Ancient,
+            prereq_civic: "Code of Laws",
+            slots: PolicySlots {
+                military: 2,
+                economic: 0,
+                diplomatic: 0,
+                wildcard: 0,
+            },
+            inherent_modifiers: vec![],
+            legacy_bonus: None,
         });
 
         // New government: only 1 military slot.
         let new_gov_id = GovernmentId::from_ulid(state.id_gen.next_ulid());
         state.governments.push(Government {
-            id: new_gov_id, name: "NewGov",
-            era: crate::AgeType::Classical, prereq_civic: "Political Philosophy",
-            slots: PolicySlots { military: 1, economic: 0, diplomatic: 0, wildcard: 0 },
-            inherent_modifiers: vec![], legacy_bonus: None,
+            id: new_gov_id,
+            name: "NewGov",
+            era: crate::AgeType::Classical,
+            prereq_civic: "Political Philosophy",
+            slots: PolicySlots {
+                military: 1,
+                economic: 0,
+                diplomatic: 0,
+                wildcard: 0,
+            },
+            inherent_modifiers: vec![],
+            legacy_bonus: None,
         });
 
         let pol1_id = crate::PolicyId::from_ulid(state.id_gen.next_ulid());
         let pol2_id = crate::PolicyId::from_ulid(state.id_gen.next_ulid());
-        state.policies.push(Policy { id: pol1_id, name: "Pol1", policy_type: PolicyType::Military, prereq_civic: "Code of Laws", modifiers: vec![], maintenance: 0 });
-        state.policies.push(Policy { id: pol2_id, name: "Pol2", policy_type: PolicyType::Military, prereq_civic: "Code of Laws", modifiers: vec![], maintenance: 0 });
+        state.policies.push(Policy {
+            id: pol1_id,
+            name: "Pol1",
+            policy_type: PolicyType::Military,
+            prereq_civic: "Code of Laws",
+            modifiers: vec![],
+            maintenance: 0,
+        });
+        state.policies.push(Policy {
+            id: pol2_id,
+            name: "Pol2",
+            policy_type: PolicyType::Military,
+            prereq_civic: "Code of Laws",
+            modifiers: vec![],
+            maintenance: 0,
+        });
 
-        let civ = state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap();
+        let civ = state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap();
         civ.current_government = Some(old_gov_id);
         civ.current_government_name = Some("OldGov");
         civ.active_policies = vec![pol1_id, pol2_id]; // 2 policies in old govt
@@ -2043,14 +2579,26 @@ mod tests {
 
         let civ = state.civilizations.iter().find(|c| c.id == civ_id).unwrap();
         // New government ID set.
-        assert_eq!(civ.current_government, Some(new_gov_id), "current_government updated");
+        assert_eq!(
+            civ.current_government,
+            Some(new_gov_id),
+            "current_government updated"
+        );
         // Only 1 military slot: one policy kept, one evicted.
         assert_eq!(civ.active_policies.len(), 1, "one policy evicted");
         // PolicyUnslotted delta emitted for the removed policy.
-        assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::PolicyUnslotted { .. })),
-            "PolicyUnslotted delta required");
-        assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::GovernmentAdopted { .. })),
-            "GovernmentAdopted delta required");
+        assert!(
+            diff.deltas
+                .iter()
+                .any(|d| matches!(d, StateDelta::PolicyUnslotted { .. })),
+            "PolicyUnslotted delta required"
+        );
+        assert!(
+            diff.deltas
+                .iter()
+                .any(|d| matches!(d, StateDelta::GovernmentAdopted { .. })),
+            "GovernmentAdopted delta required"
+        );
     }
 
     // ── FreeUnit registry tests ───────────────────────────────────────────────
@@ -2077,20 +2625,30 @@ mod tests {
             vision_range: 2,
             can_found_city: false,
             resource_cost: None,
-            siege_bonus: 0, max_charges: 0,
-            exclusive_to: None, replaces: None, era: None,
+            siege_bonus: 0,
+            max_charges: 0,
+            exclusive_to: None,
+            replaces: None,
+            era: None,
             promotion_class: None,
         });
 
-        let effect = OneShotEffect::FreeUnit { unit_type: "Warrior", city: None };
+        let effect = OneShotEffect::FreeUnit {
+            unit_type: "Warrior",
+            city: None,
+        };
         let mut diff = GameStateDiff::new();
         apply_effect(&mut state, civ_id, &effect, &mut diff);
 
         assert_eq!(state.units.len(), 1, "one unit spawned");
         assert_eq!(state.units[0].owner, civ_id);
         assert_eq!(state.units[0].max_movement, 200);
-        assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitCreated { .. })),
-            "UnitCreated delta expected");
+        assert!(
+            diff.deltas
+                .iter()
+                .any(|d| matches!(d, StateDelta::UnitCreated { .. })),
+            "UnitCreated delta expected"
+        );
     }
 
     #[test]
@@ -2099,13 +2657,20 @@ mod tests {
         // Clear builtin unit_type_defs so no matching type is found.
         state.unit_type_defs.clear();
 
-        let effect = OneShotEffect::FreeUnit { unit_type: "Catapult", city: None };
+        let effect = OneShotEffect::FreeUnit {
+            unit_type: "Catapult",
+            city: None,
+        };
         let mut diff = GameStateDiff::new();
         apply_effect(&mut state, civ_id, &effect, &mut diff);
 
         assert_eq!(state.units.len(), 0, "no unit created without registry");
-        assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::FreeUnitGranted { .. })),
-            "placeholder delta expected");
+        assert!(
+            diff.deltas
+                .iter()
+                .any(|d| matches!(d, StateDelta::FreeUnitGranted { .. })),
+            "placeholder delta expected"
+        );
     }
 
     // ── war_weariness modifier test ───────────────────────────────────────────
@@ -2135,7 +2700,8 @@ mod tests {
         assert!(
             yields_war.culture < yields_peace.culture,
             "war weariness should reduce culture (peace={}, war={})",
-            yields_peace.culture, yields_war.culture
+            yields_peace.culture,
+            yields_war.culture
         );
         assert!(
             yields_war.amenities < yields_peace.amenities,
@@ -2149,8 +2715,12 @@ mod tests {
         let mut state = GameState::new(77, 10, 10);
         let a = state.id_gen.next_civ_id();
         let b = state.id_gen.next_civ_id();
-        state.civilizations.push(Civilization::new(a, "CivA", "A", test_leader(a)));
-        state.civilizations.push(Civilization::new(b, "CivB", "B", test_leader(b)));
+        state
+            .civilizations
+            .push(Civilization::new(a, "CivA", "A", test_leader(a)));
+        state
+            .civilizations
+            .push(Civilization::new(b, "CivB", "B", test_leader(b)));
         (state, a, b)
     }
 
@@ -2164,20 +2734,36 @@ mod tests {
         let diff = engine.declare_war(&mut state, a, b).unwrap();
 
         // Status is War.
-        let rel = state.diplomatic_relations.iter()
+        let rel = state
+            .diplomatic_relations
+            .iter()
             .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
             .unwrap();
         assert_eq!(rel.status, DiplomaticStatus::War);
 
         // Grievance recorded for the target (b against a = a declared war).
-        let total_grievance: i32 = rel.grievances_b_against_a.iter().map(|g| g.amount).sum::<i32>()
-            + rel.grievances_a_against_b.iter().map(|g| g.amount).sum::<i32>();
-        assert_eq!(total_grievance, 30, "DeclaredWarGrievance amount should be 30");
+        let total_grievance: i32 = rel
+            .grievances_b_against_a
+            .iter()
+            .map(|g| g.amount)
+            .sum::<i32>()
+            + rel
+                .grievances_a_against_b
+                .iter()
+                .map(|g| g.amount)
+                .sum::<i32>();
+        assert_eq!(
+            total_grievance, 30,
+            "DeclaredWarGrievance amount should be 30"
+        );
 
         // DiplomacyChanged delta emitted.
         assert!(diff.deltas.iter().any(|d| matches!(
             d,
-            StateDelta::DiplomacyChanged { new_status: DiplomaticStatus::War, .. }
+            StateDelta::DiplomacyChanged {
+                new_status: DiplomaticStatus::War,
+                ..
+            }
         )));
     }
 
@@ -2210,13 +2796,23 @@ mod tests {
         engine.declare_war(&mut state, a, b).unwrap();
         let diff = engine.make_peace(&mut state, a, b).unwrap();
 
-        let rel = state.diplomatic_relations.iter()
+        let rel = state
+            .diplomatic_relations
+            .iter()
             .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
             .unwrap();
-        assert_ne!(rel.status, DiplomaticStatus::War, "status should no longer be War");
+        assert_ne!(
+            rel.status,
+            DiplomaticStatus::War,
+            "status should no longer be War"
+        );
         assert_eq!(rel.turns_at_war, 0, "turns_at_war should reset to 0");
 
-        assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::DiplomacyChanged { .. })));
+        assert!(
+            diff.deltas
+                .iter()
+                .any(|d| matches!(d, StateDelta::DiplomacyChanged { .. }))
+        );
     }
 
     #[test]
@@ -2224,7 +2820,9 @@ mod tests {
         let (mut state, a, b) = make_two_civ_state();
         let engine = DefaultRulesEngine;
         // Create a neutral relation.
-        state.diplomatic_relations.push(DiplomaticRelation::new(a, b));
+        state
+            .diplomatic_relations
+            .push(DiplomaticRelation::new(a, b));
 
         let err = engine.make_peace(&mut state, a, b).unwrap_err();
         assert!(matches!(err, RulesError::NotAtWar));
@@ -2261,10 +2859,15 @@ mod tests {
         engine.advance_turn(&mut state);
         engine.advance_turn(&mut state);
 
-        let rel = state.diplomatic_relations.iter()
+        let rel = state
+            .diplomatic_relations
+            .iter()
             .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
             .unwrap();
-        assert!(rel.grievances_a_against_b.is_empty(), "decayed grievance should be removed");
+        assert!(
+            rel.grievances_a_against_b.is_empty(),
+            "decayed grievance should be removed"
+        );
     }
 
     #[test]
@@ -2276,7 +2879,9 @@ mod tests {
 
         // Add a large grievance so War status persists.
         let gid = state.id_gen.next_grievance_id();
-        if let Some(rel) = state.diplomatic_relations.iter_mut()
+        if let Some(rel) = state
+            .diplomatic_relations
+            .iter_mut()
             .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
         {
             rel.grievances_b_against_a.push(GrievanceRecord {
@@ -2291,11 +2896,20 @@ mod tests {
         engine.advance_turn(&mut state);
         engine.advance_turn(&mut state);
 
-        let rel = state.diplomatic_relations.iter()
+        let rel = state
+            .diplomatic_relations
+            .iter()
             .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
             .unwrap();
-        assert_eq!(rel.turns_at_war, 2, "turns_at_war should increment each turn while at war");
-        assert_eq!(rel.status, DiplomaticStatus::War, "war should persist with large grievances");
+        assert_eq!(
+            rel.turns_at_war, 2,
+            "turns_at_war should increment each turn while at war"
+        );
+        assert_eq!(
+            rel.status,
+            DiplomaticStatus::War,
+            "war should persist with large grievances"
+        );
     }
 
     // ── 7.2: Opinion-based auto-transition ──────────────────────────────────
@@ -2307,7 +2921,10 @@ mod tests {
 
         // Two-sided grievances: combined score = (-25 + -25) / 2 = -25 < -20 => Denounced.
         let mut rel = DiplomaticRelation::new(a, b);
-        let (gid1, gid2) = (state.id_gen.next_grievance_id(), state.id_gen.next_grievance_id());
+        let (gid1, gid2) = (
+            state.id_gen.next_grievance_id(),
+            state.id_gen.next_grievance_id(),
+        );
         rel.grievances_a_against_b.push(GrievanceRecord {
             grievance_id: gid1,
             description: "large grievance A",
@@ -2327,7 +2944,9 @@ mod tests {
         // One advance_turn triggers Phase 5 recomputation.
         let diff = engine.advance_turn(&mut state);
 
-        let rel = state.diplomatic_relations.iter()
+        let rel = state
+            .diplomatic_relations
+            .iter()
             .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
             .unwrap();
         assert_eq!(rel.status, DiplomaticStatus::Denounced);
@@ -2335,7 +2954,10 @@ mod tests {
         // DiplomacyChanged delta emitted.
         assert!(diff.deltas.iter().any(|d| matches!(
             d,
-            StateDelta::DiplomacyChanged { new_status: DiplomaticStatus::Denounced, .. }
+            StateDelta::DiplomacyChanged {
+                new_status: DiplomaticStatus::Denounced,
+                ..
+            }
         )));
     }
 
@@ -2348,7 +2970,9 @@ mod tests {
 
         // Pump opinion far below -50 so War sticks.
         let gid = state.id_gen.next_grievance_id();
-        if let Some(rel) = state.diplomatic_relations.iter_mut()
+        if let Some(rel) = state
+            .diplomatic_relations
+            .iter_mut()
             .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
         {
             rel.grievances_b_against_a.push(GrievanceRecord {
@@ -2361,10 +2985,16 @@ mod tests {
         }
         engine.advance_turn(&mut state);
 
-        let rel = state.diplomatic_relations.iter()
+        let rel = state
+            .diplomatic_relations
+            .iter()
             .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
             .unwrap();
-        assert_eq!(rel.status, DiplomaticStatus::War, "war must persist when score < -50");
+        assert_eq!(
+            rel.status,
+            DiplomaticStatus::War,
+            "war must persist when score < -50"
+        );
     }
 
     #[test]
@@ -2380,27 +3010,38 @@ mod tests {
             engine.advance_turn(&mut state);
         }
 
-        let rel = state.diplomatic_relations.iter()
+        let rel = state
+            .diplomatic_relations
+            .iter()
             .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
             .unwrap();
-        assert_eq!(rel.status, DiplomaticStatus::War,
-            "war should persist until make_peace is called (got {:?})", rel.status);
+        assert_eq!(
+            rel.status,
+            DiplomaticStatus::War,
+            "war should persist until make_peace is called (got {:?})",
+            rel.status
+        );
 
         // Now make peace — status should change.
         engine.make_peace(&mut state, a, b).unwrap();
-        let rel = state.diplomatic_relations.iter()
+        let rel = state
+            .diplomatic_relations
+            .iter()
             .find(|r| (r.civ_a == a && r.civ_b == b) || (r.civ_a == b && r.civ_b == a))
             .unwrap();
-        assert_ne!(rel.status, DiplomaticStatus::War,
-            "status should no longer be War after make_peace");
+        assert_ne!(
+            rel.status,
+            DiplomaticStatus::War,
+            "status should no longer be War after make_peace"
+        );
     }
 
     // ── 7.4: Grievance triggers re-exported from civ::grievance ─────────────
 
     #[test]
     fn test_grievance_triggers_re_exported() {
-        use crate::civ::{DeclaredWarGrievance, PillageGrievance, CapturedCityGrievance};
         use crate::civ::diplomacy::GrievanceTrigger;
+        use crate::civ::{CapturedCityGrievance, DeclaredWarGrievance, PillageGrievance};
 
         assert_eq!(DeclaredWarGrievance.grievance_amount(), 30);
         assert_eq!(PillageGrievance.grievance_amount(), 5);
@@ -2421,7 +3062,7 @@ mod tests {
 
         // An owned city.
         let city_id = state.id_gen.next_city_id();
-        let coord   = HexCoord::from_qr(5, 5);
+        let coord = HexCoord::from_qr(5, 5);
         let city = City::new(city_id, "Discontent".to_string(), civ_id, coord);
         state.civilizations[0].cities.push(city_id);
         state.cities.push(city);
@@ -2461,12 +3102,12 @@ mod tests {
 
     #[test]
     fn test_high_unrest_lowers_yields_exactly_once() {
-        use crate::civ::city::{city_unrest_modifiers, UNREST_RIOT_TIER};
+        use crate::civ::city::{UNREST_RIOT_TIER, city_unrest_modifiers};
 
         // A city producing some production so a penalty is observable.
         let (mut state, civ_id) = make_state();
         let city_id = state.id_gen.next_city_id();
-        let coord   = HexCoord::from_qr(5, 5);
+        let coord = HexCoord::from_qr(5, 5);
         let mut city = City::new(city_id, "Rioting".to_string(), civ_id, coord);
         add_founding_tiles(&mut city);
         state.cities.push(city);
@@ -2506,7 +3147,7 @@ mod tests {
 
         let (mut state, civ_id) = make_state();
         let city_id = state.id_gen.next_city_id();
-        let coord   = HexCoord::from_qr(5, 5);
+        let coord = HexCoord::from_qr(5, 5);
         let mut city = City::new(city_id, "Riotous".to_string(), civ_id, coord);
 
         // Below the threshold: no crisis event.
@@ -2522,7 +3163,9 @@ mod tests {
         state.cities[0].unrest = UNREST_RIOT_TIER;
         let fired = evaluate_events(&[], &state);
         assert!(
-            fired.iter().any(|(civ, d)| *civ == civ_id && d.id == "riot"),
+            fired
+                .iter()
+                .any(|(civ, d)| *civ == civ_id && d.id == "riot"),
             "crossing the unrest threshold must fire the riot crisis event"
         );
 

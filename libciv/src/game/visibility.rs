@@ -1,10 +1,10 @@
-use std::collections::HashSet;
 use crate::CivId;
 use crate::game::board::WorldBoard;
 use crate::game::diff::{GameStateDiff, StateDelta};
 use crate::game::state::GameState;
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
+use std::collections::HashSet;
 
 /// Recompute `visible_tiles` and `explored_tiles` for `civ_id` using the
 /// current positions and vision ranges of all that civ's units and cities.
@@ -15,7 +15,9 @@ use libhexgrid::coord::HexCoord;
 /// surrounding diff so the TUI / RL layer can observe new discoveries.
 pub fn recalculate_visibility(state: &mut GameState, civ_id: CivId) -> GameStateDiff {
     // Collect (origin, radius) from owned units.
-    let mut sources: Vec<(HexCoord, u8)> = state.units.iter()
+    let mut sources: Vec<(HexCoord, u8)> = state
+        .units
+        .iter()
         .filter(|u| u.owner == civ_id)
         .map(|u| (u.coord, u.vision_range))
         .collect();
@@ -32,15 +34,18 @@ pub fn recalculate_visibility(state: &mut GameState, civ_id: CivId) -> GameState
 
     let civ_idx = match state.civilizations.iter().position(|c| c.id == civ_id) {
         Some(i) => i,
-        None    => return GameStateDiff::new(),
+        None => return GameStateDiff::new(),
     };
 
-    let newly_explored: Vec<HexCoord> = new_visible.iter()
+    let newly_explored: Vec<HexCoord> = new_visible
+        .iter()
         .copied()
         .filter(|coord| !state.civilizations[civ_idx].explored_tiles.contains(coord))
         .collect();
 
-    state.civilizations[civ_idx].explored_tiles.extend(new_visible.iter().copied());
+    state.civilizations[civ_idx]
+        .explored_tiles
+        .extend(new_visible.iter().copied());
     state.civilizations[civ_idx].visible_tiles = new_visible;
 
     let mut diff = GameStateDiff::new();
@@ -57,7 +62,10 @@ pub fn recalculate_visibility(state: &mut GameState, civ_id: CivId) -> GameState
                 });
             }
         }
-        diff.push(StateDelta::TilesRevealed { civ: civ_id, coords: newly_explored });
+        diff.push(StateDelta::TilesRevealed {
+            civ: civ_id,
+            coords: newly_explored,
+        });
     }
     diff
 }

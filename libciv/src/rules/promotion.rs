@@ -2,8 +2,8 @@
 
 use crate::PromotionClass;
 use crate::PromotionId;
-use crate::rules::modifier::*;
 use crate::YieldType;
+use crate::rules::modifier::*;
 
 /// Static definition of a unit promotion.
 #[derive(Debug, Clone)]
@@ -23,7 +23,9 @@ pub struct RegisteredPromotion {
 }
 
 /// Assigns unique IDs to all builtin promotions and returns them as registered promotions.
-pub fn register_builtin_promotions(id_gen: &mut crate::game::state::IdGenerator) -> Vec<RegisteredPromotion> {
+pub fn register_builtin_promotions(
+    id_gen: &mut crate::game::state::IdGenerator,
+) -> Vec<RegisteredPromotion> {
     builtin_promotions()
         .into_iter()
         .map(|def| {
@@ -104,9 +106,7 @@ pub fn builtin_promotions() -> Vec<PromotionDef> {
             class: PromotionClass::Recon,
             tier: 3,
             prerequisites: &["Guerrilla"],
-            modifiers: vec![
-                promo("Ambush", EffectType::CombatStrengthFlat(20)),
-            ],
+            modifiers: vec![promo("Ambush", EffectType::CombatStrengthFlat(20))],
         },
         PromotionDef {
             name: "Camouflage",
@@ -118,7 +118,6 @@ pub fn builtin_promotions() -> Vec<PromotionDef> {
                 promo("Camouflage", EffectType::CombatStrengthFlat(5)),
             ],
         },
-
         // ════════════════════════════════════════════════════════════════════
         // Melee (Warrior -> Mechanized Infantry) — 7 promotions
         // ════════════════════════════════════════════════════════════════════
@@ -192,7 +191,6 @@ pub fn builtin_promotions() -> Vec<PromotionDef> {
                 promo("Elite Guard", EffectType::CombatStrengthFlat(0)),
             ],
         },
-
         // ════════════════════════════════════════════════════════════════════
         // Ranged (Slinger -> Machine Gun) — 7 promotions
         // ════════════════════════════════════════════════════════════════════
@@ -266,7 +264,6 @@ pub fn builtin_promotions() -> Vec<PromotionDef> {
                 promo("Expert Marksman", EffectType::CombatStrengthFlat(0)),
             ],
         },
-
         // ════════════════════════════════════════════════════════════════════
         // Anti-Cavalry (Spearman -> Modern AT) — 7 promotions
         // ════════════════════════════════════════════════════════════════════
@@ -340,7 +337,6 @@ pub fn builtin_promotions() -> Vec<PromotionDef> {
                 promo("Hold the Line", EffectType::CombatStrengthFlat(10)),
             ],
         },
-
         // ════════════════════════════════════════════════════════════════════
         // Light Cavalry (Horseman -> Helicopter) — 7 promotions
         // ════════════════════════════════════════════════════════════════════
@@ -414,7 +410,6 @@ pub fn builtin_promotions() -> Vec<PromotionDef> {
                 promo("Spiking the Guns", EffectType::CombatStrengthFlat(7)),
             ],
         },
-
         // ════════════════════════════════════════════════════════════════════
         // Heavy Cavalry (Heavy Chariot -> Modern Armor) — 7 promotions
         // ════════════════════════════════════════════════════════════════════
@@ -488,7 +483,6 @@ pub fn builtin_promotions() -> Vec<PromotionDef> {
                 promo("Breakthrough", EffectType::CombatStrengthFlat(0)),
             ],
         },
-
         // ════════════════════════════════════════════════════════════════════
         // Siege (Catapult -> Rocket Artillery) — 7 promotions
         // ════════════════════════════════════════════════════════════════════
@@ -562,7 +556,6 @@ pub fn builtin_promotions() -> Vec<PromotionDef> {
                 promo("Proximity Fuses", EffectType::CombatStrengthFlat(7)),
             ],
         },
-
         // ════════════════════════════════════════════════════════════════════
         // Naval Melee (Galley -> Destroyer) — 7 promotions
         // ════════════════════════════════════════════════════════════════════
@@ -636,7 +629,6 @@ pub fn builtin_promotions() -> Vec<PromotionDef> {
                 promo("Creeping Attack", EffectType::CombatStrengthFlat(14)),
             ],
         },
-
         // ════════════════════════════════════════════════════════════════════
         // Naval Ranged (Quadrireme -> Missile Cruiser) — 7 promotions
         // ════════════════════════════════════════════════════════════════════
@@ -707,10 +699,12 @@ pub fn builtin_promotions() -> Vec<PromotionDef> {
             prerequisites: &["Supply Fleet", "Naval Proximity Fuses"],
             modifiers: vec![
                 // +1 range (placeholder)
-                promo("Coincidence Rangefinding", EffectType::CombatStrengthFlat(0)),
+                promo(
+                    "Coincidence Rangefinding",
+                    EffectType::CombatStrengthFlat(0),
+                ),
             ],
         },
-
         // ════════════════════════════════════════════════════════════════════
         // Naval Raider (Privateer -> Nuclear Sub) — 7 promotions
         // ════════════════════════════════════════════════════════════════════
@@ -784,7 +778,6 @@ pub fn builtin_promotions() -> Vec<PromotionDef> {
                 promo("Predator", EffectType::MovementBonus(1)),
             ],
         },
-
         // ════════════════════════════════════════════════════════════════════
         // Naval Carrier (Aircraft Carrier) — 7 promotions
         // ════════════════════════════════════════════════════════════════════
@@ -858,7 +851,6 @@ pub fn builtin_promotions() -> Vec<PromotionDef> {
                 promo("Floating Fortress", EffectType::CombatStrengthFlat(15)),
             ],
         },
-
         // ════════════════════════════════════════════════════════════════════
         // Air Fighter (Biplane -> Jet Fighter) — 7 promotions
         // ════════════════════════════════════════════════════════════════════
@@ -932,7 +924,6 @@ pub fn builtin_promotions() -> Vec<PromotionDef> {
                 promo("Ace Pilot", EffectType::CombatStrengthFlat(20)),
             ],
         },
-
         // ════════════════════════════════════════════════════════════════════
         // Air Bomber (Bomber -> Jet Bomber) — 7 promotions
         // ════════════════════════════════════════════════════════════════════
@@ -1006,7 +997,6 @@ pub fn builtin_promotions() -> Vec<PromotionDef> {
                 promo("Superfortress", EffectType::CombatStrengthFlat(15)),
             ],
         },
-
         // ════════════════════════════════════════════════════════════════════
         // Monk (Warrior Monk) — 7 promotions
         // ════════════════════════════════════════════════════════════════════
@@ -1080,7 +1070,6 @@ pub fn builtin_promotions() -> Vec<PromotionDef> {
                 promo("Twilight Veil", EffectType::CombatStrengthFlat(5)),
             ],
         },
-
         // ════════════════════════════════════════════════════════════════════
         // Apostle — 9 flat promotions (tier 0, no prerequisites)
         // ════════════════════════════════════════════════════════════════════
@@ -1121,7 +1110,10 @@ pub fn builtin_promotions() -> Vec<PromotionDef> {
             prerequisites: &[],
             modifiers: vec![
                 // +100 Gold on spread
-                promo("Indulgence Vendor", EffectType::YieldFlat(YieldType::Gold, 100)),
+                promo(
+                    "Indulgence Vendor",
+                    EffectType::YieldFlat(YieldType::Gold, 100),
+                ),
             ],
         },
         PromotionDef {
@@ -1174,7 +1166,6 @@ pub fn builtin_promotions() -> Vec<PromotionDef> {
                 promo("Translator", EffectType::CombatStrengthFlat(0)),
             ],
         },
-
         // ════════════════════════════════════════════════════════════════════
         // Spy — 11 flat promotions (tier 0, no prerequisites)
         // ════════════════════════════════════════════════════════════════════
@@ -1345,7 +1336,10 @@ mod tests {
     #[test]
     fn test_apostle_promotions() {
         let promos = builtin_promotions();
-        let apostle: Vec<_> = promos.iter().filter(|p| p.class == PromotionClass::Apostle).collect();
+        let apostle: Vec<_> = promos
+            .iter()
+            .filter(|p| p.class == PromotionClass::Apostle)
+            .collect();
         assert_eq!(apostle.len(), 9, "expected 9 Apostle promotions");
         for p in &apostle {
             assert_eq!(p.tier, 0);
@@ -1356,7 +1350,10 @@ mod tests {
     #[test]
     fn test_spy_promotions() {
         let promos = builtin_promotions();
-        let spy: Vec<_> = promos.iter().filter(|p| p.class == PromotionClass::Spy).collect();
+        let spy: Vec<_> = promos
+            .iter()
+            .filter(|p| p.class == PromotionClass::Spy)
+            .collect();
         assert_eq!(spy.len(), 11, "expected 11 Spy promotions");
         for p in &spy {
             assert_eq!(p.tier, 0);
@@ -1368,17 +1365,28 @@ mod tests {
     fn test_each_tiered_class_has_seven() {
         let promos = builtin_promotions();
         let tiered_classes = [
-            PromotionClass::Recon, PromotionClass::Melee, PromotionClass::Ranged,
-            PromotionClass::AntiCavalry, PromotionClass::LightCavalry,
-            PromotionClass::HeavyCavalry, PromotionClass::Siege,
-            PromotionClass::NavalMelee, PromotionClass::NavalRanged,
-            PromotionClass::NavalRaider, PromotionClass::NavalCarrier,
-            PromotionClass::AirFighter, PromotionClass::AirBomber,
+            PromotionClass::Recon,
+            PromotionClass::Melee,
+            PromotionClass::Ranged,
+            PromotionClass::AntiCavalry,
+            PromotionClass::LightCavalry,
+            PromotionClass::HeavyCavalry,
+            PromotionClass::Siege,
+            PromotionClass::NavalMelee,
+            PromotionClass::NavalRanged,
+            PromotionClass::NavalRaider,
+            PromotionClass::NavalCarrier,
+            PromotionClass::AirFighter,
+            PromotionClass::AirBomber,
             PromotionClass::Monk,
         ];
         for class in tiered_classes {
             let count = promos.iter().filter(|p| p.class == class).count();
-            assert_eq!(count, 7, "expected 7 promotions for {:?}, got {}", class, count);
+            assert_eq!(
+                count, 7,
+                "expected 7 promotions for {:?}, got {}",
+                class, count
+            );
         }
     }
 }

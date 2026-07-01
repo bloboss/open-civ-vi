@@ -109,11 +109,8 @@ pub fn SnapshotMap(
             return Vec::new();
         };
 
-        let tile_lookup: std::collections::HashMap<(i32, i32), TileView> = snap
-            .tiles
-            .iter()
-            .map(|t| ((t.q, t.r), t.clone()))
-            .collect();
+        let tile_lookup: std::collections::HashMap<(i32, i32), TileView> =
+            snap.tiles.iter().map(|t| ((t.q, t.r), t.clone())).collect();
 
         let mut out = Vec::new();
 

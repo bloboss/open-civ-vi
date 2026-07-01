@@ -13,22 +13,22 @@
 
 use std::net::SocketAddr;
 
+use axum::Json;
 use axum::extract::{ConnectInfo, Query, State};
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Redirect, Response};
-use axum::Json;
 
 use crate::server::client_ip::client_ip;
 use chrono::{Duration, Utc};
+use open4x_accounts::Identity;
 use open4x_accounts::audit::{AuditEventKind, AuditStore, NewAuditEvent};
 use open4x_accounts::magic_link::{DEFAULT_TTL, MagicLinkError};
 use open4x_accounts::session;
 use open4x_accounts::store::AccountStore;
-use open4x_accounts::Identity;
 use serde::{Deserialize, Serialize};
 
-use crate::server::auth::{AuthCookie, SESSION_COOKIE_NAME};
 use crate::server::AppState;
+use crate::server::auth::{AuthCookie, SESSION_COOKIE_NAME};
 
 // ───────────────────────────── /auth/email/start ──────────────────────────────
 
@@ -81,8 +81,7 @@ pub async fn start(
 
     // Throttles read the audit log directly — no second in-memory
     // limiter, and the caps survive restarts.
-    let since = (Utc::now() - Duration::seconds(MAGIC_LINK_THROTTLE_WINDOW_SECS))
-        .to_rfc3339();
+    let since = (Utc::now() - Duration::seconds(MAGIC_LINK_THROTTLE_WINDOW_SECS)).to_rfc3339();
     let ip_str = client_ip(addr.ip(), &headers, &state.trusted_proxies);
 
     if let Ok(count) = state
@@ -213,16 +212,15 @@ pub struct VerifyQuery {
     pub token: String,
 }
 
-pub async fn verify(
-    State(state): State<AppState>,
-    Query(q): Query<VerifyQuery>,
-) -> Response {
+pub async fn verify(State(state): State<AppState>, Query(q): Query<VerifyQuery>) -> Response {
     let email = match state.signer.verify(&state.pool, &q.token).await {
         Ok(e) => e,
-        Err(err @ (MagicLinkError::Reused
-        | MagicLinkError::Expired
-        | MagicLinkError::BadSignature
-        | MagicLinkError::Malformed)) => {
+        Err(
+            err @ (MagicLinkError::Reused
+            | MagicLinkError::Expired
+            | MagicLinkError::BadSignature
+            | MagicLinkError::Malformed),
+        ) => {
             let _ = state
                 .audit
                 .record(NewAuditEvent {
@@ -283,19 +281,20 @@ pub async fn verify(
     // Best-effort: a store error here doesn't fail sign-in.
     let _ = state.store.mark_email_verified(&email).await;
 
-    let raw = match session::mint_session(&state.pool, account.player_id, session::DEFAULT_TTL).await {
-        Ok(t) => t,
-        Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorBody {
-                    error: "session_failed",
-                    message: Some(e.to_string()),
-                }),
-            )
-                .into_response();
-        }
-    };
+    let raw =
+        match session::mint_session(&state.pool, account.player_id, session::DEFAULT_TTL).await {
+            Ok(t) => t,
+            Err(e) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorBody {
+                        error: "session_failed",
+                        message: Some(e.to_string()),
+                    }),
+                )
+                    .into_response();
+            }
+        };
 
     let _ = state
         .audit

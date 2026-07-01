@@ -3,15 +3,15 @@
 
 #![cfg(feature = "ssr")]
 
+use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::Json;
 use open4x_accounts::presets::{PresetRow, PresetsError, PresetsStore};
 use serde::{Deserialize, Serialize};
 
-use crate::server::auth::RequireSession;
 use crate::server::AppState;
+use crate::server::auth::RequireSession;
 
 #[derive(Debug, Serialize)]
 struct ErrorBody {
@@ -46,10 +46,7 @@ pub struct ListResp {
     pub presets: Vec<PresetView>,
 }
 
-pub async fn list(
-    State(state): State<AppState>,
-    RequireSession(me): RequireSession,
-) -> Response {
+pub async fn list(State(state): State<AppState>, RequireSession(me): RequireSession) -> Response {
     match state.presets.list_for(me).await {
         Ok(rows) => Json(ListResp {
             presets: rows.into_iter().map(PresetView::from).collect(),
@@ -72,11 +69,7 @@ pub async fn create(
     RequireSession(me): RequireSession,
     Json(body): Json<CreateBody>,
 ) -> Response {
-    match state
-        .presets
-        .create(me, &body.name, &body.body_json)
-        .await
-    {
+    match state.presets.create(me, &body.name, &body.body_json).await {
         Ok(row) => (StatusCode::CREATED, Json(PresetView::from(row))).into_response(),
         Err(e) => err_response(e),
     }

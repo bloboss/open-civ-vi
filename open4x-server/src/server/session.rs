@@ -27,7 +27,6 @@ pub struct ServerSession {
     pub ai_agents: Vec<(CivId, HeuristicAgent)>,
 }
 
-
 pub fn build_server_session(
     req: &CreateGameRequest,
     creator_pubkey: &[u8; 32],
@@ -46,19 +45,35 @@ pub fn build_server_session(
     // to match the wire shape's `turn_max`.
     let score_turn_limit = req.turn_limit.unwrap_or(500);
     state.victory_conditions.extend([
-        BuiltinVictoryCondition::Score      { id: VictoryId::from_ulid(state.id_gen.next_ulid()), turn_limit: score_turn_limit },
-        BuiltinVictoryCondition::Culture    { id: VictoryId::from_ulid(state.id_gen.next_ulid()) },
-        BuiltinVictoryCondition::Domination { id: VictoryId::from_ulid(state.id_gen.next_ulid()) },
-        BuiltinVictoryCondition::Science    { id: VictoryId::from_ulid(state.id_gen.next_ulid()) },
-        BuiltinVictoryCondition::Diplomatic { id: VictoryId::from_ulid(state.id_gen.next_ulid()), threshold: 20 },
-        BuiltinVictoryCondition::Religious  { id: VictoryId::from_ulid(state.id_gen.next_ulid()) },
+        BuiltinVictoryCondition::Score {
+            id: VictoryId::from_ulid(state.id_gen.next_ulid()),
+            turn_limit: score_turn_limit,
+        },
+        BuiltinVictoryCondition::Culture {
+            id: VictoryId::from_ulid(state.id_gen.next_ulid()),
+        },
+        BuiltinVictoryCondition::Domination {
+            id: VictoryId::from_ulid(state.id_gen.next_ulid()),
+        },
+        BuiltinVictoryCondition::Science {
+            id: VictoryId::from_ulid(state.id_gen.next_ulid()),
+        },
+        BuiltinVictoryCondition::Diplomatic {
+            id: VictoryId::from_ulid(state.id_gen.next_ulid()),
+            threshold: 20,
+        },
+        BuiltinVictoryCondition::Religious {
+            id: VictoryId::from_ulid(state.id_gen.next_ulid()),
+        },
     ]);
 
     // ── Map generation ───────────────────────────────────────────────────
     let num_starts = 1 + req.num_ai;
     let mapgen_result = mapgen_generate(
         &MapGenConfig {
-            width: w, height: h, seed,
+            width: w,
+            height: h,
+            seed,
             land_fraction: None,
             num_continents: None,
             num_zone_seeds: None,
@@ -72,40 +87,106 @@ pub fn build_server_session(
     let warrior_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
     let settler_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
     let builder_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
-    let trader_type_id  = UnitTypeId::from_ulid(state.id_gen.next_ulid());
+    let trader_type_id = UnitTypeId::from_ulid(state.id_gen.next_ulid());
     state.unit_type_defs.extend([
-        UnitTypeDef { id: warrior_type_id, name: "warrior", production_cost: 40,
-                      max_movement: 200, combat_strength: Some(20),
-                      domain: UnitDomain::Land, category: UnitCategory::Combat,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None },
-        UnitTypeDef { id: settler_type_id, name: "settler", production_cost: 80,
-                      max_movement: 200, combat_strength: None,
-                      domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: true, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None },
-        UnitTypeDef { id: builder_type_id, name: "builder", production_cost: 50,
-                      max_movement: 200, combat_strength: None,
-                      domain: UnitDomain::Land, category: UnitCategory::Civilian,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None },
-        UnitTypeDef { id: trader_type_id, name: "trader", production_cost: 40,
-                      max_movement: 200, combat_strength: None,
-                      domain: UnitDomain::Land, category: UnitCategory::Trader,
-                      range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None },
+        UnitTypeDef {
+            id: warrior_type_id,
+            name: "warrior",
+            production_cost: 40,
+            max_movement: 200,
+            combat_strength: Some(20),
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            range: 0,
+            vision_range: 2,
+            can_found_city: false,
+            resource_cost: None,
+            siege_bonus: 0,
+            max_charges: 0,
+            exclusive_to: None,
+            replaces: None,
+            era: None,
+            promotion_class: None,
+        },
+        UnitTypeDef {
+            id: settler_type_id,
+            name: "settler",
+            production_cost: 80,
+            max_movement: 200,
+            combat_strength: None,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Civilian,
+            range: 0,
+            vision_range: 2,
+            can_found_city: true,
+            resource_cost: None,
+            siege_bonus: 0,
+            max_charges: 0,
+            exclusive_to: None,
+            replaces: None,
+            era: None,
+            promotion_class: None,
+        },
+        UnitTypeDef {
+            id: builder_type_id,
+            name: "builder",
+            production_cost: 50,
+            max_movement: 200,
+            combat_strength: None,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Civilian,
+            range: 0,
+            vision_range: 2,
+            can_found_city: false,
+            resource_cost: None,
+            siege_bonus: 0,
+            max_charges: 0,
+            exclusive_to: None,
+            replaces: None,
+            era: None,
+            promotion_class: None,
+        },
+        UnitTypeDef {
+            id: trader_type_id,
+            name: "trader",
+            production_cost: 40,
+            max_movement: 200,
+            combat_strength: None,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Trader,
+            range: 0,
+            vision_range: 2,
+            can_found_city: false,
+            resource_cost: None,
+            siege_bonus: 0,
+            max_charges: 0,
+            exclusive_to: None,
+            replaces: None,
+            era: None,
+            promotion_class: None,
+        },
     ]);
 
     // ── Creator's civilization ────────────────────────────────────────────
     let player_record = app_state.players.get(creator_pubkey);
-    let template_id = player_record.as_ref()
+    let template_id = player_record
+        .as_ref()
         .map(|r| r.selected_template)
         .unwrap_or(app_state.templates[0].id);
-    let template = app_state.templates.iter()
+    let template = app_state
+        .templates
+        .iter()
         .find(|t| t.id == template_id)
         .unwrap_or(&app_state.templates[0]);
-    let display_name = player_record.as_ref()
+    let display_name = player_record
+        .as_ref()
         .map(|r| r.display_name.clone())
         .unwrap_or_else(|| "Player".to_string());
 
     let civ_id = state.id_gen.next_civ_id();
-    let city_coord = starts.first().copied()
+    let city_coord = starts
+        .first()
+        .copied()
         .unwrap_or(HexCoord::from_qr(w as i32 / 4, h as i32 / 2));
 
     // Use template for civ name; use leaked str for &'static str fields.
@@ -114,14 +195,24 @@ pub fn build_server_session(
     let leader_name: &'static str = Box::leak(display_name.clone().into_boxed_str());
 
     state.civilizations.push(Civilization::new(
-        civ_id, civ_name, adjective,
-        Leader { name: leader_name, civ_id,
-                 agenda: BuiltinAgenda::Default },
+        civ_id,
+        civ_name,
+        adjective,
+        Leader {
+            name: leader_name,
+            civ_id,
+            agenda: BuiltinAgenda::Default,
+        },
     ));
 
     // Capital city.
     let city_id = state.id_gen.next_city_id();
-    let mut city = City::new(city_id, format!("{} Capital", template.civ_name), civ_id, city_coord);
+    let mut city = City::new(
+        city_id,
+        format!("{} Capital", template.civ_name),
+        civ_id,
+        city_coord,
+    );
     city.is_capital = true;
     state.cities.push(city);
     state.civilizations[0].cities.push(city_id);
@@ -144,41 +235,75 @@ pub fn build_server_session(
     // Starting units.
     let unit_id = state.id_gen.next_unit_id();
     state.units.push(BasicUnit {
-        id: unit_id, unit_type: warrior_type_id, owner: civ_id,
-        coord: city_coord, domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200, combat_strength: Some(20),
-        promotions: Vec::new(), experience: 0, health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        id: unit_id,
+        unit_type: warrior_type_id,
+        owner: civ_id,
+        coord: city_coord,
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
+        experience: 0,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     let builder_id = state.id_gen.next_unit_id();
     state.units.push(BasicUnit {
-        id: builder_id, unit_type: builder_type_id, owner: civ_id,
-        coord: city_coord, domain: UnitDomain::Land, category: UnitCategory::Civilian,
-        movement_left: 200, max_movement: 200, combat_strength: None,
-        promotions: Vec::new(), experience: 0, health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        id: builder_id,
+        unit_type: builder_type_id,
+        owner: civ_id,
+        coord: city_coord,
+        domain: UnitDomain::Land,
+        category: UnitCategory::Civilian,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: None,
+        promotions: Vec::new(),
+        experience: 0,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     recalculate_visibility(&mut state, civ_id);
 
-    let players = vec![
-        PlayerSlot {
-            civ_id,
-            pubkey: *creator_pubkey,
-            profile: open4x_protocol::v1::profile::ProfileView {
-                pubkey: creator_pubkey.to_vec(),
-                display_name,
-                selected_template: template_id,
-            },
-            submitted_turn: false,
+    let players = vec![PlayerSlot {
+        civ_id,
+        pubkey: *creator_pubkey,
+        profile: open4x_protocol::v1::profile::ProfileView {
+            pubkey: creator_pubkey.to_vec(),
+            display_name,
+            selected_template: template_id,
         },
-    ];
+        submitted_turn: false,
+    }];
 
     // ── AI opponents ─────────────────────────────────────────────────────
     let mut ai_agents = Vec::new();
     for i in 0..req.num_ai {
         let ai_template = &app_state.templates[((i + 1) as usize) % app_state.templates.len()];
         let ai_civ_id = state.id_gen.next_civ_id();
-        let ai_coord = starts.get((i + 1) as usize).copied()
+        let ai_coord = starts
+            .get((i + 1) as usize)
+            .copied()
             .unwrap_or(HexCoord::from_qr(w as i32 * 3 / 4, h as i32 / 2));
 
         let ai_civ_name: &'static str = Box::leak(ai_template.civ_name.clone().into_boxed_str());
@@ -186,19 +311,32 @@ pub fn build_server_session(
         let ai_leader: &'static str = Box::leak(ai_template.leader_name.clone().into_boxed_str());
 
         state.civilizations.push(Civilization::new(
-            ai_civ_id, ai_civ_name, ai_adjective,
-            Leader { name: ai_leader, civ_id: ai_civ_id,
-                     agenda: BuiltinAgenda::Default },
+            ai_civ_id,
+            ai_civ_name,
+            ai_adjective,
+            Leader {
+                name: ai_leader,
+                civ_id: ai_civ_id,
+                agenda: BuiltinAgenda::Default,
+            },
         ));
 
         let ai_city_id = state.id_gen.next_city_id();
-        let mut ai_city = City::new(ai_city_id, format!("{} Capital", ai_template.civ_name),
-                                     ai_civ_id, ai_coord);
+        let mut ai_city = City::new(
+            ai_city_id,
+            format!("{} Capital", ai_template.civ_name),
+            ai_civ_id,
+            ai_coord,
+        );
         ai_city.is_capital = true;
         state.cities.push(ai_city);
-        state.civilizations.iter_mut()
-            .find(|c| c.id == ai_civ_id).unwrap()
-            .cities.push(ai_city_id);
+        state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == ai_civ_id)
+            .unwrap()
+            .cities
+            .push(ai_city_id);
 
         // Claim territory.
         {
@@ -218,15 +356,36 @@ pub fn build_server_session(
         // AI warrior.
         let ai_warrior = state.id_gen.next_unit_id();
         state.units.push(BasicUnit {
-            id: ai_warrior, unit_type: warrior_type_id, owner: ai_civ_id,
-            coord: ai_coord, domain: UnitDomain::Land, category: UnitCategory::Combat,
-            movement_left: 200, max_movement: 200, combat_strength: Some(20),
-            promotions: Vec::new(), experience: 0, health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+            id: ai_warrior,
+            unit_type: warrior_type_id,
+            owner: ai_civ_id,
+            coord: ai_coord,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            movement_left: 200,
+            max_movement: 200,
+            combat_strength: Some(20),
+            promotions: Vec::new(),
+            experience: 0,
+            health: 100,
+            range: 0,
+            vision_range: 2,
+            charges: None,
+            trade_origin: None,
+            trade_destination: None,
+            religion_id: None,
+            spread_charges: None,
+            religious_strength: None,
+            is_embarked: false,
         });
 
         recalculate_visibility(&mut state, ai_civ_id);
         ai_agents.push((ai_civ_id, HeuristicAgent::new(ai_civ_id)));
     }
 
-    ServerSession { state, players, ai_agents }
+    ServerSession {
+        state,
+        players,
+        ai_agents,
+    }
 }

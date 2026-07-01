@@ -12,9 +12,9 @@ mod rivers;
 mod starts;
 mod zones;
 
-use rand::rngs::SmallRng;
-use rand::SeedableRng;
 use libhexgrid::coord::HexCoord;
+use rand::SeedableRng;
+use rand::rngs::SmallRng;
 
 use crate::game::board::WorldBoard;
 
@@ -29,18 +29,18 @@ use crate::game::board::WorldBoard;
 /// can inspect what was actually used.
 #[derive(Debug, Clone)]
 pub struct MapGenConfig {
-    pub width:          u32,
-    pub height:         u32,
-    pub seed:           u64,
+    pub width: u32,
+    pub height: u32,
+    pub seed: u64,
     /// Target land/ocean ratio.  `None` = linear interpolation from map size:
     ///   tiny (~2 280 tiles) -> 0.50, huge (~7 000 tiles) -> 0.35.
-    pub land_fraction:  Option<f32>,
+    pub land_fraction: Option<f32>,
     /// Number of continent seeds.  `None` = area / 400, clamped 2..=7.
     pub num_continents: Option<u32>,
     /// Zone seeds per zone type.  `None` = area / 300, clamped 2..=8.
     pub num_zone_seeds: Option<u32>,
     /// How many valid starting positions Phase 6 must return.  0 = skip.
-    pub num_starts:     u32,
+    pub num_starts: u32,
 }
 
 impl MapGenConfig {
@@ -50,10 +50,10 @@ impl MapGenConfig {
             width,
             height,
             seed,
-            land_fraction:  None,
+            land_fraction: None,
             num_continents: None,
             num_zone_seeds: None,
-            num_starts:     0,
+            num_starts: 0,
         }
     }
 

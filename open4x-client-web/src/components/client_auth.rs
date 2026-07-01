@@ -3,7 +3,7 @@
 //! On first load, generates a keypair and stores the secret key in localStorage.
 //! On subsequent loads, restores the keypair from localStorage.
 
-use ed25519_dalek::{SigningKey, Signer, VerifyingKey};
+use ed25519_dalek::{Signer, SigningKey, VerifyingKey};
 use web_sys::window;
 
 const STORAGE_KEY: &str = "open4x_signing_key";
@@ -14,8 +14,7 @@ const STORAGE_KEY: &str = "open4x_signing_key";
 /// Returns the signing key (for signing challenges) and the public key bytes
 /// (for sending to the server).
 pub fn load_or_generate_keypair() -> (SigningKey, [u8; 32]) {
-    let storage = window()
-        .and_then(|w| w.local_storage().ok().flatten());
+    let storage = window().and_then(|w| w.local_storage().ok().flatten());
 
     // Try to load existing key.
     if let Some(storage) = &storage
@@ -53,7 +52,9 @@ fn hex_encode(bytes: &[u8]) -> String {
 }
 
 fn hex_decode_32(s: &str) -> Option<[u8; 32]> {
-    if s.len() != 64 { return None; }
+    if s.len() != 64 {
+        return None;
+    }
     let mut out = [0u8; 32];
     for (i, chunk) in s.as_bytes().chunks(2).enumerate() {
         let hi = hex_nibble(chunk[0])?;

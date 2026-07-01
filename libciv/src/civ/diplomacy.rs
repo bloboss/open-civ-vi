@@ -36,7 +36,9 @@ pub trait Agreement: std::fmt::Debug {
 pub trait GrievanceTrigger: std::fmt::Debug {
     fn description(&self) -> &'static str;
     fn grievance_amount(&self) -> i32;
-    fn visibility(&self) -> GrievanceVisibility { GrievanceVisibility::Public }
+    fn visibility(&self) -> GrievanceVisibility {
+        GrievanceVisibility::Public
+    }
 }
 
 /// Who can see a grievance in the diplomacy screen.
@@ -134,4 +136,3 @@ impl DiplomaticRelation {
         self.grievances_b_against_a.iter().map(|g| -g.amount).sum()
     }
 }
-

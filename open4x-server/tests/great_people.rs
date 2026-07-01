@@ -15,14 +15,17 @@ use open4x_server::server::state::AppState;
 
 fn build_app() -> Router {
     let state = AppState::new();
-    Router::new()
-        .nest("/api/v1", v1_router())
-        .with_state(state)
+    Router::new().nest("/api/v1", v1_router()).with_state(state)
 }
 
 async fn json_body(resp: axum::response::Response) -> (StatusCode, Value) {
     let status = resp.status();
-    let bytes = resp.into_body().collect().await.expect("collect body").to_bytes();
+    let bytes = resp
+        .into_body()
+        .collect()
+        .await
+        .expect("collect body")
+        .to_bytes();
     let value: Value = if bytes.is_empty() {
         Value::Null
     } else {
@@ -69,7 +72,10 @@ async fn bootstrap_token(app: &Router) -> String {
         .unwrap();
     let (status, body) = json_body(resp).await;
     assert_eq!(status, StatusCode::CREATED, "games/new: {body:?}");
-    body["token"].as_str().expect("token in response").to_string()
+    body["token"]
+        .as_str()
+        .expect("token in response")
+        .to_string()
 }
 
 #[tokio::test]
@@ -110,7 +116,10 @@ async fn great_people_returns_per_class_progress() {
             Some(60),
             "base recruitment threshold should be 60 for a fresh game: {entry:?}"
         );
-        assert!(entry["progress"].is_number(), "progress is numeric: {entry:?}");
+        assert!(
+            entry["progress"].is_number(),
+            "progress is numeric: {entry:?}"
+        );
     }
 
     // A fresh game has no recruited or pooled great people yet.

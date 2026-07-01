@@ -60,7 +60,10 @@ pub struct GreatWorkSlot {
 
 impl GreatWorkSlot {
     pub fn new(slot_type: GreatWorkSlotType) -> Self {
-        Self { slot_type, work: None }
+        Self {
+            slot_type,
+            work: None,
+        }
     }
 
     pub fn is_empty(&self) -> bool {

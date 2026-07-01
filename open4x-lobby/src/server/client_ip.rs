@@ -39,14 +39,14 @@ pub fn parse_trusted_proxies(raw: &str) -> Vec<IpNet> {
 /// Pick the right IP for rate-limit / audit-log keying.
 pub fn client_ip(peer: IpAddr, headers: &HeaderMap, trusted: &[IpNet]) -> String {
     if trusted.iter().any(|net| net.contains(&peer)) {
-        if let Some(forwarded) = headers
-            .get("x-forwarded-for")
-            .and_then(|v| v.to_str().ok())
-        {
+        if let Some(forwarded) = headers.get("x-forwarded-for").and_then(|v| v.to_str().ok()) {
             // X-Forwarded-For: client, proxy1, proxy2, … — the
             // RIGHTMOST entry is the most-recent proxy. Walk
             // right-to-left and pick the first untrusted hop.
-            for entry in forwarded.rsplit(',').map(str::trim).filter(|s| !s.is_empty())
+            for entry in forwarded
+                .rsplit(',')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
             {
                 let Ok(ip) = entry.parse::<IpAddr>() else {
                     continue;

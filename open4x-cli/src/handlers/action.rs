@@ -12,8 +12,8 @@ use libciv::game::visibility::recalculate_visibility;
 use libciv::world::improvement::BuiltinImprovement;
 use libciv::world::road::BuiltinRoad;
 use libciv::{
-    apply_diff, BarbarianCampId, BeliefId, CityId, DefaultRulesEngine, GameStateDiff,
-    GreatPersonId, GreatPersonType, RulesEngine, UnitId,
+    BarbarianCampId, BeliefId, CityId, DefaultRulesEngine, GameStateDiff, GreatPersonId,
+    GreatPersonType, RulesEngine, UnitId, apply_diff,
 };
 use libhexgrid::coord::HexCoord;
 
@@ -24,11 +24,7 @@ use crate::state_io;
 use super::{find_civ_by_name, parse_ulid, validate_human};
 
 /// Execute a game action for `player` and save the result.
-pub fn handle_action(
-    game_file: &Path,
-    player: &str,
-    action: &ActionKind,
-) -> Result<(), String> {
+pub fn handle_action(game_file: &Path, player: &str, action: &ActionKind) -> Result<(), String> {
     let mut state = state_io::load_game_file(game_file)?;
     let civ_id = find_civ_by_name(&state, player)?;
     validate_human(&state, player)?;
@@ -75,7 +71,6 @@ fn parse_great_person_id(s: &str) -> Result<GreatPersonId, String> {
 fn parse_belief_id(s: &str) -> Result<BeliefId, String> {
     parse_ulid(s).map(BeliefId::from_ulid)
 }
-
 
 fn parse_improvement(s: &str) -> Result<BuiltinImprovement, String> {
     match s.to_lowercase().as_str() {
@@ -173,7 +168,9 @@ pub(crate) fn dispatch_action(
         ActionKind::Move { unit, to_q, to_r } => {
             let uid = parse_unit_id(unit)?;
             let to = HexCoord::from_qr(*to_q, *to_r);
-            rules.move_unit(state, uid, to).map_err(|e| format!("{e:?}"))
+            rules
+                .move_unit(state, uid, to)
+                .map_err(|e| format!("{e:?}"))
         }
         ActionKind::Attack { unit, target } => {
             let uid = parse_unit_id(unit)?;
@@ -183,26 +180,36 @@ pub(crate) fn dispatch_action(
         ActionKind::CityBombard { city, target } => {
             let cid = parse_city_id(city)?;
             let tid = parse_unit_id(target)?;
-            rules.city_bombard(state, cid, tid).map_err(|e| format!("{e:?}"))
+            rules
+                .city_bombard(state, cid, tid)
+                .map_err(|e| format!("{e:?}"))
         }
         ActionKind::TheologicalCombat { attacker, defender } => {
             let a = parse_unit_id(attacker)?;
             let d = parse_unit_id(defender)?;
-            rules.theological_combat(state, a, d).map_err(|e| format!("{e:?}"))
+            rules
+                .theological_combat(state, a, d)
+                .map_err(|e| format!("{e:?}"))
         }
         ActionKind::PromoteUnit { unit, promotion } => {
             let uid = parse_unit_id(unit)?;
-            rules.promote_unit(state, uid, promotion).map_err(|e| format!("{e:?}"))
+            rules
+                .promote_unit(state, uid, promotion)
+                .map_err(|e| format!("{e:?}"))
         }
         ActionKind::RockBandPerform { unit } => {
             let uid = parse_unit_id(unit)?;
-            rules.rock_band_perform(state, uid).map_err(|e| format!("{e:?}"))
+            rules
+                .rock_band_perform(state, uid)
+                .map_err(|e| format!("{e:?}"))
         }
 
         // ── City & Production ───────────────────────────────────────────
         ActionKind::FoundCity { unit, name } => {
             let uid = parse_unit_id(unit)?;
-            rules.found_city(state, uid, name.clone()).map_err(|e| format!("{e:?}"))
+            rules
+                .found_city(state, uid, name.clone())
+                .map_err(|e| format!("{e:?}"))
         }
         ActionKind::Build { city, item } => {
             let cid = parse_city_id(city)?;
@@ -248,10 +255,7 @@ pub(crate) fn dispatch_action(
         } => {
             let coord = HexCoord::from_qr(*coord_q, *coord_r);
             let imp = parse_improvement(improvement)?;
-            let builder_id = builder
-                .as_ref()
-                .map(|b| parse_unit_id(b))
-                .transpose()?;
+            let builder_id = builder.as_ref().map(|b| parse_unit_id(b)).transpose()?;
             rules
                 .place_improvement(state, civ_id, coord, imp, builder_id)
                 .map_err(|e| format!("{e:?}"))
@@ -260,7 +264,12 @@ pub(crate) fn dispatch_action(
             let uid = parse_unit_id(unit)?;
             let coord = HexCoord::from_qr(*q, *r);
             rules
-                .place_road(state, uid, coord, BuiltinRoad::Ancient(libciv::world::road::AncientRoad))
+                .place_road(
+                    state,
+                    uid,
+                    coord,
+                    BuiltinRoad::Ancient(libciv::world::road::AncientRoad),
+                )
                 .map_err(|e| format!("{e:?}"))
         }
         ActionKind::AssignCitizen { city, q, r, lock } => {
@@ -290,14 +299,14 @@ pub(crate) fn dispatch_action(
         ActionKind::AssignCityFocus { city, focus } => {
             let cid = parse_city_id(city)?;
             let f = match focus.to_lowercase().as_str() {
-                "default"    => libciv::civ::CityFocus::Default,
-                "food"       => libciv::civ::CityFocus::Food,
+                "default" => libciv::civ::CityFocus::Default,
+                "food" => libciv::civ::CityFocus::Food,
                 "production" => libciv::civ::CityFocus::Production,
-                "gold"       => libciv::civ::CityFocus::Gold,
-                "science"    => libciv::civ::CityFocus::Science,
-                "culture"    => libciv::civ::CityFocus::Culture,
-                "faith"      => libciv::civ::CityFocus::Faith,
-                other        => return Err(format!("unknown focus: {other:?}")),
+                "gold" => libciv::civ::CityFocus::Gold,
+                "science" => libciv::civ::CityFocus::Science,
+                "culture" => libciv::civ::CityFocus::Culture,
+                "faith" => libciv::civ::CityFocus::Faith,
+                other => return Err(format!("unknown focus: {other:?}")),
             };
             let city_obj = state
                 .cities
@@ -555,8 +564,7 @@ pub(crate) fn dispatch_action(
 
         // ── Governors ───────────────────────────────────────────────────
         ActionKind::AssignGovernor { governor, city } => {
-            let gid =
-                parse_ulid(governor).map(libciv::GovernorId::from_ulid)?;
+            let gid = parse_ulid(governor).map(libciv::GovernorId::from_ulid)?;
             let cid = parse_city_id(city)?;
             rules
                 .assign_governor(state, gid, cid)
@@ -566,8 +574,7 @@ pub(crate) fn dispatch_action(
             governor,
             promotion,
         } => {
-            let gid =
-                parse_ulid(governor).map(libciv::GovernorId::from_ulid)?;
+            let gid = parse_ulid(governor).map(libciv::GovernorId::from_ulid)?;
             // Leak to &'static str for the trait method.
             let promo: &'static str = Box::leak(promotion.clone().into_boxed_str());
             rules

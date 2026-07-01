@@ -1,8 +1,8 @@
 mod common;
 
-use libciv::{DefaultRulesEngine, RulesEngine};
-use libciv::game::{apply_delta, apply_diff, StateDelta, GameStateDiff};
 use libciv::civ::unit::Unit;
+use libciv::game::{GameStateDiff, StateDelta, apply_delta, apply_diff};
+use libciv::{DefaultRulesEngine, RulesEngine};
 use libhexgrid::coord::HexCoord;
 
 // ── Unit movement ────────────────────────────────────────────────────────────
@@ -24,7 +24,11 @@ fn apply_unit_moved_updates_coord_and_movement() {
 
     let unit = s.state.unit(uid).unwrap();
     assert_eq!(unit.coord(), target, "unit should be at new coord");
-    assert_eq!(unit.movement_left(), 100, "movement should be reduced by cost");
+    assert_eq!(
+        unit.movement_left(),
+        100,
+        "movement should be reduced by cost"
+    );
 }
 
 // ── Unit destruction ─────────────────────────────────────────────────────────
@@ -37,7 +41,10 @@ fn apply_unit_destroyed_removes_unit() {
 
     apply_delta(&mut s.state, &StateDelta::UnitDestroyed { unit: uid });
 
-    assert!(s.state.unit(uid).is_none(), "unit should be removed from state");
+    assert!(
+        s.state.unit(uid).is_none(),
+        "unit should be removed from state"
+    );
 }
 
 // ── Gold changes ─────────────────────────────────────────────────────────────
@@ -46,11 +53,29 @@ fn apply_unit_destroyed_removes_unit() {
 fn apply_gold_changed_adjusts_treasury() {
     let mut s = common::build_scenario();
     let civ_id = s.rome_id;
-    let before = s.state.civilizations.iter().find(|c| c.id == civ_id).unwrap().gold;
+    let before = s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == civ_id)
+        .unwrap()
+        .gold;
 
-    apply_delta(&mut s.state, &StateDelta::GoldChanged { civ: civ_id, delta: 42 });
+    apply_delta(
+        &mut s.state,
+        &StateDelta::GoldChanged {
+            civ: civ_id,
+            delta: 42,
+        },
+    );
 
-    let after = s.state.civilizations.iter().find(|c| c.id == civ_id).unwrap().gold;
+    let after = s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == civ_id)
+        .unwrap()
+        .gold;
     assert_eq!(after, before + 42);
 }
 
@@ -73,10 +98,13 @@ fn apply_victory_achieved_sets_game_over() {
     let mut s = common::build_scenario();
     assert!(s.state.game_over.is_none());
 
-    apply_delta(&mut s.state, &StateDelta::VictoryAchieved {
-        civ: s.rome_id,
-        condition: "Score",
-    });
+    apply_delta(
+        &mut s.state,
+        &StateDelta::VictoryAchieved {
+            civ: s.rome_id,
+            condition: "Score",
+        },
+    );
 
     let go = s.state.game_over.as_ref().unwrap();
     assert_eq!(go.winner, s.rome_id);
@@ -93,10 +121,13 @@ fn apply_improvement_placed_sets_tile() {
     let mut s = common::build_scenario();
     let coord = s.state.cities[0].coord;
 
-    apply_delta(&mut s.state, &StateDelta::ImprovementPlaced {
-        coord,
-        improvement: BuiltinImprovement::Farm,
-    });
+    apply_delta(
+        &mut s.state,
+        &StateDelta::ImprovementPlaced {
+            coord,
+            improvement: BuiltinImprovement::Farm,
+        },
+    );
 
     let tile = s.state.board.tile(coord).unwrap();
     assert_eq!(tile.improvement, Some(BuiltinImprovement::Farm));
@@ -109,13 +140,25 @@ fn apply_diff_processes_multiple_deltas() {
     let mut s = common::build_scenario();
 
     let mut diff = GameStateDiff::new();
-    diff.push(StateDelta::GoldChanged { civ: s.rome_id, delta: 10 });
-    diff.push(StateDelta::GoldChanged { civ: s.rome_id, delta: 20 });
+    diff.push(StateDelta::GoldChanged {
+        civ: s.rome_id,
+        delta: 10,
+    });
+    diff.push(StateDelta::GoldChanged {
+        civ: s.rome_id,
+        delta: 20,
+    });
     diff.push(StateDelta::TurnAdvanced { from: 0, to: 1 });
 
     apply_diff(&mut s.state, &diff);
 
-    let gold = s.state.civilizations.iter().find(|c| c.id == s.rome_id).unwrap().gold;
+    let gold = s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .gold;
     assert_eq!(gold, 30, "both gold deltas should have been applied");
     assert_eq!(s.state.turn, 1);
 }
@@ -139,7 +182,13 @@ fn round_trip_advance_and_apply_matches() {
     }
 
     let final_turn = s.state.turn;
-    let final_gold = s.state.civilizations.iter().find(|c| c.id == s.rome_id).unwrap().gold;
+    let final_gold = s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .gold;
 
     // Create a fresh scenario and apply all diffs.
     let mut s2 = common::build_scenario();
@@ -150,7 +199,16 @@ fn round_trip_advance_and_apply_matches() {
         }
     }
 
-    assert_eq!(s2.state.turn, final_turn, "turn should match after applying diffs");
-    let gold2 = s2.state.civilizations.iter().find(|c| c.id == s2.rome_id).unwrap().gold;
+    assert_eq!(
+        s2.state.turn, final_turn,
+        "turn should match after applying diffs"
+    );
+    let gold2 = s2
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == s2.rome_id)
+        .unwrap()
+        .gold;
     assert_eq!(gold2, final_gold, "gold should match after applying diffs");
 }

@@ -4,8 +4,8 @@
 //! Coast/Ocean tile using Dijkstra with terrain-based flow costs.  River edges
 //! are placed on the board via `set_edge()` and recorded in `tile.rivers`.
 
-use std::collections::{BinaryHeap, HashMap};
 use std::cmp::Reverse;
+use std::collections::{BinaryHeap, HashMap};
 
 use rand::rngs::SmallRng;
 use rand::seq::SliceRandom;
@@ -35,14 +35,12 @@ fn canonical_edge(coord: HexCoord, dir: HexDir) -> (HexCoord, HexDir) {
 // Flow cost: lower = preferred path for river to flow through.
 fn flow_cost(terrain: BuiltinTerrain, hills: bool) -> Option<u32> {
     match terrain {
-        BuiltinTerrain::Mountain              => None,      // impassable
+        BuiltinTerrain::Mountain => None, // impassable
         BuiltinTerrain::Ocean | BuiltinTerrain::Coast => Some(0), // terminus
-        _ if hills                            => Some(1),   // headwaters
-        BuiltinTerrain::Plains
-            | BuiltinTerrain::Tundra
-            | BuiltinTerrain::Desert          => Some(2),
-        BuiltinTerrain::Snow                  => Some(3),
-        _                                     => Some(3),   // Grassland etc.
+        _ if hills => Some(1),            // headwaters
+        BuiltinTerrain::Plains | BuiltinTerrain::Tundra | BuiltinTerrain::Desert => Some(2),
+        BuiltinTerrain::Snow => Some(3),
+        _ => Some(3), // Grassland etc.
     }
 }
 
@@ -68,12 +66,22 @@ pub fn generate(board: &mut WorldBoard, rng: &mut SmallRng) {
     // Hills get 2x weight (appear twice in the list).
     let mut candidates: Vec<HexCoord> = Vec::new();
     for &coord in &all_coords {
-        let Some(tile) = board.tile(coord) else { continue };
-        if !is_land(tile.terrain) { continue; }
-        if tile.terrain == BuiltinTerrain::Mountain { continue; }
-        if tile.terrain == BuiltinTerrain::Coast    { continue; }
+        let Some(tile) = board.tile(coord) else {
+            continue;
+        };
+        if !is_land(tile.terrain) {
+            continue;
+        }
+        if tile.terrain == BuiltinTerrain::Mountain {
+            continue;
+        }
+        if tile.terrain == BuiltinTerrain::Coast {
+            continue;
+        }
         candidates.push(coord);
-        if tile.hills { candidates.push(coord); } // 2x weight for hills
+        if tile.hills {
+            candidates.push(coord);
+        } // 2x weight for hills
     }
     candidates.shuffle(rng);
 
@@ -81,7 +89,9 @@ pub fn generate(board: &mut WorldBoard, rng: &mut SmallRng) {
     let min_sep: u32 = 5;
     let mut sources: Vec<HexCoord> = Vec::new();
     for &cand in &candidates {
-        if sources.len() >= target_sources { break; }
+        if sources.len() >= target_sources {
+            break;
+        }
         if sources.iter().all(|s| s.distance(&cand) >= min_sep) {
             sources.push(cand);
         }
@@ -115,17 +125,24 @@ fn dijkstra_to_coast(source: HexCoord, board: &WorldBoard) -> Option<Vec<HexCoor
         }
 
         if let Some(tile) = board.tile(coord)
-            && is_terminus(tile.terrain) {
+            && is_terminus(tile.terrain)
+        {
             terminus = Some(coord);
             break;
         }
 
         for dir in HexDir::ALL {
             let neighbor_raw = coord + dir.unit_vec();
-            let Some(neighbor) = board.normalize(neighbor_raw) else { continue };
-            let Some(tile)     = board.tile(neighbor)          else { continue };
+            let Some(neighbor) = board.normalize(neighbor_raw) else {
+                continue;
+            };
+            let Some(tile) = board.tile(neighbor) else {
+                continue;
+            };
 
-            let Some(step_cost) = flow_cost(tile.terrain, tile.hills) else { continue };
+            let Some(step_cost) = flow_cost(tile.terrain, tile.hills) else {
+                continue;
+            };
 
             let next_cost = cost + step_cost;
             let prev_best = *dist.get(&neighbor).unwrap_or(&u32::MAX);
@@ -141,7 +158,7 @@ fn dijkstra_to_coast(source: HexCoord, board: &WorldBoard) -> Option<Vec<HexCoor
 
     // Reconstruct path.
     let mut path = vec![end];
-    let mut cur  = end;
+    let mut cur = end;
     while cur != source {
         cur = *prev.get(&cur)?;
         path.push(cur);
@@ -162,10 +179,14 @@ fn place_river_edges(path: &[HexCoord], board: &mut WorldBoard) {
     // Collect (a, dir) pairs before mutating board.
     let mut edge_specs: Vec<(HexCoord, HexDir)> = Vec::with_capacity(path.len() - 1);
     for window in path.windows(2) {
-        let a   = window[0];
-        let b   = window[1];
+        let a = window[0];
+        let b = window[1];
         let delta = b - a;
-        let Some(dir) = HexDir::ALL.iter().find(|&&d| d.unit_vec() == delta).copied() else {
+        let Some(dir) = HexDir::ALL
+            .iter()
+            .find(|&&d| d.unit_vec() == delta)
+            .copied()
+        else {
             continue; // b is not adjacent to a (shouldn't happen after Dijkstra)
         };
         edge_specs.push((a, dir));
@@ -174,7 +195,9 @@ fn place_river_edges(path: &[HexCoord], board: &mut WorldBoard) {
     // Place edges and record in tile.rivers.
     for (a, dir) in edge_specs {
         let b_raw = a + dir.unit_vec();
-        let Some(b) = board.normalize(b_raw) else { continue };
+        let Some(b) = board.normalize(b_raw) else {
+            continue;
+        };
 
         let river_feature = BuiltinEdgeFeature::River(River);
 
@@ -200,8 +223,12 @@ fn apply_post_river_features(path: &[HexCoord], board: &mut WorldBoard) {
     let coast_threshold = 2usize; // last N steps before terminus
 
     for (i, &coord) in path.iter().enumerate() {
-        let Some(tile) = board.tile(coord) else { continue };
-        if tile.feature.is_some() { continue; }
+        let Some(tile) = board.tile(coord) else {
+            continue;
+        };
+        if tile.feature.is_some() {
+            continue;
+        }
 
         let near_coast = i + coast_threshold >= path.len();
 
@@ -211,7 +238,10 @@ fn apply_post_river_features(path: &[HexCoord], board: &mut WorldBoard) {
         // tile borrow ends here; mutable borrow follows.
         let needs_floodplain = tile.terrain == BuiltinTerrain::Desert && river_edge_count >= 2;
         let needs_marsh = near_coast
-            && matches!(tile.terrain, BuiltinTerrain::Grassland | BuiltinTerrain::Plains);
+            && matches!(
+                tile.terrain,
+                BuiltinTerrain::Grassland | BuiltinTerrain::Plains
+            );
 
         if needs_floodplain && let Some(t) = board.tile_mut(coord) {
             t.feature = Some(super::super::feature::BuiltinFeature::Floodplain);

@@ -6,7 +6,6 @@
 //! enable the `mailer-smtp` feature and use [`SmtpMailer`] (TODO; the
 //! shape is reserved here so the trait surface is stable).
 
-
 use async_trait::async_trait;
 use thiserror::Error;
 
@@ -33,12 +32,7 @@ pub trait Mailer: Send + Sync {
     /// default impl forwards to [`Mailer::send_magic_link`] when the
     /// subject contains "magic link", otherwise errors out so backends
     /// that don't support generic mail fail loudly.
-    async fn send_raw(
-        &self,
-        to: &str,
-        subject: &str,
-        body: &str,
-    ) -> Result<(), MailerError> {
+    async fn send_raw(&self, to: &str, subject: &str, body: &str) -> Result<(), MailerError> {
         let _ = (to, subject, body);
         Err(MailerError::NotConfigured)
     }
@@ -96,7 +90,13 @@ impl SmtpConfig {
             .ok()
             .and_then(|s| s.parse::<u16>().ok())
             .unwrap_or(465);
-        Some(Self { host, port, username, password, from })
+        Some(Self {
+            host,
+            port,
+            username,
+            password,
+            from,
+        })
     }
 }
 
@@ -113,22 +113,19 @@ pub struct SmtpMailer {
 #[cfg(feature = "mailer-smtp")]
 impl SmtpMailer {
     pub fn new(cfg: SmtpConfig) -> Result<Self, MailerError> {
-        let creds = lettre::transport::smtp::authentication::Credentials::new(
-            cfg.username,
-            cfg.password,
-        );
-        let transport =
-            lettre::AsyncSmtpTransport::<lettre::Tokio1Executor>::relay(&cfg.host)
-                .map_err(|e| MailerError::Transport(e.to_string()))?
-                .credentials(creds)
-                .port(cfg.port)
-                .build();
-        let from: lettre::message::Mailbox = cfg
-            .from
-            .parse()
-            .map_err(|e: lettre::address::AddressError| {
-                MailerError::Recipient(format!("SMTP_FROM: {e}"))
-            })?;
+        let creds =
+            lettre::transport::smtp::authentication::Credentials::new(cfg.username, cfg.password);
+        let transport = lettre::AsyncSmtpTransport::<lettre::Tokio1Executor>::relay(&cfg.host)
+            .map_err(|e| MailerError::Transport(e.to_string()))?
+            .credentials(creds)
+            .port(cfg.port)
+            .build();
+        let from: lettre::message::Mailbox =
+            cfg.from
+                .parse()
+                .map_err(|e: lettre::address::AddressError| {
+                    MailerError::Recipient(format!("SMTP_FROM: {e}"))
+                })?;
         Ok(Self { transport, from })
     }
 }
@@ -137,9 +134,8 @@ impl SmtpMailer {
 #[async_trait]
 impl Mailer for SmtpMailer {
     async fn send_magic_link(&self, email: &str, link: &str) -> Result<(), MailerError> {
-        let to: lettre::message::Mailbox = email
-            .parse()
-            .map_err(|e: lettre::address::AddressError| {
+        let to: lettre::message::Mailbox =
+            email.parse().map_err(|e: lettre::address::AddressError| {
                 MailerError::Recipient(format!("{email}: {e}"))
             })?;
         let body = format!(

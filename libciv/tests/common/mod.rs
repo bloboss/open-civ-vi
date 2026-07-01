@@ -1,3 +1,6 @@
+use libciv::civ::{BasicUnit, BuiltinAgenda, City, Civilization, Leader};
+use libciv::game::recalculate_visibility;
+use libciv::game::state::UnitTypeDef;
 /// Shared helpers for libciv integration tests.
 ///
 /// `build_scenario()` creates a deterministic two-civilisation game:
@@ -10,14 +13,10 @@
 /// `advance_turn()` processes one full game turn: TurnEngine, movement
 /// reset, and recalculate_visibility for every civilisation in the state.
 #[allow(dead_code)]
-
 use libciv::{
-    CivId, CityId, GameState, DefaultRulesEngine, TurnEngine,
-    UnitCategory, UnitDomain, UnitId, UnitTypeId,
+    CityId, CivId, DefaultRulesEngine, GameState, TurnEngine, UnitCategory, UnitDomain, UnitId,
+    UnitTypeId,
 };
-use libciv::civ::{BasicUnit, BuiltinAgenda, City, Civilization, Leader};
-use libciv::game::recalculate_visibility;
-use libciv::game::state::UnitTypeDef;
 use libhexgrid::coord::HexCoord;
 
 fn stub_leader(name: &'static str, civ_id: CivId) -> Leader {
@@ -34,19 +33,19 @@ fn stub_leader(name: &'static str, civ_id: CivId) -> Leader {
 
 /// All stable IDs produced by `build_scenario`.
 pub struct Scenario {
-    pub state:            GameState,
+    pub state: GameState,
     /// Rome — the "player" civilisation.
-    pub rome_id:          CivId,
-    pub rome_city:        CityId,
-    pub rome_warrior:     UnitId,
+    pub rome_id: CivId,
+    pub rome_city: CityId,
+    pub rome_warrior: UnitId,
     /// Babylon — the "opponent" civilisation.
-    pub babylon_id:       CivId,
-    pub babylon_city:     CityId,
-    pub babylon_warrior:  UnitId,
+    pub babylon_id: CivId,
+    pub babylon_city: CityId,
+    pub babylon_warrior: UnitId,
     /// Shared unit-type IDs (same registry for both civs).
-    pub warrior_type:     UnitTypeId,
-    pub settler_type:     UnitTypeId,
-    pub builder_type:     UnitTypeId,
+    pub warrior_type: UnitTypeId,
+    pub settler_type: UnitTypeId,
+    pub builder_type: UnitTypeId,
 }
 
 /// Build a deterministic two-civ scenario on a 14×8 board.
@@ -59,58 +58,116 @@ pub fn build_scenario() -> Scenario {
     let builder_type = UnitTypeId::from_ulid(state.id_gen.next_ulid());
     state.unit_type_defs.extend([
         UnitTypeDef {
-            id: warrior_type, name: "warrior", production_cost: 40,
-            max_movement: 200, combat_strength: Some(20),
-            domain: UnitDomain::Land, category: UnitCategory::Combat,
-            range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None,
+            id: warrior_type,
+            name: "warrior",
+            production_cost: 40,
+            max_movement: 200,
+            combat_strength: Some(20),
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            range: 0,
+            vision_range: 2,
+            can_found_city: false,
+            resource_cost: None,
+            siege_bonus: 0,
+            max_charges: 0,
+            exclusive_to: None,
+            replaces: None,
+            era: None,
+            promotion_class: None,
         },
         UnitTypeDef {
-            id: settler_type, name: "settler", production_cost: 80,
-            max_movement: 200, combat_strength: None,
-            domain: UnitDomain::Land, category: UnitCategory::Civilian,
-            range: 0, vision_range: 2, can_found_city: true, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None,
+            id: settler_type,
+            name: "settler",
+            production_cost: 80,
+            max_movement: 200,
+            combat_strength: None,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Civilian,
+            range: 0,
+            vision_range: 2,
+            can_found_city: true,
+            resource_cost: None,
+            siege_bonus: 0,
+            max_charges: 0,
+            exclusive_to: None,
+            replaces: None,
+            era: None,
+            promotion_class: None,
         },
         UnitTypeDef {
-            id: builder_type, name: "builder", production_cost: 50,
-            max_movement: 200, combat_strength: None,
-            domain: UnitDomain::Land, category: UnitCategory::Civilian,
-            range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 3, exclusive_to: None, replaces: None, era: None, promotion_class: None,
+            id: builder_type,
+            name: "builder",
+            production_cost: 50,
+            max_movement: 200,
+            combat_strength: None,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Civilian,
+            range: 0,
+            vision_range: 2,
+            can_found_city: false,
+            resource_cost: None,
+            siege_bonus: 0,
+            max_charges: 3,
+            exclusive_to: None,
+            replaces: None,
+            era: None,
+            promotion_class: None,
         },
     ]);
 
     // ── Rome ─────────────────────────────────────────────────────────────
     let rome_id = state.id_gen.next_civ_id();
-    state.civilizations.push(
-        Civilization::new(rome_id, "Rome", "Roman", stub_leader("Caesar", rome_id))
-    );
+    state.civilizations.push(Civilization::new(
+        rome_id,
+        "Rome",
+        "Roman",
+        stub_leader("Caesar", rome_id),
+    ));
 
     let rome_city = state.id_gen.next_city_id();
     let mut city = City::new(rome_city, "Roma".into(), rome_id, HexCoord::from_qr(3, 3));
     city.is_capital = true;
     state.cities.push(city);
-    state.civilizations.iter_mut()
-        .find(|c| c.id == rome_id).unwrap()
-        .cities.push(rome_city);
+    state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == rome_id)
+        .unwrap()
+        .cities
+        .push(rome_city);
 
-    let rome_warrior = SpawnUnit::combat(warrior_type, rome_id, HexCoord::from_qr(5, 3))
-        .build(&mut state);
+    let rome_warrior =
+        SpawnUnit::combat(warrior_type, rome_id, HexCoord::from_qr(5, 3)).build(&mut state);
 
     // ── Babylon ───────────────────────────────────────────────────────────
     let babylon_id = state.id_gen.next_civ_id();
-    state.civilizations.push(
-        Civilization::new(babylon_id, "Babylon", "Babylonian", stub_leader("Hammurabi", babylon_id))
-    );
+    state.civilizations.push(Civilization::new(
+        babylon_id,
+        "Babylon",
+        "Babylonian",
+        stub_leader("Hammurabi", babylon_id),
+    ));
 
     let babylon_city = state.id_gen.next_city_id();
-    let mut city = City::new(babylon_city, "Babylon".into(), babylon_id, HexCoord::from_qr(10, 5));
+    let mut city = City::new(
+        babylon_city,
+        "Babylon".into(),
+        babylon_id,
+        HexCoord::from_qr(10, 5),
+    );
     city.is_capital = true;
     state.cities.push(city);
-    state.civilizations.iter_mut()
-        .find(|c| c.id == babylon_id).unwrap()
-        .cities.push(babylon_city);
+    state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == babylon_id)
+        .unwrap()
+        .cities
+        .push(babylon_city);
 
-    let babylon_warrior = SpawnUnit::combat(warrior_type, babylon_id, HexCoord::from_qr(8, 5))
-        .build(&mut state);
+    let babylon_warrior =
+        SpawnUnit::combat(warrior_type, babylon_id, HexCoord::from_qr(8, 5)).build(&mut state);
 
     // ── Initial visibility for both civs ──────────────────────────────────
     recalculate_visibility(&mut state, rome_id);
@@ -118,9 +175,15 @@ pub fn build_scenario() -> Scenario {
 
     Scenario {
         state,
-        rome_id, rome_city, rome_warrior,
-        babylon_id, babylon_city, babylon_warrior,
-        warrior_type, settler_type, builder_type,
+        rome_id,
+        rome_city,
+        rome_warrior,
+        babylon_id,
+        babylon_city,
+        babylon_warrior,
+        warrior_type,
+        settler_type,
+        builder_type,
     }
 }
 
@@ -131,7 +194,7 @@ pub fn build_scenario() -> Scenario {
 /// Advance one full turn: process rules, reset movement, refresh visibility.
 pub fn advance_turn(s: &mut Scenario) {
     let engine = TurnEngine::new();
-    let rules  = DefaultRulesEngine;
+    let rules = DefaultRulesEngine;
     engine.process_turn(&mut s.state, &rules);
     for unit in &mut s.state.units {
         unit.movement_left = unit.max_movement;
@@ -149,7 +212,7 @@ pub fn apply_move(state: &mut GameState, diff: &libciv::GameStateDiff) {
     for delta in &diff.deltas {
         if let StateDelta::UnitMoved { unit, to, cost, .. } = delta {
             if let Some(u) = state.unit_mut(*unit) {
-                u.coord        = *to;
+                u.coord = *to;
                 u.movement_left = u.movement_left.saturating_sub(*cost);
             }
         }

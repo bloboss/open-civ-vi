@@ -55,8 +55,7 @@ use serde::{Deserialize, Serialize};
 /// Wire format: `0xA9C3·7F12·EE04` — 16 hex digits (64 bits) split into
 /// dot-grouped quads, prefixed `0x`. Internally a u64. Generated on first
 /// successful sign-in and immutable thereafter.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub struct PlayerId(pub u64);
 
 impl PlayerId {
@@ -150,7 +149,11 @@ pub fn pubkey_fingerprint(ed25519_hex: &str) -> String {
     if ed25519_hex.len() <= 12 {
         ed25519_hex.to_string()
     } else {
-        format!("{}…{}", &ed25519_hex[..8], &ed25519_hex[ed25519_hex.len() - 4..])
+        format!(
+            "{}…{}",
+            &ed25519_hex[..8],
+            &ed25519_hex[ed25519_hex.len() - 4..]
+        )
     }
 }
 
@@ -204,7 +207,6 @@ pub enum ColorScheme {
     Ink,
     Auto,
 }
-
 
 // ─────────────────────────── Magic-link token ─────────────────────────────────
 

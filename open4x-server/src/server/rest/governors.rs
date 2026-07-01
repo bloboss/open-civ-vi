@@ -33,10 +33,7 @@ pub async fn governors(
 }
 
 /// Project the governor roster owned by `civ` out of `room.state`.
-pub fn build_governors_from_room(
-    room: &GameRoom,
-    civ: CivId,
-) -> wire::GovernorsView {
+pub fn build_governors_from_room(room: &GameRoom, civ: CivId) -> wire::GovernorsView {
     let libciv_civ = libciv::CivId::from_ulid(civ.as_ulid());
 
     let titles_available = room

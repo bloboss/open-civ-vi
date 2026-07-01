@@ -6,12 +6,12 @@
 /// live in `libciv/src/game/rules.rs`; these tests verify full pipelines.
 mod common;
 
-use libciv::{DefaultRulesEngine, RulesEngine, TechId, UnitCategory, UnitDomain};
-use libciv::civ::{BasicUnit, TechProgress};
 use libciv::civ::city::WallLevel;
-use libciv::game::{recalculate_visibility, AttackType, RulesError, StateDelta};
+use libciv::civ::{BasicUnit, TechProgress};
+use libciv::game::{AttackType, RulesError, StateDelta, recalculate_visibility};
 use libciv::rules::TechNode;
 use libciv::world::resource::BuiltinResource;
+use libciv::{DefaultRulesEngine, RulesEngine, TechId, UnitCategory, UnitDomain};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 
@@ -26,25 +26,52 @@ fn scenario_initial_state_is_coherent() {
 
     // Two civilisations, two cities, two units.
     assert_eq!(s.state.civilizations.len(), 2, "expected 2 civs");
-    assert_eq!(s.state.cities.len(), 2,        "expected 2 cities");
-    assert_eq!(s.state.units.len(), 2,         "expected 2 units");
+    assert_eq!(s.state.cities.len(), 2, "expected 2 cities");
+    assert_eq!(s.state.units.len(), 2, "expected 2 units");
 
     // Turn counter starts at zero.
     assert_eq!(s.state.turn, 0, "turn should be 0 before any advance");
 
     // Each city is registered in its owner's city list.
-    let rome_civ = s.state.civilizations.iter().find(|c| c.id == s.rome_id).unwrap();
-    assert!(rome_civ.cities.contains(&s.rome_city), "roma not in Rome's city list");
+    let rome_civ = s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == s.rome_id)
+        .unwrap();
+    assert!(
+        rome_civ.cities.contains(&s.rome_city),
+        "roma not in Rome's city list"
+    );
 
-    let babylon_civ = s.state.civilizations.iter().find(|c| c.id == s.babylon_id).unwrap();
-    assert!(babylon_civ.cities.contains(&s.babylon_city), "babylon not in Babylon's city list");
+    let babylon_civ = s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == s.babylon_id)
+        .unwrap();
+    assert!(
+        babylon_civ.cities.contains(&s.babylon_city),
+        "babylon not in Babylon's city list"
+    );
 
     // Units are on their expected starting coordinates.
     let rome_unit = s.state.unit(s.rome_warrior).expect("rome warrior missing");
-    assert_eq!(rome_unit.coord, HexCoord::from_qr(5, 3), "rome warrior at wrong coord");
+    assert_eq!(
+        rome_unit.coord,
+        HexCoord::from_qr(5, 3),
+        "rome warrior at wrong coord"
+    );
 
-    let babylon_unit = s.state.unit(s.babylon_warrior).expect("babylon warrior missing");
-    assert_eq!(babylon_unit.coord, HexCoord::from_qr(8, 5), "babylon warrior at wrong coord");
+    let babylon_unit = s
+        .state
+        .unit(s.babylon_warrior)
+        .expect("babylon warrior missing");
+    assert_eq!(
+        babylon_unit.coord,
+        HexCoord::from_qr(8, 5),
+        "babylon warrior at wrong coord"
+    );
 }
 
 /// `advance_turn` increments the turn counter and resets movement.
@@ -59,7 +86,10 @@ fn advance_turn_increments_counter_and_resets_movement() {
     common::apply_move(&mut s.state, &diff);
 
     let unit_before = s.state.unit(s.rome_warrior).unwrap();
-    assert!(unit_before.movement_left < unit_before.max_movement, "movement should have been spent");
+    assert!(
+        unit_before.movement_left < unit_before.max_movement,
+        "movement should have been spent"
+    );
 
     common::advance_turn(&mut s);
 
@@ -78,12 +108,23 @@ fn advance_turn_increments_counter_and_resets_movement() {
 fn initial_visibility_covers_starting_tiles() {
     let s = common::build_scenario();
 
-    let rome_civ = s.state.civilizations.iter().find(|c| c.id == s.rome_id).unwrap();
+    let rome_civ = s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == s.rome_id)
+        .unwrap();
 
     // City at (3,3) with radius 2 and warrior at (5,3) with radius 2
     // must produce non-empty visible and explored sets.
-    assert!(!rome_civ.visible_tiles.is_empty(),  "Rome should have visible tiles");
-    assert!(!rome_civ.explored_tiles.is_empty(), "Rome should have explored tiles");
+    assert!(
+        !rome_civ.visible_tiles.is_empty(),
+        "Rome should have visible tiles"
+    );
+    assert!(
+        !rome_civ.explored_tiles.is_empty(),
+        "Rome should have explored tiles"
+    );
 
     // The city's own tile should be visible.
     assert!(
@@ -115,7 +156,12 @@ fn fog_of_war_expands_after_unit_move() {
 
     // Tile (9, 3) is beyond the warrior's initial vision radius.
     let far_tile = HexCoord::from_qr(9, 3);
-    let rome_civ = s.state.civilizations.iter().find(|c| c.id == s.rome_id).unwrap();
+    let rome_civ = s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == s.rome_id)
+        .unwrap();
     assert!(
         !rome_civ.visible_tiles.contains(&far_tile),
         "(9,3) should not be visible from the starting position"
@@ -130,7 +176,12 @@ fn fog_of_war_expands_after_unit_move() {
     let warrior = s.state.unit(s.rome_warrior).unwrap();
     assert_eq!(warrior.coord, dest, "warrior should have reached (7,3)");
 
-    let rome_civ = s.state.civilizations.iter().find(|c| c.id == s.rome_id).unwrap();
+    let rome_civ = s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == s.rome_id)
+        .unwrap();
 
     // Tile (9, 3) is now exactly 2 tiles from the warrior — within vision radius.
     assert!(
@@ -165,30 +216,42 @@ fn melee_attack_emits_damage_and_reduces_health() {
     let enemy_coord = HexCoord::from_qr(6, 3);
     let enemy_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id:              enemy_id,
-        unit_type:       s.warrior_type,
-        owner:           s.babylon_id,
-        coord:           enemy_coord,
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Combat,
-        movement_left:   200,
-        max_movement:    200,
+        id: enemy_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
+        coord: enemy_coord,
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
         combat_strength: Some(20),
-        promotions:      Vec::new(),
-        experience:      0,
-        health:          100,
-        range:           0,
-        vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        promotions: Vec::new(),
+        experience: 0,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
-    let diff = rules.attack(&mut s.state, s.rome_warrior, enemy_id)
+    let diff = rules
+        .attack(&mut s.state, s.rome_warrior, enemy_id)
         .expect("attack should succeed");
 
     // A UnitAttacked delta must be present.
     let attacked = diff.deltas.iter().find_map(|d| {
-        if let StateDelta::UnitAttacked { attacker, defender, defender_damage, attacker_damage, .. }
-            = d
+        if let StateDelta::UnitAttacked {
+            attacker,
+            defender,
+            defender_damage,
+            attacker_damage,
+            ..
+        } = d
         {
             Some((*attacker, *defender, *attacker_damage, *defender_damage))
         } else {
@@ -197,7 +260,7 @@ fn melee_attack_emits_damage_and_reduces_health() {
     });
     let (atk, def, atk_dmg, def_dmg) = attacked.expect("UnitAttacked delta expected");
     assert_eq!(atk, s.rome_warrior, "attacker id mismatch");
-    assert_eq!(def, enemy_id,       "defender id mismatch");
+    assert_eq!(def, enemy_id, "defender id mismatch");
     assert!(def_dmg > 0, "defender should take damage");
     assert!(atk_dmg > 0, "attacker should take counter-damage in melee");
 
@@ -211,8 +274,15 @@ fn melee_attack_emits_damage_and_reduces_health() {
     }
 
     // Attacker must have expended all remaining movement after attacking.
-    let mv_left = s.state.unit(s.rome_warrior).map(|u| u.movement_left).unwrap_or(0);
-    assert_eq!(mv_left, 0, "attacker should have 0 movement left after attacking");
+    let mv_left = s
+        .state
+        .unit(s.rome_warrior)
+        .map(|u| u.movement_left)
+        .unwrap_or(0);
+    assert_eq!(
+        mv_left, 0,
+        "attacker should have 0 movement left after attacking"
+    );
 }
 
 /// When a defender's health reaches zero the unit is removed from the state
@@ -225,29 +295,38 @@ fn attacking_unit_at_one_hp_destroys_it() {
     // Place an adjacent enemy with only 1 HP — any hit will kill it.
     let enemy_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id:              enemy_id,
-        unit_type:       s.warrior_type,
-        owner:           s.babylon_id,
-        coord:           HexCoord::from_qr(6, 3),
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Combat,
-        movement_left:   200,
-        max_movement:    200,
+        id: enemy_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
+        coord: HexCoord::from_qr(6, 3),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
         combat_strength: Some(20),
-        promotions:      Vec::new(),
-        experience:      0,
-        health:          1,      // barely alive
-        range:           0,
-        vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        promotions: Vec::new(),
+        experience: 0,
+        health: 1, // barely alive
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
-    let diff = rules.attack(&mut s.state, s.rome_warrior, enemy_id)
+    let diff = rules
+        .attack(&mut s.state, s.rome_warrior, enemy_id)
         .expect("attack should succeed");
 
     // UnitDestroyed must be in the diff.
     assert!(
-        diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitDestroyed { unit } if *unit == enemy_id)),
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::UnitDestroyed { unit } if *unit == enemy_id)),
         "UnitDestroyed delta expected for the killed unit"
     );
 
@@ -274,27 +353,34 @@ fn settler_founds_city_and_is_consumed() {
 
     let settler_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id:              settler_id,
-        unit_type:       s.settler_type,
-        owner:           s.rome_id,
-        coord:           settle_coord,
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Civilian,
-        movement_left:   200,
-        max_movement:    200,
+        id: settler_id,
+        unit_type: s.settler_type,
+        owner: s.rome_id,
+        coord: settle_coord,
+        domain: UnitDomain::Land,
+        category: UnitCategory::Civilian,
+        movement_left: 200,
+        max_movement: 200,
         combat_strength: None,
-        promotions:      Vec::new(),
-        experience:      0,
-        health:          100,
-        range:           0,
-        vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        promotions: Vec::new(),
+        experience: 0,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     let unit_count_before = s.state.units.len();
     let city_count_before = s.state.cities.len();
 
-    let diff = rules.found_city(&mut s.state, settler_id, "Nova Roma".to_string())
+    let diff = rules
+        .found_city(&mut s.state, settler_id, "Nova Roma".to_string())
         .expect("found_city should succeed");
 
     // A CityFounded delta must be present.
@@ -308,24 +394,38 @@ fn settler_founds_city_and_is_consumed() {
 
     // Settler consumed: unit list shrinks by 1.
     assert_eq!(
-        s.state.units.len(), unit_count_before - 1,
+        s.state.units.len(),
+        unit_count_before - 1,
         "settler should be removed after founding"
     );
 
     // New city added.
     assert_eq!(
-        s.state.cities.len(), city_count_before + 1,
+        s.state.cities.len(),
+        city_count_before + 1,
         "city count should increase by 1"
     );
 
     // New city is at the settle coordinate.
-    let new_city = s.state.cities.iter().find(|c| c.coord == settle_coord)
+    let new_city = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.coord == settle_coord)
         .expect("new city should be at settle_coord");
-    assert_eq!(new_city.owner, s.rome_id, "new city should be owned by Rome");
+    assert_eq!(
+        new_city.owner, s.rome_id,
+        "new city should be owned by Rome"
+    );
     assert_eq!(new_city.name, "Nova Roma", "city name should match");
 
     // Rome's civ city list is updated.
-    let rome_civ = s.state.civilizations.iter().find(|c| c.id == s.rome_id).unwrap();
+    let rome_civ = s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == s.rome_id)
+        .unwrap();
     assert!(
         rome_civ.cities.contains(&new_city.id),
         "new city should appear in Rome's city list"
@@ -341,27 +441,34 @@ fn founder_too_close_to_existing_city_is_rejected() {
     // (4, 3) is only 1 tile from Roma at (3, 3) — within the 3-tile exclusion zone.
     let settler_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id:              settler_id,
-        unit_type:       s.settler_type,
-        owner:           s.rome_id,
-        coord:           HexCoord::from_qr(4, 3),
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Civilian,
-        movement_left:   200,
-        max_movement:    200,
+        id: settler_id,
+        unit_type: s.settler_type,
+        owner: s.rome_id,
+        coord: HexCoord::from_qr(4, 3),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Civilian,
+        movement_left: 200,
+        max_movement: 200,
         combat_strength: None,
-        promotions:      Vec::new(),
-        experience:      0,
-        health:          100,
-        range:           0,
-        vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        promotions: Vec::new(),
+        experience: 0,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     let result = rules.found_city(&mut s.state, settler_id, "Too Close".to_string());
     assert!(
         matches!(result, Err(libciv::game::RulesError::TooCloseToCity)),
-        "expected TooCloseToCity error, got {:?}", result
+        "expected TooCloseToCity error, got {:?}",
+        result
     );
 }
 
@@ -378,7 +485,11 @@ fn tech_completes_when_science_fills_progress() {
     let rules = DefaultRulesEngine;
 
     // Find the canonical Pottery TechId from the built-in tree.
-    let pottery_id: TechId = s.state.tech_tree.nodes.values()
+    let pottery_id: TechId = s
+        .state
+        .tech_tree
+        .nodes
+        .values()
         .find(|n| n.name == "Pottery")
         .expect("Pottery should be in the built-in tech tree")
         .id;
@@ -387,27 +498,34 @@ fn tech_completes_when_science_fills_progress() {
     // ungated.  Add a stub Refining node and mark it as already researched.
     let refining_id = TechId::from_ulid(s.state.id_gen.next_ulid());
     s.state.tech_tree.add_node(TechNode {
-        id:                 refining_id,
-        name:               "Refining",
-        cost:               9999,
-        prerequisites:      vec![],
-        effects:            vec![],
+        id: refining_id,
+        name: "Refining",
+        cost: 9999,
+        prerequisites: vec![],
+        effects: vec![],
         eureka_description: "",
-        eureka_effects:     vec![],
+        eureka_effects: vec![],
     });
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .researched_techs.push(refining_id);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .researched_techs
+        .push(refining_id);
 
     // Place Aluminum on Roma's center tile, which is always in worked_tiles.
     let city_tile = HexCoord::from_qr(3, 3);
-    s.state.board.tile_mut(city_tile).unwrap().resource =
-        Some(BuiltinResource::Aluminum);
+    s.state.board.tile_mut(city_tile).unwrap().resource = Some(BuiltinResource::Aluminum);
 
     // Queue Pottery with 24/25 progress — needs exactly 1 more science to complete.
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .research_queue.push_back(TechProgress {
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .research_queue
+        .push_back(TechProgress {
             tech_id: pottery_id,
             progress: 24,
             boosted: false,
@@ -415,7 +533,12 @@ fn tech_completes_when_science_fills_progress() {
 
     let diff = rules.advance_turn(&mut s.state);
 
-    let rome_civ = s.state.civilizations.iter().find(|c| c.id == s.rome_id).unwrap();
+    let rome_civ = s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == s.rome_id)
+        .unwrap();
     assert!(
         rome_civ.researched_techs.contains(&pottery_id),
         "Pottery should be in researched_techs after completion"
@@ -427,7 +550,11 @@ fn tech_completes_when_science_fills_progress() {
 
     assert!(
         diff.deltas.iter().any(|d| matches!(
-            d, StateDelta::TechResearched { tech: "Pottery", .. }
+            d,
+            StateDelta::TechResearched {
+                tech: "Pottery",
+                ..
+            }
         )),
         "TechResearched(\"Pottery\") delta expected"
     );
@@ -440,32 +567,76 @@ fn second_queued_tech_advances_after_first_completes() {
     let mut s = common::build_scenario();
     let rules = DefaultRulesEngine;
 
-    let pottery_id: TechId = s.state.tech_tree.nodes.values()
-        .find(|n| n.name == "Pottery").unwrap().id;
-    let mining_id: TechId = s.state.tech_tree.nodes.values()
-        .find(|n| n.name == "Mining").unwrap().id;
+    let pottery_id: TechId = s
+        .state
+        .tech_tree
+        .nodes
+        .values()
+        .find(|n| n.name == "Pottery")
+        .unwrap()
+        .id;
+    let mining_id: TechId = s
+        .state
+        .tech_tree
+        .nodes
+        .values()
+        .find(|n| n.name == "Mining")
+        .unwrap()
+        .id;
 
     // Ungate Aluminum with a fake Refining tech.
     let refining_id = TechId::from_ulid(s.state.id_gen.next_ulid());
     s.state.tech_tree.add_node(TechNode {
-        id: refining_id, name: "Refining", cost: 9999,
-        prerequisites: vec![], effects: vec![],
-        eureka_description: "", eureka_effects: vec![],
+        id: refining_id,
+        name: "Refining",
+        cost: 9999,
+        prerequisites: vec![],
+        effects: vec![],
+        eureka_description: "",
+        eureka_effects: vec![],
     });
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .researched_techs.push(refining_id);
-    s.state.board.tile_mut(HexCoord::from_qr(3, 3)).unwrap().resource =
-        Some(BuiltinResource::Aluminum);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .researched_techs
+        .push(refining_id);
+    s.state
+        .board
+        .tile_mut(HexCoord::from_qr(3, 3))
+        .unwrap()
+        .resource = Some(BuiltinResource::Aluminum);
 
-    let civ = s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap();
-    civ.research_queue.push_back(TechProgress { tech_id: pottery_id, progress: 24, boosted: false });
-    civ.research_queue.push_back(TechProgress { tech_id: mining_id,  progress: 0,  boosted: false });
+    let civ = s
+        .state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap();
+    civ.research_queue.push_back(TechProgress {
+        tech_id: pottery_id,
+        progress: 24,
+        boosted: false,
+    });
+    civ.research_queue.push_back(TechProgress {
+        tech_id: mining_id,
+        progress: 0,
+        boosted: false,
+    });
 
     rules.advance_turn(&mut s.state);
 
-    let rome_civ = s.state.civilizations.iter().find(|c| c.id == s.rome_id).unwrap();
-    assert!(rome_civ.researched_techs.contains(&pottery_id), "Pottery should be completed");
+    let rome_civ = s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == s.rome_id)
+        .unwrap();
+    assert!(
+        rome_civ.researched_techs.contains(&pottery_id),
+        "Pottery should be completed"
+    );
     assert_eq!(rome_civ.research_queue.len(), 1, "Mining still in queue");
     assert_eq!(
         rome_civ.research_queue.front().unwrap().tech_id,
@@ -486,13 +657,18 @@ fn multiple_turns_advance_correctly() {
 
     for expected_turn in 1..=3 {
         common::advance_turn(&mut s);
-        assert_eq!(s.state.turn, expected_turn, "turn counter after advance {}", expected_turn);
+        assert_eq!(
+            s.state.turn, expected_turn,
+            "turn counter after advance {}",
+            expected_turn
+        );
 
         // Every unit should have full movement after the reset.
         for unit in &s.state.units {
             assert_eq!(
                 unit.movement_left, unit.max_movement,
-                "unit {} should have full movement after turn {}", unit.id, expected_turn
+                "unit {} should have full movement after turn {}",
+                unit.id, expected_turn
             );
         }
     }
@@ -508,41 +684,47 @@ fn spawn_slinger(s: &mut common::Scenario, coord: HexCoord) -> libciv::UnitId {
     // Register the slinger type if not already present.
     let slinger_type_id = libciv::UnitTypeId::from_ulid(s.state.id_gen.next_ulid());
     s.state.unit_type_defs.push(UnitTypeDef {
-        id:              slinger_type_id,
-        name:            "slinger",
+        id: slinger_type_id,
+        name: "slinger",
         production_cost: 35,
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Combat,
-        max_movement:    200,
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        max_movement: 200,
         combat_strength: Some(15),
-        range:           2,
-        vision_range:    2,
-        can_found_city:  false,
-        resource_cost:   None,
-        siege_bonus:     0,
-        max_charges:     0,
-        exclusive_to:    None,
-        replaces:        None,
-            era:             None,
-            promotion_class: None,
+        range: 2,
+        vision_range: 2,
+        can_found_city: false,
+        resource_cost: None,
+        siege_bonus: 0,
+        max_charges: 0,
+        exclusive_to: None,
+        replaces: None,
+        era: None,
+        promotion_class: None,
     });
     let unit_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id:              unit_id,
-        unit_type:       slinger_type_id,
-        owner:           s.rome_id,
+        id: unit_id,
+        unit_type: slinger_type_id,
+        owner: s.rome_id,
         coord,
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Combat,
-        movement_left:   200,
-        max_movement:    200,
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
         combat_strength: Some(15),
-        promotions:      Vec::new(),
-        experience:      0,
-        health:          100,
-        range:           2,
-        vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        promotions: Vec::new(),
+        experience: 0,
+        health: 100,
+        range: 2,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
     unit_id
 }
@@ -557,47 +739,71 @@ fn ranged_unit_attacks_from_two_tiles_away() {
     let rules = DefaultRulesEngine;
 
     // Slinger at (5, 3); target 2 tiles east at (7, 3).
-    let slinger_id  = spawn_slinger(&mut s, HexCoord::from_qr(5, 3));
+    let slinger_id = spawn_slinger(&mut s, HexCoord::from_qr(5, 3));
     let target_coord = HexCoord::from_qr(7, 3);
 
     let target_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id:              target_id,
-        unit_type:       s.warrior_type,
-        owner:           s.babylon_id,
-        coord:           target_coord,
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Combat,
-        movement_left:   200,
-        max_movement:    200,
+        id: target_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
+        coord: target_coord,
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
         combat_strength: Some(20),
-        promotions:      Vec::new(),
-        experience:      0,
-        health:          100,
-        range:           0,
-        vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        promotions: Vec::new(),
+        experience: 0,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     // Distance is exactly 2 — within range, but not adjacent.
     assert_eq!(HexCoord::from_qr(5, 3).distance(&target_coord), 2);
 
-    let diff = rules.attack(&mut s.state, slinger_id, target_id)
+    let diff = rules
+        .attack(&mut s.state, slinger_id, target_id)
         .expect("ranged attack should succeed at range 2");
 
-    let attacked = diff.deltas.iter().find_map(|d| {
-        if let StateDelta::UnitAttacked { attacker, defender, attack_type,
-                                          attacker_damage, defender_damage } = d
-        {
-            Some((*attacker, *defender, *attack_type, *attacker_damage, *defender_damage))
-        } else { None }
-    }).expect("UnitAttacked delta expected");
+    let attacked = diff
+        .deltas
+        .iter()
+        .find_map(|d| {
+            if let StateDelta::UnitAttacked {
+                attacker,
+                defender,
+                attack_type,
+                attacker_damage,
+                defender_damage,
+            } = d
+            {
+                Some((
+                    *attacker,
+                    *defender,
+                    *attack_type,
+                    *attacker_damage,
+                    *defender_damage,
+                ))
+            } else {
+                None
+            }
+        })
+        .expect("UnitAttacked delta expected");
 
-    assert_eq!(attacked.0, slinger_id,         "attacker id");
-    assert_eq!(attacked.1, target_id,           "defender id");
-    assert_eq!(attacked.2, AttackType::Ranged,  "should be a ranged attack");
-    assert_eq!(attacked.3, 0,                   "ranged attacker takes no counter-damage");
-    assert!(attacked.4 > 0,                     "defender should take damage");
+    assert_eq!(attacked.0, slinger_id, "attacker id");
+    assert_eq!(attacked.1, target_id, "defender id");
+    assert_eq!(attacked.2, AttackType::Ranged, "should be a ranged attack");
+    assert_eq!(attacked.3, 0, "ranged attacker takes no counter-damage");
+    assert!(attacked.4 > 0, "defender should take damage");
 }
 
 /// A ranged attack beyond the unit's range is rejected with `NotInRange`.
@@ -607,32 +813,42 @@ fn ranged_attack_beyond_range_is_rejected() {
     let rules = DefaultRulesEngine;
 
     // Slinger at (5, 3); target 3 tiles east at (8, 3) — beyond range 2.
-    let slinger_id  = spawn_slinger(&mut s, HexCoord::from_qr(5, 3));
+    let slinger_id = spawn_slinger(&mut s, HexCoord::from_qr(5, 3));
     let target_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id:              target_id,
-        unit_type:       s.warrior_type,
-        owner:           s.babylon_id,
-        coord:           HexCoord::from_qr(8, 3),
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Combat,
-        movement_left:   200,
-        max_movement:    200,
+        id: target_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
+        coord: HexCoord::from_qr(8, 3),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
         combat_strength: Some(20),
-        promotions:      Vec::new(),
-        experience:      0,
-        health:          100,
-        range:           0,
-        vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        promotions: Vec::new(),
+        experience: 0,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
-    assert_eq!(HexCoord::from_qr(5, 3).distance(&HexCoord::from_qr(8, 3)), 3);
+    assert_eq!(
+        HexCoord::from_qr(5, 3).distance(&HexCoord::from_qr(8, 3)),
+        3
+    );
 
     let result = rules.attack(&mut s.state, slinger_id, target_id);
     assert!(
         matches!(result, Err(libciv::game::RulesError::NotInRange)),
-        "expected NotInRange, got {:?}", result
+        "expected NotInRange, got {:?}",
+        result
     );
 }
 
@@ -646,23 +862,29 @@ fn ranged_attack_succeeds_without_adjacency() {
 
     // Slinger at (5, 3); target at (5, 5) — distance 2, not adjacent.
     let slinger_id = spawn_slinger(&mut s, HexCoord::from_qr(5, 3));
-    let target_id  = s.state.id_gen.next_unit_id();
+    let target_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id:              target_id,
-        unit_type:       s.warrior_type,
-        owner:           s.babylon_id,
-        coord:           HexCoord::from_qr(5, 5),
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Combat,
-        movement_left:   200,
-        max_movement:    200,
+        id: target_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
+        coord: HexCoord::from_qr(5, 5),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
         combat_strength: Some(20),
-        promotions:      Vec::new(),
-        experience:      0,
-        health:          100,
-        range:           0,
-        vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        promotions: Vec::new(),
+        experience: 0,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     // Verify the distance is exactly 2 (not adjacent).
@@ -689,28 +911,35 @@ fn two_friendly_units_cannot_stack() {
     // Place a second Rome warrior at (6, 3) — one step ahead of the first.
     let blocker_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id:              blocker_id,
-        unit_type:       s.warrior_type,
-        owner:           s.rome_id,       // same civ as rome_warrior
-        coord:           HexCoord::from_qr(6, 3),
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Combat,
-        movement_left:   200,
-        max_movement:    200,
+        id: blocker_id,
+        unit_type: s.warrior_type,
+        owner: s.rome_id, // same civ as rome_warrior
+        coord: HexCoord::from_qr(6, 3),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
         combat_strength: Some(20),
-        promotions:      Vec::new(),
-        experience:      0,
-        health:          100,
-        range:           0,
-        vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        promotions: Vec::new(),
+        experience: 0,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     // Rome's warrior (at (5,3)) tries to move onto (6,3) — occupied by a friendly.
     let result = rules.move_unit(&s.state, s.rome_warrior, HexCoord::from_qr(6, 3));
     assert!(
         matches!(result, Err(libciv::game::RulesError::TileOccupiedByUnit)),
-        "expected TileOccupiedByUnit when stacking friendlies, got {:?}", result
+        "expected TileOccupiedByUnit when stacking friendlies, got {:?}",
+        result
     );
 }
 
@@ -731,27 +960,34 @@ fn cannot_found_city_near_enemy_capital() {
 
     let settler_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id:              settler_id,
-        unit_type:       s.settler_type,
-        owner:           s.rome_id,
-        coord:           too_close,
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Civilian,
-        movement_left:   200,
-        max_movement:    200,
+        id: settler_id,
+        unit_type: s.settler_type,
+        owner: s.rome_id,
+        coord: too_close,
+        domain: UnitDomain::Land,
+        category: UnitCategory::Civilian,
+        movement_left: 200,
+        max_movement: 200,
         combat_strength: None,
-        promotions:      Vec::new(),
-        experience:      0,
-        health:          100,
-        range:           0,
-        vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        promotions: Vec::new(),
+        experience: 0,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     let result = rules.found_city(&mut s.state, settler_id, "Too Close".to_string());
     assert!(
         matches!(result, Err(libciv::game::RulesError::TooCloseToCity)),
-        "expected TooCloseToCity near enemy capital, got {:?}", result
+        "expected TooCloseToCity near enemy capital, got {:?}",
+        result
     );
 }
 
@@ -769,46 +1005,59 @@ fn civilian_blocked_from_moving_onto_enemy_unit() {
     // Place a Rome settler at (7, 3) and a Babylon warrior at (8, 3).
     let settler_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id:              settler_id,
-        unit_type:       s.settler_type,
-        owner:           s.rome_id,
-        coord:           HexCoord::from_qr(7, 3),
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Civilian,
-        movement_left:   200,
-        max_movement:    200,
+        id: settler_id,
+        unit_type: s.settler_type,
+        owner: s.rome_id,
+        coord: HexCoord::from_qr(7, 3),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Civilian,
+        movement_left: 200,
+        max_movement: 200,
         combat_strength: None,
-        promotions:      Vec::new(),
-        experience:      0,
-        health:          100,
-        range:           0,
-        vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        promotions: Vec::new(),
+        experience: 0,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
     let enemy_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id:              enemy_id,
-        unit_type:       s.warrior_type,
-        owner:           s.babylon_id,
-        coord:           HexCoord::from_qr(8, 3),
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Combat,
-        movement_left:   200,
-        max_movement:    200,
+        id: enemy_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
+        coord: HexCoord::from_qr(8, 3),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
         combat_strength: Some(20),
-        promotions:      Vec::new(),
-        experience:      0,
-        health:          100,
-        range:           0,
-        vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        promotions: Vec::new(),
+        experience: 0,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     // Settler tries to walk onto the enemy tile.
     let result = rules.move_unit(&s.state, settler_id, HexCoord::from_qr(8, 3));
     assert!(
         matches!(result, Err(libciv::game::RulesError::UnitCannotAttack)),
-        "expected UnitCannotAttack for civilian moving onto enemy, got {:?}", result
+        "expected UnitCannotAttack for civilian moving onto enemy, got {:?}",
+        result
     );
 }
 
@@ -821,28 +1070,35 @@ fn civilian_blocked_from_stacking_with_friendly_unit() {
     // Place a settler at (4, 3); Rome's warrior is already at (5, 3).
     let settler_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id:              settler_id,
-        unit_type:       s.settler_type,
-        owner:           s.rome_id,
-        coord:           HexCoord::from_qr(4, 3),
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Civilian,
-        movement_left:   200,
-        max_movement:    200,
+        id: settler_id,
+        unit_type: s.settler_type,
+        owner: s.rome_id,
+        coord: HexCoord::from_qr(4, 3),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Civilian,
+        movement_left: 200,
+        max_movement: 200,
         combat_strength: None,
-        promotions:      Vec::new(),
-        experience:      0,
-        health:          100,
-        range:           0,
-        vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        promotions: Vec::new(),
+        experience: 0,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     // Try to move settler onto (5, 3) where Rome's warrior stands.
     let result = rules.move_unit(&s.state, settler_id, HexCoord::from_qr(5, 3));
     assert!(
         matches!(result, Err(libciv::game::RulesError::TileOccupiedByUnit)),
-        "expected TileOccupiedByUnit when civilian stacks with friendly, got {:?}", result
+        "expected TileOccupiedByUnit when civilian stacks with friendly, got {:?}",
+        result
     );
 }
 
@@ -856,28 +1112,35 @@ fn combat_unit_cannot_walk_into_enemy_tile() {
     // Place a second Babylon warrior adjacent to Rome's warrior.
     let enemy_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id:              enemy_id,
-        unit_type:       s.warrior_type,
-        owner:           s.babylon_id,
-        coord:           HexCoord::from_qr(6, 3),
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Combat,
-        movement_left:   200,
-        max_movement:    200,
+        id: enemy_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
+        coord: HexCoord::from_qr(6, 3),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
         combat_strength: Some(20),
-        promotions:      Vec::new(),
-        experience:      0,
-        health:          100,
-        range:           0,
-        vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        promotions: Vec::new(),
+        experience: 0,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     // Rome's warrior (at (5,3)) tries to move onto (6,3) — an enemy tile.
     let result = rules.move_unit(&s.state, s.rome_warrior, HexCoord::from_qr(6, 3));
     assert!(
         matches!(result, Err(libciv::game::RulesError::TileOccupiedByUnit)),
-        "expected TileOccupiedByUnit when walking into enemy, got {:?}", result
+        "expected TileOccupiedByUnit when walking into enemy, got {:?}",
+        result
     );
 
     // The warrior should still be able to attack that tile via attack().
@@ -905,40 +1168,72 @@ fn unit_production_no_resource_cost_completes() {
     let warrior_tid = s.warrior_type;
 
     // Queue a warrior in Rome (production_cost = 40).
-    s.state.cities.iter_mut()
-        .find(|c| c.id == s.rome_city).unwrap()
-        .production_queue.push_back(ProductionItem::Unit(warrior_tid));
+    s.state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
+        .production_queue
+        .push_back(ProductionItem::Unit(warrior_tid));
 
     // Put a Plains tile adjacent to Rome in worked_tiles to get 1 production/turn.
     let plains_tile = HexCoord::from_qr(4, 3);
     if let Some(t) = s.state.board.tile_mut(plains_tile) {
         t.terrain = libciv::world::terrain::BuiltinTerrain::Plains; // 1 production
-        t.owner   = Some(s.rome_id);
+        t.owner = Some(s.rome_id);
     }
-    s.state.cities.iter_mut()
-        .find(|c| c.id == s.rome_city).unwrap()
-        .worked_tiles.push(plains_tile);
+    s.state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
+        .worked_tiles
+        .push(plains_tile);
 
-    let rome_units_before = s.state.units.iter().filter(|u| u.owner == s.rome_id).count();
+    let rome_units_before = s
+        .state
+        .units
+        .iter()
+        .filter(|u| u.owner == s.rome_id)
+        .count();
 
     // Set production one turn away from completion.
-    s.state.cities.iter_mut()
-        .find(|c| c.id == s.rome_city).unwrap()
+    s.state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
         .production_stored = 39;
 
     let diff = rules.advance_turn(&mut s.state);
 
     // After advance_turn adds 1 Plains production, 40 >= 40, unit should complete.
-    let rome_units_after = s.state.units.iter().filter(|u| u.owner == s.rome_id).count();
-    assert_eq!(rome_units_after, rome_units_before + 1, "warrior should have been produced");
+    let rome_units_after = s
+        .state
+        .units
+        .iter()
+        .filter(|u| u.owner == s.rome_id)
+        .count();
+    assert_eq!(
+        rome_units_after,
+        rome_units_before + 1,
+        "warrior should have been produced"
+    );
     assert!(
-        diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitCreated { .. })),
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::UnitCreated { .. })),
         "UnitCreated delta expected"
     );
     // Queue should be empty.
     assert!(
-        s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap()
-            .production_queue.is_empty(),
+        s.state
+            .cities
+            .iter()
+            .find(|c| c.id == s.rome_city)
+            .unwrap()
+            .production_queue
+            .is_empty(),
         "production queue should be empty after completion"
     );
 }
@@ -952,49 +1247,77 @@ fn unit_production_blocked_without_resource() {
     // Register a unit type that costs 1 Iron.
     let swordsman_tid = libciv::UnitTypeId::from_ulid(s.state.id_gen.next_ulid());
     s.state.unit_type_defs.push(UnitTypeDef {
-        id:              swordsman_tid,
-        name:            "swordsman",
-        production_cost: 1,           // trivially met
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Combat,
-        max_movement:    200,
+        id: swordsman_tid,
+        name: "swordsman",
+        production_cost: 1, // trivially met
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        max_movement: 200,
         combat_strength: Some(35),
-        range:           0,
-        vision_range:    2,
-        can_found_city:  false,
-        resource_cost:   Some((BuiltinResource::Iron, 1)),
-        siege_bonus:     0,
-        max_charges:     0,
-        exclusive_to:    None,
-        replaces:        None,
-            era:             None,
-            promotion_class: None,
+        range: 0,
+        vision_range: 2,
+        can_found_city: false,
+        resource_cost: Some((BuiltinResource::Iron, 1)),
+        siege_bonus: 0,
+        max_charges: 0,
+        exclusive_to: None,
+        replaces: None,
+        era: None,
+        promotion_class: None,
     });
 
-    s.state.cities.iter_mut()
-        .find(|c| c.id == s.rome_city).unwrap()
-        .production_queue.push_back(ProductionItem::Unit(swordsman_tid));
+    s.state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
+        .production_queue
+        .push_back(ProductionItem::Unit(swordsman_tid));
 
     // Ensure production_stored already covers the cost.
-    s.state.cities.iter_mut()
-        .find(|c| c.id == s.rome_city).unwrap()
+    s.state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
         .production_stored = 10;
 
-    let rome_units_before = s.state.units.iter().filter(|u| u.owner == s.rome_id).count();
+    let rome_units_before = s
+        .state
+        .units
+        .iter()
+        .filter(|u| u.owner == s.rome_id)
+        .count();
 
     // Rome has no Iron — production should be deferred.
     let diff = rules.advance_turn(&mut s.state);
 
-    let rome_units_after = s.state.units.iter().filter(|u| u.owner == s.rome_id).count();
-    assert_eq!(rome_units_after, rome_units_before, "no unit should be produced without Iron");
+    let rome_units_after = s
+        .state
+        .units
+        .iter()
+        .filter(|u| u.owner == s.rome_id)
+        .count();
+    assert_eq!(
+        rome_units_after, rome_units_before,
+        "no unit should be produced without Iron"
+    );
     assert!(
-        !diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitCreated { owner, .. } if *owner == s.rome_id)),
+        !diff
+            .deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::UnitCreated { owner, .. } if *owner == s.rome_id)),
         "no UnitCreated delta expected for Rome when blocked by resource"
     );
     // Queue still has the item.
     assert!(
-        !s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap()
-            .production_queue.is_empty(),
+        !s.state
+            .cities
+            .iter()
+            .find(|c| c.id == s.rome_city)
+            .unwrap()
+            .production_queue
+            .is_empty(),
         "production queue should remain non-empty when blocked"
     );
 }
@@ -1008,51 +1331,84 @@ fn unit_production_consumes_strategic_resource() {
     // Register swordsman (costs 1 Iron).
     let swordsman_tid = libciv::UnitTypeId::from_ulid(s.state.id_gen.next_ulid());
     s.state.unit_type_defs.push(UnitTypeDef {
-        id:              swordsman_tid,
-        name:            "swordsman",
+        id: swordsman_tid,
+        name: "swordsman",
         production_cost: 1,
-        domain:          UnitDomain::Land,
-        category:        UnitCategory::Combat,
-        max_movement:    200,
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        max_movement: 200,
         combat_strength: Some(35),
-        range:           0,
-        vision_range:    2,
-        can_found_city:  false,
-        resource_cost:   Some((BuiltinResource::Iron, 1)),
-        siege_bonus:     0,
-        max_charges:     0,
-        exclusive_to:    None,
-        replaces:        None,
-            era:             None,
-            promotion_class: None,
+        range: 0,
+        vision_range: 2,
+        can_found_city: false,
+        resource_cost: Some((BuiltinResource::Iron, 1)),
+        siege_bonus: 0,
+        max_charges: 0,
+        exclusive_to: None,
+        replaces: None,
+        era: None,
+        promotion_class: None,
     });
 
     // Grant Rome 3 Iron.
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .strategic_resources.insert(BuiltinResource::Iron, 3);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .strategic_resources
+        .insert(BuiltinResource::Iron, 3);
 
-    s.state.cities.iter_mut()
-        .find(|c| c.id == s.rome_city).unwrap()
-        .production_queue.push_back(ProductionItem::Unit(swordsman_tid));
-    s.state.cities.iter_mut()
-        .find(|c| c.id == s.rome_city).unwrap()
+    s.state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
+        .production_queue
+        .push_back(ProductionItem::Unit(swordsman_tid));
+    s.state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
         .production_stored = 10;
 
-    let rome_units_before = s.state.units.iter().filter(|u| u.owner == s.rome_id).count();
+    let rome_units_before = s
+        .state
+        .units
+        .iter()
+        .filter(|u| u.owner == s.rome_id)
+        .count();
 
     let diff = rules.advance_turn(&mut s.state);
 
-    let rome_units_after = s.state.units.iter().filter(|u| u.owner == s.rome_id).count();
-    assert_eq!(rome_units_after, rome_units_before + 1, "swordsman should be produced");
+    let rome_units_after = s
+        .state
+        .units
+        .iter()
+        .filter(|u| u.owner == s.rome_id)
+        .count();
+    assert_eq!(
+        rome_units_after,
+        rome_units_before + 1,
+        "swordsman should be produced"
+    );
     assert!(
-        diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitCreated { owner, .. } if *owner == s.rome_id)),
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::UnitCreated { owner, .. } if *owner == s.rome_id)),
         "UnitCreated expected for Rome"
     );
     // Iron should have been decremented by 1 (from 3 to 2).
-    let iron_left = *s.state.civilizations.iter()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .strategic_resources.get(&BuiltinResource::Iron).unwrap_or(&0);
+    let iron_left = *s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .strategic_resources
+        .get(&BuiltinResource::Iron)
+        .unwrap_or(&0);
     assert_eq!(iron_left, 2, "1 Iron should be consumed");
     // StrategicResourceChanged delta with delta = -1 should be emitted.
     assert!(
@@ -1073,26 +1429,46 @@ fn strategic_resource_accumulated_from_improvement() {
     // Place Iron on a tile adjacent to Rome and add an improvement (Mine).
     let iron_tile = HexCoord::from_qr(4, 3);
     if let Some(t) = s.state.board.tile_mut(iron_tile) {
-        t.resource   = Some(BuiltinResource::Iron);
+        t.resource = Some(BuiltinResource::Iron);
         t.improvement = Some(BuiltinImprovement::Mine);
-        t.owner      = Some(s.rome_id);
+        t.owner = Some(s.rome_id);
     }
     // Add the tile to Rome's worked tiles.
-    s.state.cities.iter_mut()
-        .find(|c| c.id == s.rome_city).unwrap()
-        .worked_tiles.push(iron_tile);
+    s.state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
+        .worked_tiles
+        .push(iron_tile);
 
-    let iron_before = *s.state.civilizations.iter()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .strategic_resources.get(&BuiltinResource::Iron).unwrap_or(&0);
+    let iron_before = *s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .strategic_resources
+        .get(&BuiltinResource::Iron)
+        .unwrap_or(&0);
 
     let diff = rules.advance_turn(&mut s.state);
 
-    let iron_after = *s.state.civilizations.iter()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .strategic_resources.get(&BuiltinResource::Iron).unwrap_or(&0);
+    let iron_after = *s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .strategic_resources
+        .get(&BuiltinResource::Iron)
+        .unwrap_or(&0);
 
-    assert_eq!(iron_after, iron_before + 1, "1 Iron should be gained per turn from the Mine");
+    assert_eq!(
+        iron_after,
+        iron_before + 1,
+        "1 Iron should be gained per turn from the Mine"
+    );
     assert!(
         diff.deltas.iter().any(|d| matches!(d,
             StateDelta::StrategicResourceChanged { resource, delta, civ }
@@ -1112,18 +1488,28 @@ fn strategic_resource_not_accumulated_without_improvement() {
     let iron_tile = HexCoord::from_qr(4, 3);
     if let Some(t) = s.state.board.tile_mut(iron_tile) {
         t.resource = Some(BuiltinResource::Iron);
-        t.owner    = Some(s.rome_id);
+        t.owner = Some(s.rome_id);
         // No improvement.
     }
-    s.state.cities.iter_mut()
-        .find(|c| c.id == s.rome_city).unwrap()
-        .worked_tiles.push(iron_tile);
+    s.state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
+        .worked_tiles
+        .push(iron_tile);
 
     rules.advance_turn(&mut s.state);
 
-    let iron = *s.state.civilizations.iter()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .strategic_resources.get(&BuiltinResource::Iron).unwrap_or(&0);
+    let iron = *s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .strategic_resources
+        .get(&BuiltinResource::Iron)
+        .unwrap_or(&0);
     assert_eq!(iron, 0, "Iron without improvement should not accumulate");
 }
 
@@ -1143,8 +1529,12 @@ fn wall_defense_bonus_reduces_damage_to_defender() {
         let rules = DefaultRulesEngine;
 
         // Give Babylon's city the specified wall level.
-        let city = s.state.cities.iter_mut()
-            .find(|c| c.id == s.babylon_city).unwrap();
+        let city = s
+            .state
+            .cities
+            .iter_mut()
+            .find(|c| c.id == s.babylon_city)
+            .unwrap();
         city.walls = wall_level;
         city.wall_hp = wall_level.max_hp();
 
@@ -1152,58 +1542,77 @@ fn wall_defense_bonus_reduces_damage_to_defender() {
         let defender_id = s.state.id_gen.next_unit_id();
         let city_coord = HexCoord::from_qr(10, 5);
         s.state.units.push(BasicUnit {
-            id:              defender_id,
-            unit_type:       s.warrior_type,
-            owner:           s.babylon_id,
-            coord:           city_coord,
-            domain:          UnitDomain::Land,
-            category:        UnitCategory::Combat,
-            movement_left:   200,
-            max_movement:    200,
+            id: defender_id,
+            unit_type: s.warrior_type,
+            owner: s.babylon_id,
+            coord: city_coord,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            movement_left: 200,
+            max_movement: 200,
             combat_strength: Some(20),
-            promotions:      Vec::new(),
-            experience:      0,
-            health:          100,
-            range:           0,
-            vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+            promotions: Vec::new(),
+            experience: 0,
+            health: 100,
+            range: 0,
+            vision_range: 2,
+            charges: None,
+            trade_origin: None,
+            trade_destination: None,
+            religion_id: None,
+            spread_charges: None,
+            religious_strength: None,
+            is_embarked: false,
         });
 
         // Place an attacker adjacent to the city.
         let attacker_id = s.state.id_gen.next_unit_id();
         let atk_coord = HexCoord::from_qr(11, 5);
         s.state.units.push(BasicUnit {
-            id:              attacker_id,
-            unit_type:       s.warrior_type,
-            owner:           s.rome_id,
-            coord:           atk_coord,
-            domain:          UnitDomain::Land,
-            category:        UnitCategory::Combat,
-            movement_left:   200,
-            max_movement:    200,
+            id: attacker_id,
+            unit_type: s.warrior_type,
+            owner: s.rome_id,
+            coord: atk_coord,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            movement_left: 200,
+            max_movement: 200,
             combat_strength: Some(20),
-            promotions:      Vec::new(),
-            experience:      0,
-            health:          100,
-            range:           0,
-            vision_range:    2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+            promotions: Vec::new(),
+            experience: 0,
+            health: 100,
+            range: 0,
+            vision_range: 2,
+            charges: None,
+            trade_origin: None,
+            trade_destination: None,
+            religion_id: None,
+            spread_charges: None,
+            religious_strength: None,
+            is_embarked: false,
         });
 
-        let diff = rules.attack(&mut s.state, attacker_id, defender_id)
+        let diff = rules
+            .attack(&mut s.state, attacker_id, defender_id)
             .expect("attack should succeed");
 
         // Extract defender damage from the diff.
-        diff.deltas.iter().find_map(|d| {
-            if let StateDelta::UnitAttacked { defender_damage, .. } = d {
-                Some(*defender_damage)
-            } else {
-                None
-            }
-        }).expect("UnitAttacked delta expected")
+        diff.deltas
+            .iter()
+            .find_map(|d| {
+                if let StateDelta::UnitAttacked {
+                    defender_damage, ..
+                } = d
+                {
+                    Some(*defender_damage)
+                } else {
+                    None
+                }
+            })
+            .expect("UnitAttacked delta expected")
     }
 
-    let damage_no_walls   = run_attack_on_city(WallLevel::None);
+    let damage_no_walls = run_attack_on_city(WallLevel::None);
     let damage_with_walls = run_attack_on_city(WallLevel::Renaissance);
 
     // Renaissance walls add +8 defense; defender should take strictly less damage.
@@ -1225,8 +1634,12 @@ fn melee_attack_damages_city_walls() {
     let rules = DefaultRulesEngine;
 
     // Give Babylon's city Ancient walls (50 HP).
-    let city = s.state.cities.iter_mut()
-        .find(|c| c.id == s.babylon_city).unwrap();
+    let city = s
+        .state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.babylon_city)
+        .unwrap();
     city.walls = WallLevel::Ancient;
     city.wall_hp = WallLevel::Ancient.max_hp();
     let initial_wall_hp = city.wall_hp;
@@ -1234,47 +1647,92 @@ fn melee_attack_damages_city_walls() {
     // Place a defender on the city tile.
     let defender_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: defender_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        id: defender_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
         coord: HexCoord::from_qr(10, 5),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     // Place a melee attacker adjacent.
     let attacker_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: attacker_id, unit_type: s.warrior_type, owner: s.rome_id,
+        id: attacker_id,
+        unit_type: s.warrior_type,
+        owner: s.rome_id,
         coord: HexCoord::from_qr(11, 5),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
-    let diff = rules.attack(&mut s.state, attacker_id, defender_id)
+    let diff = rules
+        .attack(&mut s.state, attacker_id, defender_id)
         .expect("attack should succeed");
 
     // WallDamaged delta must be present.
     let wall_damaged = diff.deltas.iter().find_map(|d| {
-        if let StateDelta::WallDamaged { city, damage, hp_remaining } = d {
+        if let StateDelta::WallDamaged {
+            city,
+            damage,
+            hp_remaining,
+        } = d
+        {
             Some((*city, *damage, *hp_remaining))
         } else {
             None
         }
     });
-    assert!(wall_damaged.is_some(), "WallDamaged delta expected after melee attack on walled city");
+    assert!(
+        wall_damaged.is_some(),
+        "WallDamaged delta expected after melee attack on walled city"
+    );
     let (city_id, damage, hp_remaining) = wall_damaged.unwrap();
     assert_eq!(city_id, s.babylon_city);
     assert!(damage > 0, "wall should take non-zero damage");
     assert!(hp_remaining < initial_wall_hp, "wall HP should decrease");
 
     // Verify state was mutated.
-    let city = s.state.cities.iter().find(|c| c.id == s.babylon_city).unwrap();
-    assert_eq!(city.wall_hp, hp_remaining, "city.wall_hp should match delta");
+    let city = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.babylon_city)
+        .unwrap();
+    assert_eq!(
+        city.wall_hp, hp_remaining,
+        "city.wall_hp should match delta"
+    );
 }
 
 /// When wall HP reaches zero from a melee attack, WallDestroyed is emitted
@@ -1285,53 +1743,98 @@ fn wall_destruction_when_hp_reaches_zero() {
     let rules = DefaultRulesEngine;
 
     // Give Babylon's city Ancient walls with just 1 HP remaining.
-    let city = s.state.cities.iter_mut()
-        .find(|c| c.id == s.babylon_city).unwrap();
+    let city = s
+        .state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.babylon_city)
+        .unwrap();
     city.walls = WallLevel::Ancient;
     city.wall_hp = 1;
 
     // Defender on city tile.
     let defender_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: defender_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        id: defender_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
         coord: HexCoord::from_qr(10, 5),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     // Strong attacker to ensure enough damage for wall_damage = def_damage/2 >= 1.
     let attacker_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: attacker_id, unit_type: s.warrior_type, owner: s.rome_id,
+        id: attacker_id,
+        unit_type: s.warrior_type,
+        owner: s.rome_id,
         coord: HexCoord::from_qr(11, 5),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(40), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(40),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
-    let diff = rules.attack(&mut s.state, attacker_id, defender_id)
+    let diff = rules
+        .attack(&mut s.state, attacker_id, defender_id)
         .expect("attack should succeed");
 
     // WallDestroyed delta must be present.
     let wall_destroyed = diff.deltas.iter().find_map(|d| {
-        if let StateDelta::WallDestroyed { city, previous_level } = d {
+        if let StateDelta::WallDestroyed {
+            city,
+            previous_level,
+        } = d
+        {
             Some((*city, *previous_level))
         } else {
             None
         }
     });
-    assert!(wall_destroyed.is_some(), "WallDestroyed delta expected when wall HP reaches 0");
+    assert!(
+        wall_destroyed.is_some(),
+        "WallDestroyed delta expected when wall HP reaches 0"
+    );
     let (city_id, prev) = wall_destroyed.unwrap();
     assert_eq!(city_id, s.babylon_city);
     assert_eq!(prev, WallLevel::Ancient);
 
     // City should now have no walls.
-    let city = s.state.cities.iter().find(|c| c.id == s.babylon_city).unwrap();
+    let city = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.babylon_city)
+        .unwrap();
     assert_eq!(city.walls, WallLevel::None);
     assert_eq!(city.wall_hp, 0);
 }
@@ -1343,8 +1846,12 @@ fn ranged_attack_does_not_damage_walls() {
     let rules = DefaultRulesEngine;
 
     // Give Babylon's city Ancient walls.
-    let city = s.state.cities.iter_mut()
-        .find(|c| c.id == s.babylon_city).unwrap();
+    let city = s
+        .state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.babylon_city)
+        .unwrap();
     city.walls = WallLevel::Ancient;
     city.wall_hp = WallLevel::Ancient.max_hp();
     let initial_wall_hp = city.wall_hp;
@@ -1352,38 +1859,79 @@ fn ranged_attack_does_not_damage_walls() {
     // Defender on city tile.
     let defender_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: defender_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        id: defender_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
         coord: HexCoord::from_qr(10, 5),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     // Ranged attacker within range 2.
     let attacker_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: attacker_id, unit_type: s.warrior_type, owner: s.rome_id,
+        id: attacker_id,
+        unit_type: s.warrior_type,
+        owner: s.rome_id,
         coord: HexCoord::from_qr(12, 5),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(25), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(25),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 2, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 2,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
-    let diff = rules.attack(&mut s.state, attacker_id, defender_id)
+    let diff = rules
+        .attack(&mut s.state, attacker_id, defender_id)
         .expect("attack should succeed");
 
     // No WallDamaged delta for ranged attacks.
-    let has_wall_damaged = diff.deltas.iter().any(|d| {
-        matches!(d, StateDelta::WallDamaged { .. })
-    });
-    assert!(!has_wall_damaged, "ranged attacks should not damage city walls");
+    let has_wall_damaged = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::WallDamaged { .. }));
+    assert!(
+        !has_wall_damaged,
+        "ranged attacks should not damage city walls"
+    );
 
-    let city = s.state.cities.iter().find(|c| c.id == s.babylon_city).unwrap();
-    assert_eq!(city.wall_hp, initial_wall_hp, "wall HP should be unchanged after ranged attack");
+    let city = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.babylon_city)
+        .unwrap();
+    assert_eq!(
+        city.wall_hp, initial_wall_hp,
+        "wall HP should be unchanged after ranged attack"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1398,34 +1946,63 @@ fn city_bombard_deals_damage_no_counter() {
     let rules = DefaultRulesEngine;
 
     // Give Rome's city Ancient walls.
-    let city = s.state.cities.iter_mut()
-        .find(|c| c.id == s.rome_city).unwrap();
+    let city = s
+        .state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.rome_city)
+        .unwrap();
     city.walls = WallLevel::Ancient;
     city.wall_hp = WallLevel::Ancient.max_hp();
 
     // Place an enemy unit adjacent to Rome's city (3,3) -> (4,3).
     let target_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: target_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        id: target_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
         coord: HexCoord::from_qr(4, 3),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
-    let diff = rules.city_bombard(&mut s.state, s.rome_city, target_id)
+    let diff = rules
+        .city_bombard(&mut s.state, s.rome_city, target_id)
         .expect("city_bombard should succeed");
 
     // Must have UnitAttacked with CityBombard type.
-    let attacked = diff.deltas.iter().find_map(|d| {
-        if let StateDelta::UnitAttacked { attack_type, attacker_damage, defender_damage, .. } = d {
-            Some((*attack_type, *attacker_damage, *defender_damage))
-        } else {
-            None
-        }
-    }).expect("UnitAttacked delta expected");
+    let attacked = diff
+        .deltas
+        .iter()
+        .find_map(|d| {
+            if let StateDelta::UnitAttacked {
+                attack_type,
+                attacker_damage,
+                defender_damage,
+                ..
+            } = d
+            {
+                Some((*attack_type, *attacker_damage, *defender_damage))
+            } else {
+                None
+            }
+        })
+        .expect("UnitAttacked delta expected");
     assert_eq!(attacked.0, AttackType::CityBombard);
     assert_eq!(attacked.1, 0, "city should take no counter-damage");
     assert!(attacked.2 > 0, "target should take damage from bombardment");
@@ -1444,18 +2021,34 @@ fn city_bombard_requires_walls() {
     // Rome's city has WallLevel::None by default.
     let target_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: target_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        id: target_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
         coord: HexCoord::from_qr(4, 3),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     let result = rules.city_bombard(&mut s.state, s.rome_city, target_id);
-    assert!(matches!(result, Err(RulesError::CityCannotAttack)),
-        "city without walls should return CityCannotAttack, got: {result:?}");
+    assert!(
+        matches!(result, Err(RulesError::CityCannotAttack)),
+        "city without walls should return CityCannotAttack, got: {result:?}"
+    );
 }
 
 /// City bombardment has range 2; targets at distance 3 are out of range.
@@ -1464,26 +2057,46 @@ fn city_bombard_range_check() {
     let mut s = common::build_scenario();
     let rules = DefaultRulesEngine;
 
-    let city = s.state.cities.iter_mut()
-        .find(|c| c.id == s.rome_city).unwrap();
+    let city = s
+        .state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.rome_city)
+        .unwrap();
     city.walls = WallLevel::Ancient;
     city.wall_hp = WallLevel::Ancient.max_hp();
 
     // Place target at distance 3 from Rome's city (3,3) -> (6,3).
     let target_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: target_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        id: target_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
         coord: HexCoord::from_qr(6, 3),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     let result = rules.city_bombard(&mut s.state, s.rome_city, target_id);
-    assert!(matches!(result, Err(RulesError::NotInRange)),
-        "target at distance 3 should be out of range, got: {result:?}");
+    assert!(
+        matches!(result, Err(RulesError::NotInRange)),
+        "target at distance 3 should be out of range, got: {result:?}"
+    );
 }
 
 /// A city can only bombard once per turn; second attempt returns
@@ -1493,46 +2106,84 @@ fn city_bombard_once_per_turn_resets_after_advance() {
     let mut s = common::build_scenario();
     let rules = DefaultRulesEngine;
 
-    let city = s.state.cities.iter_mut()
-        .find(|c| c.id == s.rome_city).unwrap();
+    let city = s
+        .state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.rome_city)
+        .unwrap();
     city.walls = WallLevel::Ancient;
     city.wall_hp = WallLevel::Ancient.max_hp();
 
     // Place two enemy units adjacent to Rome's city.
     let target1 = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: target1, unit_type: s.warrior_type, owner: s.babylon_id,
+        id: target1,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
         coord: HexCoord::from_qr(4, 3),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
     let target2 = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: target2, unit_type: s.warrior_type, owner: s.babylon_id,
+        id: target2,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
         coord: HexCoord::from_qr(2, 3),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     // First bombardment succeeds.
-    rules.city_bombard(&mut s.state, s.rome_city, target1)
+    rules
+        .city_bombard(&mut s.state, s.rome_city, target1)
         .expect("first bombardment should succeed");
 
     // Second bombardment same turn fails.
     let result = rules.city_bombard(&mut s.state, s.rome_city, target2);
-    assert!(matches!(result, Err(RulesError::CityAlreadyAttacked)),
-        "second bombardment same turn should fail, got: {result:?}");
+    assert!(
+        matches!(result, Err(RulesError::CityAlreadyAttacked)),
+        "second bombardment same turn should fail, got: {result:?}"
+    );
 
     // After advance_turn, the flag resets and bombardment works again.
     common::advance_turn(&mut s);
     let result2 = rules.city_bombard(&mut s.state, s.rome_city, target2);
-    assert!(result2.is_ok(), "bombardment should succeed after advance_turn resets the flag");
+    assert!(
+        result2.is_ok(),
+        "bombardment should succeed after advance_turn resets the flag"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1552,61 +2203,97 @@ fn siege_unit_bonus_applies_on_city_tile() {
         // Register a ranged unit type with the specified siege_bonus.
         let catapult_type = libciv::UnitTypeId::from_ulid(s.state.id_gen.next_ulid());
         s.state.unit_type_defs.push(UnitTypeDef {
-            id:              catapult_type,
-            name:            "catapult",
+            id: catapult_type,
+            name: "catapult",
             production_cost: 120,
-            domain:          UnitDomain::Land,
-            category:        UnitCategory::Combat,
-            max_movement:    200,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            max_movement: 200,
             combat_strength: Some(20),
-            range:           2,
-            vision_range:    2,
-            can_found_city:  false,
-            resource_cost:   None,
-            siege_bonus, max_charges: 0,
-            exclusive_to:    None,
-            replaces:        None,
-            era:             None,
+            range: 2,
+            vision_range: 2,
+            can_found_city: false,
+            resource_cost: None,
+            siege_bonus,
+            max_charges: 0,
+            exclusive_to: None,
+            replaces: None,
+            era: None,
             promotion_class: None,
         });
 
         // Defender on Babylon's city tile (10, 5).
         let defender_id = s.state.id_gen.next_unit_id();
         s.state.units.push(BasicUnit {
-            id: defender_id, unit_type: s.warrior_type, owner: s.babylon_id,
+            id: defender_id,
+            unit_type: s.warrior_type,
+            owner: s.babylon_id,
             coord: HexCoord::from_qr(10, 5),
-            domain: UnitDomain::Land, category: UnitCategory::Combat,
-            movement_left: 200, max_movement: 200,
-            combat_strength: Some(20), promotions: Vec::new(),
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            movement_left: 200,
+            max_movement: 200,
+            combat_strength: Some(20),
+            promotions: Vec::new(),
             experience: 0,
-            health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+            health: 100,
+            range: 0,
+            vision_range: 2,
+            charges: None,
+            trade_origin: None,
+            trade_destination: None,
+            religion_id: None,
+            spread_charges: None,
+            religious_strength: None,
+            is_embarked: false,
         });
 
         // Attacker within range 2 of the city.
         let attacker_id = s.state.id_gen.next_unit_id();
         s.state.units.push(BasicUnit {
-            id: attacker_id, unit_type: catapult_type, owner: s.rome_id,
+            id: attacker_id,
+            unit_type: catapult_type,
+            owner: s.rome_id,
             coord: HexCoord::from_qr(12, 5),
-            domain: UnitDomain::Land, category: UnitCategory::Combat,
-            movement_left: 200, max_movement: 200,
-            combat_strength: Some(20), promotions: Vec::new(),
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            movement_left: 200,
+            max_movement: 200,
+            combat_strength: Some(20),
+            promotions: Vec::new(),
             experience: 0,
-            health: 100, range: 2, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+            health: 100,
+            range: 2,
+            vision_range: 2,
+            charges: None,
+            trade_origin: None,
+            trade_destination: None,
+            religion_id: None,
+            spread_charges: None,
+            religious_strength: None,
+            is_embarked: false,
         });
 
-        let diff = rules.attack(&mut s.state, attacker_id, defender_id)
+        let diff = rules
+            .attack(&mut s.state, attacker_id, defender_id)
             .expect("attack should succeed");
 
-        diff.deltas.iter().find_map(|d| {
-            if let StateDelta::UnitAttacked { defender_damage, .. } = d {
-                Some(*defender_damage)
-            } else {
-                None
-            }
-        }).expect("UnitAttacked delta expected")
+        diff.deltas
+            .iter()
+            .find_map(|d| {
+                if let StateDelta::UnitAttacked {
+                    defender_damage, ..
+                } = d
+                {
+                    Some(*defender_damage)
+                } else {
+                    None
+                }
+            })
+            .expect("UnitAttacked delta expected")
     }
 
-    let damage_no_siege   = run_attack(0);
+    let damage_no_siege = run_attack(0);
     let damage_with_siege = run_attack(10);
 
     assert!(
@@ -1626,61 +2313,97 @@ fn siege_bonus_not_applied_in_open_field() {
 
         let catapult_type = libciv::UnitTypeId::from_ulid(s.state.id_gen.next_ulid());
         s.state.unit_type_defs.push(UnitTypeDef {
-            id:              catapult_type,
-            name:            "catapult",
+            id: catapult_type,
+            name: "catapult",
             production_cost: 120,
-            domain:          UnitDomain::Land,
-            category:        UnitCategory::Combat,
-            max_movement:    200,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            max_movement: 200,
             combat_strength: Some(20),
-            range:           2,
-            vision_range:    2,
-            can_found_city:  false,
-            resource_cost:   None,
-            siege_bonus, max_charges: 0,
-            exclusive_to:    None,
-            replaces:        None,
-            era:             None,
+            range: 2,
+            vision_range: 2,
+            can_found_city: false,
+            resource_cost: None,
+            siege_bonus,
+            max_charges: 0,
+            exclusive_to: None,
+            replaces: None,
+            era: None,
             promotion_class: None,
         });
 
         // Defender in open field (not on a city tile).
         let defender_id = s.state.id_gen.next_unit_id();
         s.state.units.push(BasicUnit {
-            id: defender_id, unit_type: s.warrior_type, owner: s.babylon_id,
+            id: defender_id,
+            unit_type: s.warrior_type,
+            owner: s.babylon_id,
             coord: HexCoord::from_qr(7, 4),
-            domain: UnitDomain::Land, category: UnitCategory::Combat,
-            movement_left: 200, max_movement: 200,
-            combat_strength: Some(20), promotions: Vec::new(),
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            movement_left: 200,
+            max_movement: 200,
+            combat_strength: Some(20),
+            promotions: Vec::new(),
             experience: 0,
-            health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+            health: 100,
+            range: 0,
+            vision_range: 2,
+            charges: None,
+            trade_origin: None,
+            trade_destination: None,
+            religion_id: None,
+            spread_charges: None,
+            religious_strength: None,
+            is_embarked: false,
         });
 
         // Ranged attacker within range 2.
         let attacker_id = s.state.id_gen.next_unit_id();
         s.state.units.push(BasicUnit {
-            id: attacker_id, unit_type: catapult_type, owner: s.rome_id,
+            id: attacker_id,
+            unit_type: catapult_type,
+            owner: s.rome_id,
             coord: HexCoord::from_qr(9, 4),
-            domain: UnitDomain::Land, category: UnitCategory::Combat,
-            movement_left: 200, max_movement: 200,
-            combat_strength: Some(20), promotions: Vec::new(),
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            movement_left: 200,
+            max_movement: 200,
+            combat_strength: Some(20),
+            promotions: Vec::new(),
             experience: 0,
-            health: 100, range: 2, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+            health: 100,
+            range: 2,
+            vision_range: 2,
+            charges: None,
+            trade_origin: None,
+            trade_destination: None,
+            religion_id: None,
+            spread_charges: None,
+            religious_strength: None,
+            is_embarked: false,
         });
 
-        let diff = rules.attack(&mut s.state, attacker_id, defender_id)
+        let diff = rules
+            .attack(&mut s.state, attacker_id, defender_id)
             .expect("attack should succeed");
 
-        diff.deltas.iter().find_map(|d| {
-            if let StateDelta::UnitAttacked { defender_damage, .. } = d {
-                Some(*defender_damage)
-            } else {
-                None
-            }
-        }).expect("UnitAttacked delta expected")
+        diff.deltas
+            .iter()
+            .find_map(|d| {
+                if let StateDelta::UnitAttacked {
+                    defender_damage, ..
+                } = d
+                {
+                    Some(*defender_damage)
+                } else {
+                    None
+                }
+            })
+            .expect("UnitAttacked delta expected")
     }
 
-    let damage_no_siege   = run_attack_open_field(0);
+    let damage_no_siege = run_attack_open_field(0);
     let damage_with_siege = run_attack_open_field(10);
 
     // In open field, siege bonus should NOT apply -- damage should be equal.
@@ -1707,56 +2430,118 @@ fn city_capture_transfers_ownership_on_last_defender_killed() {
     // Place a single Babylon defender on Babylon's city tile (10, 5).
     let defender_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: defender_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        id: defender_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
         coord: HexCoord::from_qr(10, 5),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     // Rome attacker adjacent; strong enough to one-shot the defender.
     let attacker_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: attacker_id, unit_type: s.warrior_type, owner: s.rome_id,
+        id: attacker_id,
+        unit_type: s.warrior_type,
+        owner: s.rome_id,
         coord: HexCoord::from_qr(11, 5),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(60), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(60),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
-    let diff = rules.attack(&mut s.state, attacker_id, defender_id)
+    let diff = rules
+        .attack(&mut s.state, attacker_id, defender_id)
         .expect("attack should succeed");
 
     // CityCaptured delta must be present.
     let captured = diff.deltas.iter().find_map(|d| {
-        if let StateDelta::CityCaptured { city, new_owner, old_owner } = d {
+        if let StateDelta::CityCaptured {
+            city,
+            new_owner,
+            old_owner,
+        } = d
+        {
             Some((*city, *new_owner, *old_owner))
         } else {
             None
         }
     });
-    assert!(captured.is_some(), "CityCaptured delta expected after killing last defender");
+    assert!(
+        captured.is_some(),
+        "CityCaptured delta expected after killing last defender"
+    );
     let (city_id, new_owner, old_owner) = captured.unwrap();
     assert_eq!(city_id, s.babylon_city);
     assert_eq!(new_owner, s.rome_id);
     assert_eq!(old_owner, s.babylon_id);
 
     // City state must reflect the new owner and Occupied status.
-    let city = s.state.cities.iter().find(|c| c.id == s.babylon_city).unwrap();
+    let city = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.babylon_city)
+        .unwrap();
     assert_eq!(city.owner, s.rome_id, "city.owner should be Rome");
-    assert_eq!(city.ownership, CityOwnership::Occupied, "captured city should be Occupied");
+    assert_eq!(
+        city.ownership,
+        CityOwnership::Occupied,
+        "captured city should be Occupied"
+    );
 
     // Civilization city lists must be updated.
-    let rome_cities = &s.state.civilizations.iter()
-        .find(|c| c.id == s.rome_id).unwrap().cities;
-    let babylon_cities = &s.state.civilizations.iter()
-        .find(|c| c.id == s.babylon_id).unwrap().cities;
-    assert!(rome_cities.contains(&s.babylon_city), "Rome's city list should include captured city");
-    assert!(!babylon_cities.contains(&s.babylon_city), "Babylon's city list should no longer include the city");
+    let rome_cities = &s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .cities;
+    let babylon_cities = &s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == s.babylon_id)
+        .unwrap()
+        .cities;
+    assert!(
+        rome_cities.contains(&s.babylon_city),
+        "Rome's city list should include captured city"
+    );
+    assert!(
+        !babylon_cities.contains(&s.babylon_city),
+        "Babylon's city list should no longer include the city"
+    );
 }
 
 /// City is only captured when the LAST defender on the tile is killed.
@@ -1770,60 +2555,112 @@ fn city_capture_destroys_garrisoned_units_on_tile() {
     // Two Babylon units on the city tile (both weak so we can kill them in sequence).
     let defender1_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: defender1_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        id: defender1_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
         coord: HexCoord::from_qr(10, 5),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 1,   // one HP so it dies immediately
-        range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 1, // one HP so it dies immediately
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
     let garrison_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: garrison_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        id: garrison_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
         coord: HexCoord::from_qr(10, 5),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 1,   // also one HP
-        range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 1, // also one HP
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     // Rome attacker adjacent.
     let attacker_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: attacker_id, unit_type: s.warrior_type, owner: s.rome_id,
+        id: attacker_id,
+        unit_type: s.warrior_type,
+        owner: s.rome_id,
         coord: HexCoord::from_qr(11, 5),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     // Kill defender1.  Garrison still alive → no capture yet.
-    let diff1 = rules.attack(&mut s.state, attacker_id, defender1_id)
+    let diff1 = rules
+        .attack(&mut s.state, attacker_id, defender1_id)
         .expect("attack should succeed");
-    let captured1 = diff1.deltas.iter().any(|d| matches!(d, StateDelta::CityCaptured { .. }));
+    let captured1 = diff1
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::CityCaptured { .. }));
     assert!(!captured1, "should not capture city while garrison remains");
 
     // Reset movement for the attacker so it can attack again.
-    if let Some(u) = s.state.unit_mut(attacker_id) { u.movement_left = 200; }
+    if let Some(u) = s.state.unit_mut(attacker_id) {
+        u.movement_left = 200;
+    }
 
     // Kill garrison (the last defender) → city should now be captured.
-    let diff2 = rules.attack(&mut s.state, attacker_id, garrison_id)
+    let diff2 = rules
+        .attack(&mut s.state, attacker_id, garrison_id)
         .expect("attack should succeed");
-    let captured2 = diff2.deltas.iter().any(|d| matches!(d, StateDelta::CityCaptured { .. }));
-    assert!(captured2, "city should be captured when last defender falls");
+    let captured2 = diff2
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::CityCaptured { .. }));
+    assert!(
+        captured2,
+        "city should be captured when last defender falls"
+    );
 
     // The garrison should not exist in the live unit list.
     assert!(
         s.state.unit(garrison_id).is_none(),
         "garrison unit should be removed from state after capture"
     );
-
 }
 
 /// A non-melee (ranged) kill on a city tile does NOT capture the city.
@@ -1835,37 +2672,77 @@ fn ranged_kill_on_city_tile_does_not_capture() {
     // Weak defender (1 HP) on Babylon's city tile.
     let defender_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: defender_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        id: defender_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
         coord: HexCoord::from_qr(10, 5),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 1, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 1,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     // Ranged attacker within range 2.
     let attacker_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: attacker_id, unit_type: s.warrior_type, owner: s.rome_id,
+        id: attacker_id,
+        unit_type: s.warrior_type,
+        owner: s.rome_id,
         coord: HexCoord::from_qr(12, 5),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 2, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 2,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
-    let diff = rules.attack(&mut s.state, attacker_id, defender_id)
+    let diff = rules
+        .attack(&mut s.state, attacker_id, defender_id)
         .expect("attack should succeed");
 
     // No CityCaptured delta for ranged kills.
-    let captured = diff.deltas.iter().any(|d| matches!(d, StateDelta::CityCaptured { .. }));
+    let captured = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::CityCaptured { .. }));
     assert!(!captured, "ranged kills should not capture a city");
 
     // City still belongs to Babylon.
-    let city = s.state.cities.iter().find(|c| c.id == s.babylon_city).unwrap();
-    assert_eq!(city.owner, s.babylon_id, "city owner should not change after a ranged kill");
+    let city = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.babylon_city)
+        .unwrap();
+    assert_eq!(
+        city.owner, s.babylon_id,
+        "city owner should not change after a ranged kill"
+    );
 }
 
 /// If any old-owner units are still alive on the city tile after the attack,
@@ -1878,45 +2755,102 @@ fn no_capture_while_defenders_remain() {
     // Two Babylon warriors on the city tile; first one has lots of HP.
     let defender1_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: defender1_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        id: defender1_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
         coord: HexCoord::from_qr(10, 5),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
     let _defender2_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: _defender2_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        id: _defender2_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
         coord: HexCoord::from_qr(10, 5),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     // Weak attacker that deals very little damage (won't kill the defender).
     let attacker_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: attacker_id, unit_type: s.warrior_type, owner: s.rome_id,
+        id: attacker_id,
+        unit_type: s.warrior_type,
+        owner: s.rome_id,
         coord: HexCoord::from_qr(11, 5),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(1), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(1),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
-    let diff = rules.attack(&mut s.state, attacker_id, defender1_id)
+    let diff = rules
+        .attack(&mut s.state, attacker_id, defender1_id)
         .expect("attack should succeed");
 
     // No capture while a second Babylon unit remains on the tile.
-    let captured = diff.deltas.iter().any(|d| matches!(d, StateDelta::CityCaptured { .. }));
-    assert!(!captured, "city should not be captured while defenders still remain on the tile");
-    let city = s.state.cities.iter().find(|c| c.id == s.babylon_city).unwrap();
-    assert_eq!(city.owner, s.babylon_id, "city should still belong to Babylon");
+    let captured = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::CityCaptured { .. }));
+    assert!(
+        !captured,
+        "city should not be captured while defenders still remain on the tile"
+    );
+    let city = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.babylon_city)
+        .unwrap();
+    assert_eq!(
+        city.owner, s.babylon_id,
+        "city should still belong to Babylon"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1933,22 +2867,40 @@ fn city_bombard_fails_after_walls_are_destroyed() {
 
     // Start with Ancient walls, then simulate a breach by clearing them.
     {
-        let city = s.state.cities.iter_mut()
-            .find(|c| c.id == s.rome_city).unwrap();
-        city.walls    = WallLevel::None; // walls were destroyed (breach)
-        city.wall_hp  = 0;
+        let city = s
+            .state
+            .cities
+            .iter_mut()
+            .find(|c| c.id == s.rome_city)
+            .unwrap();
+        city.walls = WallLevel::None; // walls were destroyed (breach)
+        city.wall_hp = 0;
     }
 
     // Enemy unit within range 2 of Rome's city (3,3) -> (4,3) is adjacent.
     let enemy_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: enemy_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        id: enemy_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
         coord: HexCoord::from_qr(4, 3),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     let result = rules.city_bombard(&mut s.state, s.rome_city, enemy_id);
@@ -1967,9 +2919,13 @@ fn city_bombard_fails_after_walls_breached_by_combat() {
 
     // Rome's city gets Ancient walls at 1 HP.
     {
-        let city = s.state.cities.iter_mut()
-            .find(|c| c.id == s.rome_city).unwrap();
-        city.walls   = WallLevel::Ancient;
+        let city = s
+            .state
+            .cities
+            .iter_mut()
+            .find(|c| c.id == s.rome_city)
+            .unwrap();
+        city.walls = WallLevel::Ancient;
         city.wall_hp = 1;
     }
 
@@ -1977,52 +2933,103 @@ fn city_bombard_fails_after_walls_breached_by_combat() {
     // triggers wall damage (def_coord == city.coord).
     let def_on_city = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: def_on_city, unit_type: s.warrior_type, owner: s.babylon_id,
-        coord: HexCoord::from_qr(3, 3),   // Rome's city tile
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        id: def_on_city,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
+        coord: HexCoord::from_qr(3, 3), // Rome's city tile
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     // Strong Rome attacker at (4,3) -- adjacent to (3,3) -- attacks the
     // Babylon unit that has occupied Rome's city tile.
     let attacker_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: attacker_id, unit_type: s.warrior_type, owner: s.rome_id,
+        id: attacker_id,
+        unit_type: s.warrior_type,
+        owner: s.rome_id,
         coord: HexCoord::from_qr(4, 3),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(60), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(60),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     // Attack the unit on Rome's city tile; wall_damage = def_damage/2 >= 1,
     // so the 1-HP wall is breached and a WallDestroyed delta is emitted.
-    let diff = rules.attack(&mut s.state, attacker_id, def_on_city)
+    let diff = rules
+        .attack(&mut s.state, attacker_id, def_on_city)
         .expect("attack should succeed");
 
-    let wall_destroyed = diff.deltas.iter().any(|d| {
-        matches!(d, StateDelta::WallDestroyed { city, .. } if *city == s.rome_city)
-    });
-    assert!(wall_destroyed, "WallDestroyed expected after combat reduced wall_hp to 0");
+    let wall_destroyed = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::WallDestroyed { city, .. } if *city == s.rome_city));
+    assert!(
+        wall_destroyed,
+        "WallDestroyed expected after combat reduced wall_hp to 0"
+    );
 
     // City walls should now be None.
     let city = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap();
-    assert_eq!(city.walls, WallLevel::None, "walls should be None after breach");
+    assert_eq!(
+        city.walls,
+        WallLevel::None,
+        "walls should be None after breach"
+    );
 
     // Bombardment should now fail.
     let new_enemy_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: new_enemy_id, unit_type: s.warrior_type, owner: s.babylon_id,
+        id: new_enemy_id,
+        unit_type: s.warrior_type,
+        owner: s.babylon_id,
         coord: HexCoord::from_qr(4, 3),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     let result = rules.city_bombard(&mut s.state, s.rome_city, new_enemy_id);
@@ -2043,14 +3050,21 @@ fn idle_unit_heals_in_neutral_territory() {
     let rules = DefaultRulesEngine;
 
     // Damage Rome's warrior to 60 HP. It's at (5,3) which has no owner.
-    s.state.units.iter_mut()
-        .find(|u| u.id == s.rome_warrior).unwrap()
+    s.state
+        .units
+        .iter_mut()
+        .find(|u| u.id == s.rome_warrior)
+        .unwrap()
         .health = 60;
 
     let diff = rules.advance_turn(&mut s.state);
 
-    let healed = s.state.units.iter()
-        .find(|u| u.id == s.rome_warrior).unwrap()
+    let healed = s
+        .state
+        .units
+        .iter()
+        .find(|u| u.id == s.rome_warrior)
+        .unwrap()
         .health;
     assert_eq!(healed, 70, "idle unit should heal +10 in neutral territory");
 
@@ -2069,17 +3083,28 @@ fn idle_unit_heals_in_friendly_territory() {
     // Move Rome's warrior to Rome's capital tile (3,3) which is owned by Rome.
     let rome_coord = HexCoord::from_qr(3, 3);
     s.state.board.tile_mut(rome_coord).unwrap().owner = Some(s.rome_id);
-    let warrior = s.state.units.iter_mut()
-        .find(|u| u.id == s.rome_warrior).unwrap();
+    let warrior = s
+        .state
+        .units
+        .iter_mut()
+        .find(|u| u.id == s.rome_warrior)
+        .unwrap();
     warrior.coord = rome_coord;
     warrior.health = 50;
 
     let diff = rules.advance_turn(&mut s.state);
 
-    let healed = s.state.units.iter()
-        .find(|u| u.id == s.rome_warrior).unwrap()
+    let healed = s
+        .state
+        .units
+        .iter()
+        .find(|u| u.id == s.rome_warrior)
+        .unwrap()
         .health;
-    assert_eq!(healed, 70, "idle unit should heal +20 in friendly territory");
+    assert_eq!(
+        healed, 70,
+        "idle unit should heal +20 in friendly territory"
+    );
 
     assert!(diff.deltas.iter().any(|d| matches!(d,
         StateDelta::UnitHealed { unit, old_health: 50, new_health: 70 }
@@ -2094,15 +3119,23 @@ fn moved_unit_does_not_heal() {
     let rules = DefaultRulesEngine;
 
     // Damage and spend some movement.
-    let warrior = s.state.units.iter_mut()
-        .find(|u| u.id == s.rome_warrior).unwrap();
+    let warrior = s
+        .state
+        .units
+        .iter_mut()
+        .find(|u| u.id == s.rome_warrior)
+        .unwrap();
     warrior.health = 60;
     warrior.movement_left = 100; // spent half movement
 
     rules.advance_turn(&mut s.state);
 
-    let hp = s.state.units.iter()
-        .find(|u| u.id == s.rome_warrior).unwrap()
+    let hp = s
+        .state
+        .units
+        .iter()
+        .find(|u| u.id == s.rome_warrior)
+        .unwrap()
         .health;
     assert_eq!(hp, 60, "unit that moved should not heal");
 }
@@ -2113,14 +3146,21 @@ fn idle_healing_caps_at_100() {
     let mut s = common::build_scenario();
     let rules = DefaultRulesEngine;
 
-    s.state.units.iter_mut()
-        .find(|u| u.id == s.rome_warrior).unwrap()
+    s.state
+        .units
+        .iter_mut()
+        .find(|u| u.id == s.rome_warrior)
+        .unwrap()
         .health = 95;
 
     rules.advance_turn(&mut s.state);
 
-    let hp = s.state.units.iter()
-        .find(|u| u.id == s.rome_warrior).unwrap()
+    let hp = s
+        .state
+        .units
+        .iter()
+        .find(|u| u.id == s.rome_warrior)
+        .unwrap()
         .health;
     assert_eq!(hp, 100, "healing should cap at 100");
 }

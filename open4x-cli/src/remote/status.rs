@@ -49,10 +49,14 @@ pub fn status(server: &str, token_file: &Path, kind: &StatusKind) -> Result<(), 
         // Not exposed over REST yet — fail loudly so parity tests
         // don't quietly skip them.
         StatusKind::Scores => {
-            return Err("server mode does not expose 'status scores' yet (no REST endpoint)".into());
+            return Err(
+                "server mode does not expose 'status scores' yet (no REST endpoint)".into(),
+            );
         }
         StatusKind::Congress => {
-            return Err("server mode does not expose 'status congress' yet (no REST endpoint)".into());
+            return Err(
+                "server mode does not expose 'status congress' yet (no REST endpoint)".into(),
+            );
         }
     };
 

@@ -1,33 +1,35 @@
 //! City handlers: `found_city`, `claim_tile`, `reassign_tile`, `assign_citizen`, `compute_yields`.
 
-use std::collections::HashSet;
 use crate::{BeliefId, BuildingId, CityId, CivId, UnitId, WonderId, YieldBundle};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 use libhexgrid::types::MovementCost;
+use std::collections::HashSet;
 
-use super::{RulesError, lookup_bundle};
 use super::super::diff::{GameStateDiff, StateDelta};
-use super::super::rules_helpers::{
-    apply_effects, tile_yields_gated, try_claim_tile,
-};
+use super::super::rules_helpers::{apply_effects, tile_yields_gated, try_claim_tile};
 use super::super::state::GameState;
+use super::{RulesError, lookup_bundle};
 use crate::rules::modifier::{ConditionContext, resolve_modifiers};
 
 /// Consume a settler unit and found a new city at its current position.
 pub(crate) fn found_city(
-    state:   &mut GameState,
+    state: &mut GameState,
     settler: UnitId,
-    name:    String,
+    name: String,
 ) -> Result<GameStateDiff, RulesError> {
     let (coord, civ_id, unit_type_id) = {
         let u = state.unit(settler).ok_or(RulesError::UnitNotFound)?;
         (u.coord, u.owner, u.unit_type)
     };
 
-    let is_settler = state.unit_type_defs.iter()
+    let is_settler = state
+        .unit_type_defs
+        .iter()
         .any(|d| d.id == unit_type_id && d.can_found_city);
-    if !is_settler { return Err(RulesError::NotASettler); }
+    if !is_settler {
+        return Err(RulesError::NotASettler);
+    }
 
     let tile = state.board.tile(coord).ok_or(RulesError::InvalidCoord)?;
     if !tile.terrain.is_land() {
@@ -45,7 +47,9 @@ pub(crate) fn found_city(
     }
 
     let city_id = state.id_gen.next_city_id();
-    let is_capital = state.civilizations.iter()
+    let is_capital = state
+        .civilizations
+        .iter()
         .find(|c| c.id == civ_id)
         .is_none_or(|c| c.cities.is_empty());
     let mut city = crate::civ::City::new(city_id, name, civ_id, coord);
@@ -59,7 +63,11 @@ pub(crate) fn found_city(
 
     let mut diff = GameStateDiff::new();
     diff.push(StateDelta::UnitDestroyed { unit: settler });
-    diff.push(StateDelta::CityFounded { city: city_id, coord, owner: civ_id });
+    diff.push(StateDelta::CityFounded {
+        city: city_id,
+        coord,
+        owner: civ_id,
+    });
 
     try_claim_tile(state, civ_id, city_id, coord, &mut diff);
     for nb in state.board.neighbors(coord) {
@@ -67,7 +75,9 @@ pub(crate) fn found_city(
     }
 
     // ── Civ ability: on_city_founded hooks ──────────────────────────────
-    let civ_identity = state.civilizations.iter()
+    let civ_identity = state
+        .civilizations
+        .iter()
         .find(|c| c.id == civ_id)
         .and_then(|c| c.civ_identity);
     if let Some(bundle) = lookup_bundle(civ_identity) {
@@ -75,7 +85,9 @@ pub(crate) fn found_city(
         for hook in &bundle.on_city_founded {
             match hook {
                 CityFoundedHook::FreeBuilding(building_name) => {
-                    if let Some(bdef) = state.building_defs.iter()
+                    if let Some(bdef) = state
+                        .building_defs
+                        .iter()
                         .find(|d| d.name == *building_name)
                         && let Some(city) = state.cities.iter_mut().find(|c| c.id == city_id)
                         && !city.buildings.contains(&bdef.id)
@@ -83,7 +95,8 @@ pub(crate) fn found_city(
                         let bid = bdef.id;
                         city.buildings.push(bid);
                         diff.push(StateDelta::BuildingCompleted {
-                            city: city_id, building: building_name,
+                            city: city_id,
+                            building: building_name,
                         });
                     }
                 }
@@ -91,9 +104,8 @@ pub(crate) fn found_city(
                     if let Some(tile) = state.board.tile_mut(coord)
                         && tile.improvement.is_none()
                     {
-                        tile.improvement = Some(
-                            crate::world::improvement::BuiltinImprovement::TradingPost,
-                        );
+                        tile.improvement =
+                            Some(crate::world::improvement::BuiltinImprovement::TradingPost);
                         diff.push(StateDelta::ImprovementPlaced {
                             coord,
                             improvement: crate::world::improvement::BuiltinImprovement::TradingPost,
@@ -118,9 +130,14 @@ pub(crate) fn claim_tile(
     coord: HexCoord,
     force: bool,
 ) -> Result<GameStateDiff, RulesError> {
-    let coord = state.board.normalize(coord).ok_or(RulesError::InvalidCoord)?;
+    let coord = state
+        .board
+        .normalize(coord)
+        .ok_or(RulesError::InvalidCoord)?;
 
-    let (city_coord, civ_id) = state.cities.iter()
+    let (city_coord, civ_id) = state
+        .cities
+        .iter()
         .find(|c| c.id == city_id)
         .map(|c| (c.coord, c.owner))
         .ok_or(RulesError::CityNotFound)?;
@@ -147,7 +164,11 @@ pub(crate) fn claim_tile(
         city.territory.insert(coord);
     }
     let mut diff = GameStateDiff::new();
-    diff.push(StateDelta::TileClaimed { civ: civ_id, city: city_id, coord });
+    diff.push(StateDelta::TileClaimed {
+        civ: civ_id,
+        city: city_id,
+        coord,
+    });
     Ok(diff)
 }
 
@@ -158,14 +179,21 @@ pub(crate) fn reassign_tile(
     to_city: CityId,
     coord: HexCoord,
 ) -> Result<GameStateDiff, RulesError> {
-    let coord = state.board.normalize(coord).ok_or(RulesError::InvalidCoord)?;
+    let coord = state
+        .board
+        .normalize(coord)
+        .ok_or(RulesError::InvalidCoord)?;
 
-    let from_civ = state.cities.iter()
+    let from_civ = state
+        .cities
+        .iter()
         .find(|c| c.id == from_city)
         .map(|c| c.owner)
         .ok_or(RulesError::CityNotFound)?;
 
-    let (to_coord, to_civ) = state.cities.iter()
+    let (to_coord, to_civ) = state
+        .cities
+        .iter()
         .find(|c| c.id == to_city)
         .map(|c| (c.coord, c.owner))
         .ok_or(RulesError::CityNotFound)?;
@@ -179,7 +207,9 @@ pub(crate) fn reassign_tile(
         return Ok(GameStateDiff::new());
     }
 
-    let owner = state.board.tile(coord)
+    let owner = state
+        .board
+        .tile(coord)
         .ok_or(RulesError::InvalidCoord)?
         .owner;
     if owner != Some(civ_id) {
@@ -192,7 +222,12 @@ pub(crate) fn reassign_tile(
     }
 
     let mut diff = GameStateDiff::new();
-    diff.push(StateDelta::TileReassigned { civ: civ_id, from_city, to_city, coord });
+    diff.push(StateDelta::TileReassigned {
+        civ: civ_id,
+        from_city,
+        to_city,
+        coord,
+    });
     Ok(diff)
 }
 
@@ -203,10 +238,16 @@ pub(crate) fn assign_citizen(
     tile: HexCoord,
     lock: bool,
 ) -> Result<GameStateDiff, RulesError> {
-    let city_idx = state.cities.iter().position(|c| c.id == city_id)
+    let city_idx = state
+        .cities
+        .iter()
+        .position(|c| c.id == city_id)
         .ok_or(RulesError::CityNotFound)?;
 
-    let tile = state.board.normalize(tile).ok_or(RulesError::InvalidCoord)?;
+    let tile = state
+        .board
+        .normalize(tile)
+        .ok_or(RulesError::InvalidCoord)?;
 
     if state.board.tile(tile).is_none() {
         return Err(RulesError::InvalidCoord);
@@ -221,7 +262,10 @@ pub(crate) fn assign_citizen(
 
     if !city.worked_tiles.contains(&tile) {
         city.worked_tiles.push(tile);
-        diff.push(StateDelta::CitizenAssigned { city: city_id, tile });
+        diff.push(StateDelta::CitizenAssigned {
+            city: city_id,
+            tile,
+        });
     }
     if lock {
         city.locked_tiles.insert(tile);
@@ -303,9 +347,13 @@ pub(crate) fn compute_yields(state: &GameState, civ_id: CivId) -> YieldBundle {
         return YieldBundle::default();
     }
 
-    let known_techs: HashSet<&str> = state.civ(civ_id)
+    let known_techs: HashSet<&str> = state
+        .civ(civ_id)
         .map(|civ| {
-            state.tech_tree.nodes.values()
+            state
+                .tech_tree
+                .nodes
+                .values()
                 .filter(|n| civ.researched_techs.contains(&n.id))
                 .map(|n| n.name)
                 .collect()
@@ -321,7 +369,7 @@ pub(crate) fn compute_yields(state: &GameState, civ_id: CivId) -> YieldBundle {
     //                     city's vec contributes once; the same building type in
     //                     two cities still counts in each, which is correct).
     let mut total = YieldBundle::default();
-    let mut seen_tiles:     HashSet<HexCoord>            = HashSet::new();
+    let mut seen_tiles: HashSet<HexCoord> = HashSet::new();
     let mut seen_buildings: HashSet<(CityId, BuildingId)> = HashSet::new();
 
     for city in state.cities.iter().filter(|c| c.owner == civ_id) {
@@ -356,7 +404,9 @@ pub(crate) fn compute_yields(state: &GameState, civ_id: CivId) -> YieldBundle {
         }
     }
     for route in &state.trade_routes {
-        let dest_owner = state.cities.iter()
+        let dest_owner = state
+            .cities
+            .iter()
             .find(|c| c.id == route.destination)
             .map(|c| c.owner);
         if dest_owner == Some(civ_id) && route.owner != civ_id {
@@ -366,7 +416,8 @@ pub(crate) fn compute_yields(state: &GameState, civ_id: CivId) -> YieldBundle {
 
     // ── Phase 2: collect the FIXED modifier set (also de-duplicated) ──────
     let modifiers = {
-        let mut mods = state.civ(civ_id)
+        let mut mods = state
+            .civ(civ_id)
             .map(|civ| {
                 let mut m = civ.get_modifiers(
                     &state.policies,
@@ -509,7 +560,10 @@ mod reentrancy_tests {
         #[cfg(not(debug_assertions))]
         {
             let inner = YieldReentrancyGuard::enter();
-            assert!(inner.reentered, "nested entry must be reported as a re-entry");
+            assert!(
+                inner.reentered,
+                "nested entry must be reported as a re-entry"
+            );
             drop(inner);
             COMPUTING_YIELDS.with(|f| assert!(f.get(), "inner drop must not clear outer flag"));
         }

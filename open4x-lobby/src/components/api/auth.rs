@@ -20,12 +20,8 @@ pub struct EmailStartResp {
 /// `magic_link_sent` ack.
 pub async fn email_start(email: String) -> Result<EmailStartResp, ApiError> {
     let body = EmailStartBody { email };
-    fetch_json::<EmailStartResp, EmailStartBody>(
-        "POST",
-        "/api/v1/auth/email/start",
-        Some(&body),
-    )
-    .await
+    fetch_json::<EmailStartResp, EmailStartBody>("POST", "/api/v1/auth/email/start", Some(&body))
+        .await
 }
 
 // ───────────────────────────── pubkey auth ───────────────────────────────

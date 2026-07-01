@@ -4,8 +4,8 @@
 
 use std::path::Path;
 
-use libciv::game::{available_building_defs, available_unit_defs};
 use libciv::CityId;
+use libciv::game::{available_building_defs, available_unit_defs};
 use serde_json::json;
 
 use crate::cli::ListKind;
@@ -14,11 +14,7 @@ use crate::state_io;
 use super::{find_civ_by_name, parse_ulid};
 
 /// Execute a list query and print the result as JSON.
-pub fn handle_list(
-    game_file: &Path,
-    player: &str,
-    kind: &ListKind,
-) -> Result<(), String> {
+pub fn handle_list(game_file: &Path, player: &str, kind: &ListKind) -> Result<(), String> {
     let state = state_io::load_game_file(game_file)?;
     let civ_id = find_civ_by_name(&state, player)?;
 
@@ -150,7 +146,11 @@ pub fn handle_list(
                 .filter(|g| g.owner == civ_id)
                 .map(|g| {
                     let city_name = g.assigned_city.and_then(|cid| {
-                        state.cities.iter().find(|c| c.id == cid).map(|c| c.name.as_str())
+                        state
+                            .cities
+                            .iter()
+                            .find(|c| c.id == cid)
+                            .map(|c| c.name.as_str())
                     });
                     json!({
                         "id": format!("{}", g.id.as_ulid()),

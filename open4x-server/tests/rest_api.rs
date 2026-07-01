@@ -111,7 +111,10 @@ async fn bootstrap_token(app: &Router) -> String {
     });
     let (status, body) = post_with(app, "/api/v1/games/new", None, body).await;
     assert_eq!(status, StatusCode::CREATED, "games/new: {body:?}");
-    body["token"].as_str().expect("token in response").to_string()
+    body["token"]
+        .as_str()
+        .expect("token in response")
+        .to_string()
 }
 
 // ── tests ───────────────────────────────────────────────────────────────────
@@ -203,7 +206,13 @@ async fn end_turn_blocks_when_required_action_pending() {
     let token = bootstrap_token(&app).await;
 
     // Fresh game: research queue empty -> 'choose_research' is required.
-    let (status, body) = post_with(&app, "/api/v1/turn/end", Some(&token), serde_json::json!({})).await;
+    let (status, body) = post_with(
+        &app,
+        "/api/v1/turn/end",
+        Some(&token),
+        serde_json::json!({}),
+    )
+    .await;
     assert_eq!(status, StatusCode::BAD_REQUEST, "turn/end body: {body:?}");
     assert_eq!(body["error"], "unresolved_required_actions");
     let items = body["items"].as_array().expect("items array");
@@ -258,7 +267,13 @@ async fn end_turn_advances_after_research_chosen() {
     .await;
     assert_eq!(status, StatusCode::OK);
 
-    let (status, body) = post_with(&app, "/api/v1/turn/end", Some(&token), serde_json::json!({})).await;
+    let (status, body) = post_with(
+        &app,
+        "/api/v1/turn/end",
+        Some(&token),
+        serde_json::json!({}),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK, "after research: {body:?}");
     assert_eq!(body["ok"], true);
     assert_eq!(body["view"]["turn"], 1);
@@ -300,7 +315,12 @@ async fn production_queue_and_cancel_round_trip() {
     )
     .await;
     assert_eq!(status, StatusCode::OK, "cancel_production: {body:?}");
-    assert!(body["view"]["production_queue"].as_array().unwrap().is_empty());
+    assert!(
+        body["view"]["production_queue"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
 }
 
 #[tokio::test]
@@ -315,7 +335,10 @@ async fn units_actions_are_engine_derived_and_role_specific() {
     assert_eq!(status, StatusCode::OK);
     let units = u["units"].as_array().expect("units array");
     let own: Vec<_> = units.iter().filter(|u| u["is_own"] == true).collect();
-    assert!(!own.is_empty(), "expected at least one own unit, got {units:?}");
+    assert!(
+        !own.is_empty(),
+        "expected at least one own unit, got {units:?}"
+    );
 
     // Every own unit has Move + Sleep.
     for u in &own {
@@ -349,7 +372,11 @@ async fn change_government_rejects_unknown_and_locked_then_succeeds_when_unlocke
         serde_json::json!({"government": "Atlantean Republic"}),
     )
     .await;
-    assert_eq!(status, StatusCode::BAD_REQUEST, "unknown gov body: {body:?}");
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "unknown gov body: {body:?}"
+    );
 
     // Known but not-yet-unlocked government → 400.
     let (status, _) = post_with(
@@ -379,7 +406,9 @@ async fn change_government_rejects_unknown_and_locked_then_succeeds_when_unlocke
         let game_id = *game_entry.key();
         drop(game_entry);
         let mut room = state.games.get_mut(&game_id).expect("game still present");
-        room.state.civilizations[0].unlocked_governments.push("Chiefdom");
+        room.state.civilizations[0]
+            .unlocked_governments
+            .push("Chiefdom");
     }
 
     let (status, body) = post_with(
@@ -480,7 +509,10 @@ async fn cancel_research_drops_active_tech_and_is_idempotent() {
     assert_eq!(status, StatusCode::OK, "cancel: {body:?}");
     assert_eq!(body["ok"], true);
     assert!(
-        body["view"]["research_queue"].as_array().unwrap().is_empty(),
+        body["view"]["research_queue"]
+            .as_array()
+            .unwrap()
+            .is_empty(),
         "expected empty research queue after cancel, got {body:?}"
     );
 
@@ -619,9 +651,11 @@ async fn turn_queue_lists_required_choose_research_on_fresh_game() {
     let (status, q) = get_with(&app, "/api/v1/turn-queue", &token).await;
     assert_eq!(status, StatusCode::OK);
     let items = q["items"].as_array().unwrap();
-    assert!(items
-        .iter()
-        .any(|it| it["id"] == "choose_research" && it["required"] == true));
+    assert!(
+        items
+            .iter()
+            .any(|it| it["id"] == "choose_research" && it["required"] == true)
+    );
 }
 
 #[tokio::test]
@@ -716,7 +750,9 @@ async fn notifications_surface_fired_dynamic_event() {
 
     let (status, notifs) = get_with(&app, "/api/v1/notifications", &token).await;
     assert_eq!(status, StatusCode::OK);
-    let items = notifs["notifications"].as_array().expect("notifications array");
+    let items = notifs["notifications"]
+        .as_array()
+        .expect("notifications array");
     let event = items
         .iter()
         .find(|n| n["title"] == "Scientific Breakthrough")

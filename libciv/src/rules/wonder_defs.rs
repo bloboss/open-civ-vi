@@ -1,8 +1,6 @@
-use crate::game::state::WonderDef;
 use crate::game::IdGenerator;
-use crate::rules::modifier::{
-    EffectType, Modifier, ModifierSource, StackingRule, TargetSelector,
-};
+use crate::game::state::WonderDef;
+use crate::rules::modifier::{EffectType, Modifier, ModifierSource, StackingRule, TargetSelector};
 use crate::{AgeType, WonderId, YieldType};
 
 /// Convenience constructor for an unconditional, civ-wide flat yield modifier
@@ -106,7 +104,6 @@ pub fn builtin_wonder_defs(id_gen: &mut IdGenerator) -> Vec<WonderDef> {
         // ── Atomic / Information Era (2) ──────────────────────────────────
         w("Estadio do Maracana", 1740, AgeType::Atomic),
         w("Sydney Opera House", 1850, AgeType::Information),
-
         // ── Rise & Fall wonders ─────────────────────────────────────────────
         w("Temple of Artemis", 180, AgeType::Ancient),
         w("Kilwa Kisiwani", 710, AgeType::Medieval),
@@ -116,7 +113,6 @@ pub fn builtin_wonder_defs(id_gen: &mut IdGenerator) -> Vec<WonderDef> {
         w("Taj Mahal", 920, AgeType::Renaissance),
         w("Statue of Liberty", 1240, AgeType::Industrial),
         w("Amundsen-Scott Research Station", 1620, AgeType::Atomic),
-
         // ── Gathering Storm wonders ─────────────────────────────────────────
         w("Great Bath", 180, AgeType::Ancient),
         w("Machu Picchu", 400, AgeType::Classical),
@@ -125,7 +121,6 @@ pub fn builtin_wonder_defs(id_gen: &mut IdGenerator) -> Vec<WonderDef> {
         w("Orszaghaz", 920, AgeType::Industrial),
         w("Panama Canal", 920, AgeType::Industrial),
         w("Golden Gate Bridge", 1620, AgeType::Modern),
-
         // ── DLC wonders ─────────────────────────────────────────────────────
         w("Etemenanki", 220, AgeType::Ancient),
         w("Statue of Zeus", 400, AgeType::Classical),

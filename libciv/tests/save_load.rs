@@ -4,7 +4,7 @@
 
 mod common;
 
-use libciv::game::save_load::{save_game, load_game};
+use libciv::game::save_load::{load_game, save_game};
 
 #[test]
 fn round_trip_empty_game() {
@@ -50,5 +50,8 @@ fn round_trip_after_turns() {
     assert_eq!(loaded.turn, s.state.turn);
     assert_eq!(loaded.seed, s.state.seed);
     // Tech tree should be rebuilt (has nodes from seed initialization).
-    assert!(!loaded.tech_tree.nodes.is_empty(), "tech tree should be rebuilt from seed");
+    assert!(
+        !loaded.tech_tree.nodes.is_empty(),
+        "tech tree should be rebuilt from seed"
+    );
 }

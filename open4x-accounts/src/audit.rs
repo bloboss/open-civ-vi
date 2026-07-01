@@ -7,7 +7,6 @@
 //! paths from runtime code. The Phase 6 `lobby db dump` subcommand
 //! is the consumer.
 
-
 use async_trait::async_trait;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -189,9 +188,9 @@ impl AuditStore for SqliteAuditStore {
                 id: r.id,
                 ts: r.ts,
                 kind: parse_kind(&r.kind),
-                player_id: r.player_id.and_then(|p| {
-                    u64::from_str_radix(&p, 16).ok().map(PlayerId::new)
-                }),
+                player_id: r
+                    .player_id
+                    .and_then(|p| u64::from_str_radix(&p, 16).ok().map(PlayerId::new)),
                 ip: r.ip,
                 detail: r.detail,
             })

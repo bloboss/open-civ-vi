@@ -2,8 +2,8 @@
 
 use std::rc::Rc;
 
-use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use wasm_bindgen::prelude::*;
 use web_sys::{MessageEvent, WebSocket};
 
 use open4x_protocol::v1::messages::{ClientMessage, ServerMessage};
@@ -36,7 +36,9 @@ impl WsClient {
         ws.set_onmessage(Some(on_message.as_ref().unchecked_ref()));
         on_message.forget(); // leak closure so it lives as long as the socket
 
-        Some(Self { socket: Rc::new(ws) })
+        Some(Self {
+            socket: Rc::new(ws),
+        })
     }
 
     /// Send a `ClientMessage` as JSON over the WebSocket.

@@ -3,10 +3,7 @@
 use leptos::prelude::*;
 
 #[component]
-pub fn Tag(
-    #[prop(optional, into)] variant: &'static str,
-    children: Children,
-) -> impl IntoView {
+pub fn Tag(#[prop(optional, into)] variant: &'static str, children: Children) -> impl IntoView {
     let class = format!("tag {variant}");
     view! { <span class=class>{children()}</span> }
 }

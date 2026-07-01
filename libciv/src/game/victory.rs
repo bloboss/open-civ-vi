@@ -1,7 +1,7 @@
-use crate::{CivId, VictoryId};
-use crate::rules::VictoryProgress;
 use super::score::compute_score;
 use super::state::GameState;
+use crate::rules::VictoryProgress;
+use crate::{CivId, VictoryId};
 
 /// Determines how and when a victory condition is evaluated.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,13 +46,27 @@ pub const SCIENCE_MILESTONES: [&str; 4] = [
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BuiltinVictoryCondition {
-    Score { id: VictoryId, turn_limit: u32 },
-    Culture { id: VictoryId },
-    Domination { id: VictoryId },
-    Science { id: VictoryId },
+    Score {
+        id: VictoryId,
+        turn_limit: u32,
+    },
+    Culture {
+        id: VictoryId,
+    },
+    Domination {
+        id: VictoryId,
+    },
+    Science {
+        id: VictoryId,
+    },
     /// VP-based check: wins when `world_congress.diplomatic_victory_points >= threshold` (default 20).
-    Diplomatic { id: VictoryId, threshold: u32 },
-    Religious { id: VictoryId },
+    Diplomatic {
+        id: VictoryId,
+        threshold: u32,
+    },
+    Religious {
+        id: VictoryId,
+    },
 }
 
 impl BuiltinVictoryCondition {
@@ -106,7 +120,9 @@ impl BuiltinVictoryCondition {
 
     pub fn kind(&self) -> VictoryKind {
         match self {
-            Self::Score { turn_limit, .. } => VictoryKind::TurnLimit { turn_limit: *turn_limit },
+            Self::Score { turn_limit, .. } => VictoryKind::TurnLimit {
+                turn_limit: *turn_limit,
+            },
             Self::Culture { .. }
             | Self::Domination { .. }
             | Self::Science { .. }
@@ -117,18 +133,17 @@ impl BuiltinVictoryCondition {
 
     pub fn check_progress(&self, civ_id: CivId, state: &GameState) -> VictoryProgress {
         match self {
-            Self::Score { id, turn_limit } => {
-                VictoryProgress {
-                    victory_id: *id,
-                    civ_id,
-                    current: compute_score(state, civ_id),
-                    target: *turn_limit,
-                }
-            }
+            Self::Score { id, turn_limit } => VictoryProgress {
+                victory_id: *id,
+                civ_id,
+                current: compute_score(state, civ_id),
+                target: *turn_limit,
+            },
             Self::Culture { id } => check_culture(*id, civ_id, state),
             Self::Domination { id } => check_domination(*id, civ_id, state),
             Self::Science { id } => {
-                let completed = state.civ(civ_id)
+                let completed = state
+                    .civ(civ_id)
                     .map(|c| c.science_milestones_completed)
                     .unwrap_or(0);
                 VictoryProgress {
@@ -139,8 +154,12 @@ impl BuiltinVictoryCondition {
                 }
             }
             Self::Diplomatic { id, threshold } => {
-                let vp = state.world_congress.diplomatic_victory_points
-                    .get(&civ_id).copied().unwrap_or(0);
+                let vp = state
+                    .world_congress
+                    .diplomatic_victory_points
+                    .get(&civ_id)
+                    .copied()
+                    .unwrap_or(0);
                 VictoryProgress {
                     victory_id: *id,
                     civ_id,
@@ -156,24 +175,31 @@ impl BuiltinVictoryCondition {
 // ── Private helper functions ──────────────────────────────────────────────────
 
 fn check_culture(id: VictoryId, civ_id: CivId, state: &GameState) -> VictoryProgress {
-    use crate::civ::tourism::{has_cultural_dominance, domestic_tourists};
+    use crate::civ::tourism::{domestic_tourists, has_cultural_dominance};
 
-    let other_civs: Vec<_> = state.civilizations.iter()
+    let other_civs: Vec<_> = state
+        .civilizations
+        .iter()
         .filter(|c| c.id != civ_id)
         .collect();
 
     if other_civs.is_empty() {
         return VictoryProgress {
-            victory_id: id, civ_id, current: 0, target: 1,
+            victory_id: id,
+            civ_id,
+            current: 0,
+            target: 1,
         };
     }
 
     let dominated = if let Some(civ) = state.civ(civ_id) {
-        other_civs.iter().filter(|other| {
-            let sent = civ.tourism_accumulated
-                .get(&other.id).copied().unwrap_or(0);
-            sent > domestic_tourists(other)
-        }).count() as u32
+        other_civs
+            .iter()
+            .filter(|other| {
+                let sent = civ.tourism_accumulated.get(&other.id).copied().unwrap_or(0);
+                sent > domestic_tourists(other)
+            })
+            .count() as u32
     } else {
         0
     };
@@ -189,12 +215,15 @@ fn check_culture(id: VictoryId, civ_id: CivId, state: &GameState) -> VictoryProg
 }
 
 fn check_domination(id: VictoryId, civ_id: CivId, state: &GameState) -> VictoryProgress {
-    let foreign_capitals: Vec<&crate::civ::City> = state.cities.iter()
+    let foreign_capitals: Vec<&crate::civ::City> = state
+        .cities
+        .iter()
         .filter(|c| c.is_capital && c.founded_by != civ_id)
         .collect();
 
     let total = foreign_capitals.len() as u32;
-    let controlled = foreign_capitals.iter()
+    let controlled = foreign_capitals
+        .iter()
         .filter(|c| c.owner == civ_id)
         .count() as u32;
 
@@ -212,11 +241,16 @@ fn check_religious(id: VictoryId, civ_id: CivId, state: &GameState) -> VictoryPr
 
     let Some(rid) = religion_id else {
         return VictoryProgress {
-            victory_id: id, civ_id, current: 0, target: 1,
+            victory_id: id,
+            civ_id,
+            current: 0,
+            target: 1,
         };
     };
 
-    let other_civs: Vec<CivId> = state.civilizations.iter()
+    let other_civs: Vec<CivId> = state
+        .civilizations
+        .iter()
         .filter(|c| c.id != civ_id)
         .map(|c| c.id)
         .collect();
@@ -224,11 +258,16 @@ fn check_religious(id: VictoryId, civ_id: CivId, state: &GameState) -> VictoryPr
 
     let mut converted = 0u32;
     for other_civ_id in &other_civs {
-        let civ_cities: Vec<&crate::civ::City> = state.cities.iter()
+        let civ_cities: Vec<&crate::civ::City> = state
+            .cities
+            .iter()
             .filter(|c| c.owner == *other_civ_id)
             .collect();
-        if civ_cities.is_empty() { continue; }
-        let following = civ_cities.iter()
+        if civ_cities.is_empty() {
+            continue;
+        }
+        let following = civ_cities
+            .iter()
             .filter(|c| c.majority_religion() == Some(rid))
             .count();
         if following * 2 > civ_cities.len() {

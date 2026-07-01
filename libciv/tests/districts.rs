@@ -1,10 +1,10 @@
 /// Integration tests for district placement validation.
 mod common;
 
-use libciv::{DefaultRulesEngine, RulesEngine};
 use libciv::civ::district::BuiltinDistrict;
 use libciv::game::{RulesError, StateDelta};
 use libciv::world::terrain::BuiltinTerrain;
+use libciv::{DefaultRulesEngine, RulesEngine};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 
@@ -36,9 +36,13 @@ fn campus_on_owned_land_succeeds() {
 
     // Grant Writing so the tech check passes.
     let writing_id = s.state.tech_refs.writing;
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .researched_techs.push(writing_id);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .researched_techs
+        .push(writing_id);
 
     // Ensure target is land (Grassland by default in our scenario).
     assert!(s.state.board.tile(target).is_some());
@@ -50,7 +54,9 @@ fn campus_on_owned_land_succeeds() {
 
     let diff = result.unwrap();
     assert!(
-        diff.deltas.iter().any(|d| matches!(d, StateDelta::DistrictBuilt { .. })),
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::DistrictBuilt { .. })),
         "Diff should contain DistrictBuilt"
     );
 
@@ -88,9 +94,13 @@ fn district_on_unowned_tile_fails() {
     // Do NOT claim the tile for Rome — it stays owner=None.
 
     let writing_id = s.state.tech_refs.writing;
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .researched_techs.push(writing_id);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .researched_techs
+        .push(writing_id);
 
     let rules = DefaultRulesEngine;
     let result = rules.place_district(&mut s.state, s.rome_city, BuiltinDistrict::Campus, target);
@@ -109,9 +119,13 @@ fn district_too_far_from_city_fails() {
     claim_tile(&mut s.state, target, s.rome_id);
 
     let writing_id = s.state.tech_refs.writing;
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .researched_techs.push(writing_id);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .researched_techs
+        .push(writing_id);
 
     let rules = DefaultRulesEngine;
     let result = rules.place_district(&mut s.state, s.rome_city, BuiltinDistrict::Campus, target);
@@ -130,12 +144,21 @@ fn district_on_city_center_fails() {
     claim_tile(&mut s.state, city_coord, s.rome_id);
 
     let writing_id = s.state.tech_refs.writing;
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .researched_techs.push(writing_id);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .researched_techs
+        .push(writing_id);
 
     let rules = DefaultRulesEngine;
-    let result = rules.place_district(&mut s.state, s.rome_city, BuiltinDistrict::Campus, city_coord);
+    let result = rules.place_district(
+        &mut s.state,
+        s.rome_city,
+        BuiltinDistrict::Campus,
+        city_coord,
+    );
 
     assert!(
         matches!(result, Err(RulesError::TileNotInCityRange)),
@@ -153,12 +176,17 @@ fn duplicate_district_fails() {
     claim_tile(&mut s.state, target2, s.rome_id);
 
     let writing_id = s.state.tech_refs.writing;
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .researched_techs.push(writing_id);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .researched_techs
+        .push(writing_id);
 
     let rules = DefaultRulesEngine;
-    rules.place_district(&mut s.state, s.rome_city, BuiltinDistrict::Campus, target1)
+    rules
+        .place_district(&mut s.state, s.rome_city, BuiltinDistrict::Campus, target1)
         .expect("First Campus should succeed");
 
     let result = rules.place_district(&mut s.state, s.rome_city, BuiltinDistrict::Campus, target2);
@@ -177,16 +205,27 @@ fn two_different_districts_succeed() {
     claim_tile(&mut s.state, target1, s.rome_id);
     claim_tile(&mut s.state, target2, s.rome_id);
 
-    let writing_id    = s.state.tech_refs.writing;
-    let bronze_id     = s.state.tech_refs.bronze_working;
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .researched_techs.extend([writing_id, bronze_id]);
+    let writing_id = s.state.tech_refs.writing;
+    let bronze_id = s.state.tech_refs.bronze_working;
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .researched_techs
+        .extend([writing_id, bronze_id]);
 
     let rules = DefaultRulesEngine;
-    rules.place_district(&mut s.state, s.rome_city, BuiltinDistrict::Campus, target1)
+    rules
+        .place_district(&mut s.state, s.rome_city, BuiltinDistrict::Campus, target1)
         .expect("Campus should succeed");
-    rules.place_district(&mut s.state, s.rome_city, BuiltinDistrict::Encampment, target2)
+    rules
+        .place_district(
+            &mut s.state,
+            s.rome_city,
+            BuiltinDistrict::Encampment,
+            target2,
+        )
         .expect("Encampment should succeed");
 
     let city = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap();
@@ -202,17 +241,27 @@ fn district_on_occupied_tile_fails() {
     claim_tile(&mut s.state, target, s.rome_id);
 
     let writing_id = s.state.tech_refs.writing;
-    let bronze_id  = s.state.tech_refs.bronze_working;
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .researched_techs.extend([writing_id, bronze_id]);
+    let bronze_id = s.state.tech_refs.bronze_working;
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .researched_techs
+        .extend([writing_id, bronze_id]);
 
     let rules = DefaultRulesEngine;
-    rules.place_district(&mut s.state, s.rome_city, BuiltinDistrict::Campus, target)
+    rules
+        .place_district(&mut s.state, s.rome_city, BuiltinDistrict::Campus, target)
         .expect("Campus should succeed");
 
     // Try to place Encampment on the same tile.
-    let result = rules.place_district(&mut s.state, s.rome_city, BuiltinDistrict::Encampment, target);
+    let result = rules.place_district(
+        &mut s.state,
+        s.rome_city,
+        BuiltinDistrict::Encampment,
+        target,
+    );
     assert!(
         matches!(result, Err(RulesError::TileOccupiedByDistrict)),
         "Second district on same tile should return TileOccupiedByDistrict, got: {result:?}"
@@ -228,9 +277,13 @@ fn harbor_on_land_fails() {
     // Leave terrain as Grassland (land).
 
     let sailing_id = s.state.tech_refs.sailing;
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .researched_techs.push(sailing_id);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .researched_techs
+        .push(sailing_id);
 
     let rules = DefaultRulesEngine;
     let result = rules.place_district(&mut s.state, s.rome_city, BuiltinDistrict::Harbor, target);
@@ -253,9 +306,13 @@ fn harbor_on_coast_succeeds() {
 
     // Harbor requires Celestial Navigation (Classical era tech).
     let cn_id = s.state.tech_refs.celestial_navigation;
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .researched_techs.push(cn_id);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .researched_techs
+        .push(cn_id);
 
     let rules = DefaultRulesEngine;
     let result = rules.place_district(&mut s.state, s.rome_city, BuiltinDistrict::Harbor, target);
@@ -274,9 +331,13 @@ fn campus_on_mountain_fails() {
     }
 
     let writing_id = s.state.tech_refs.writing;
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .researched_techs.push(writing_id);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .researched_techs
+        .push(writing_id);
 
     let rules = DefaultRulesEngine;
     let result = rules.place_district(&mut s.state, s.rome_city, BuiltinDistrict::Campus, target);
@@ -297,7 +358,12 @@ fn theater_square_requires_craftsmanship_civic() {
     let rules = DefaultRulesEngine;
 
     // Without the civic — should fail.
-    let result = rules.place_district(&mut s.state, s.rome_city, BuiltinDistrict::TheaterSquare, target);
+    let result = rules.place_district(
+        &mut s.state,
+        s.rome_city,
+        BuiltinDistrict::TheaterSquare,
+        target,
+    );
     assert!(
         matches!(result, Err(RulesError::CivicRequired)),
         "TheaterSquare without civic should return CivicRequired, got: {result:?}"
@@ -305,10 +371,22 @@ fn theater_square_requires_craftsmanship_civic() {
 
     // Grant the civic.
     let civic_id = s.state.civic_refs.craftsmanship;
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .completed_civics.push(civic_id);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .completed_civics
+        .push(civic_id);
 
-    let result2 = rules.place_district(&mut s.state, s.rome_city, BuiltinDistrict::TheaterSquare, target);
-    assert!(result2.is_ok(), "TheaterSquare with civic should succeed: {result2:?}");
+    let result2 = rules.place_district(
+        &mut s.state,
+        s.rome_city,
+        BuiltinDistrict::TheaterSquare,
+        target,
+    );
+    assert!(
+        result2.is_ok(),
+        "TheaterSquare with civic should succeed: {result2:?}"
+    );
 }

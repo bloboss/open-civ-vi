@@ -234,4 +234,3 @@ pub fn terrain_class(terrain: &str) -> &'static str {
         "land"
     }
 }
-

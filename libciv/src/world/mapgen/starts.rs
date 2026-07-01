@@ -30,8 +30,7 @@ pub fn generate(board: &WorldBoard, num_starts: u32, rng: &mut SmallRng) -> Vec<
         .filter(|&&c| board.tile(c).map(|t| is_land(t.terrain)).unwrap_or(false))
         .count();
 
-    let min_sep = ((land_count as f32 / num_starts as f32).sqrt() * 0.7)
-        .max(8.0) as u32;
+    let min_sep = ((land_count as f32 / num_starts as f32).sqrt() * 0.7).max(8.0) as u32;
 
     // First pass: strict eligibility
     if let Some(positions) = pick_starts(board, num_starts, min_sep, false, rng) {
@@ -53,11 +52,16 @@ pub fn generate(board: &WorldBoard, num_starts: u32, rng: &mut SmallRng) -> Vec<
 
 /// Returns `true` if the tile is an eligible start (strict mode: no hills).
 fn is_eligible(tile: &crate::world::tile::WorldTile, allow_hills: bool) -> bool {
-    matches!(tile.terrain, BuiltinTerrain::Grassland | BuiltinTerrain::Plains)
-        && (allow_hills || !tile.hills)
-        && !matches!(tile.feature, Some(BuiltinFeature::Rainforest)
-                                 | Some(BuiltinFeature::Marsh)
-                                 | Some(BuiltinFeature::Ice))
+    matches!(
+        tile.terrain,
+        BuiltinTerrain::Grassland | BuiltinTerrain::Plains
+    ) && (allow_hills || !tile.hills)
+        && !matches!(
+            tile.feature,
+            Some(BuiltinFeature::Rainforest)
+                | Some(BuiltinFeature::Marsh)
+                | Some(BuiltinFeature::Ice)
+        )
 }
 
 /// Score a candidate tile based on its surroundings.
@@ -79,10 +83,12 @@ fn score(coord: HexCoord, board: &WorldBoard) -> i32 {
     }
 
     for neighbor in board.neighbors(coord) {
-        let Some(t) = board.tile(neighbor) else { continue };
+        let Some(t) = board.tile(neighbor) else {
+            continue;
+        };
         match t.terrain {
             BuiltinTerrain::Grassland => s += 2,
-            BuiltinTerrain::Plains    => s += 1,
+            BuiltinTerrain::Plains => s += 1,
             _ => {}
         }
         // Adjacent Mountain: penalise
@@ -90,7 +96,8 @@ fn score(coord: HexCoord, board: &WorldBoard) -> i32 {
             s -= 4;
         }
         if let Some(res) = t.resource
-            && is_bonus_resource(res) {
+            && is_bonus_resource(res)
+        {
             s += 1;
         }
     }
@@ -98,7 +105,8 @@ fn score(coord: HexCoord, board: &WorldBoard) -> i32 {
     // Own-tile bonus resource
     if let Some(t) = board.tile(coord)
         && let Some(res) = t.resource
-        && is_bonus_resource(res) {
+        && is_bonus_resource(res)
+    {
         s += 1;
     }
 
@@ -106,14 +114,17 @@ fn score(coord: HexCoord, board: &WorldBoard) -> i32 {
 }
 
 fn is_bonus_resource(r: BuiltinResource) -> bool {
-    matches!(r, BuiltinResource::Wheat
-              | BuiltinResource::Rice
-              | BuiltinResource::Cattle
-              | BuiltinResource::Sheep
-              | BuiltinResource::Fish
-              | BuiltinResource::Stone
-              | BuiltinResource::Copper
-              | BuiltinResource::Deer)
+    matches!(
+        r,
+        BuiltinResource::Wheat
+            | BuiltinResource::Rice
+            | BuiltinResource::Cattle
+            | BuiltinResource::Sheep
+            | BuiltinResource::Fish
+            | BuiltinResource::Stone
+            | BuiltinResource::Copper
+            | BuiltinResource::Deer
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -121,11 +132,11 @@ fn is_bonus_resource(r: BuiltinResource) -> bool {
 // ---------------------------------------------------------------------------
 
 fn pick_starts(
-    board:      &WorldBoard,
+    board: &WorldBoard,
     num_starts: u32,
-    min_sep:    u32,
+    min_sep: u32,
     allow_hills: bool,
-    rng:        &mut SmallRng,
+    rng: &mut SmallRng,
 ) -> Option<Vec<HexCoord>> {
     // Collect and score eligible candidates.
     let mut candidates: Vec<(HexCoord, i32)> = board
@@ -133,7 +144,9 @@ fn pick_starts(
         .into_iter()
         .filter_map(|c| {
             let t = board.tile(c)?;
-            if !is_eligible(t, allow_hills) { return None; }
+            if !is_eligible(t, allow_hills) {
+                return None;
+            }
             Some((c, score(c, board)))
         })
         .collect();
@@ -148,7 +161,9 @@ fn pick_starts(
 
     let mut placed: Vec<HexCoord> = Vec::new();
     for (coord, _s) in &candidates {
-        if placed.len() >= num_starts as usize { break; }
+        if placed.len() >= num_starts as usize {
+            break;
+        }
         let too_close = placed.iter().any(|p| p.distance(coord) < min_sep);
         if !too_close {
             placed.push(*coord);
@@ -163,16 +178,17 @@ fn pick_starts(
 }
 
 fn fallback_starts(
-    board:      &WorldBoard,
+    board: &WorldBoard,
     num_starts: u32,
-    min_sep:    u32,
-    rng:        &mut SmallRng,
+    min_sep: u32,
+    rng: &mut SmallRng,
 ) -> Vec<HexCoord> {
     let mut candidates: Vec<HexCoord> = board
         .all_coords()
         .into_iter()
         .filter(|&c| {
-            board.tile(c)
+            board
+                .tile(c)
                 .map(|t| is_land(t.terrain) && t.terrain != BuiltinTerrain::Mountain)
                 .unwrap_or(false)
         })
@@ -182,7 +198,9 @@ fn fallback_starts(
 
     let mut placed: Vec<HexCoord> = Vec::new();
     for coord in &candidates {
-        if placed.len() >= num_starts as usize { break; }
+        if placed.len() >= num_starts as usize {
+            break;
+        }
         let too_close = placed.iter().any(|p| p.distance(coord) < min_sep);
         if !too_close {
             placed.push(*coord);
@@ -192,7 +210,9 @@ fn fallback_starts(
     // If even that fails, just return the first `num_starts` land tiles.
     if placed.len() < num_starts as usize {
         for coord in &candidates {
-            if placed.len() >= num_starts as usize { break; }
+            if placed.len() >= num_starts as usize {
+                break;
+            }
             if !placed.contains(coord) {
                 placed.push(*coord);
             }

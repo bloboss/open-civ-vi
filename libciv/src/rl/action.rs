@@ -1,8 +1,8 @@
 //! Discrete action space for the RL agent.
 
-use crate::{CityId, UnitId};
 use crate::civ::ProductionItem;
 use crate::world::improvement::BuiltinImprovement;
+use crate::{CityId, UnitId};
 use libhexgrid::coord::HexCoord;
 
 /// An action the RL agent can take on a single step.
@@ -31,5 +31,8 @@ pub enum Action {
     ResearchTech { tech_name: &'static str },
 
     /// Place an improvement on a tile (builder action).
-    PlaceImprovement { coord: HexCoord, improvement: BuiltinImprovement },
+    PlaceImprovement {
+        coord: HexCoord,
+        improvement: BuiltinImprovement,
+    },
 }

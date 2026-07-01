@@ -1,10 +1,10 @@
 //! Historic moment definitions and the observer that scans `StateDelta` events
 //! to detect when a civilization earns era score.
 
+use super::era::{HistoricMomentDef, HistoricMomentKind};
 use crate::CivId;
 use crate::game::diff::StateDelta;
 use crate::game::state::GameState;
-use super::era::{HistoricMomentDef, HistoricMomentKind};
 
 // ---------------------------------------------------------------------------
 // Const definitions of all historic moments
@@ -121,28 +121,37 @@ fn delta_to_kind(delta: &StateDelta) -> Option<(CivId, HistoricMomentKind)> {
 }
 
 /// Resolve the owning CivId for deltas that carry a CityId instead of a CivId.
-fn resolve_city_owner(delta: &StateDelta, state: &GameState) -> Option<(CivId, HistoricMomentKind)> {
+fn resolve_city_owner(
+    delta: &StateDelta,
+    state: &GameState,
+) -> Option<(CivId, HistoricMomentKind)> {
     match delta {
-        StateDelta::DistrictBuilt { city, .. } => {
-            state.city(*city).map(|c| (c.owner, HistoricMomentKind::DistrictBuilt))
-        }
-        StateDelta::BuildingCompleted { city, .. } => {
-            state.city(*city).map(|c| (c.owner, HistoricMomentKind::BuildingCompleted))
-        }
+        StateDelta::DistrictBuilt { city, .. } => state
+            .city(*city)
+            .map(|c| (c.owner, HistoricMomentKind::DistrictBuilt)),
+        StateDelta::BuildingCompleted { city, .. } => state
+            .city(*city)
+            .map(|c| (c.owner, HistoricMomentKind::BuildingCompleted)),
         _ => None,
     }
 }
 
 /// Detect battle victories by scanning for UnitAttacked followed by UnitDestroyed.
 /// Returns the attacking civ for each destroyed defender.
-fn detect_battle_victories(deltas: &[StateDelta], state: &GameState) -> Vec<(CivId, HistoricMomentKind)> {
+fn detect_battle_victories(
+    deltas: &[StateDelta],
+    state: &GameState,
+) -> Vec<(CivId, HistoricMomentKind)> {
     let mut results = Vec::new();
     for delta in deltas {
-        if let StateDelta::UnitAttacked { attacker, defender, .. } = delta {
+        if let StateDelta::UnitAttacked {
+            attacker, defender, ..
+        } = delta
+        {
             // Check if defender was destroyed (appears as UnitDestroyed in same diff)
-            let defender_destroyed = deltas.iter().any(|d| {
-                matches!(d, StateDelta::UnitDestroyed { unit } if *unit == *defender)
-            });
+            let defender_destroyed = deltas
+                .iter()
+                .any(|d| matches!(d, StateDelta::UnitDestroyed { unit } if *unit == *defender));
             if defender_destroyed
                 && let Some(attacker_unit) = state.units.iter().find(|u| u.id == *attacker)
             {
@@ -189,7 +198,9 @@ pub fn observe_deltas<'a>(
                         continue;
                     }
                     // Also check if we already emitted it in this batch.
-                    let in_batch = results.iter().any(|(c, m)| *c == *civ_id && m.name == moment_def.name);
+                    let in_batch = results
+                        .iter()
+                        .any(|(c, m)| *c == *civ_id && m.name == moment_def.name);
                     if in_batch {
                         continue;
                     }

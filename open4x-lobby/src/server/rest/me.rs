@@ -2,17 +2,17 @@
 
 #![cfg(feature = "ssr")]
 
+use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::Json;
 use open4x_accounts::audit::{AuditEventKind, AuditStore, NewAuditEvent};
 use open4x_accounts::store::AccountStore;
 use open4x_accounts::{Account, Preferences};
 use serde::{Deserialize, Serialize};
 
-use crate::server::auth::RequireSession;
 use crate::server::AppState;
+use crate::server::auth::RequireSession;
 
 #[derive(Debug, Serialize)]
 struct ErrorBody {
@@ -37,8 +37,8 @@ pub async fn get_me(
                 .await
                 .unwrap_or_default();
             let pid_hex = format!("{:016X}", player_id.0);
-            let view = MeView::from_account_and_ids(acct, with_ids)
-                .with_avatar_url(&state, &pid_hex);
+            let view =
+                MeView::from_account_and_ids(acct, with_ids).with_avatar_url(&state, &pid_hex);
             Json(view).into_response()
         }
         Ok(None) => (
@@ -163,7 +163,10 @@ impl MeView {
     /// `(id, identity)` pairs alongside the account. Stable ids
     /// land in the `identities[].id` field so the SPA can reference
     /// them by id (DELETE / set-primary).
-    fn from_account_and_ids(a: Account, with_ids: Vec<(String, open4x_accounts::Identity)>) -> Self {
+    fn from_account_and_ids(
+        a: Account,
+        with_ids: Vec<(String, open4x_accounts::Identity)>,
+    ) -> Self {
         let identities = with_ids
             .into_iter()
             .map(|(id, identity)| identity_view(id, identity))
@@ -356,9 +359,9 @@ pub async fn verify_email_identity(
             .into_response();
     };
     let (address, already_verified) = match ident {
-        open4x_accounts::Identity::Email { address, verified, .. } => {
-            (address.clone(), *verified)
-        }
+        open4x_accounts::Identity::Email {
+            address, verified, ..
+        } => (address.clone(), *verified),
         _ => {
             return (
                 StatusCode::BAD_REQUEST,
@@ -411,7 +414,10 @@ pub async fn verify_email_identity(
     } else {
         state.public_base_url.trim_end_matches('/').to_string()
     };
-    let link = format!("{base}/api/v1/auth/email/verify?token={token}", token = minted.token);
+    let link = format!(
+        "{base}/api/v1/auth/email/verify?token={token}",
+        token = minted.token
+    );
     if let Err(e) = state.mailer.send_magic_link(&address, &link).await {
         eprintln!("[verify-start] mailer error for {address}: {e}");
         return (
@@ -518,10 +524,7 @@ pub async fn upload_avatar(
     };
     let small = img.thumbnail_exact(256, 256);
     let mut buf: Vec<u8> = Vec::new();
-    if let Err(e) = small.write_to(
-        &mut std::io::Cursor::new(&mut buf),
-        image::ImageFormat::Png,
-    ) {
+    if let Err(e) = small.write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png) {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorBody {

@@ -1,13 +1,13 @@
 //! Production handlers: `place_improvement`, `place_road`, `place_district`.
 
 use crate::{CityId, CivId, UnitId};
+use libhexgrid::HexTile;
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
-use libhexgrid::HexTile;
 
-use super::RulesError;
 use super::super::diff::{GameStateDiff, StateDelta};
 use super::super::state::GameState;
+use super::RulesError;
 use super::movement::decrement_builder_charges;
 
 /// Place an improvement on `coord`.
@@ -21,7 +21,10 @@ pub(crate) fn place_improvement(
     use crate::world::improvement::{ElevationReq, ProximityReq};
     use libhexgrid::types::Elevation;
 
-    let coord = state.board.normalize(coord).ok_or(RulesError::InvalidCoord)?;
+    let coord = state
+        .board
+        .normalize(coord)
+        .ok_or(RulesError::InvalidCoord)?;
 
     // Validate builder if provided.
     if let Some(uid) = builder {
@@ -38,7 +41,7 @@ pub(crate) fn place_improvement(
     }
 
     let tile = state.board.tile(coord).ok_or(RulesError::InvalidCoord)?;
-    let req  = improvement.requirements(&state.tech_refs, &state.civic_refs);
+    let req = improvement.requirements(&state.tech_refs, &state.civic_refs);
 
     if tile.owner != Some(civ_id) {
         return Err(RulesError::TileNotOwned);
@@ -53,8 +56,8 @@ pub(crate) fn place_improvement(
 
     let elev = tile.elevation();
     let elev_ok = match req.elevation {
-        ElevationReq::Any         => true,
-        ElevationReq::Flat        => elev < Elevation::HILLS,
+        ElevationReq::Any => true,
+        ElevationReq::Flat => elev < Elevation::HILLS,
         ElevationReq::HillsOrMore => elev >= Elevation::HILLS && elev != Elevation::High,
         ElevationReq::NotMountain => elev != Elevation::High,
     };
@@ -93,7 +96,7 @@ pub(crate) fn place_improvement(
         let ok = state.board.neighbors(coord).iter().any(|&nb| {
             state.board.tile(nb).is_some_and(|t| match prox {
                 ProximityReq::AdjacentTerrain(tt) => t.terrain == tt,
-                ProximityReq::AdjacentFeature(f)  => t.feature == Some(f),
+                ProximityReq::AdjacentFeature(f) => t.feature == Some(f),
                 ProximityReq::AdjacentResource(r) => t.resource == Some(r),
             })
         });
@@ -102,7 +105,9 @@ pub(crate) fn place_improvement(
         }
     }
 
-    let civ = state.civilizations.iter()
+    let civ = state
+        .civilizations
+        .iter()
         .find(|c| c.id == civ_id)
         .ok_or(RulesError::CivNotFound)?;
 
@@ -140,7 +145,10 @@ pub(crate) fn place_road(
     coord: HexCoord,
     road: crate::world::road::BuiltinRoad,
 ) -> Result<GameStateDiff, RulesError> {
-    let coord = state.board.normalize(coord).ok_or(RulesError::InvalidCoord)?;
+    let coord = state
+        .board
+        .normalize(coord)
+        .ok_or(RulesError::InvalidCoord)?;
 
     let unit = state.unit(unit_id).ok_or(RulesError::UnitNotFound)?;
     if unit.charges.is_none() {
@@ -169,11 +177,15 @@ pub(crate) fn place_road(
     }
 
     if let Some(tech_name) = road.required_tech() {
-        let civ = state.civilizations.iter()
+        let civ = state
+            .civilizations
+            .iter()
             .find(|c| c.id == civ_id)
             .ok_or(RulesError::CivNotFound)?;
         let has_tech = civ.researched_techs.iter().any(|&tid| {
-            state.tech_tree.get(tid)
+            state
+                .tech_tree
+                .get(tid)
                 .map(|node| node.name == tech_name)
                 .unwrap_or(false)
         });
@@ -201,9 +213,14 @@ pub(crate) fn place_district(
     district: crate::civ::district::BuiltinDistrict,
     coord: HexCoord,
 ) -> Result<GameStateDiff, RulesError> {
-    let coord = state.board.normalize(coord).ok_or(RulesError::InvalidCoord)?;
+    let coord = state
+        .board
+        .normalize(coord)
+        .ok_or(RulesError::InvalidCoord)?;
 
-    let (city_coord, civ_id) = state.cities.iter()
+    let (city_coord, civ_id) = state
+        .cities
+        .iter()
         .find(|c| c.id == city_id)
         .map(|c| (c.coord, c.owner))
         .ok_or(RulesError::CityNotFound)?;
@@ -226,7 +243,9 @@ pub(crate) fn place_district(
         return Err(RulesError::TileOccupied);
     }
 
-    let already_has = state.cities.iter()
+    let already_has = state
+        .cities
+        .iter()
         .find(|c| c.id == city_id)
         .is_some_and(|c| c.districts.contains(&district));
     if already_has {
@@ -247,7 +266,9 @@ pub(crate) fn place_district(
     }
 
     if let Some(tech_id) = req.required_tech {
-        let civ = state.civilizations.iter()
+        let civ = state
+            .civilizations
+            .iter()
             .find(|c| c.id == civ_id)
             .ok_or(RulesError::CivNotFound)?;
         if !civ.researched_techs.contains(&tech_id) {
@@ -256,7 +277,9 @@ pub(crate) fn place_district(
     }
 
     if let Some(civic_id) = req.required_civic {
-        let civ = state.civilizations.iter()
+        let civ = state
+            .civilizations
+            .iter()
             .find(|c| c.id == civ_id)
             .ok_or(RulesError::CivNotFound)?;
         if !civ.completed_civics.contains(&civic_id) {
@@ -264,14 +287,20 @@ pub(crate) fn place_district(
         }
     }
 
-    state.placed_districts.push(crate::civ::district::PlacedDistrict::new(
-        district, city_id, coord,
-    ));
+    state
+        .placed_districts
+        .push(crate::civ::district::PlacedDistrict::new(
+            district, city_id, coord,
+        ));
     if let Some(city) = state.cities.iter_mut().find(|c| c.id == city_id) {
         city.districts.push(district);
     }
 
     let mut diff = GameStateDiff::new();
-    diff.push(StateDelta::DistrictBuilt { city: city_id, district, coord });
+    diff.push(StateDelta::DistrictBuilt {
+        city: city_id,
+        district,
+        coord,
+    });
     Ok(diff)
 }

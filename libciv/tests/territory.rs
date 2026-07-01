@@ -1,19 +1,22 @@
 /// Integration tests for tile claiming and territory expansion.
 mod common;
 
-use libciv::{DefaultRulesEngine, RulesEngine};
 use libciv::civ::City;
 use libciv::game::{RulesError, StateDelta};
+use libciv::{DefaultRulesEngine, RulesEngine};
+use libciv::{UnitCategory, UnitDomain};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
-use libciv::{UnitCategory, UnitDomain};
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 fn count_tile_claimed(diff: &libciv::GameStateDiff) -> usize {
-    diff.deltas.iter().filter(|d| matches!(d, StateDelta::TileClaimed { .. })).count()
+    diff.deltas
+        .iter()
+        .filter(|d| matches!(d, StateDelta::TileClaimed { .. }))
+        .count()
 }
 
 // ---------------------------------------------------------------------------
@@ -28,7 +31,9 @@ fn claim_unclaimed_tile_succeeds() {
     // Rome city at (3,3); target at (4,3) — distance 1 (within 1–3 range).
     let target = HexCoord::from_qr(4, 3);
 
-    let diff = rules.claim_tile(&mut s.state, s.rome_city, target, false).unwrap();
+    let diff = rules
+        .claim_tile(&mut s.state, s.rome_city, target, false)
+        .unwrap();
 
     assert_eq!(diff.deltas.len(), 1);
     match diff.deltas[0] {
@@ -50,9 +55,13 @@ fn claim_already_owned_tile_is_idempotent() {
     let target = HexCoord::from_qr(4, 3);
 
     // First claim.
-    rules.claim_tile(&mut s.state, s.rome_city, target, false).unwrap();
+    rules
+        .claim_tile(&mut s.state, s.rome_city, target, false)
+        .unwrap();
     // Second claim — should succeed with empty diff.
-    let diff = rules.claim_tile(&mut s.state, s.rome_city, target, false).unwrap();
+    let diff = rules
+        .claim_tile(&mut s.state, s.rome_city, target, false)
+        .unwrap();
     assert!(diff.is_empty(), "expected empty diff on idempotent claim");
 }
 
@@ -67,7 +76,9 @@ fn claim_enemy_tile_returns_error() {
         t.owner = Some(s.babylon_id);
     }
 
-    let err = rules.claim_tile(&mut s.state, s.rome_city, contested, false).unwrap_err();
+    let err = rules
+        .claim_tile(&mut s.state, s.rome_city, contested, false)
+        .unwrap_err();
     assert!(matches!(err, RulesError::TileOwnedByEnemy), "got {err:?}");
 }
 
@@ -79,7 +90,9 @@ fn claim_tile_out_of_range_returns_error() {
     // (7,3) is distance 4 from Rome at (3,3): max(4,0,4)=4 > 3.
     let far_tile = HexCoord::from_qr(7, 3);
 
-    let err = rules.claim_tile(&mut s.state, s.rome_city, far_tile, false).unwrap_err();
+    let err = rules
+        .claim_tile(&mut s.state, s.rome_city, far_tile, false)
+        .unwrap_err();
     assert!(matches!(err, RulesError::TileNotInCityRange), "got {err:?}");
 }
 
@@ -99,7 +112,9 @@ fn force_claim_enemy_tile_succeeds() {
         t.owner = Some(s.babylon_id);
     }
 
-    let diff = rules.claim_tile(&mut s.state, s.rome_city, contested, true).unwrap();
+    let diff = rules
+        .claim_tile(&mut s.state, s.rome_city, contested, true)
+        .unwrap();
 
     // A TileClaimed delta must be emitted for Rome.
     match diff.deltas.as_slice() {
@@ -125,10 +140,17 @@ fn force_claim_own_tile_is_idempotent() {
     let rules = DefaultRulesEngine;
     let target = HexCoord::from_qr(4, 3);
 
-    rules.claim_tile(&mut s.state, s.rome_city, target, false).unwrap();
-    let diff = rules.claim_tile(&mut s.state, s.rome_city, target, true).unwrap();
+    rules
+        .claim_tile(&mut s.state, s.rome_city, target, false)
+        .unwrap();
+    let diff = rules
+        .claim_tile(&mut s.state, s.rome_city, target, true)
+        .unwrap();
 
-    assert!(diff.is_empty(), "force=true on own tile should be idempotent");
+    assert!(
+        diff.is_empty(),
+        "force=true on own tile should be idempotent"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -138,10 +160,16 @@ fn force_claim_own_tile_is_idempotent() {
 /// Helper: add a second city for Rome at `coord`.
 fn add_rome_city(s: &mut common::Scenario, coord: HexCoord) -> libciv::CityId {
     let city_id = s.state.id_gen.next_city_id();
-    s.state.cities.push(City::new(city_id, "Antium".into(), s.rome_id, coord));
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .cities.push(city_id);
+    s.state
+        .cities
+        .push(City::new(city_id, "Antium".into(), s.rome_id, coord));
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .cities
+        .push(city_id);
     city_id
 }
 
@@ -164,10 +192,19 @@ fn reassign_tile_within_same_civ_succeeds() {
         t.owner = Some(s.rome_id);
     }
 
-    let diff = rules.reassign_tile(&mut s.state, s.rome_city, antium, target).unwrap();
+    let diff = rules
+        .reassign_tile(&mut s.state, s.rome_city, antium, target)
+        .unwrap();
 
     match diff.deltas.as_slice() {
-        [StateDelta::TileReassigned { civ, from_city, to_city, coord }] => {
+        [
+            StateDelta::TileReassigned {
+                civ,
+                from_city,
+                to_city,
+                coord,
+            },
+        ] => {
             assert_eq!(*civ, s.rome_id);
             assert_eq!(*from_city, s.rome_city);
             assert_eq!(*to_city, antium);
@@ -190,7 +227,9 @@ fn reassign_tile_same_city_is_idempotent() {
         t.owner = Some(s.rome_id);
     }
 
-    let diff = rules.reassign_tile(&mut s.state, s.rome_city, s.rome_city, target).unwrap();
+    let diff = rules
+        .reassign_tile(&mut s.state, s.rome_city, s.rome_city, target)
+        .unwrap();
     assert!(diff.is_empty(), "same-city reassign should be idempotent");
 }
 
@@ -206,7 +245,9 @@ fn reassign_tile_cross_civ_fails() {
     }
 
     // from_city = Rome's city, to_city = Babylon's city — different civs.
-    let err = rules.reassign_tile(&mut s.state, s.rome_city, s.babylon_city, target).unwrap_err();
+    let err = rules
+        .reassign_tile(&mut s.state, s.rome_city, s.babylon_city, target)
+        .unwrap_err();
     assert!(matches!(err, RulesError::CitiesNotSameCiv), "got {err:?}");
 }
 
@@ -221,7 +262,9 @@ fn reassign_tile_unclaimed_fails() {
     let target = HexCoord::from_qr(4, 2);
     // Leave tile unclaimed (owner = None).
 
-    let err = rules.reassign_tile(&mut s.state, s.rome_city, antium, target).unwrap_err();
+    let err = rules
+        .reassign_tile(&mut s.state, s.rome_city, antium, target)
+        .unwrap_err();
     assert!(matches!(err, RulesError::TileNotOwned), "got {err:?}");
 }
 
@@ -238,7 +281,9 @@ fn reassign_tile_to_out_of_range_city_fails() {
         t.owner = Some(s.rome_id);
     }
 
-    let err = rules.reassign_tile(&mut s.state, s.rome_city, antium, target).unwrap_err();
+    let err = rules
+        .reassign_tile(&mut s.state, s.rome_city, antium, target)
+        .unwrap_err();
     assert!(matches!(err, RulesError::TileNotInCityRange), "got {err:?}");
 }
 
@@ -263,13 +308,27 @@ fn border_accumulates_base_culture_each_turn() {
     let mut s = common::build_scenario();
     let rules = DefaultRulesEngine;
 
-    assert_eq!(s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap().culture_border, 0);
+    assert_eq!(
+        s.state
+            .cities
+            .iter()
+            .find(|c| c.id == s.rome_city)
+            .unwrap()
+            .culture_border,
+        0
+    );
 
     // After N turns, culture_border should equal N (base 1/turn, no tile culture,
     // ring-2 cost ~35 so no tile is claimed yet).
     for n in 1..=5u32 {
         rules.advance_turn(&mut s.state);
-        let border = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap().culture_border;
+        let border = s
+            .state
+            .cities
+            .iter()
+            .find(|c| c.id == s.rome_city)
+            .unwrap()
+            .culture_border;
         assert_eq!(border, n, "after {n} turn(s), culture_border should be {n}");
     }
 }
@@ -283,21 +342,31 @@ fn border_expands_when_sufficient_culture() {
 
     // Seed culture_border with exactly enough to claim one ring-2 tile.
     let ring2_cost = border_cost(2);
-    s.state.cities.iter_mut()
-        .find(|c| c.id == s.rome_city).unwrap()
+    s.state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
         .culture_border = ring2_cost;
 
     let diff = rules.advance_turn(&mut s.state);
 
     // At least one TileClaimed delta must be present.
-    let claimed: Vec<_> = diff.deltas.iter().filter_map(|d| {
-        if let libciv::game::StateDelta::TileClaimed { civ, city, coord } = d {
-            Some((*civ, *city, *coord))
-        } else {
-            None
-        }
-    }).collect();
-    assert!(!claimed.is_empty(), "expected at least one TileClaimed when culture is sufficient");
+    let claimed: Vec<_> = diff
+        .deltas
+        .iter()
+        .filter_map(|d| {
+            if let libciv::game::StateDelta::TileClaimed { civ, city, coord } = d {
+                Some((*civ, *city, *coord))
+            } else {
+                None
+            }
+        })
+        .collect();
+    assert!(
+        !claimed.is_empty(),
+        "expected at least one TileClaimed when culture is sufficient"
+    );
 
     // All claimed tiles must belong to Rome's city.
     let city_coord = HexCoord::from_qr(3, 3);
@@ -305,7 +374,10 @@ fn border_expands_when_sufficient_culture() {
         assert_eq!(*civ, s.rome_id, "claimed tile should belong to Rome");
         assert_eq!(*city, s.rome_city);
         let dist = city_coord.distance(coord);
-        assert!((2..=5).contains(&dist), "claimed tile at dist {dist} must be 2–5 from city");
+        assert!(
+            (2..=5).contains(&dist),
+            "claimed tile at dist {dist} must be 2–5 from city"
+        );
     }
 }
 
@@ -318,11 +390,17 @@ fn border_prefers_ring2_over_ring3() {
 
     let ring2_cost = border_cost(2);
     let ring3_cost = border_cost(3);
-    assert!(ring2_cost < ring3_cost, "ring-2 should be cheaper than ring-3");
+    assert!(
+        ring2_cost < ring3_cost,
+        "ring-2 should be cheaper than ring-3"
+    );
 
     // Set budget to exactly the ring-2 cost (not enough for ring-3).
-    s.state.cities.iter_mut()
-        .find(|c| c.id == s.rome_city).unwrap()
+    s.state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
         .culture_border = ring2_cost;
 
     let diff = rules.advance_turn(&mut s.state);
@@ -330,25 +408,49 @@ fn border_prefers_ring2_over_ring3() {
     let city_coord = HexCoord::from_qr(3, 3);
 
     // Exactly one TileClaimed should have been emitted.
-    let expansion_claims: Vec<_> = diff.deltas.iter().filter_map(|d| {
-        if let libciv::game::StateDelta::TileClaimed { coord, city, civ } = d {
-            if *city == s.rome_city {
-                Some((*civ, *city, *coord))
-            } else { None }
-        } else { None }
-    }).collect();
-    assert_eq!(expansion_claims.len(), 1, "exactly one tile should be claimed");
+    let expansion_claims: Vec<_> = diff
+        .deltas
+        .iter()
+        .filter_map(|d| {
+            if let libciv::game::StateDelta::TileClaimed { coord, city, civ } = d {
+                if *city == s.rome_city {
+                    Some((*civ, *city, *coord))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
+    assert_eq!(
+        expansion_claims.len(),
+        1,
+        "exactly one tile should be claimed"
+    );
 
     // The claimed tile must be at ring-2 distance.
     let (_, _, coord) = expansion_claims[0];
     let dist = city_coord.distance(&coord);
-    assert_eq!(dist, 2, "claimed tile should be at ring-2 (cheapest), got dist {dist}");
+    assert_eq!(
+        dist, 2,
+        "claimed tile should be at ring-2 (cheapest), got dist {dist}"
+    );
 
     // advance_turn adds 1 base culture before spending, so after claiming the
     // ring-2 tile the remainder is 1 (not enough for ring-3 at ~52).
-    let remaining = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap().culture_border;
+    let remaining = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
+        .culture_border;
     assert_eq!(remaining, 1);
-    assert!(remaining < ring3_cost, "remaining {remaining} must be below ring-3 cost {ring3_cost}");
+    assert!(
+        remaining < ring3_cost,
+        "remaining {remaining} must be below ring-3 cost {ring3_cost}"
+    );
 }
 
 /// Cultural expansion never claims a tile beyond radius 5 from the city center.
@@ -358,8 +460,11 @@ fn border_stops_at_radius_5() {
     let rules = DefaultRulesEngine;
 
     // Give the city a huge culture budget — enough to claim many tiles.
-    s.state.cities.iter_mut()
-        .find(|c| c.id == s.rome_city).unwrap()
+    s.state
+        .cities
+        .iter_mut()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
         .culture_border = 100_000;
 
     let diff = rules.advance_turn(&mut s.state);
@@ -408,25 +513,46 @@ fn found_city_emits_tile_claimed_deltas() {
         health: 100,
         range: 0,
         vision_range: 2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
-    let diff = rules.found_city(&mut s.state, settler_id, "Antium".into()).unwrap();
+    let diff = rules
+        .found_city(&mut s.state, settler_id, "Antium".into())
+        .unwrap();
 
     // Diff must contain CityFounded.
     assert!(
-        diff.deltas.iter().any(|d| matches!(d, StateDelta::CityFounded { .. })),
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::CityFounded { .. })),
         "expected CityFounded delta"
     );
 
     // Extract founded city_id.
-    let city_id = diff.deltas.iter().find_map(|d| {
-        if let StateDelta::CityFounded { city, .. } = d { Some(*city) } else { None }
-    }).expect("CityFounded not found");
+    let city_id = diff
+        .deltas
+        .iter()
+        .find_map(|d| {
+            if let StateDelta::CityFounded { city, .. } = d {
+                Some(*city)
+            } else {
+                None
+            }
+        })
+        .expect("CityFounded not found");
 
     // There must be at least one TileClaimed (city center at minimum).
     let claimed_count = count_tile_claimed(&diff);
-    assert!(claimed_count >= 1, "expected at least 1 TileClaimed, got {claimed_count}");
+    assert!(
+        claimed_count >= 1,
+        "expected at least 1 TileClaimed, got {claimed_count}"
+    );
 
     // The city center itself must be claimed.
     assert!(

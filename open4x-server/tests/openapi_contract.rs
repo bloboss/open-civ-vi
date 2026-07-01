@@ -27,44 +27,47 @@ fn router_path_strings() -> BTreeSet<(String, String)> {
     // makes introspection awkward, and a static list is enough to catch
     // accidental drift.
     let pairs = [
-        ("get",    "/api/v1/health"),
-        ("post",   "/api/v1/games/new"),
-        ("get",    "/api/v1/player-state"),
-        ("get",    "/api/v1/world/snapshot"),
-        ("get",    "/api/v1/world/tile/{q}/{r}"),
-        ("get",    "/api/v1/map/overlays"),
-        ("get",    "/api/v1/cities"),
-        ("get",    "/api/v1/cities/{id}"),
-        ("get",    "/api/v1/cities/{id}/tiles"),
-        ("post",   "/api/v1/cities/{id}/production"),
+        ("get", "/api/v1/health"),
+        ("post", "/api/v1/games/new"),
+        ("get", "/api/v1/player-state"),
+        ("get", "/api/v1/world/snapshot"),
+        ("get", "/api/v1/world/tile/{q}/{r}"),
+        ("get", "/api/v1/map/overlays"),
+        ("get", "/api/v1/cities"),
+        ("get", "/api/v1/cities/{id}"),
+        ("get", "/api/v1/cities/{id}/tiles"),
+        ("post", "/api/v1/cities/{id}/production"),
         ("delete", "/api/v1/cities/{id}/production/{pos}"),
-        ("post",   "/api/v1/cities/{id}/focus"),
-        ("post",   "/api/v1/cities/{id}/rename"),
-        ("get",    "/api/v1/units"),
-        ("get",    "/api/v1/units/{id}"),
-        ("post",   "/api/v1/units/{id}/action"),
-        ("get",    "/api/v1/armies"),
-        ("get",    "/api/v1/combat/preview"),
-        ("get",    "/api/v1/tech"),
-        ("post",   "/api/v1/tech/research"),
+        ("post", "/api/v1/cities/{id}/focus"),
+        ("post", "/api/v1/cities/{id}/rename"),
+        ("get", "/api/v1/units"),
+        ("get", "/api/v1/units/{id}"),
+        ("post", "/api/v1/units/{id}/action"),
+        ("get", "/api/v1/armies"),
+        ("get", "/api/v1/combat/preview"),
+        ("get", "/api/v1/tech"),
+        ("post", "/api/v1/tech/research"),
         ("delete", "/api/v1/tech/research"),
-        ("get",    "/api/v1/civics"),
-        ("post",   "/api/v1/civics/research"),
+        ("get", "/api/v1/civics"),
+        ("post", "/api/v1/civics/research"),
         ("delete", "/api/v1/civics/research"),
-        ("get",    "/api/v1/government"),
-        ("post",   "/api/v1/government/change"),
-        ("get",    "/api/v1/diplomacy"),
-        ("get",    "/api/v1/diplomacy/civs/{id}"),
-        ("get",    "/api/v1/empire/overview"),
-        ("get",    "/api/v1/victory"),
-        ("get",    "/api/v1/notifications"),
+        ("get", "/api/v1/government"),
+        ("post", "/api/v1/government/change"),
+        ("get", "/api/v1/diplomacy"),
+        ("get", "/api/v1/diplomacy/civs/{id}"),
+        ("get", "/api/v1/empire/overview"),
+        ("get", "/api/v1/victory"),
+        ("get", "/api/v1/notifications"),
         ("delete", "/api/v1/notifications"),
         ("delete", "/api/v1/notifications/{id}"),
-        ("get",    "/api/v1/turn-queue"),
-        ("post",   "/api/v1/turn/end"),
-        ("get",    "/api/v1/registry"),
+        ("get", "/api/v1/turn-queue"),
+        ("post", "/api/v1/turn/end"),
+        ("get", "/api/v1/registry"),
     ];
-    pairs.into_iter().map(|(m, p)| (m.to_string(), p.to_string())).collect()
+    pairs
+        .into_iter()
+        .map(|(m, p)| (m.to_string(), p.to_string()))
+        .collect()
 }
 
 fn openapi_operation_set() -> BTreeSet<(String, String)> {
@@ -73,14 +76,14 @@ fn openapi_operation_set() -> BTreeSet<(String, String)> {
     for (path, item) in doc.paths.paths.iter() {
         // PathItem has one Option<Operation> per HTTP method; enumerate them.
         for (method, op) in [
-            ("get",     item.get.as_ref()),
-            ("put",     item.put.as_ref()),
-            ("post",    item.post.as_ref()),
-            ("delete",  item.delete.as_ref()),
-            ("patch",   item.patch.as_ref()),
-            ("head",    item.head.as_ref()),
+            ("get", item.get.as_ref()),
+            ("put", item.put.as_ref()),
+            ("post", item.post.as_ref()),
+            ("delete", item.delete.as_ref()),
+            ("patch", item.patch.as_ref()),
+            ("head", item.head.as_ref()),
             ("options", item.options.as_ref()),
-            ("trace",   item.trace.as_ref()),
+            ("trace", item.trace.as_ref()),
         ] {
             if op.is_some() {
                 out.insert((method.to_string(), path.clone()));
@@ -119,8 +122,7 @@ fn declared_paths_match_router() {
     let router = router_path_strings();
 
     assert_eq!(
-        declared,
-        router,
+        declared, router,
         "declared_paths() out of sync with v1_router. Update \
          open4x-server/src/server/openapi.rs::declared_paths."
     );

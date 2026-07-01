@@ -6,16 +6,16 @@
 
 #![cfg(feature = "ssr")]
 
+use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::Json;
-use open4x_accounts::friends::{FriendStatus, FriendsError, FriendsStore};
 use open4x_accounts::PlayerId;
+use open4x_accounts::friends::{FriendStatus, FriendsError, FriendsStore};
 use serde::{Deserialize, Serialize};
 
-use crate::server::auth::RequireSession;
 use crate::server::AppState;
+use crate::server::auth::RequireSession;
 
 #[derive(Debug, Serialize)]
 struct ErrorBody {
@@ -49,10 +49,7 @@ fn parse_player_id(s: &str) -> Option<PlayerId> {
         .strip_prefix("0x")
         .or_else(|| trimmed.strip_prefix("0X"))
         .unwrap_or(trimmed);
-    let stripped: String = body
-        .chars()
-        .filter(|c| c.is_ascii_hexdigit())
-        .collect();
+    let stripped: String = body.chars().filter(|c| c.is_ascii_hexdigit()).collect();
     if stripped.len() != 16 {
         return None;
     }

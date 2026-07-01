@@ -1,15 +1,15 @@
 //! Diplomacy handlers: `declare_war`, `make_peace`, `form_alliance`, `assign_policy`.
 
-use crate::{CivId, PolicyId, PolicyType};
 use crate::civ::DiplomaticStatus;
 use crate::civ::GrievanceRecord;
-use crate::civ::grievance::DeclaredWarGrievance;
 use crate::civ::diplomacy::{AllianceType, GrievanceTrigger};
+use crate::civ::grievance::DeclaredWarGrievance;
+use crate::{CivId, PolicyId, PolicyType};
 
-use super::RulesError;
 use super::super::diff::{GameStateDiff, StateDelta};
 use super::super::rules_helpers::{find_or_create_relation, status_from_score};
 use super::super::state::GameState;
+use super::RulesError;
 
 /// Declare war between `aggressor` and `target`.
 pub(crate) fn declare_war(
@@ -17,9 +17,15 @@ pub(crate) fn declare_war(
     aggressor: CivId,
     target: CivId,
 ) -> Result<GameStateDiff, RulesError> {
-    if aggressor == target { return Err(RulesError::SameCivilization); }
-    if state.civ(aggressor).is_none() { return Err(RulesError::CivNotFound); }
-    if state.civ(target).is_none()    { return Err(RulesError::CivNotFound); }
+    if aggressor == target {
+        return Err(RulesError::SameCivilization);
+    }
+    if state.civ(aggressor).is_none() {
+        return Err(RulesError::CivNotFound);
+    }
+    if state.civ(target).is_none() {
+        return Err(RulesError::CivNotFound);
+    }
 
     let rel_idx = find_or_create_relation(state, aggressor, target);
 
@@ -44,7 +50,11 @@ pub(crate) fn declare_war(
         state.diplomatic_relations[rel_idx].civ_b,
     );
     let mut diff = GameStateDiff::new();
-    diff.push(StateDelta::DiplomacyChanged { civ_a, civ_b, new_status: DiplomaticStatus::War });
+    diff.push(StateDelta::DiplomacyChanged {
+        civ_a,
+        civ_b,
+        new_status: DiplomaticStatus::War,
+    });
     Ok(diff)
 }
 
@@ -54,12 +64,17 @@ pub(crate) fn make_peace(
     civ_a: CivId,
     civ_b: CivId,
 ) -> Result<GameStateDiff, RulesError> {
-    if civ_a == civ_b { return Err(RulesError::SameCivilization); }
+    if civ_a == civ_b {
+        return Err(RulesError::SameCivilization);
+    }
 
-    let rel_idx = state.diplomatic_relations.iter().position(|r| {
-        (r.civ_a == civ_a && r.civ_b == civ_b) ||
-        (r.civ_a == civ_b && r.civ_b == civ_a)
-    }).ok_or(RulesError::RelationNotFound)?;
+    let rel_idx = state
+        .diplomatic_relations
+        .iter()
+        .position(|r| {
+            (r.civ_a == civ_a && r.civ_b == civ_b) || (r.civ_a == civ_b && r.civ_b == civ_a)
+        })
+        .ok_or(RulesError::RelationNotFound)?;
 
     if state.diplomatic_relations[rel_idx].status != DiplomaticStatus::War {
         return Err(RulesError::NotAtWar);
@@ -73,7 +88,11 @@ pub(crate) fn make_peace(
 
     let (a, b) = (rel.civ_a, rel.civ_b);
     let mut diff = GameStateDiff::new();
-    diff.push(StateDelta::DiplomacyChanged { civ_a: a, civ_b: b, new_status });
+    diff.push(StateDelta::DiplomacyChanged {
+        civ_a: a,
+        civ_b: b,
+        new_status,
+    });
     Ok(diff)
 }
 
@@ -84,9 +103,15 @@ pub(crate) fn form_alliance(
     civ_b: CivId,
     alliance_type: AllianceType,
 ) -> Result<GameStateDiff, RulesError> {
-    if civ_a == civ_b { return Err(RulesError::SameCivilization); }
-    if state.civ(civ_a).is_none() { return Err(RulesError::CivNotFound); }
-    if state.civ(civ_b).is_none() { return Err(RulesError::CivNotFound); }
+    if civ_a == civ_b {
+        return Err(RulesError::SameCivilization);
+    }
+    if state.civ(civ_a).is_none() {
+        return Err(RulesError::CivNotFound);
+    }
+    if state.civ(civ_b).is_none() {
+        return Err(RulesError::CivNotFound);
+    }
 
     let rel_idx = find_or_create_relation(state, civ_a, civ_b);
     let rel = &state.diplomatic_relations[rel_idx];
@@ -106,8 +131,16 @@ pub(crate) fn form_alliance(
 
     let (a, b) = (rel.civ_a, rel.civ_b);
     let mut diff = GameStateDiff::new();
-    diff.push(StateDelta::AllianceFormed { civ_a: a, civ_b: b, alliance_type });
-    diff.push(StateDelta::DiplomacyChanged { civ_a: a, civ_b: b, new_status: DiplomaticStatus::Alliance });
+    diff.push(StateDelta::AllianceFormed {
+        civ_a: a,
+        civ_b: b,
+        alliance_type,
+    });
+    diff.push(StateDelta::DiplomacyChanged {
+        civ_a: a,
+        civ_b: b,
+        new_status: DiplomaticStatus::Alliance,
+    });
     Ok(diff)
 }
 
@@ -117,10 +150,16 @@ pub(crate) fn assign_policy(
     civ_id: CivId,
     policy_id: PolicyId,
 ) -> Result<GameStateDiff, RulesError> {
-    let civ_idx = state.civilizations.iter().position(|c| c.id == civ_id)
+    let civ_idx = state
+        .civilizations
+        .iter()
+        .position(|c| c.id == civ_id)
         .ok_or(RulesError::CivNotFound)?;
 
-    let policy = state.policies.iter().find(|p| p.id == policy_id)
+    let policy = state
+        .policies
+        .iter()
+        .find(|p| p.id == policy_id)
         .cloned()
         .ok_or(RulesError::PolicyNotFound)?;
 
@@ -131,29 +170,37 @@ pub(crate) fn assign_policy(
     }
 
     let gov_id = civ.current_government.ok_or(RulesError::NoGovernment)?;
-    let gov = state.governments.iter().find(|g| g.id == gov_id)
+    let gov = state
+        .governments
+        .iter()
+        .find(|g| g.id == gov_id)
         .cloned()
         .ok_or(RulesError::NoGovernment)?;
 
     let active = civ.active_policies.clone();
-    let (used_mil, used_eco, used_dip, used_wc) = active.iter().fold(
-        (0u8, 0u8, 0u8, 0u8),
-        |(m, e, d, w), pid| {
-            match state.policies.iter().find(|p| p.id == *pid).map(|p| p.policy_type) {
-                Some(PolicyType::Military)   => (m + 1, e, d, w),
-                Some(PolicyType::Economic)   => (m, e + 1, d, w),
-                Some(PolicyType::Diplomatic) => (m, e, d + 1, w),
-                Some(PolicyType::Wildcard)   => (m, e, d, w + 1),
-                None => (m, e, d, w),
-            }
-        },
-    );
+    let (used_mil, used_eco, used_dip, used_wc) =
+        active
+            .iter()
+            .fold((0u8, 0u8, 0u8, 0u8), |(m, e, d, w), pid| {
+                match state
+                    .policies
+                    .iter()
+                    .find(|p| p.id == *pid)
+                    .map(|p| p.policy_type)
+                {
+                    Some(PolicyType::Military) => (m + 1, e, d, w),
+                    Some(PolicyType::Economic) => (m, e + 1, d, w),
+                    Some(PolicyType::Diplomatic) => (m, e, d + 1, w),
+                    Some(PolicyType::Wildcard) => (m, e, d, w + 1),
+                    None => (m, e, d, w),
+                }
+            });
 
     let has_slot = match policy.policy_type {
-        PolicyType::Military   => used_mil  < gov.slots.military,
-        PolicyType::Economic   => used_eco  < gov.slots.economic,
-        PolicyType::Diplomatic => used_dip  < gov.slots.diplomatic,
-        PolicyType::Wildcard   => used_wc   < gov.slots.wildcard,
+        PolicyType::Military => used_mil < gov.slots.military,
+        PolicyType::Economic => used_eco < gov.slots.economic,
+        PolicyType::Diplomatic => used_dip < gov.slots.diplomatic,
+        PolicyType::Wildcard => used_wc < gov.slots.wildcard,
     };
     if !has_slot {
         return Err(RulesError::InsufficientPolicySlots);
@@ -168,6 +215,9 @@ pub(crate) fn assign_policy(
     state.civilizations[civ_idx].gold -= policy.maintenance as i32;
 
     let mut diff = GameStateDiff::new();
-    diff.push(StateDelta::PolicyAssigned { civ: civ_id, policy: policy_id });
+    diff.push(StateDelta::PolicyAssigned {
+        civ: civ_id,
+        policy: policy_id,
+    });
     Ok(diff)
 }

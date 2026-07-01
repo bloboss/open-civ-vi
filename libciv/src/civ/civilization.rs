@@ -1,15 +1,16 @@
-use std::collections::{HashMap, HashSet, VecDeque};
-use crate::{
-    AgeType, BeliefId, CivId, CivicId, GovernmentId, GreatPersonType, PolicyId, ReligionId, TechId, YieldType,
-};
+use super::city::City;
+use super::diplomacy::DiplomaticRelation;
 use super::era::{EraAge, HistoricMoment};
 use crate::rules::effect::OneShotEffect;
 use crate::rules::modifier::{EffectType, Modifier, ModifierSource, StackingRule, TargetSelector};
 use crate::rules::policy::{Government, Policy};
-use crate::rules::tech::{TechTree, CivicTree};
+use crate::rules::tech::{CivicTree, TechTree};
 use crate::world::resource::BuiltinResource;
-use super::city::City;
-use super::diplomacy::DiplomaticRelation;
+use crate::{
+    AgeType, BeliefId, CivId, CivicId, GovernmentId, GreatPersonType, PolicyId, ReligionId, TechId,
+    YieldType,
+};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 pub trait StartBias: std::fmt::Debug {
     fn terrain_preference(&self) -> Option<crate::TerrainId>;
@@ -272,7 +273,7 @@ impl Civilization {
             governor_titles: 0,
             science_milestones_completed: 0,
             diplomatic_favor: 0,
-            visible_tiles:  HashSet::new(),
+            visible_tiles: HashSet::new(),
             explored_tiles: HashSet::new(),
             can_embark_coast: false,
             can_embark_ocean: false,
@@ -381,15 +382,23 @@ impl Civilization {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rules::tech::{TechNode, TechTree, CivicTree};
-    use crate::rules::modifier::{EffectType, ModifierSource, StackingRule, TargetSelector};
     use crate::civ::diplomacy::{DiplomaticRelation, DiplomaticStatus};
+    use crate::rules::modifier::{EffectType, ModifierSource, StackingRule, TargetSelector};
+    use crate::rules::tech::{CivicTree, TechNode, TechTree};
     use ulid::Ulid;
 
     fn empty_civ() -> Civilization {
         let id = CivId::from_ulid(Ulid::nil());
-        Civilization::new(id, "Test", "Test",
-            Leader { name: "L", civ_id: id, agenda: BuiltinAgenda::Default })
+        Civilization::new(
+            id,
+            "Test",
+            "Test",
+            Leader {
+                name: "L",
+                civ_id: id,
+                agenda: BuiltinAgenda::Default,
+            },
+        )
     }
 
     #[test]
@@ -406,7 +415,9 @@ mod tests {
             StackingRule::Additive,
         );
         tech_tree.add_node(TechNode {
-            id: tid, name: "Pottery", cost: 50,
+            id: tid,
+            name: "Pottery",
+            cost: 50,
             prerequisites: vec![],
             effects: vec![OneShotEffect::GrantModifier(modifier)],
             eureka_description: "",
@@ -430,7 +441,9 @@ mod tests {
 
         let tid = TechId::from_ulid(Ulid::nil());
         tech_tree.add_node(TechNode {
-            id: tid, name: "Mining", cost: 50,
+            id: tid,
+            name: "Mining",
+            cost: 50,
             prerequisites: vec![],
             effects: vec![OneShotEffect::UnlockImprovement("Mine")],
             eureka_description: "",
@@ -439,7 +452,10 @@ mod tests {
         civ.researched_techs.push(tid);
 
         let mods = civ.get_tree_modifiers(&tech_tree, &civic_tree);
-        assert!(mods.is_empty(), "non-GrantModifier effects should not appear");
+        assert!(
+            mods.is_empty(),
+            "non-GrantModifier effects should not appear"
+        );
     }
 
     #[test]
@@ -451,10 +467,21 @@ mod tests {
         rel.turns_at_war = 5;
 
         let mods = civ.get_modifiers(&[], &[], &[rel]);
-        let culture_penalty: i32 = mods.iter().filter_map(|m| {
-            if let EffectType::YieldFlat(YieldType::Culture, v) = m.effect { Some(v) } else { None }
-        }).sum();
-        assert!(culture_penalty < 0, "culture penalty from war weariness: {}", culture_penalty);
+        let culture_penalty: i32 = mods
+            .iter()
+            .filter_map(|m| {
+                if let EffectType::YieldFlat(YieldType::Culture, v) = m.effect {
+                    Some(v)
+                } else {
+                    None
+                }
+            })
+            .sum();
+        assert!(
+            culture_penalty < 0,
+            "culture penalty from war weariness: {}",
+            culture_penalty
+        );
     }
 
     #[test]
@@ -465,9 +492,16 @@ mod tests {
         let rel = DiplomaticRelation::new(civ.id, civ_b);
 
         let mods = civ.get_modifiers(&[], &[], &[rel]);
-        let culture_delta: i32 = mods.iter().filter_map(|m| {
-            if let EffectType::YieldFlat(YieldType::Culture, v) = m.effect { Some(v) } else { None }
-        }).sum();
+        let culture_delta: i32 = mods
+            .iter()
+            .filter_map(|m| {
+                if let EffectType::YieldFlat(YieldType::Culture, v) = m.effect {
+                    Some(v)
+                } else {
+                    None
+                }
+            })
+            .sum();
         assert_eq!(culture_delta, 0, "no war weariness in peacetime");
     }
 }

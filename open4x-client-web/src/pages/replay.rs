@@ -3,13 +3,13 @@
 /// Fetches a full AI-vs-AI demo game from the server and allows
 /// stepping through turns with the hex map.
 use leptos::prelude::*;
-use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use wasm_bindgen::prelude::*;
 use web_sys::Response;
 
-use open4x_protocol::v1::view::GameView;
 use open4x_protocol::v1::coord::HexCoord;
 use open4x_protocol::v1::ids::UnitId;
+use open4x_protocol::v1::view::GameView;
 
 use crate::components::hexmap::{HexMap, svg_dimensions};
 use crate::components::session::DemoConfig;
@@ -86,20 +86,32 @@ pub fn ReplayPage(
     };
 
     let max_turn = move || {
-        demo_data.get().map(|d| d.turns.len().saturating_sub(1)).unwrap_or(0)
+        demo_data
+            .get()
+            .map(|d| d.turns.len().saturating_sub(1))
+            .unwrap_or(0)
     };
 
     let civ_names = move || {
-        demo_data.get().map(|d| d.civ_names.clone()).unwrap_or_default()
+        demo_data
+            .get()
+            .map(|d| d.civ_names.clone())
+            .unwrap_or_default()
     };
 
     // Get scores for the current turn.
     let scores_text = move || {
-        let Some(_gv) = game_view_signal.get() else { return String::new() };
+        let Some(_gv) = game_view_signal.get() else {
+            return String::new();
+        };
         let names = civ_names();
-        let Some(data) = demo_data.get() else { return String::new() };
+        let Some(data) = demo_data.get() else {
+            return String::new();
+        };
         let idx = current_turn.get();
-        if idx >= data.turns.len() { return String::new(); }
+        if idx >= data.turns.len() {
+            return String::new();
+        }
 
         let mut parts = Vec::new();
         for (i, name) in names.iter().enumerate() {
@@ -132,9 +144,12 @@ pub fn ReplayPage(
                             }
                         }
                     });
-                    let _ = web_sys::window().unwrap().set_timeout_with_callback_and_timeout_and_arguments_0(
-                        cb.as_ref().unchecked_ref(), 300,
-                    );
+                    let _ = web_sys::window()
+                        .unwrap()
+                        .set_timeout_with_callback_and_timeout_and_arguments_0(
+                            cb.as_ref().unchecked_ref(),
+                            300,
+                        );
                     cb.forget();
                 } else {
                     auto_playing.set(false);
@@ -158,7 +173,9 @@ pub fn ReplayPage(
     };
 
     let _dims = move || {
-        game_view_signal.get().map(|gv| svg_dimensions(gv.board.width, gv.board.height))
+        game_view_signal
+            .get()
+            .map(|gv| svg_dimensions(gv.board.width, gv.board.height))
             .unwrap_or((800.0, 600.0))
     };
 
@@ -329,25 +346,22 @@ async fn fetch_demo_game(cfg: &DemoConfig) -> Result<DemoGameResult, String> {
         cfg.seed, cfg.width, cfg.height, cfg.num_turns, cfg.num_players,
     );
 
-    let resp_value = wasm_bindgen_futures::JsFuture::from(
-        web_sys::window().unwrap().fetch_with_str(&url),
-    )
-    .await
-    .map_err(|e| format!("{e:?}"))?;
+    let resp_value =
+        wasm_bindgen_futures::JsFuture::from(web_sys::window().unwrap().fetch_with_str(&url))
+            .await
+            .map_err(|e| format!("{e:?}"))?;
 
     let resp: Response = resp_value.dyn_into().map_err(|_| "not a Response")?;
     if !resp.ok() {
         return Err(format!("HTTP {}", resp.status()));
     }
 
-    let json = wasm_bindgen_futures::JsFuture::from(
-        resp.json().map_err(|e| format!("{e:?}"))?,
-    )
-    .await
-    .map_err(|e| format!("{e:?}"))?;
+    let json = wasm_bindgen_futures::JsFuture::from(resp.json().map_err(|e| format!("{e:?}"))?)
+        .await
+        .map_err(|e| format!("{e:?}"))?;
 
-    let data: DemoGameResult = serde_wasm_bindgen::from_value(json)
-        .map_err(|e| format!("parse error: {e}"))?;
+    let data: DemoGameResult =
+        serde_wasm_bindgen::from_value(json).map_err(|e| format!("parse error: {e}"))?;
 
     Ok(data)
 }

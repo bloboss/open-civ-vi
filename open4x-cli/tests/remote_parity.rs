@@ -93,7 +93,11 @@ impl Drop for ServerHandle {
 fn locate_server_binary() -> Option<PathBuf> {
     let cli_bin = PathBuf::from(env!("CARGO_BIN_EXE_open4x"));
     let target_dir = cli_bin.parent()?;
-    let candidate = target_dir.join(if cfg!(windows) { "open4x-server.exe" } else { "open4x-server" });
+    let candidate = target_dir.join(if cfg!(windows) {
+        "open4x-server.exe"
+    } else {
+        "open4x-server"
+    });
     if candidate.exists() {
         return Some(candidate);
     }
@@ -180,11 +184,7 @@ fn remote_parity_full_loop() {
         &url,
         &session_path,
         &[
-            "new-game",
-            "--width", "20",
-            "--height", "12",
-            "--seed", "7",
-            "--player", "Rome",
+            "new-game", "--width", "20", "--height", "12", "--seed", "7", "--player", "Rome",
             "--ai", "Babylon",
         ],
     );
@@ -201,7 +201,10 @@ fn remote_parity_full_loop() {
     assert!(ok && yields["resources"]["science"]["per_turn"].is_number());
 
     let (ok, pending) = run_remote(&url, &session_path, &["status", "pending"]);
-    assert!(ok && pending["items"].is_array(), "pending items array missing: {pending}");
+    assert!(
+        ok && pending["items"].is_array(),
+        "pending items array missing: {pending}"
+    );
     // Before any research/civic is queued, both choose_* items are
     // required — that's the gate end-turn enforces below.
     let items = pending["items"].as_array().unwrap();
@@ -232,10 +235,17 @@ fn remote_parity_full_loop() {
     // 3. Structured-error path: end-turn must reject while choose_*
     // items are still required.
     let (ok, body) = run_remote(&url, &session_path, &["end-turn"]);
-    assert!(!ok, "end-turn should fail before required actions are cleared: {body}");
+    assert!(
+        !ok,
+        "end-turn should fail before required actions are cleared: {body}"
+    );
 
     // 4. Mutations
-    let (ok, _) = run_remote(&url, &session_path, &["action", "research", "--tech", "Pottery"]);
+    let (ok, _) = run_remote(
+        &url,
+        &session_path,
+        &["action", "research", "--tech", "Pottery"],
+    );
     assert!(ok, "queue research");
     let (ok, _) = run_remote(
         &url,
@@ -247,11 +257,23 @@ fn remote_parity_full_loop() {
     let (ok, mv) = run_remote(
         &url,
         &session_path,
-        &["action", "move", "--unit", &warrior_id, "--to-q", "0", "--to-r", "0"],
+        &[
+            "action",
+            "move",
+            "--unit",
+            &warrior_id,
+            "--to-q",
+            "0",
+            "--to-r",
+            "0",
+        ],
     );
     // Move may legitimately fail (occupied tile, out of range) — we
     // only assert the wire shape parses, not the rule outcome.
-    assert!(mv["ok"].is_boolean() || mv.get("error").is_some(), "move shape: {mv}");
+    assert!(
+        mv["ok"].is_boolean() || mv.get("error").is_some(),
+        "move shape: {mv}"
+    );
     // Regardless of outcome, the CLI exited cleanly (non-rule errors
     // would have produced non-JSON stderr already).
     let _ = ok;
@@ -284,10 +306,7 @@ fn remote_action_unsupported_errors_cleanly() {
         &url,
         &session_path,
         &[
-            "new-game",
-            "--width", "15", "--height", "10",
-            "--seed", "11",
-            "--player", "Rome",
+            "new-game", "--width", "15", "--height", "10", "--seed", "11", "--player", "Rome",
         ],
     );
     assert!(ok);
@@ -297,13 +316,21 @@ fn remote_action_unsupported_errors_cleanly() {
     // non-zero, not panic or produce garbage on stdout.
     let output = Command::new(cli_path())
         .args([
-            "--server", &url,
-            "--token-file", session_path.to_str().unwrap(),
-            "action", "assign-policy", "--policy", "Discipline",
+            "--server",
+            &url,
+            "--token-file",
+            session_path.to_str().unwrap(),
+            "action",
+            "assign-policy",
+            "--policy",
+            "Discipline",
         ])
         .output()
         .expect("run open4x");
-    assert!(!output.status.success(), "unsupported action should exit non-zero");
+    assert!(
+        !output.status.success(),
+        "unsupported action should exit non-zero"
+    );
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
         stderr.contains("server mode does not yet support"),
@@ -340,15 +367,24 @@ fn remote_parity_baseline() {
     // tile) — the baseline must be fully deterministic for the
     // given seed.
     let steps: &[(&str, &[&str])] = &[
-        ("new-game", &[
-            "new-game", "--width", "20", "--height", "12",
-            "--seed", "7", "--player", "Rome", "--ai", "Babylon",
-        ]),
+        (
+            "new-game",
+            &[
+                "new-game", "--width", "20", "--height", "12", "--seed", "7", "--player", "Rome",
+                "--ai", "Babylon",
+            ],
+        ),
         ("status yields", &["status", "yields"]),
         ("status pending", &["status", "pending"]),
         ("list cities", &["list", "cities"]),
-        ("action research Pottery", &["action", "research", "--tech", "Pottery"]),
-        ("action study-civic Code of Laws", &["action", "study-civic", "--civic", "Code of Laws"]),
+        (
+            "action research Pottery",
+            &["action", "research", "--tech", "Pottery"],
+        ),
+        (
+            "action study-civic Code of Laws",
+            &["action", "study-civic", "--civic", "Code of Laws"],
+        ),
         ("end-turn", &["end-turn"]),
         ("status yields (turn 1)", &["status", "yields"]),
     ];
@@ -363,8 +399,8 @@ fn remote_parity_baseline() {
         transcript.push_str("\n\n");
     }
 
-    let baseline_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/remote_parity_baseline.txt");
+    let baseline_path =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/remote_parity_baseline.txt");
 
     if std::env::var("OPEN4X_UPDATE_BASELINE").is_ok() {
         std::fs::create_dir_all(baseline_path.parent().unwrap()).unwrap();

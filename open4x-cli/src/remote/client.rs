@@ -58,8 +58,12 @@ impl ApiClient {
         if bytes.is_empty() {
             return Ok(Value::Null);
         }
-        serde_json::from_slice(&bytes)
-            .map_err(|e| format!("{ctx}: invalid JSON response ({e}): {}", String::from_utf8_lossy(&bytes)))
+        serde_json::from_slice(&bytes).map_err(|e| {
+            format!(
+                "{ctx}: invalid JSON response ({e}): {}",
+                String::from_utf8_lossy(&bytes)
+            )
+        })
     }
 }
 

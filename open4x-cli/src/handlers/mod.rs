@@ -19,10 +19,7 @@ pub fn find_civ_by_name(state: &GameState, name: &str) -> Result<CivId, String> 
 
 /// Validate that the player is a human (non-AI) slot.
 pub fn validate_human(state: &GameState, player: &str) -> Result<(), String> {
-    let slot = state
-        .player_config
-        .iter()
-        .find(|s| s.civ_name == player);
+    let slot = state.player_config.iter().find(|s| s.civ_name == player);
     match slot {
         Some(s) if s.is_ai => Err(format!("'{player}' is an AI player")),
         Some(_) => Ok(()),

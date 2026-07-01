@@ -23,9 +23,9 @@ pub use government_defs::{GovernmentDef, builtin_government_defs, register_built
 pub use modifier::{EffectType, Modifier, ModifierSource, StackingRule, TargetSelector};
 pub use policy::{Government, Policy, PolicySlots};
 pub use policy_defs::{PolicyDef, builtin_policy_defs, register_builtin_policies};
+pub use project_defs::builtin_project_defs;
 pub use promotion::{PromotionDef, builtin_promotions};
-pub use tech::{build_civic_tree, build_tech_tree, CivicNode, CivicTree, TechNode, TechTree};
+pub use tech::{CivicNode, CivicTree, TechNode, TechTree, build_civic_tree, build_tech_tree};
 pub use unit_defs::builtin_unit_type_defs;
 pub use victory::{VictoryCondition, VictoryProgress};
-pub use project_defs::builtin_project_defs;
 pub use wonder_defs::builtin_wonder_defs;

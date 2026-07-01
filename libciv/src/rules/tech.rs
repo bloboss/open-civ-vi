@@ -1,35 +1,35 @@
-use crate::{CivicId, CivicRefs, TechId, TechRefs};
-use std::collections::HashMap;
 use super::effect::OneShotEffect;
 use crate::game::state::IdGenerator;
+use crate::{CivicId, CivicRefs, TechId, TechRefs};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct TechNode {
-    pub id:                 TechId,
-    pub name:               &'static str,
-    pub cost:               u32,
-    pub prerequisites:      Vec<TechId>,
+    pub id: TechId,
+    pub name: &'static str,
+    pub cost: u32,
+    pub prerequisites: Vec<TechId>,
     /// Effects applied when this tech is completed.
-    pub effects:            Vec<OneShotEffect>,
+    pub effects: Vec<OneShotEffect>,
     pub eureka_description: &'static str,
     // TODO(PHASE3-8.4): Add eureka_conditions: Vec<Box<dyn EurekaCondition>>; advance_turn
     //   evaluates is_met(&GameState, CivId) each turn and fires TriggerEureka if true.
     //   Concrete types: KilledUnitsEureka, FoundedCityOnCoast, BuiltImprovementEureka, etc.
     /// Effects applied when the Eureka boost for this tech is triggered.
-    pub eureka_effects:     Vec<OneShotEffect>,
+    pub eureka_effects: Vec<OneShotEffect>,
 }
 
 #[derive(Debug, Clone)]
 pub struct CivicNode {
-    pub id:                        CivicId,
-    pub name:                      &'static str,
-    pub cost:                      u32,
-    pub prerequisites:             Vec<CivicId>,
+    pub id: CivicId,
+    pub name: &'static str,
+    pub cost: u32,
+    pub prerequisites: Vec<CivicId>,
     /// Effects applied when this civic is completed.
-    pub effects:                   Vec<OneShotEffect>,
-    pub inspiration_description:   &'static str,
+    pub effects: Vec<OneShotEffect>,
+    pub inspiration_description: &'static str,
     /// Effects applied when the Inspiration boost for this civic is triggered.
-    pub inspiration_effects:       Vec<OneShotEffect>,
+    pub inspiration_effects: Vec<OneShotEffect>,
 }
 
 #[derive(Debug, Default)]
@@ -51,7 +51,9 @@ impl TechTree {
     }
 
     pub fn prerequisites_met(&self, id: TechId, researched: &[TechId]) -> bool {
-        let Some(node) = self.nodes.get(&id) else { return false };
+        let Some(node) = self.nodes.get(&id) else {
+            return false;
+        };
         node.prerequisites.iter().all(|p| researched.contains(p))
     }
 }
@@ -75,7 +77,9 @@ impl CivicTree {
     }
 
     pub fn prerequisites_met(&self, id: CivicId, completed: &[CivicId]) -> bool {
-        let Some(node) = self.nodes.get(&id) else { return false };
+        let Some(node) = self.nodes.get(&id) else {
+            return false;
+        };
         node.prerequisites.iter().all(|p| completed.contains(p))
     }
 }

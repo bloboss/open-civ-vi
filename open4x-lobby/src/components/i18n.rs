@@ -100,15 +100,11 @@ fn en(key: Key) -> &'static str {
         LoginEmailSentTemplate => "Magic link sent to {to}. Check your inbox.",
         LoginEmailRetry => "↻ Try again",
         LoginEmailErrorEmpty => "Enter an email address first.",
-        LoginEmailErrorRateLimit => {
-            "Too many recent sends. Try again in a minute."
-        }
+        LoginEmailErrorRateLimit => "Too many recent sends. Try again in a minute.",
         LoginEmailErrorServerBusyTemplate => {
             "Server's having trouble ({code}). Try again in a moment."
         }
-        LoginEmailErrorNetwork => {
-            "Couldn't reach the server. Check your connection."
-        }
+        LoginEmailErrorNetwork => "Couldn't reach the server. Check your connection.",
         LoginEmailErrorOther => "Something went wrong.",
         LoginOidcHeading => "OpenID",
         LoginOidcAbout => "about OIDC",
@@ -116,9 +112,7 @@ fn en(key: Key) -> &'static str {
         LoginAtprotoAbout => "about atproto",
         LoginAtprotoPlaceholder => "alice.bsky.social  or  did:plc:…",
         LoginAtprotoButton => "Continue with atproto →",
-        LoginFooter => {
-            "New here? A player ID is created automatically on first sign-in."
-        }
+        LoginFooter => "New here? A player ID is created automatically on first sign-in.",
     }
 }
 

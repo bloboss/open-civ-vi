@@ -2,14 +2,14 @@
 
 mod common;
 
-use libciv::{
-    BarbarianCampId, CivId, DefaultRulesEngine, GameState, GameStateDiff,
-    RulesEngine, UnitCategory, UnitDomain, UnitTypeId,
-};
-use libciv::civ::{BasicUnit, CityKind};
 use libciv::civ::barbarian::{BarbarianCamp, ClanType, ScoutState};
-use libciv::game::{recalculate_visibility, StateDelta};
+use libciv::civ::{BasicUnit, CityKind};
 use libciv::game::state::UnitTypeDef;
+use libciv::game::{StateDelta, recalculate_visibility};
+use libciv::{
+    BarbarianCampId, CivId, DefaultRulesEngine, GameState, GameStateDiff, RulesEngine,
+    UnitCategory, UnitDomain, UnitTypeId,
+};
 use libhexgrid::coord::HexCoord;
 
 // ---------------------------------------------------------------------------
@@ -67,8 +67,14 @@ fn register_scout_type(state: &mut GameState) -> UnitTypeId {
 }
 
 /// Place a barbarian camp manually for testing (bypasses spawn logic).
-fn place_camp(state: &mut GameState, coord: HexCoord, clan_type: Option<ClanType>) -> BarbarianCampId {
-    let barb_civ = *state.barbarian_civ.get_or_insert_with(|| state.id_gen.next_civ_id());
+fn place_camp(
+    state: &mut GameState,
+    coord: HexCoord,
+    clan_type: Option<ClanType>,
+) -> BarbarianCampId {
+    let barb_civ = *state
+        .barbarian_civ
+        .get_or_insert_with(|| state.id_gen.next_civ_id());
     let camp_id = state.id_gen.next_barbarian_camp_id();
     state.barbarian_camps.push(BarbarianCamp::new(
         camp_id, coord, barb_civ, state.turn, clan_type,
@@ -109,7 +115,10 @@ fn barbarian_camp_spawns_on_turn() {
     );
 
     // Verify the diff records the spawn.
-    let camp_spawned = diff.deltas.iter().any(|d| matches!(d, StateDelta::BarbarianCampSpawned { .. }));
+    let camp_spawned = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::BarbarianCampSpawned { .. }));
     assert!(camp_spawned, "expected BarbarianCampSpawned delta");
 }
 
@@ -121,7 +130,10 @@ fn barbarian_disabled_no_camps() {
     let diff = advance_turn(&mut s.state);
 
     assert!(s.state.barbarian_camps.is_empty());
-    let has_barb = diff.deltas.iter().any(|d| matches!(d, StateDelta::BarbarianCampSpawned { .. }));
+    let has_barb = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::BarbarianCampSpawned { .. }));
     assert!(!has_barb);
 }
 
@@ -141,10 +153,14 @@ fn barbarian_scout_spawns_from_camp() {
     let camp = s.state.barbarian_camp(camp_id).expect("camp should exist");
     assert!(
         matches!(&camp.scout_state, ScoutState::Exploring { .. }),
-        "expected scout to be exploring, got {:?}", camp.scout_state
+        "expected scout to be exploring, got {:?}",
+        camp.scout_state
     );
 
-    let scout_spawned = diff.deltas.iter().any(|d| matches!(d, StateDelta::BarbarianScoutSpawned { camp, .. } if *camp == camp_id));
+    let scout_spawned = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::BarbarianScoutSpawned { camp, .. } if *camp == camp_id));
     assert!(scout_spawned, "expected BarbarianScoutSpawned delta");
 }
 
@@ -156,21 +172,36 @@ fn barbarian_scout_discovers_player_and_returns() {
 
     // Place camp near Rome's warrior at (5,3), so the scout will discover Rome quickly.
     let camp_coord = HexCoord::from_qr(7, 3);
-    let barb_civ = *s.state.barbarian_civ.get_or_insert_with(|| s.state.id_gen.next_civ_id());
+    let barb_civ = *s
+        .state
+        .barbarian_civ
+        .get_or_insert_with(|| s.state.id_gen.next_civ_id());
     let camp_id = s.state.id_gen.next_barbarian_camp_id();
 
     // Spawn scout manually right next to Rome's warrior.
     let scout_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: scout_id, unit_type: scout_type, owner: barb_civ,
+        id: scout_id,
+        unit_type: scout_type,
+        owner: barb_civ,
         coord: HexCoord::from_qr(6, 3),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 300, max_movement: 300,
-        combat_strength: Some(10), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 300,
+        max_movement: 300,
+        combat_strength: Some(10),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 3, charges: None,
-        trade_origin: None, trade_destination: None, religion_id: None,
-        spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 3,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     let mut camp = BarbarianCamp::new(camp_id, camp_coord, barb_civ, 0, None);
@@ -181,7 +212,10 @@ fn barbarian_scout_discovers_player_and_returns() {
     let diff = advance_turn(&mut s.state);
 
     let camp = s.state.barbarian_camp(camp_id).expect("camp should exist");
-    let discovered = diff.deltas.iter().any(|d| matches!(d, StateDelta::BarbarianScoutDiscovered { .. }));
+    let discovered = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::BarbarianScoutDiscovered { .. }));
 
     // Scout should have discovered Rome (within 3 tiles of Rome's warrior).
     assert!(
@@ -198,23 +232,37 @@ fn barbarian_generates_units_after_scout_returns() {
 
     // Place camp and manually set scout_state to Returned.
     let camp_coord = HexCoord::from_qr(0, 0);
-    let barb_civ = *s.state.barbarian_civ.get_or_insert_with(|| s.state.id_gen.next_civ_id());
+    let barb_civ = *s
+        .state
+        .barbarian_civ
+        .get_or_insert_with(|| s.state.id_gen.next_civ_id());
     let camp_id = s.state.id_gen.next_barbarian_camp_id();
     let mut camp = BarbarianCamp::new(camp_id, camp_coord, barb_civ, 0, None);
-    camp.scout_state = ScoutState::Returned { discovered_civs: vec![s.rome_id] };
+    camp.scout_state = ScoutState::Returned {
+        discovered_civs: vec![s.rome_id],
+    };
     s.state.barbarian_camps.push(camp);
 
     // Advance turn — should generate a combat unit.
     let diff = advance_turn(&mut s.state);
 
-    let unit_generated = diff.deltas.iter().any(|d| matches!(d, StateDelta::BarbarianUnitGenerated { .. }));
+    let unit_generated = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::BarbarianUnitGenerated { .. }));
     assert!(unit_generated, "expected barbarian unit to be generated");
 
     // Verify unit exists in state.
-    let barb_units: Vec<&BasicUnit> = s.state.units.iter()
+    let barb_units: Vec<&BasicUnit> = s
+        .state
+        .units
+        .iter()
         .filter(|u| u.owner == barb_civ && u.combat_strength.is_some())
         .collect();
-    assert!(!barb_units.is_empty(), "expected barbarian combat unit in game state");
+    assert!(
+        !barb_units.is_empty(),
+        "expected barbarian combat unit in game state"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -228,14 +276,20 @@ fn clans_hire_unit_from_camp() {
     register_scout_type(&mut s.state);
 
     // Give Rome gold.
-    s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap().gold = 200;
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .gold = 200;
 
     // Place a clan camp.
     let camp_coord = HexCoord::from_qr(0, 0);
     let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Flatland));
 
     let rules = DefaultRulesEngine;
-    let diff = rules.hire_from_barbarian_camp(&mut s.state, camp_id, s.rome_id)
+    let diff = rules
+        .hire_from_barbarian_camp(&mut s.state, camp_id, s.rome_id)
         .expect("hire should succeed");
 
     // Rome should have spent gold.
@@ -243,11 +297,17 @@ fn clans_hire_unit_from_camp() {
     assert_eq!(rome.gold, 150, "expected 50 gold deducted");
 
     // A new unit owned by Rome should exist near the camp.
-    let hired_unit = diff.deltas.iter().find(|d| matches!(d, StateDelta::UnitCreated { owner, .. } if *owner == s.rome_id));
+    let hired_unit = diff
+        .deltas
+        .iter()
+        .find(|d| matches!(d, StateDelta::UnitCreated { owner, .. } if *owner == s.rome_id));
     assert!(hired_unit.is_some(), "expected UnitCreated delta for Rome");
 
     // Hire delta should be recorded.
-    let hire_delta = diff.deltas.iter().any(|d| matches!(d, StateDelta::BarbarianClanHired { .. }));
+    let hire_delta = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::BarbarianClanHired { .. }));
     assert!(hire_delta, "expected BarbarianClanHired delta");
 }
 
@@ -257,13 +317,20 @@ fn clans_hire_cooldown() {
     enable_clans_mode(&mut s.state);
     register_scout_type(&mut s.state);
 
-    s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap().gold = 500;
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .gold = 500;
 
     let camp_coord = HexCoord::from_qr(0, 0);
     let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Flatland));
 
     let rules = DefaultRulesEngine;
-    rules.hire_from_barbarian_camp(&mut s.state, camp_id, s.rome_id).unwrap();
+    rules
+        .hire_from_barbarian_camp(&mut s.state, camp_id, s.rome_id)
+        .unwrap();
 
     // Second hire should fail (cooldown).
     let result = rules.hire_from_barbarian_camp(&mut s.state, camp_id, s.rome_id);
@@ -276,22 +343,34 @@ fn clans_bribe_camp() {
     enable_clans_mode(&mut s.state);
     register_scout_type(&mut s.state);
 
-    s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap().gold = 200;
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .gold = 200;
 
     let camp_coord = HexCoord::from_qr(0, 0);
     let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Woodland));
 
     let rules = DefaultRulesEngine;
-    let diff = rules.bribe_barbarian_camp(&mut s.state, camp_id, s.rome_id)
+    let diff = rules
+        .bribe_barbarian_camp(&mut s.state, camp_id, s.rome_id)
         .expect("bribe should succeed");
 
     let rome = s.state.civ(s.rome_id).unwrap();
     assert_eq!(rome.gold, 160, "expected 40 gold deducted");
 
     let camp = s.state.barbarian_camp(camp_id).unwrap();
-    assert!(camp.is_bribed_by(s.rome_id, s.state.turn), "camp should be bribed");
+    assert!(
+        camp.is_bribed_by(s.rome_id, s.state.turn),
+        "camp should be bribed"
+    );
 
-    let bribe_delta = diff.deltas.iter().any(|d| matches!(d, StateDelta::BarbarianClanBribed { .. }));
+    let bribe_delta = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::BarbarianClanBribed { .. }));
     assert!(bribe_delta, "expected BarbarianClanBribed delta");
 }
 
@@ -301,22 +380,34 @@ fn clans_incite_camp() {
     enable_clans_mode(&mut s.state);
     register_scout_type(&mut s.state);
 
-    s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap().gold = 200;
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .gold = 200;
 
     let camp_coord = HexCoord::from_qr(0, 0);
     let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Rover));
 
     let rules = DefaultRulesEngine;
-    let diff = rules.incite_barbarian_camp(&mut s.state, camp_id, s.rome_id, s.babylon_id)
+    let diff = rules
+        .incite_barbarian_camp(&mut s.state, camp_id, s.rome_id, s.babylon_id)
         .expect("incite should succeed");
 
     let rome = s.state.civ(s.rome_id).unwrap();
     assert_eq!(rome.gold, 170, "expected 30 gold deducted");
 
     let camp = s.state.barbarian_camp(camp_id).unwrap();
-    assert!(camp.is_incited_against(s.babylon_id, s.state.turn), "camp should be incited against Babylon");
+    assert!(
+        camp.is_incited_against(s.babylon_id, s.state.turn),
+        "camp should be incited against Babylon"
+    );
 
-    let incite_delta = diff.deltas.iter().any(|d| matches!(d, StateDelta::BarbarianClanIncited { .. }));
+    let incite_delta = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::BarbarianClanIncited { .. }));
     assert!(incite_delta, "expected BarbarianClanIncited delta");
 }
 
@@ -326,13 +417,25 @@ fn clans_incite_self_fails() {
     enable_clans_mode(&mut s.state);
     register_scout_type(&mut s.state);
 
-    s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap().gold = 200;
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .gold = 200;
 
-    let camp_id = place_camp(&mut s.state, HexCoord::from_qr(0, 0), Some(ClanType::Flatland));
+    let camp_id = place_camp(
+        &mut s.state,
+        HexCoord::from_qr(0, 0),
+        Some(ClanType::Flatland),
+    );
 
     let rules = DefaultRulesEngine;
     let result = rules.incite_barbarian_camp(&mut s.state, camp_id, s.rome_id, s.rome_id);
-    assert!(result.is_err(), "should not be able to incite against yourself");
+    assert!(
+        result.is_err(),
+        "should not be able to incite against yourself"
+    );
 }
 
 #[test]
@@ -342,9 +445,18 @@ fn clans_insufficient_gold_hire() {
     register_scout_type(&mut s.state);
 
     // Rome has no gold.
-    s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap().gold = 0;
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .gold = 0;
 
-    let camp_id = place_camp(&mut s.state, HexCoord::from_qr(0, 0), Some(ClanType::Flatland));
+    let camp_id = place_camp(
+        &mut s.state,
+        HexCoord::from_qr(0, 0),
+        Some(ClanType::Flatland),
+    );
 
     let rules = DefaultRulesEngine;
     let result = rules.hire_from_barbarian_camp(&mut s.state, camp_id, s.rome_id);
@@ -358,12 +470,20 @@ fn clans_mode_disabled_hire_fails() {
     // clans_mode is NOT enabled
     register_scout_type(&mut s.state);
 
-    s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap().gold = 200;
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .gold = 200;
     let camp_id = place_camp(&mut s.state, HexCoord::from_qr(0, 0), None);
 
     let rules = DefaultRulesEngine;
     let result = rules.hire_from_barbarian_camp(&mut s.state, camp_id, s.rome_id);
-    assert!(result.is_err(), "hire should fail when clans mode is disabled");
+    assert!(
+        result.is_err(),
+        "hire should fail when clans mode is disabled"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -383,21 +503,30 @@ fn clans_camp_converts_to_city_state() {
     // Fast-forward conversion by setting progress close to threshold.
     // With conversion_increment_chance = 1.0, food yield of surrounding tiles
     // (at least 1 per turn) will push it over the threshold of 20.
-    s.state.barbarian_camps.iter_mut()
-        .find(|c| c.id == camp_id).unwrap()
+    s.state
+        .barbarian_camps
+        .iter_mut()
+        .find(|c| c.id == camp_id)
+        .unwrap()
         .conversion_progress = 19;
 
     // Advance turn — conversion should complete (19 + food_yield >= 20).
     let diff = advance_turn(&mut s.state);
 
-    let converted = diff.deltas.iter().any(|d| matches!(d, StateDelta::BarbarianCampConverted { .. }));
+    let converted = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::BarbarianCampConverted { .. }));
     assert!(converted, "expected BarbarianCampConverted delta");
 
     // A city-state city should exist at the camp's coord.
     let cs_city = s.state.cities.iter().find(|c| c.coord == camp_coord);
     assert!(cs_city.is_some(), "expected city-state city at camp coord");
     let cs = cs_city.unwrap();
-    assert!(matches!(cs.kind, CityKind::CityState(_)), "expected CityKind::CityState");
+    assert!(
+        matches!(cs.kind, CityKind::CityState(_)),
+        "expected CityKind::CityState"
+    );
 
     // Camp should be marked as converted.
     let camp = s.state.barbarian_camp(camp_id).unwrap();
@@ -414,19 +543,32 @@ fn clans_bribe_accelerates_conversion() {
     let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Woodland));
 
     // Bribe the camp.
-    s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap().gold = 200;
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .gold = 200;
     let rules = DefaultRulesEngine;
-    rules.bribe_barbarian_camp(&mut s.state, camp_id, s.rome_id).unwrap();
+    rules
+        .bribe_barbarian_camp(&mut s.state, camp_id, s.rome_id)
+        .unwrap();
 
     // Bribe immediately grants +8 conversion points.
     let camp = s.state.barbarian_camp(camp_id).unwrap();
-    assert_eq!(camp.conversion_progress, 8, "expected +8 one-shot bribe conversion points");
+    assert_eq!(
+        camp.conversion_progress, 8,
+        "expected +8 one-shot bribe conversion points"
+    );
 
     // Advance turn — food-yield-based progress also advances.
     advance_turn(&mut s.state);
 
     let camp = s.state.barbarian_camp(camp_id).unwrap();
-    assert!(camp.conversion_progress > 8, "expected food-yield progress on top of bribe points");
+    assert!(
+        camp.conversion_progress > 8,
+        "expected food-yield progress on top of bribe points"
+    );
 }
 
 #[test]
@@ -439,19 +581,32 @@ fn clans_incite_slows_conversion() {
     let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Rover));
 
     // Incite the camp.
-    s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap().gold = 200;
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .gold = 200;
     let rules = DefaultRulesEngine;
-    rules.incite_barbarian_camp(&mut s.state, camp_id, s.rome_id, s.babylon_id).unwrap();
+    rules
+        .incite_barbarian_camp(&mut s.state, camp_id, s.rome_id, s.babylon_id)
+        .unwrap();
 
     // Incite immediately deducts -5 conversion points.
     let camp = s.state.barbarian_camp(camp_id).unwrap();
-    assert_eq!(camp.conversion_progress, -5, "expected -5 one-shot incite conversion points");
+    assert_eq!(
+        camp.conversion_progress, -5,
+        "expected -5 one-shot incite conversion points"
+    );
 
     // Advance turn — food-yield-based progress also advances.
     advance_turn(&mut s.state);
 
     let camp = s.state.barbarian_camp(camp_id).unwrap();
-    assert!(camp.conversion_progress > -5, "expected food-yield progress to offset incite penalty");
+    assert!(
+        camp.conversion_progress > -5,
+        "expected food-yield progress to offset incite penalty"
+    );
 }
 
 #[test]
@@ -465,15 +620,21 @@ fn clans_conversion_respects_city_placement_rules() {
     let camp_id = place_camp(&mut s.state, camp_coord, Some(ClanType::Flatland));
 
     // Set conversion past threshold.
-    s.state.barbarian_camps.iter_mut()
-        .find(|c| c.id == camp_id).unwrap()
+    s.state
+        .barbarian_camps
+        .iter_mut()
+        .find(|c| c.id == camp_id)
+        .unwrap()
         .conversion_progress = 100;
 
     advance_turn(&mut s.state);
 
     // Conversion should NOT happen because camp is too close to a city.
     let camp = s.state.barbarian_camp(camp_id).unwrap();
-    assert!(!camp.converted, "camp should NOT convert when too close to a city");
+    assert!(
+        !camp.converted,
+        "camp should NOT convert when too close to a city"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -487,39 +648,67 @@ fn clear_barbarian_camp_removes_units() {
     register_scout_type(&mut s.state);
 
     let camp_coord = HexCoord::from_qr(0, 0);
-    let barb_civ = *s.state.barbarian_civ.get_or_insert_with(|| s.state.id_gen.next_civ_id());
+    let barb_civ = *s
+        .state
+        .barbarian_civ
+        .get_or_insert_with(|| s.state.id_gen.next_civ_id());
     let camp_id = s.state.id_gen.next_barbarian_camp_id();
 
     // Spawn a barbarian unit belonging to this camp.
     let barb_unit_id = s.state.id_gen.next_unit_id();
     let warrior_type = s.warrior_type;
     s.state.units.push(BasicUnit {
-        id: barb_unit_id, unit_type: warrior_type, owner: barb_civ,
+        id: barb_unit_id,
+        unit_type: warrior_type,
+        owner: barb_civ,
         coord: HexCoord::from_qr(1, 0),
-        domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200,
-        combat_strength: Some(20), promotions: Vec::new(),
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(20),
+        promotions: Vec::new(),
         experience: 0,
-        health: 100, range: 0, vision_range: 2, charges: None,
-        trade_origin: None, trade_destination: None, religion_id: None,
-        spread_charges: None, religious_strength: None, is_embarked: false,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     let mut camp = BarbarianCamp::new(camp_id, camp_coord, barb_civ, 0, None);
     camp.spawned_units.push(barb_unit_id);
-    camp.scout_state = ScoutState::Returned { discovered_civs: vec![s.rome_id] };
+    camp.scout_state = ScoutState::Returned {
+        discovered_civs: vec![s.rome_id],
+    };
     s.state.barbarian_camps.push(camp);
 
     // Clear the camp.
     let rules = DefaultRulesEngine;
-    let diff = rules.clear_barbarian_camp(&mut s.state, camp_id, s.rome_id).unwrap();
+    let diff = rules
+        .clear_barbarian_camp(&mut s.state, camp_id, s.rome_id)
+        .unwrap();
 
     // Camp should be removed.
-    assert!(s.state.barbarian_camp(camp_id).is_none(), "camp should be removed");
+    assert!(
+        s.state.barbarian_camp(camp_id).is_none(),
+        "camp should be removed"
+    );
 
     // Barbarian unit should be destroyed.
-    assert!(s.state.unit(barb_unit_id).is_none(), "barbarian unit should be destroyed");
+    assert!(
+        s.state.unit(barb_unit_id).is_none(),
+        "barbarian unit should be destroyed"
+    );
 
-    let destroyed = diff.deltas.iter().any(|d| matches!(d, StateDelta::BarbarianCampDestroyed { .. }));
+    let destroyed = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::BarbarianCampDestroyed { .. }));
     assert!(destroyed, "expected BarbarianCampDestroyed delta");
 }

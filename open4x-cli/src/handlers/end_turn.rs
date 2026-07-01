@@ -36,9 +36,7 @@ pub fn handle_end_turn(game_file: &Path, player: &str) -> Result<(), String> {
     // If player_config is empty (legacy), treat as single-player: always advance.
     let should_advance = state.player_config.is_empty() || all_humans_done;
 
-    let mut combined_diff = GameStateDiff {
-        deltas: Vec::new(),
-    };
+    let mut combined_diff = GameStateDiff { deltas: Vec::new() };
 
     if should_advance {
         let rules = DefaultRulesEngine;

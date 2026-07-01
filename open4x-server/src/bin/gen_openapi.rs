@@ -13,9 +13,7 @@ use std::path::{Path, PathBuf};
 
 fn main() {
     let arg_path = std::env::args().nth(1);
-    let out_path = arg_path
-        .map(PathBuf::from)
-        .unwrap_or_else(default_out_path);
+    let out_path = arg_path.map(PathBuf::from).unwrap_or_else(default_out_path);
 
     let doc = open4x_server::server::openapi::document();
     let json = doc

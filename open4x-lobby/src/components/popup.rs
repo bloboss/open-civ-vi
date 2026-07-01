@@ -230,8 +230,16 @@ fn PopupRender(state: PopupState) -> impl IntoView {
         let el: &web_sys::Element = el.as_ref();
         let r = el.get_bounding_client_rect();
         let win = web_sys::window().unwrap();
-        let vw = win.inner_width().ok().and_then(|v| v.as_f64()).unwrap_or(1024.0);
-        let vh = win.inner_height().ok().and_then(|v| v.as_f64()).unwrap_or(768.0);
+        let vw = win
+            .inner_width()
+            .ok()
+            .and_then(|v| v.as_f64())
+            .unwrap_or(1024.0);
+        let vh = win
+            .inner_height()
+            .ok()
+            .and_then(|v| v.as_f64())
+            .unwrap_or(768.0);
         let margin = 8.0;
         let mut top = anchor.bottom + 6.0;
         let mut left = anchor.left;

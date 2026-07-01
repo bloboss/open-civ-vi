@@ -39,7 +39,11 @@ impl<T: Visualize> Visualizer<T> {
         let mut lines: Vec<String> = Vec::new();
 
         for (r, row) in self.storage.iter().enumerate() {
-            let indent = if r % 2 == 1 { " ".repeat(n) } else { String::new() };
+            let indent = if r % 2 == 1 {
+                " ".repeat(n)
+            } else {
+                String::new()
+            };
             // Each hex row produces `n` sub-rows; pre-fill each with the indent.
             let mut sub_rows: Vec<String> = vec![indent; n];
             for tile in row {
@@ -67,7 +71,7 @@ impl Visualize for WorldTile {
     fn render(&self) -> Vec<Vec<char>> {
         let ch = match self.feature {
             Some(f) => feature_char(f),
-            None    => terrain_char(self.terrain),
+            None => terrain_char(self.terrain),
         };
         vec![vec![ch]]
     }
@@ -76,30 +80,30 @@ impl Visualize for WorldTile {
 fn terrain_char(t: BuiltinTerrain) -> char {
     match t {
         BuiltinTerrain::Grassland => 'G',
-        BuiltinTerrain::Plains    => 'P',
-        BuiltinTerrain::Desert    => 'D',
-        BuiltinTerrain::Tundra    => 'T',
-        BuiltinTerrain::Snow      => 'S',
-        BuiltinTerrain::Coast     => 'C',
-        BuiltinTerrain::Ocean     => 'O',
-        BuiltinTerrain::Mountain  => 'M',
+        BuiltinTerrain::Plains => 'P',
+        BuiltinTerrain::Desert => 'D',
+        BuiltinTerrain::Tundra => 'T',
+        BuiltinTerrain::Snow => 'S',
+        BuiltinTerrain::Coast => 'C',
+        BuiltinTerrain::Ocean => 'O',
+        BuiltinTerrain::Mountain => 'M',
     }
 }
 
 fn feature_char(f: BuiltinFeature) -> char {
     match f {
-        BuiltinFeature::Forest       => 'f',
-        BuiltinFeature::Rainforest   => 'r',
-        BuiltinFeature::Marsh        => 'm',
-        BuiltinFeature::Floodplain   => 'F',
-        BuiltinFeature::Reef         => 'R',
-        BuiltinFeature::Ice          => 'i',
+        BuiltinFeature::Forest => 'f',
+        BuiltinFeature::Rainforest => 'r',
+        BuiltinFeature::Marsh => 'm',
+        BuiltinFeature::Floodplain => 'F',
+        BuiltinFeature::Reef => 'R',
+        BuiltinFeature::Ice => 'i',
         BuiltinFeature::VolcanicSoil => 'v',
-        BuiltinFeature::Oasis        => 'o',
-        BuiltinFeature::GeothermalFissure  => 'g',
-        BuiltinFeature::Volcano            => 'V',
+        BuiltinFeature::Oasis => 'o',
+        BuiltinFeature::GeothermalFissure => 'g',
+        BuiltinFeature::Volcano => 'V',
         BuiltinFeature::FloodplainGrassland => 'F',
-        BuiltinFeature::FloodplainPlains   => 'F',
+        BuiltinFeature::FloodplainPlains => 'F',
     }
 }
 
@@ -136,7 +140,10 @@ mod tests {
         let mut tile = grassland_tile(0, 0);
         tile.feature = Some(BuiltinFeature::Forest);
         let block = tile.render();
-        assert_eq!(block[0][0], 'f', "forest feature should override terrain char");
+        assert_eq!(
+            block[0][0], 'f',
+            "forest feature should override terrain char"
+        );
     }
 
     #[test]
@@ -151,18 +158,21 @@ mod tests {
 
     #[test]
     fn test_visualizer_odd_row_indented() {
-        let vis = Visualizer::new(vec![
-            vec![grassland_tile(0, 0)],
-            vec![grassland_tile(0, 1)],
-        ]);
+        let vis = Visualizer::new(vec![vec![grassland_tile(0, 0)], vec![grassland_tile(0, 1)]]);
         let buf = vis.render_buffer();
         // 1 sub-row per hex row → 2 total lines.
         assert_eq!(buf.len(), 2);
         // Row 0 (even): no leading spaces.
-        assert!(!buf[0].starts_with(' '), "even row 0 should not be indented");
+        assert!(
+            !buf[0].starts_with(' '),
+            "even row 0 should not be indented"
+        );
         // Row 1 (odd): indented by 1 space.
         assert!(buf[1].starts_with(' '), "odd row 1 must start with 1 space");
-        assert!(!buf[1].starts_with("  "), "odd row 1 must have exactly 1 space indent");
+        assert!(
+            !buf[1].starts_with("  "),
+            "odd row 1 must have exactly 1 space indent"
+        );
     }
 
     #[test]
@@ -175,6 +185,10 @@ mod tests {
         // Row 0: 3 tiles × 1 char each = 3 chars, no indent.
         assert_eq!(buf[0].len(), 3, "row 0 should be 3 chars wide");
         // Row 1: 1 space indent + 3 chars = 4 chars total.
-        assert_eq!(buf[1].len(), 4, "row 1 should be 4 chars (1 indent + 3 tiles)");
+        assert_eq!(
+            buf[1].len(),
+            4,
+            "row 1 should be 4 chars (1 indent + 3 tiles)"
+        );
     }
 }

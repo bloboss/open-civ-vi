@@ -1,5 +1,5 @@
-use crate::{CityId, CivId, TradeRouteId, YieldBundle, YieldType};
 use crate::civ::City;
+use crate::{CityId, CivId, TradeRouteId, YieldBundle, YieldType};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -31,7 +31,10 @@ impl TradeRoute {
     /// Returns `true` when origin and destination belong to different civilizations.
     pub fn is_international(&self, cities: &[City]) -> bool {
         let origin_owner = cities.iter().find(|c| c.id == self.origin).map(|c| c.owner);
-        let dest_owner   = cities.iter().find(|c| c.id == self.destination).map(|c| c.owner);
+        let dest_owner = cities
+            .iter()
+            .find(|c| c.id == self.destination)
+            .map(|c| c.owner);
         matches!((origin_owner, dest_owner), (Some(a), Some(b)) if a != b)
     }
 }

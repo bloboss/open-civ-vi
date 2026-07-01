@@ -24,7 +24,9 @@ pub fn load_game(json: &str) -> Result<super::state::GameState, String> {
 
     let seed = v["seed"].as_u64().ok_or("missing seed")?;
     let board_w = v["board"]["width"].as_u64().ok_or("missing board.width")? as u32;
-    let board_h = v["board"]["height"].as_u64().ok_or("missing board.height")? as u32;
+    let board_h = v["board"]["height"]
+        .as_u64()
+        .ok_or("missing board.height")? as u32;
 
     // Create a fresh state with all registries rebuilt from seed.
     let mut state = super::state::GameState::new(seed, board_w, board_h);

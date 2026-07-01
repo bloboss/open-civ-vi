@@ -1,11 +1,11 @@
 /// Tests for terrain–improvement placement validity.
 mod common;
 
-use libciv::{DefaultRulesEngine, RulesEngine};
 use libciv::game::StateDelta;
 use libciv::world::feature::BuiltinFeature;
 use libciv::world::improvement::BuiltinImprovement;
 use libciv::world::terrain::BuiltinTerrain;
+use libciv::{DefaultRulesEngine, RulesEngine};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 
@@ -35,9 +35,13 @@ fn farm_on_grassland_succeeds() {
 
     // Grant Pottery so the tech check passes.
     let pottery_id = s.state.tech_refs.pottery;
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .researched_techs.push(pottery_id);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .researched_techs
+        .push(pottery_id);
 
     assert!(s.state.board.tile(coord).is_some());
 
@@ -50,11 +54,16 @@ fn farm_on_grassland_succeeds() {
         None,
     );
 
-    assert!(result.is_ok(), "Farm on Grassland should succeed: {result:?}");
+    assert!(
+        result.is_ok(),
+        "Farm on Grassland should succeed: {result:?}"
+    );
 
     let diff = result.unwrap();
     assert!(
-        diff.deltas.iter().any(|d| matches!(d, StateDelta::ImprovementPlaced { .. })),
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::ImprovementPlaced { .. })),
         "Diff should contain ImprovementPlaced"
     );
 
@@ -72,9 +81,13 @@ fn farm_on_ocean_fails() {
 
     // Grant Pottery — we want the terrain check to fire, not tech.
     let pottery_id = s.state.tech_refs.pottery;
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .researched_techs.push(pottery_id);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .researched_techs
+        .push(pottery_id);
 
     if let Some(t) = s.state.board.tile_mut(coord) {
         t.terrain = BuiltinTerrain::Ocean;
@@ -117,7 +130,10 @@ fn lumbermill_without_forest_fails_and_with_forest_also_fails_tech() {
         None,
     );
     assert!(
-        matches!(result_no_forest, Err(libciv::game::RulesError::InvalidImprovement)),
+        matches!(
+            result_no_forest,
+            Err(libciv::game::RulesError::InvalidImprovement)
+        ),
         "LumberMill without Forest should be rejected (InvalidImprovement)"
     );
 
@@ -134,7 +150,10 @@ fn lumbermill_without_forest_fails_and_with_forest_also_fails_tech() {
         None,
     );
     assert!(
-        matches!(result_with_forest, Err(libciv::game::RulesError::TechRequired)),
+        matches!(
+            result_with_forest,
+            Err(libciv::game::RulesError::TechRequired)
+        ),
         "LumberMill on Forest should fail TechRequired (unreachable sentinel)"
     );
 }
@@ -179,9 +198,13 @@ fn farm_succeeds_after_pottery_researched() {
     claim_tile(&mut s.state, coord, s.rome_id);
 
     let pottery_id = s.state.tech_refs.pottery;
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .researched_techs.push(pottery_id);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .researched_techs
+        .push(pottery_id);
 
     let rules = DefaultRulesEngine;
     let result = rules.place_improvement(
@@ -192,9 +215,16 @@ fn farm_succeeds_after_pottery_researched() {
         None,
     );
 
-    assert!(result.is_ok(), "Farm after Pottery should succeed: {result:?}");
     assert!(
-        result.unwrap().deltas.iter().any(|d| matches!(d, StateDelta::ImprovementPlaced { .. })),
+        result.is_ok(),
+        "Farm after Pottery should succeed: {result:?}"
+    );
+    assert!(
+        result
+            .unwrap()
+            .deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::ImprovementPlaced { .. })),
         "Diff should contain ImprovementPlaced"
     );
 }

@@ -13,8 +13,10 @@ use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
 use crate::components::api::me as me_api;
-use crate::components::{Btn, Panel, Popup, PopupBody, PopupSize, PopupTrigger, Segmented, segmented::Segment, Toggle};
 use crate::components::qr::qr_svg;
+use crate::components::{
+    Btn, Panel, Popup, PopupBody, PopupSize, PopupTrigger, Segmented, Toggle, segmented::Segment,
+};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 enum SaveState {

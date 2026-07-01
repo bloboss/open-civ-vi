@@ -206,7 +206,8 @@ fn apply_mission_effect(state: &mut GameState, op: &EspionageOp) {
         }
         MissionKind::FomentUnrest => {
             if let Some(city) = state.cities.iter_mut().find(|c| c.id == op.target_city) {
-                city.unrest = (city.unrest + FOMENT_UNREST_AMOUNT).min(crate::civ::city::UNREST_MAX);
+                city.unrest =
+                    (city.unrest + FOMENT_UNREST_AMOUNT).min(crate::civ::city::UNREST_MAX);
             }
         }
         MissionKind::GatherIntel | MissionKind::CounterSpy => {
@@ -237,13 +238,21 @@ mod tests {
             attacker,
             "Attacker",
             "Attacker",
-            Leader { name: "A", civ_id: attacker, agenda: BuiltinAgenda::Default },
+            Leader {
+                name: "A",
+                civ_id: attacker,
+                agenda: BuiltinAgenda::Default,
+            },
         ));
         state.civilizations.push(Civilization::new(
             defender,
             "Defender",
             "Defender",
-            Leader { name: "D", civ_id: defender, agenda: BuiltinAgenda::Default },
+            Leader {
+                name: "D",
+                civ_id: defender,
+                agenda: BuiltinAgenda::Default,
+            },
         ));
 
         let city_id = state.id_gen.next_city_id();
@@ -260,14 +269,20 @@ mod tests {
     }
 
     fn tech_progress(progress: u32) -> TechProgress {
-        TechProgress { tech_id: TechId::from_ulid(Ulid::nil()), progress, boosted: false }
+        TechProgress {
+            tech_id: TechId::from_ulid(Ulid::nil()),
+            progress,
+            boosted: false,
+        }
     }
 
     #[test]
     fn dispatch_rejects_own_city() {
         let (mut state, _attacker, defender, city_id) = setup();
         // A civ cannot spy on its own city.
-        assert!(dispatch_espionage(&mut state, defender, city_id, MissionKind::StealTech).is_none());
+        assert!(
+            dispatch_espionage(&mut state, defender, city_id, MissionKind::StealTech).is_none()
+        );
         assert!(state.espionage_ops.is_empty());
     }
 
@@ -323,9 +338,12 @@ mod tests {
 
         // A successful EspionageResolved delta was emitted for the attacker.
         let resolved = diff.deltas.iter().find_map(|d| match d {
-            StateDelta::EspionageResolved { owner, mission, success, .. } => {
-                Some((*owner, *mission, *success))
-            }
+            StateDelta::EspionageResolved {
+                owner,
+                mission,
+                success,
+                ..
+            } => Some((*owner, *mission, *success)),
             _ => None,
         });
         assert_eq!(resolved, Some((attacker, MissionKind::StealTech, true)));
@@ -353,11 +371,19 @@ mod tests {
         process_espionage_turn(&mut state, &mut diff);
 
         let after = state.city(city_id).unwrap().unrest;
-        assert_eq!(after, before + FOMENT_UNREST_AMOUNT, "unrest raised on success");
+        assert_eq!(
+            after,
+            before + FOMENT_UNREST_AMOUNT,
+            "unrest raised on success"
+        );
         assert!(state.espionage_ops.is_empty());
         assert!(diff.deltas.iter().any(|d| matches!(
             d,
-            StateDelta::EspionageResolved { mission: MissionKind::FomentUnrest, success: true, .. }
+            StateDelta::EspionageResolved {
+                mission: MissionKind::FomentUnrest,
+                success: true,
+                ..
+            }
         )));
     }
 
@@ -366,13 +392,24 @@ mod tests {
         let (mut state, attacker, _defender, city_id) = setup();
         dispatch_espionage(&mut state, attacker, city_id, MissionKind::GatherIntel)
             .expect("foreign target accepted");
-        assert_eq!(state.espionage_ops[0].turns_remaining, ESPIONAGE_MISSION_TURNS);
+        assert_eq!(
+            state.espionage_ops[0].turns_remaining,
+            ESPIONAGE_MISSION_TURNS
+        );
 
         // One tick: still in flight, no resolution delta.
         let mut diff = GameStateDiff::new();
         process_espionage_turn(&mut state, &mut diff);
         assert_eq!(state.espionage_ops.len(), 1);
-        assert_eq!(state.espionage_ops[0].turns_remaining, ESPIONAGE_MISSION_TURNS - 1);
-        assert!(!diff.deltas.iter().any(|d| matches!(d, StateDelta::EspionageResolved { .. })));
+        assert_eq!(
+            state.espionage_ops[0].turns_remaining,
+            ESPIONAGE_MISSION_TURNS - 1
+        );
+        assert!(
+            !diff
+                .deltas
+                .iter()
+                .any(|d| matches!(d, StateDelta::EspionageResolved { .. }))
+        );
     }
 }

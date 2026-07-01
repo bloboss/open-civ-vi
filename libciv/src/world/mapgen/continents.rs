@@ -26,14 +26,14 @@ pub type ContinentId = u8;
 /// Ocean / Coast tiles are absent from the returned map.
 pub fn generate(
     config: &MapGenConfig,
-    board:  &mut WorldBoard,
-    rng:    &mut SmallRng,
+    board: &mut WorldBoard,
+    rng: &mut SmallRng,
 ) -> HashMap<HexCoord, ContinentId> {
-    let n              = config.resolved_num_continents() as usize;
-    let total_tiles    = (config.width * config.height) as usize;
-    let land_fraction  = config.resolved_land_fraction();
-    let target_land    = (total_tiles as f32 * land_fraction).round() as usize;
-    let per_continent  = target_land as f32 / n as f32;
+    let n = config.resolved_num_continents() as usize;
+    let total_tiles = (config.width * config.height) as usize;
+    let land_fraction = config.resolved_land_fraction();
+    let target_land = (total_tiles as f32 * land_fraction).round() as usize;
+    let per_continent = target_land as f32 / n as f32;
 
     // --- 1. Seed placement (jitter grid) ------------------------------------
 
@@ -44,11 +44,11 @@ pub fn generate(
     // continent_map records which continent owns each tile.
     let mut continent_map: HashMap<HexCoord, ContinentId> = HashMap::new();
     // Per-continent current size.
-    let mut sizes: Vec<usize>                             = vec![0; n];
+    let mut sizes: Vec<usize> = vec![0; n];
     // Frontier: (coord, continent_id)
-    let mut frontier: Vec<(HexCoord, ContinentId)>       = Vec::new();
+    let mut frontier: Vec<(HexCoord, ContinentId)> = Vec::new();
     // Unoccupied set for fast membership test.
-    let mut unoccupied: HashSet<HexCoord>                 = board.all_coords().into_iter().collect();
+    let mut unoccupied: HashSet<HexCoord> = board.all_coords().into_iter().collect();
 
     for (i, seed) in seeds.iter().enumerate() {
         let cid = i as ContinentId;
@@ -91,7 +91,9 @@ pub fn generate(
     // --- 3. Set non-land tiles to Ocean -------------------------------------
 
     for coord in board.all_coords() {
-        if !continent_map.contains_key(&coord) && let Some(tile) = board.tile_mut(coord) {
+        if !continent_map.contains_key(&coord)
+            && let Some(tile) = board.tile_mut(coord)
+        {
             tile.terrain = BuiltinTerrain::Ocean;
         }
     }
@@ -101,7 +103,12 @@ pub fn generate(
     let ocean_coords: Vec<HexCoord> = board
         .all_coords()
         .into_iter()
-        .filter(|c| board.tile(*c).map(|t| t.terrain == BuiltinTerrain::Ocean).unwrap_or(false))
+        .filter(|c| {
+            board
+                .tile(*c)
+                .map(|t| t.terrain == BuiltinTerrain::Ocean)
+                .unwrap_or(false)
+        })
         .collect();
 
     for coord in ocean_coords {
@@ -141,7 +148,7 @@ fn place_seeds(config: &MapGenConfig, n: usize, rng: &mut SmallRng) -> Vec<HexCo
     let min_sep = ((w * h / n as f32).sqrt() * 0.55) as u32;
 
     let mut seeds: Vec<HexCoord> = Vec::with_capacity(n);
-    let mut sector_index: usize  = 0;
+    let mut sector_index: usize = 0;
 
     'outer: for row in 0..rows {
         for col in 0..cols {
@@ -163,7 +170,9 @@ fn place_seeds(config: &MapGenConfig, n: usize, rng: &mut SmallRng) -> Vec<HexCo
                 let r = r_min + rng.random_range(0..r_range);
                 let candidate = HexCoord::from_qr(q, r);
 
-                let too_close = seeds.iter().any(|s: &HexCoord| s.distance(&candidate) < min_sep);
+                let too_close = seeds
+                    .iter()
+                    .any(|s: &HexCoord| s.distance(&candidate) < min_sep);
                 if !too_close {
                     seeds.push(candidate);
                     placed = true;

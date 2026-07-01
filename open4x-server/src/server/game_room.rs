@@ -1,15 +1,13 @@
 //! Game room logic: action dispatch and turn resolution.
 
 use libciv::civ::ProductionItem;
-use libciv::game::recalculate_visibility;
 use libciv::game::diff::{GameStateDiff, StateDelta};
+use libciv::game::recalculate_visibility;
 use libciv::{CivId, RulesEngine, TurnEngine};
 
 use open4x_protocol::v1::messages::GameAction;
 
-use crate::server::state::{
-    GameRoom, NotificationKind, NotificationRecord, NotificationTarget,
-};
+use crate::server::state::{GameRoom, NotificationKind, NotificationRecord, NotificationTarget};
 
 /// Walk every StateDelta from the resolved turn and append notification
 /// records to the per-civ buffer. Player-visible events only — internal
@@ -24,182 +22,283 @@ fn emit_notifications_from_diff(room: &mut GameRoom, diff: &GameStateDiff) {
             StateDelta::TechResearched { civ, tech } => {
                 if civ_ids.contains(civ) {
                     let api_civ = api_civ_id(*civ);
-                    room.notifications.push(api_civ, NotificationRecord {
-                        id: String::new(),
-                        turn,
-                        kind: NotificationKind::Accent,
-                        category: "research",
-                        title: "Research complete".into(),
-                        desc: format!("{tech} researched · choose next →"),
-                        target: Some(NotificationTarget { screen: "tech".into(), q: None, r: None }),
-                    });
+                    room.notifications.push(
+                        api_civ,
+                        NotificationRecord {
+                            id: String::new(),
+                            turn,
+                            kind: NotificationKind::Accent,
+                            category: "research",
+                            title: "Research complete".into(),
+                            desc: format!("{tech} researched · choose next →"),
+                            target: Some(NotificationTarget {
+                                screen: "tech".into(),
+                                q: None,
+                                r: None,
+                            }),
+                        },
+                    );
                 }
             }
             StateDelta::CivicCompleted { civ, civic } => {
                 if civ_ids.contains(civ) {
                     let api_civ = api_civ_id(*civ);
-                    room.notifications.push(api_civ, NotificationRecord {
-                        id: String::new(),
-                        turn,
-                        kind: NotificationKind::Accent,
-                        category: "civic",
-                        title: "Civic unlocked".into(),
-                        desc: format!("{civic} complete"),
-                        target: Some(NotificationTarget { screen: "civics".into(), q: None, r: None }),
-                    });
+                    room.notifications.push(
+                        api_civ,
+                        NotificationRecord {
+                            id: String::new(),
+                            turn,
+                            kind: NotificationKind::Accent,
+                            category: "civic",
+                            title: "Civic unlocked".into(),
+                            desc: format!("{civic} complete"),
+                            target: Some(NotificationTarget {
+                                screen: "civics".into(),
+                                q: None,
+                                r: None,
+                            }),
+                        },
+                    );
                 }
             }
             StateDelta::EurekaTriggered { civ, tech } => {
                 if civ_ids.contains(civ) {
                     let api_civ = api_civ_id(*civ);
-                    room.notifications.push(api_civ, NotificationRecord {
-                        id: String::new(),
-                        turn,
-                        kind: NotificationKind::Good,
-                        category: "research",
-                        title: "Eureka!".into(),
-                        desc: format!("Boost toward {tech}"),
-                        target: Some(NotificationTarget { screen: "tech".into(), q: None, r: None }),
-                    });
+                    room.notifications.push(
+                        api_civ,
+                        NotificationRecord {
+                            id: String::new(),
+                            turn,
+                            kind: NotificationKind::Good,
+                            category: "research",
+                            title: "Eureka!".into(),
+                            desc: format!("Boost toward {tech}"),
+                            target: Some(NotificationTarget {
+                                screen: "tech".into(),
+                                q: None,
+                                r: None,
+                            }),
+                        },
+                    );
                 }
             }
             StateDelta::InspirationTriggered { civ, civic } => {
                 if civ_ids.contains(civ) {
                     let api_civ = api_civ_id(*civ);
-                    room.notifications.push(api_civ, NotificationRecord {
-                        id: String::new(),
-                        turn,
-                        kind: NotificationKind::Good,
-                        category: "civic",
-                        title: "Inspiration!".into(),
-                        desc: format!("Boost toward {civic}"),
-                        target: Some(NotificationTarget { screen: "civics".into(), q: None, r: None }),
-                    });
+                    room.notifications.push(
+                        api_civ,
+                        NotificationRecord {
+                            id: String::new(),
+                            turn,
+                            kind: NotificationKind::Good,
+                            category: "civic",
+                            title: "Inspiration!".into(),
+                            desc: format!("Boost toward {civic}"),
+                            target: Some(NotificationTarget {
+                                screen: "civics".into(),
+                                q: None,
+                                r: None,
+                            }),
+                        },
+                    );
                 }
             }
-            StateDelta::CityFounded { city: _, coord, owner } => {
+            StateDelta::CityFounded {
+                city: _,
+                coord,
+                owner,
+            } => {
                 if civ_ids.contains(owner) {
                     let api_civ = api_civ_id(*owner);
-                    room.notifications.push(api_civ, NotificationRecord {
-                        id: String::new(),
-                        turn,
-                        kind: NotificationKind::Good,
-                        category: "city",
-                        title: "City founded".into(),
-                        desc: format!("at ({}, {})", coord.q, coord.r),
-                        target: Some(NotificationTarget {
-                            screen: "hud".into(), q: Some(coord.q), r: Some(coord.r),
-                        }),
-                    });
+                    room.notifications.push(
+                        api_civ,
+                        NotificationRecord {
+                            id: String::new(),
+                            turn,
+                            kind: NotificationKind::Good,
+                            category: "city",
+                            title: "City founded".into(),
+                            desc: format!("at ({}, {})", coord.q, coord.r),
+                            target: Some(NotificationTarget {
+                                screen: "hud".into(),
+                                q: Some(coord.q),
+                                r: Some(coord.r),
+                            }),
+                        },
+                    );
                 }
             }
-            StateDelta::CityCaptured { new_owner, old_owner, .. } => {
+            StateDelta::CityCaptured {
+                new_owner,
+                old_owner,
+                ..
+            } => {
                 if civ_ids.contains(new_owner) {
                     let api_civ = api_civ_id(*new_owner);
-                    room.notifications.push(api_civ, NotificationRecord {
-                        id: String::new(),
-                        turn,
-                        kind: NotificationKind::Good,
-                        category: "military",
-                        title: "City captured".into(),
-                        desc: "An enemy city has fallen.".into(),
-                        target: Some(NotificationTarget { screen: "overview".into(), q: None, r: None }),
-                    });
+                    room.notifications.push(
+                        api_civ,
+                        NotificationRecord {
+                            id: String::new(),
+                            turn,
+                            kind: NotificationKind::Good,
+                            category: "military",
+                            title: "City captured".into(),
+                            desc: "An enemy city has fallen.".into(),
+                            target: Some(NotificationTarget {
+                                screen: "overview".into(),
+                                q: None,
+                                r: None,
+                            }),
+                        },
+                    );
                 }
                 if civ_ids.contains(old_owner) {
                     let api_civ = api_civ_id(*old_owner);
-                    room.notifications.push(api_civ, NotificationRecord {
-                        id: String::new(),
-                        turn,
-                        kind: NotificationKind::Bad,
-                        category: "military",
-                        title: "City lost".into(),
-                        desc: "We lost a city.".into(),
-                        target: Some(NotificationTarget { screen: "overview".into(), q: None, r: None }),
-                    });
+                    room.notifications.push(
+                        api_civ,
+                        NotificationRecord {
+                            id: String::new(),
+                            turn,
+                            kind: NotificationKind::Bad,
+                            category: "military",
+                            title: "City lost".into(),
+                            desc: "We lost a city.".into(),
+                            target: Some(NotificationTarget {
+                                screen: "overview".into(),
+                                q: None,
+                                r: None,
+                            }),
+                        },
+                    );
                 }
             }
-            StateDelta::PopulationGrew { city: _, new_population } => {
+            StateDelta::PopulationGrew {
+                city: _,
+                new_population,
+            } => {
                 // Attribute to all civs that own the city — find from state.
                 for civ in &civ_ids {
                     let api_civ = api_civ_id(*civ);
-                    room.notifications.push(api_civ, NotificationRecord {
-                        id: String::new(),
-                        turn,
-                        kind: NotificationKind::Neutral,
-                        category: "city",
-                        title: "Population growth".into(),
-                        desc: format!("A city grew to {new_population}"),
-                        target: Some(NotificationTarget { screen: "overview".into(), q: None, r: None }),
-                    });
+                    room.notifications.push(
+                        api_civ,
+                        NotificationRecord {
+                            id: String::new(),
+                            turn,
+                            kind: NotificationKind::Neutral,
+                            category: "city",
+                            title: "Population growth".into(),
+                            desc: format!("A city grew to {new_population}"),
+                            target: Some(NotificationTarget {
+                                screen: "overview".into(),
+                                q: None,
+                                r: None,
+                            }),
+                        },
+                    );
                 }
             }
             StateDelta::BuildingCompleted { city: _, building } => {
                 for civ in &civ_ids {
                     let api_civ = api_civ_id(*civ);
-                    room.notifications.push(api_civ, NotificationRecord {
-                        id: String::new(),
-                        turn,
-                        kind: NotificationKind::Good,
-                        category: "production",
-                        title: "Building complete".into(),
-                        desc: format!("{building} finished"),
-                        target: Some(NotificationTarget { screen: "city".into(), q: None, r: None }),
-                    });
+                    room.notifications.push(
+                        api_civ,
+                        NotificationRecord {
+                            id: String::new(),
+                            turn,
+                            kind: NotificationKind::Good,
+                            category: "production",
+                            title: "Building complete".into(),
+                            desc: format!("{building} finished"),
+                            target: Some(NotificationTarget {
+                                screen: "city".into(),
+                                q: None,
+                                r: None,
+                            }),
+                        },
+                    );
                 }
             }
             StateDelta::WonderBuilt { civ, wonder, .. } => {
                 if civ_ids.contains(civ) {
                     let api_civ = api_civ_id(*civ);
-                    room.notifications.push(api_civ, NotificationRecord {
-                        id: String::new(),
-                        turn,
-                        kind: NotificationKind::Accent,
-                        category: "wonder",
-                        title: "Wonder built".into(),
-                        desc: format!("{wonder} complete"),
-                        target: Some(NotificationTarget { screen: "city".into(), q: None, r: None }),
-                    });
+                    room.notifications.push(
+                        api_civ,
+                        NotificationRecord {
+                            id: String::new(),
+                            turn,
+                            kind: NotificationKind::Accent,
+                            category: "wonder",
+                            title: "Wonder built".into(),
+                            desc: format!("{wonder} complete"),
+                            target: Some(NotificationTarget {
+                                screen: "city".into(),
+                                q: None,
+                                r: None,
+                            }),
+                        },
+                    );
                 }
             }
-            StateDelta::DiplomacyChanged { civ_a, civ_b, new_status } => {
+            StateDelta::DiplomacyChanged {
+                civ_a,
+                civ_b,
+                new_status,
+            } => {
                 let mention = |me: &CivId, other: &CivId| {
                     if civ_ids.contains(me) {
                         let api_me = api_civ_id(*me);
                         let api_other = api_civ_id(*other);
                         let kind = match new_status {
                             libciv::civ::diplomacy::DiplomaticStatus::War => NotificationKind::Bad,
-                            libciv::civ::diplomacy::DiplomaticStatus::Alliance => NotificationKind::Good,
+                            libciv::civ::diplomacy::DiplomaticStatus::Alliance => {
+                                NotificationKind::Good
+                            }
                             _ => NotificationKind::Warn,
                         };
-                        Some((api_me, NotificationRecord {
-                            id: String::new(),
-                            turn,
-                            kind,
-                            category: "diplomacy",
-                            title: format!("Relations: {new_status:?}"),
-                            desc: format!("with civ {api_other}"),
-                            target: Some(NotificationTarget { screen: "dipl".into(), q: None, r: None }),
-                        }))
-                    } else { None }
+                        Some((
+                            api_me,
+                            NotificationRecord {
+                                id: String::new(),
+                                turn,
+                                kind,
+                                category: "diplomacy",
+                                title: format!("Relations: {new_status:?}"),
+                                desc: format!("with civ {api_other}"),
+                                target: Some(NotificationTarget {
+                                    screen: "dipl".into(),
+                                    q: None,
+                                    r: None,
+                                }),
+                            },
+                        ))
+                    } else {
+                        None
+                    }
                 };
-                if let Some((c, rec)) = mention(civ_a, civ_b) { room.notifications.push(c, rec); }
-                if let Some((c, rec)) = mention(civ_b, civ_a) { room.notifications.push(c, rec); }
+                if let Some((c, rec)) = mention(civ_a, civ_b) {
+                    room.notifications.push(c, rec);
+                }
+                if let Some((c, rec)) = mention(civ_b, civ_a) {
+                    room.notifications.push(c, rec);
+                }
             }
             StateDelta::EventFired { civ, event_id } => {
                 if civ_ids.contains(civ)
                     && let Some(def) = libciv::game::rules::events::event_def(event_id)
                 {
                     let api_civ = api_civ_id(*civ);
-                    room.notifications.push(api_civ, NotificationRecord {
-                        id: String::new(),
-                        turn,
-                        kind: event_kind_to_notif(def.notif.kind),
-                        category: def.notif.category,
-                        title: def.notif.title.to_string(),
-                        desc: def.notif.desc.to_string(),
-                        target: None,
-                    });
+                    room.notifications.push(
+                        api_civ,
+                        NotificationRecord {
+                            id: String::new(),
+                            turn,
+                            kind: event_kind_to_notif(def.notif.kind),
+                            category: def.notif.category,
+                            title: def.notif.title.to_string(),
+                            desc: def.notif.desc.to_string(),
+                            target: None,
+                        },
+                    );
                 }
             }
             // Bookkeeping deltas we deliberately don't surface as notifications
@@ -232,12 +331,15 @@ impl GameRoom {
             GameAction::MoveUnit { unit, to } => {
                 let uid = to_libciv_unit_id(*unit);
                 let u = self.state.unit(uid).ok_or("unit not found")?;
-                if u.owner != civ_id { return Err("not your unit".into()); }
+                if u.owner != civ_id {
+                    return Err("not your unit".into());
+                }
                 let dest = to_libciv_coord(*to);
                 match self.rules.move_unit(&self.state, uid, dest) {
                     Ok(diff) | Err(libciv::game::RulesError::InsufficientMovement(diff)) => {
                         for delta in &diff.deltas {
-                            if let libciv::game::StateDelta::UnitMoved { unit, to, cost, .. } = delta
+                            if let libciv::game::StateDelta::UnitMoved { unit, to, cost, .. } =
+                                delta
                                 && let Some(u) = self.state.unit_mut(*unit)
                             {
                                 u.coord = *to;
@@ -254,72 +356,105 @@ impl GameRoom {
                 let atk = to_libciv_unit_id(*attacker);
                 let def = to_libciv_unit_id(*defender);
                 let u = self.state.unit(atk).ok_or("attacker not found")?;
-                if u.owner != civ_id { return Err("not your unit".into()); }
-                self.rules.attack(&mut self.state, atk, def)
+                if u.owner != civ_id {
+                    return Err("not your unit".into());
+                }
+                self.rules
+                    .attack(&mut self.state, atk, def)
                     .map(|_| ())
                     .map_err(|e| format!("{e:?}"))
             }
             GameAction::FoundCity { settler, name } => {
                 let sid = to_libciv_unit_id(*settler);
                 let u = self.state.unit(sid).ok_or("settler not found")?;
-                if u.owner != civ_id { return Err("not your unit".into()); }
-                self.rules.found_city(&mut self.state, sid, name.clone())
+                if u.owner != civ_id {
+                    return Err("not your unit".into());
+                }
+                self.rules
+                    .found_city(&mut self.state, sid, name.clone())
                     .map(|_| ())
                     .map_err(|e| format!("{e:?}"))
             }
             GameAction::PlaceImprovement { coord, improvement } => {
                 let c = to_libciv_coord(*coord);
                 let imp = to_libciv_improvement(*improvement);
-                self.rules.place_improvement(&mut self.state, civ_id, c, imp, None)
+                self.rules
+                    .place_improvement(&mut self.state, civ_id, c, imp, None)
                     .map(|_| ())
                     .map_err(|e| format!("{e:?}"))
             }
             GameAction::QueueProduction { city, item } => {
                 let city_id = to_libciv_city_id(*city);
-                let city = self.state.cities.iter_mut()
+                let city = self
+                    .state
+                    .cities
+                    .iter_mut()
                     .find(|c| c.id == city_id)
                     .ok_or("city not found")?;
-                if city.owner != civ_id { return Err("not your city".into()); }
+                if city.owner != civ_id {
+                    return Err("not your city".into());
+                }
                 let prod_item = to_libciv_production_item(item);
                 city.production_queue.push_back(prod_item);
                 Ok(())
             }
             GameAction::CancelProduction { city, index } => {
                 let city_id = to_libciv_city_id(*city);
-                let city = self.state.cities.iter_mut()
+                let city = self
+                    .state
+                    .cities
+                    .iter_mut()
                     .find(|c| c.id == city_id)
                     .ok_or("city not found")?;
-                if city.owner != civ_id { return Err("not your city".into()); }
+                if city.owner != civ_id {
+                    return Err("not your city".into());
+                }
                 if *index < city.production_queue.len() {
                     city.production_queue.remove(*index);
-                    if *index == 0 { city.production_stored = 0; }
+                    if *index == 0 {
+                        city.production_stored = 0;
+                    }
                 }
                 Ok(())
             }
-            GameAction::EstablishTradeRoute { trader, destination } => {
+            GameAction::EstablishTradeRoute {
+                trader,
+                destination,
+            } => {
                 let tid = to_libciv_unit_id(*trader);
                 let dest = to_libciv_city_id(*destination);
                 let u = self.state.unit(tid).ok_or("trader not found")?;
-                if u.owner != civ_id { return Err("not your unit".into()); }
-                self.rules.establish_trade_route(&mut self.state, tid, dest)
+                if u.owner != civ_id {
+                    return Err("not your unit".into());
+                }
+                self.rules
+                    .establish_trade_route(&mut self.state, tid, dest)
                     .map(|_| ())
                     .map_err(|e| format!("{e:?}"))
             }
             GameAction::QueueResearch { tech } => {
                 let tech_id = to_libciv_tech_id(*tech);
-                let civ = self.state.civilizations.iter_mut()
+                let civ = self
+                    .state
+                    .civilizations
+                    .iter_mut()
                     .find(|c| c.id == civ_id)
                     .ok_or("civ not found")?;
                 // Add to research queue if not already present.
                 if !civ.research_queue.iter().any(|tp| tp.tech_id == tech_id) {
                     civ.research_queue.push_back(libciv::civ::TechProgress {
-                        tech_id, progress: 0, boosted: false,
+                        tech_id,
+                        progress: 0,
+                        boosted: false,
                     });
                 }
                 Ok(())
             }
             GameAction::CancelResearch => {
-                let civ = self.state.civilizations.iter_mut()
+                let civ = self
+                    .state
+                    .civilizations
+                    .iter_mut()
                     .find(|c| c.id == civ_id)
                     .ok_or("civ not found")?;
                 // Drop the front of the queue (active research). Partial
@@ -328,7 +463,10 @@ impl GameRoom {
                 Ok(())
             }
             GameAction::CancelCivic => {
-                let civ = self.state.civilizations.iter_mut()
+                let civ = self
+                    .state
+                    .civilizations
+                    .iter_mut()
                     .find(|c| c.id == civ_id)
                     .ok_or("civ not found")?;
                 // Clear the active civic. Idempotent: no-op when None.
@@ -339,13 +477,19 @@ impl GameRoom {
                 // Find the requested government in the registry. Use the
                 // engine's static `&str` form so we set the same fields
                 // OneShotEffect::AdoptGovernment does.
-                let new_gov = self.state.governments.iter()
+                let new_gov = self
+                    .state
+                    .governments
+                    .iter()
                     .find(|g| g.name == name.as_str())
                     .cloned()
                     .ok_or_else(|| format!("unknown government: {name:?}"))?;
 
                 // Unlock check: civ must have completed the prereq civic.
-                let civ_idx = self.state.civilizations.iter()
+                let civ_idx = self
+                    .state
+                    .civilizations
+                    .iter()
                     .position(|c| c.id == civ_id)
                     .ok_or("civ not found")?;
                 let unlocked = self.state.civilizations[civ_idx]
@@ -360,22 +504,39 @@ impl GameRoom {
                 let mut mil = new_gov.slots.military as i32;
                 let mut eco = new_gov.slots.economic as i32;
                 let mut dip = new_gov.slots.diplomatic as i32;
-                let mut wc  = new_gov.slots.wildcard as i32;
+                let mut wc = new_gov.slots.wildcard as i32;
                 let active = self.state.civilizations[civ_idx].active_policies.clone();
                 let mut kept = Vec::new();
                 for pid in active {
-                    let policy_type = self.state.policies.iter()
+                    let policy_type = self
+                        .state
+                        .policies
+                        .iter()
                         .find(|p| p.id == pid)
                         .map(|p| p.policy_type);
                     use libciv::PolicyType as PT;
                     let fits = match policy_type {
-                        Some(PT::Military)   if mil > 0 => { mil -= 1; true }
-                        Some(PT::Economic)   if eco > 0 => { eco -= 1; true }
-                        Some(PT::Diplomatic) if dip > 0 => { dip -= 1; true }
-                        Some(PT::Wildcard)   if wc  > 0 => { wc  -= 1; true }
+                        Some(PT::Military) if mil > 0 => {
+                            mil -= 1;
+                            true
+                        }
+                        Some(PT::Economic) if eco > 0 => {
+                            eco -= 1;
+                            true
+                        }
+                        Some(PT::Diplomatic) if dip > 0 => {
+                            dip -= 1;
+                            true
+                        }
+                        Some(PT::Wildcard) if wc > 0 => {
+                            wc -= 1;
+                            true
+                        }
                         _ => false,
                     };
-                    if fits { kept.push(pid); }
+                    if fits {
+                        kept.push(pid);
+                    }
                 }
                 self.state.civilizations[civ_idx].active_policies = kept;
                 self.state.civilizations[civ_idx].current_government = Some(new_gov.id);
@@ -384,12 +545,17 @@ impl GameRoom {
             }
             GameAction::QueueCivic { civic } => {
                 let civic_id = to_libciv_civic_id(*civic);
-                let civ = self.state.civilizations.iter_mut()
+                let civ = self
+                    .state
+                    .civilizations
+                    .iter_mut()
                     .find(|c| c.id == civ_id)
                     .ok_or("civ not found")?;
                 if civ.civic_in_progress.is_none() {
                     civ.civic_in_progress = Some(libciv::civ::CivicProgress {
-                        civic_id, progress: 0, inspired: false,
+                        civic_id,
+                        progress: 0,
+                        inspired: false,
                     });
                 }
                 Ok(())
@@ -397,59 +563,80 @@ impl GameRoom {
             GameAction::AssignCitizen { city, tile, lock } => {
                 let city_id = to_libciv_city_id(*city);
                 let coord = to_libciv_coord(*tile);
-                self.rules.assign_citizen(&mut self.state, city_id, coord, *lock)
+                self.rules
+                    .assign_citizen(&mut self.state, city_id, coord, *lock)
                     .map(|_| ())
                     .map_err(|e| format!("{e:?}"))
             }
             GameAction::UnassignCitizen { city, tile } => {
                 let city_id = to_libciv_city_id(*city);
                 let coord = to_libciv_coord(*tile);
-                let city = self.state.cities.iter_mut()
+                let city = self
+                    .state
+                    .cities
+                    .iter_mut()
                     .find(|c| c.id == city_id)
                     .ok_or("city not found")?;
-                if city.owner != civ_id { return Err("not your city".into()); }
+                if city.owner != civ_id {
+                    return Err("not your city".into());
+                }
                 city.worked_tiles.retain(|t| *t != coord);
                 city.locked_tiles.remove(&coord);
                 Ok(())
             }
             GameAction::DeclareWar { target } => {
                 let target_id = to_libciv_civ_id(*target);
-                self.rules.declare_war(&mut self.state, civ_id, target_id)
+                self.rules
+                    .declare_war(&mut self.state, civ_id, target_id)
                     .map(|_| ())
                     .map_err(|e| format!("{e:?}"))
             }
             GameAction::MakePeace { target } => {
                 let target_id = to_libciv_civ_id(*target);
-                self.rules.make_peace(&mut self.state, civ_id, target_id)
+                self.rules
+                    .make_peace(&mut self.state, civ_id, target_id)
                     .map(|_| ())
                     .map_err(|e| format!("{e:?}"))
             }
             GameAction::AssignPolicy { policy } => {
                 let pid = to_libciv_policy_id(*policy);
-                self.rules.assign_policy(&mut self.state, civ_id, pid)
+                self.rules
+                    .assign_policy(&mut self.state, civ_id, pid)
                     .map(|_| ())
                     .map_err(|e| format!("{e:?}"))
             }
             GameAction::FoundPantheon { belief } => {
                 let bid = to_libciv_belief_id(*belief);
-                self.rules.found_pantheon(&mut self.state, civ_id, bid)
+                self.rules
+                    .found_pantheon(&mut self.state, civ_id, bid)
                     .map(|_| ())
                     .map_err(|e| format!("{e:?}"))
             }
-            GameAction::FoundReligion { prophet, name, beliefs } => {
+            GameAction::FoundReligion {
+                prophet,
+                name,
+                beliefs,
+            } => {
                 let pid = to_libciv_unit_id(*prophet);
                 let u = self.state.unit(pid).ok_or("prophet not found")?;
-                if u.owner != civ_id { return Err("not your unit".into()); }
-                let bids: Vec<libciv::BeliefId> = beliefs.iter().map(|b| to_libciv_belief_id(*b)).collect();
-                self.rules.found_religion(&mut self.state, pid, name.clone(), bids)
+                if u.owner != civ_id {
+                    return Err("not your unit".into());
+                }
+                let bids: Vec<libciv::BeliefId> =
+                    beliefs.iter().map(|b| to_libciv_belief_id(*b)).collect();
+                self.rules
+                    .found_religion(&mut self.state, pid, name.clone(), bids)
                     .map(|_| ())
                     .map_err(|e| format!("{e:?}"))
             }
             GameAction::SpreadReligion { unit } => {
                 let uid = to_libciv_unit_id(*unit);
                 let u = self.state.unit(uid).ok_or("unit not found")?;
-                if u.owner != civ_id { return Err("not your unit".into()); }
-                self.rules.spread_religion(&mut self.state, uid)
+                if u.owner != civ_id {
+                    return Err("not your unit".into());
+                }
+                self.rules
+                    .spread_religion(&mut self.state, uid)
                     .map(|_| ())
                     .map_err(|e| format!("{e:?}"))
             }
@@ -457,8 +644,11 @@ impl GameRoom {
                 let atk = to_libciv_unit_id(*attacker);
                 let def = to_libciv_unit_id(*defender);
                 let u = self.state.unit(atk).ok_or("attacker not found")?;
-                if u.owner != civ_id { return Err("not your unit".into()); }
-                self.rules.theological_combat(&mut self.state, atk, def)
+                if u.owner != civ_id {
+                    return Err("not your unit".into());
+                }
+                self.rules
+                    .theological_combat(&mut self.state, atk, def)
                     .map(|_| ())
                     .map_err(|e| format!("{e:?}"))
             }
@@ -471,33 +661,42 @@ impl GameRoom {
                 if trimmed.chars().count() > 64 {
                     return Err("city name must be 64 characters or fewer".into());
                 }
-                let city = self.state.cities.iter_mut()
+                let city = self
+                    .state
+                    .cities
+                    .iter_mut()
                     .find(|c| c.id == city_id)
                     .ok_or("city not found")?;
-                if city.owner != civ_id { return Err("not your city".into()); }
+                if city.owner != civ_id {
+                    return Err("not your city".into());
+                }
                 city.name = trimmed.to_string();
                 Ok(())
             }
             GameAction::AssignCityFocus { city, focus } => {
                 let city_id = to_libciv_city_id(*city);
-                let city = self.state.cities.iter_mut()
+                let city = self
+                    .state
+                    .cities
+                    .iter_mut()
                     .find(|c| c.id == city_id)
                     .ok_or("city not found")?;
-                if city.owner != civ_id { return Err("not your city".into()); }
+                if city.owner != civ_id {
+                    return Err("not your city".into());
+                }
                 city.focus = to_libciv_city_focus(*focus);
                 Ok(())
             }
             GameAction::PurchaseWithFaith { city, item } => {
                 let cid = to_libciv_city_id(*city);
                 // Parse item string as faith purchase.
-                let purchase_item = libciv::game::FaithPurchaseItem::Unit(
-                    match item.as_str() {
-                        "Missionary" => "Missionary",
-                        "Apostle" => "Apostle",
-                        _ => return Err(format!("unknown faith purchase: {item}")),
-                    }
-                );
-                self.rules.purchase_with_faith(&mut self.state, civ_id, cid, purchase_item)
+                let purchase_item = libciv::game::FaithPurchaseItem::Unit(match item.as_str() {
+                    "Missionary" => "Missionary",
+                    "Apostle" => "Apostle",
+                    _ => return Err(format!("unknown faith purchase: {item}")),
+                });
+                self.rules
+                    .purchase_with_faith(&mut self.state, civ_id, cid, purchase_item)
                     .map(|_| ())
                     .map_err(|e| format!("{e:?}"))
             }
@@ -576,57 +775,78 @@ fn to_libciv_policy_id(id: open4x_protocol::v1::ids::PolicyId) -> libciv::Policy
 }
 
 fn to_libciv_city_focus(f: open4x_protocol::v1::enums::CityFocus) -> libciv::civ::CityFocus {
-    use open4x_protocol::v1::enums::CityFocus as A;
     use libciv::civ::CityFocus as L;
+    use open4x_protocol::v1::enums::CityFocus as A;
     match f {
-        A::Default    => L::Default,
-        A::Food       => L::Food,
+        A::Default => L::Default,
+        A::Food => L::Food,
         A::Production => L::Production,
-        A::Gold       => L::Gold,
-        A::Science    => L::Science,
-        A::Culture    => L::Culture,
-        A::Faith      => L::Faith,
+        A::Gold => L::Gold,
+        A::Science => L::Science,
+        A::Culture => L::Culture,
+        A::Faith => L::Faith,
     }
 }
 
-pub(crate) fn from_libciv_city_focus(f: libciv::civ::CityFocus) -> open4x_protocol::v1::enums::CityFocus {
-    use open4x_protocol::v1::enums::CityFocus as A;
+pub(crate) fn from_libciv_city_focus(
+    f: libciv::civ::CityFocus,
+) -> open4x_protocol::v1::enums::CityFocus {
     use libciv::civ::CityFocus as L;
+    use open4x_protocol::v1::enums::CityFocus as A;
     match f {
-        L::Default    => A::Default,
-        L::Food       => A::Food,
+        L::Default => A::Default,
+        L::Food => A::Food,
         L::Production => A::Production,
-        L::Gold       => A::Gold,
-        L::Science    => A::Science,
-        L::Culture    => A::Culture,
-        L::Faith      => A::Faith,
+        L::Gold => A::Gold,
+        L::Science => A::Science,
+        L::Culture => A::Culture,
+        L::Faith => A::Faith,
     }
 }
 
-fn to_libciv_improvement(i: open4x_protocol::v1::enums::BuiltinImprovement) -> libciv::world::improvement::BuiltinImprovement {
+fn to_libciv_improvement(
+    i: open4x_protocol::v1::enums::BuiltinImprovement,
+) -> libciv::world::improvement::BuiltinImprovement {
     use libciv::world::improvement::BuiltinImprovement as I;
     use open4x_protocol::v1::enums::BuiltinImprovement as A;
     match i {
-        A::Farm => I::Farm, A::Mine => I::Mine, A::LumberMill => I::LumberMill,
-        A::TradingPost => I::TradingPost, A::Fort => I::Fort, A::Airstrip => I::Airstrip,
+        A::Farm => I::Farm,
+        A::Mine => I::Mine,
+        A::LumberMill => I::LumberMill,
+        A::TradingPost => I::TradingPost,
+        A::Fort => I::Fort,
+        A::Airstrip => I::Airstrip,
         A::MissileSilo => I::MissileSilo,
-        A::Quarry => I::Quarry, A::Plantation => I::Plantation,
-        A::Camp => I::Camp, A::FishingBoats => I::FishingBoats,
+        A::Quarry => I::Quarry,
+        A::Plantation => I::Plantation,
+        A::Camp => I::Camp,
+        A::FishingBoats => I::FishingBoats,
         A::Pasture => I::Pasture,
-        A::Sphinx => I::Sphinx, A::Stepwell => I::Stepwell,
-        A::OilWell => I::OilWell, A::OffshoreOilRig => I::OffshoreOilRig,
-        A::BeachResort => I::BeachResort, A::Chateau => I::Chateau,
-        A::ColossalHead => I::ColossalHead, A::GreatWall => I::GreatWall,
-        A::Kurgan => I::Kurgan, A::Mission => I::Mission,
-        A::RomanFort => I::RomanFort, A::Ziggurat => I::Ziggurat,
-        A::SolarFarm => I::SolarFarm, A::WindFarm => I::WindFarm,
-        A::OffshoreWindFarm => I::OffshoreWindFarm, A::GeothermalPlant => I::GeothermalPlant,
-        A::Seastead => I::Seastead, A::MountainTunnel => I::MountainTunnel,
+        A::Sphinx => I::Sphinx,
+        A::Stepwell => I::Stepwell,
+        A::OilWell => I::OilWell,
+        A::OffshoreOilRig => I::OffshoreOilRig,
+        A::BeachResort => I::BeachResort,
+        A::Chateau => I::Chateau,
+        A::ColossalHead => I::ColossalHead,
+        A::GreatWall => I::GreatWall,
+        A::Kurgan => I::Kurgan,
+        A::Mission => I::Mission,
+        A::RomanFort => I::RomanFort,
+        A::Ziggurat => I::Ziggurat,
+        A::SolarFarm => I::SolarFarm,
+        A::WindFarm => I::WindFarm,
+        A::OffshoreWindFarm => I::OffshoreWindFarm,
+        A::GeothermalPlant => I::GeothermalPlant,
+        A::Seastead => I::Seastead,
+        A::MountainTunnel => I::MountainTunnel,
         A::SkiResort => I::SkiResort,
     }
 }
 
-fn to_libciv_production_item(item: &open4x_protocol::v1::enums::ProductionItemView) -> ProductionItem {
+fn to_libciv_production_item(
+    item: &open4x_protocol::v1::enums::ProductionItemView,
+) -> ProductionItem {
     use open4x_protocol::v1::enums::ProductionItemView as P;
     match item {
         P::Unit(id) => ProductionItem::Unit(libciv::UnitTypeId::from_ulid(id.as_ulid())),
@@ -637,22 +857,31 @@ fn to_libciv_production_item(item: &open4x_protocol::v1::enums::ProductionItemVi
     }
 }
 
-fn to_libciv_district(d: open4x_protocol::v1::enums::BuiltinDistrict) -> libciv::civ::district::BuiltinDistrict {
+fn to_libciv_district(
+    d: open4x_protocol::v1::enums::BuiltinDistrict,
+) -> libciv::civ::district::BuiltinDistrict {
     use libciv::civ::district::BuiltinDistrict as D;
     use open4x_protocol::v1::enums::BuiltinDistrict as A;
     match d {
-        A::Campus => D::Campus, A::TheaterSquare => D::TheaterSquare,
-        A::CommercialHub => D::CommercialHub, A::Harbor => D::Harbor,
-        A::HolySite => D::HolySite, A::Encampment => D::Encampment,
+        A::Campus => D::Campus,
+        A::TheaterSquare => D::TheaterSquare,
+        A::CommercialHub => D::CommercialHub,
+        A::Harbor => D::Harbor,
+        A::HolySite => D::HolySite,
+        A::Encampment => D::Encampment,
         A::IndustrialZone => D::IndustrialZone,
         A::EntertainmentComplex => D::EntertainmentComplex,
         A::WaterPark => D::WaterPark,
         A::Aqueduct => D::Aqueduct,
         A::Dam => D::Dam,
         A::Canal => D::Canal,
-        A::Aerodrome => D::Aerodrome, A::Neighborhood => D::Neighborhood,
-        A::Spaceport => D::Spaceport, A::CityCenter => D::CityCenter,
-        A::Lavra => D::Lavra, A::Mbanza => D::Mbanza,
-        A::StreetCarnival => D::StreetCarnival, A::RoyalNavyDockyard => D::RoyalNavyDockyard,
+        A::Aerodrome => D::Aerodrome,
+        A::Neighborhood => D::Neighborhood,
+        A::Spaceport => D::Spaceport,
+        A::CityCenter => D::CityCenter,
+        A::Lavra => D::Lavra,
+        A::Mbanza => D::Mbanza,
+        A::StreetCarnival => D::StreetCarnival,
+        A::RoyalNavyDockyard => D::RoyalNavyDockyard,
     }
 }

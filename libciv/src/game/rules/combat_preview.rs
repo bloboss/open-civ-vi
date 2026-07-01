@@ -26,15 +26,15 @@ use super::super::state::GameState;
 /// is in range); `None` otherwise.
 #[derive(Debug, Clone)]
 pub struct CombatPreview {
-    pub attacker:                  UnitId,
-    pub defender:                  UnitId,
-    pub attack_type:               AttackType,
+    pub attacker: UnitId,
+    pub defender: UnitId,
+    pub attack_type: AttackType,
     /// Effective combat strength of the attacker, including modifier
     /// pipeline and siege bonus when attacking a city tile.
-    pub attacker_effective_cs:     u32,
+    pub attacker_effective_cs: u32,
     /// Effective combat strength of the defender, including terrain +
     /// wall + modifier pipeline.
-    pub defender_effective_cs:     u32,
+    pub defender_effective_cs: u32,
     /// Predicted damage dealt to the defender at `rng = 1.0`.
     pub predicted_defender_damage: u32,
     /// Predicted damage dealt to the attacker at `rng = 1.0`. Always 0
@@ -47,8 +47,8 @@ pub struct CombatPreview {
 /// attacker can't attack (no combat strength), or the defender is out of
 /// range. Mirrors `combat::attack` validation but does not mutate state.
 pub(crate) fn preview_combat(
-    state:          &GameState,
-    attacker:       UnitId,
+    state: &GameState,
+    attacker: UnitId,
     defender_coord: HexCoord,
 ) -> Option<CombatPreview> {
     let atk = state.unit(attacker)?;
@@ -61,7 +61,9 @@ pub(crate) fn preview_combat(
     // Range check (same as combat::attack).
     let dist = atk_coord.distance(&defender_coord);
     if atk_range == 0 {
-        if dist != 1 { return None; }
+        if dist != 1 {
+            return None;
+        }
     } else if dist > atk_range as u32 {
         return None;
     }
@@ -100,15 +102,17 @@ pub(crate) fn preview_combat(
     let (atk_mod_flat, atk_mod_pct) = super::combat::resolve_combat_modifiers(state, attacker);
     let (def_mod_flat, def_mod_pct) = super::combat::resolve_combat_modifiers(state, defender.id);
 
-    let effective_atk_cs = ((atk_cs as i32 + atk_mod_flat + siege_bonus as i32)
-        * (100 + atk_mod_pct) / 100).max(1) as u32;
+    let effective_atk_cs =
+        ((atk_cs as i32 + atk_mod_flat + siege_bonus as i32) * (100 + atk_mod_pct) / 100).max(1)
+            as u32;
     let effective_def_cs = ((def_cs as i32 + terrain_def_bonus + wall_def_bonus + def_mod_flat)
-        * (100 + def_mod_pct) / 100).max(1) as u32;
+        * (100 + def_mod_pct)
+        / 100)
+        .max(1) as u32;
 
     // Same exponential formula, rng = 1.0.
-    let predicted_defender_damage = (30.0_f32
-        * f32::exp((effective_atk_cs as f32 - effective_def_cs as f32) / 25.0))
-        as u32;
+    let predicted_defender_damage =
+        (30.0_f32 * f32::exp((effective_atk_cs as f32 - effective_def_cs as f32) / 25.0)) as u32;
 
     let (attack_type, predicted_attacker_damage) = if atk_range == 0 {
         let d = (30.0_f32 * f32::exp((def_cs as f32 - atk_cs as f32) / 25.0)) as u32;
@@ -119,10 +123,10 @@ pub(crate) fn preview_combat(
 
     Some(CombatPreview {
         attacker,
-        defender:                  defender.id,
+        defender: defender.id,
         attack_type,
-        attacker_effective_cs:     effective_atk_cs,
-        defender_effective_cs:     effective_def_cs,
+        attacker_effective_cs: effective_atk_cs,
+        defender_effective_cs: effective_def_cs,
         predicted_defender_damage,
         predicted_attacker_damage,
     })
@@ -134,38 +138,75 @@ mod tests {
     use crate::civ::civilization::Civilization;
     use crate::civ::{BasicUnit, BuiltinAgenda, Leader};
     use crate::game::state::UnitTypeDef;
-    use crate::{
-        CivId, DefaultRulesEngine, RulesEngine, UnitCategory, UnitDomain, UnitTypeId,
-    };
+    use crate::{CivId, DefaultRulesEngine, RulesEngine, UnitCategory, UnitDomain, UnitTypeId};
 
     fn setup_two_civs() -> (GameState, CivId, CivId) {
         let mut state = GameState::new(13, 12, 12);
         let civ_a = state.id_gen.next_civ_id();
         let civ_b = state.id_gen.next_civ_id();
         for (id, name) in [(civ_a, "Aaa"), (civ_b, "Bbb")] {
-            let leader = Leader { name: "L", civ_id: id, agenda: BuiltinAgenda::Default };
-            state.civilizations.push(Civilization::new(id, name, name, leader));
+            let leader = Leader {
+                name: "L",
+                civ_id: id,
+                agenda: BuiltinAgenda::Default,
+            };
+            state
+                .civilizations
+                .push(Civilization::new(id, name, name, leader));
         }
         (state, civ_a, civ_b)
     }
 
-    fn push_warrior(state: &mut GameState, civ: CivId, coord: HexCoord, strength: u32, mp: u32) -> UnitId {
+    fn push_warrior(
+        state: &mut GameState,
+        civ: CivId,
+        coord: HexCoord,
+        strength: u32,
+        mp: u32,
+    ) -> UnitId {
         let uid = state.id_gen.next_unit_id();
         let tid = UnitTypeId::from_ulid(state.id_gen.next_ulid());
         state.unit_type_defs.push(UnitTypeDef {
-            id: tid, name: "warrior", production_cost: 40, domain: UnitDomain::Land,
-            category: UnitCategory::Combat, max_movement: 200, combat_strength: Some(strength),
-            range: 0, vision_range: 2, can_found_city: false, resource_cost: None,
-            siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None,
-            era: None, promotion_class: None,
+            id: tid,
+            name: "warrior",
+            production_cost: 40,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            max_movement: 200,
+            combat_strength: Some(strength),
+            range: 0,
+            vision_range: 2,
+            can_found_city: false,
+            resource_cost: None,
+            siege_bonus: 0,
+            max_charges: 0,
+            exclusive_to: None,
+            replaces: None,
+            era: None,
+            promotion_class: None,
         });
         state.units.push(BasicUnit {
-            id: uid, unit_type: tid, owner: civ, coord, domain: UnitDomain::Land,
-            category: UnitCategory::Combat, movement_left: mp, max_movement: 200,
-            combat_strength: Some(strength), promotions: Vec::new(), experience: 0,
-            health: 100, range: 0, vision_range: 2, charges: None,
-            trade_origin: None, trade_destination: None, religion_id: None,
-            spread_charges: None, religious_strength: None, is_embarked: false,
+            id: uid,
+            unit_type: tid,
+            owner: civ,
+            coord,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            movement_left: mp,
+            max_movement: 200,
+            combat_strength: Some(strength),
+            promotions: Vec::new(),
+            experience: 0,
+            health: 100,
+            range: 0,
+            vision_range: 2,
+            charges: None,
+            trade_origin: None,
+            trade_destination: None,
+            religion_id: None,
+            spread_charges: None,
+            religious_strength: None,
+            is_embarked: false,
         });
         uid
     }
@@ -177,20 +218,32 @@ mod tests {
         let def_coord = HexCoord::from_qr(3, 2);
         let _def = push_warrior(&mut s, b, def_coord, 20, 200);
 
-        let p = DefaultRulesEngine.preview_combat(&s, atk, def_coord).expect("preview");
+        let p = DefaultRulesEngine
+            .preview_combat(&s, atk, def_coord)
+            .expect("preview");
         assert_eq!(p.attack_type, AttackType::Melee);
         // Equal CS → both damages ≈ 30 (modulo terrain bonuses).
-        assert!(p.predicted_defender_damage >= 25 && p.predicted_defender_damage <= 35,
-                "got {}", p.predicted_defender_damage);
-        assert!(p.predicted_attacker_damage >= 25 && p.predicted_attacker_damage <= 35,
-                "got {}", p.predicted_attacker_damage);
+        assert!(
+            p.predicted_defender_damage >= 25 && p.predicted_defender_damage <= 35,
+            "got {}",
+            p.predicted_defender_damage
+        );
+        assert!(
+            p.predicted_attacker_damage >= 25 && p.predicted_attacker_damage <= 35,
+            "got {}",
+            p.predicted_attacker_damage
+        );
     }
 
     #[test]
     fn no_defender_returns_none() {
         let (mut s, a, _b) = setup_two_civs();
         let atk = push_warrior(&mut s, a, HexCoord::from_qr(2, 2), 20, 200);
-        assert!(DefaultRulesEngine.preview_combat(&s, atk, HexCoord::from_qr(7, 7)).is_none());
+        assert!(
+            DefaultRulesEngine
+                .preview_combat(&s, atk, HexCoord::from_qr(7, 7))
+                .is_none()
+        );
     }
 
     #[test]
@@ -209,9 +262,14 @@ mod tests {
         let atk = push_warrior(&mut s, a, HexCoord::from_qr(2, 2), 40, 200);
         let def_coord = HexCoord::from_qr(3, 2);
         let _def = push_warrior(&mut s, b, def_coord, 20, 200);
-        let p = DefaultRulesEngine.preview_combat(&s, atk, def_coord).expect("preview");
-        assert!(p.predicted_defender_damage > p.predicted_attacker_damage,
-                "expected stronger attacker to deal more damage; got def={} atk={}",
-                p.predicted_defender_damage, p.predicted_attacker_damage);
+        let p = DefaultRulesEngine
+            .preview_combat(&s, atk, def_coord)
+            .expect("preview");
+        assert!(
+            p.predicted_defender_damage > p.predicted_attacker_damage,
+            "expected stronger attacker to deal more damage; got def={} atk={}",
+            p.predicted_defender_damage,
+            p.predicted_attacker_damage
+        );
     }
 }

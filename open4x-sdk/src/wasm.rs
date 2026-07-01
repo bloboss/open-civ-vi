@@ -134,11 +134,12 @@ impl Transport for WasmClient {
                 init.set_body(&JsValue::from_str(json));
             }
 
-            let req =
-                Request::new_with_str_and_init(&url, &init).map_err(transport_err)?;
+            let req = Request::new_with_str_and_init(&url, &init).map_err(transport_err)?;
 
             let headers = req.headers();
-            headers.set("accept", "application/json").map_err(transport_err)?;
+            headers
+                .set("accept", "application/json")
+                .map_err(transport_err)?;
             if body_string.is_some() {
                 headers
                     .set("content-type", "application/json")

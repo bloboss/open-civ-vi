@@ -1,5 +1,4 @@
 /// Integration tests for the Climate Change & Environmental Disasters system (GS-2).
-
 mod common;
 
 use libciv::game::{DefaultRulesEngine, RulesEngine, StateDelta};
@@ -24,7 +23,9 @@ fn sea_level_rises_when_co2_crosses_threshold() {
     sc.state.global_co2 = 199;
     let deltas = advance_one(&mut sc);
     assert!(
-        !deltas.iter().any(|d| matches!(d, StateDelta::SeaLevelRose { .. })),
+        !deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::SeaLevelRose { .. })),
         "No sea level rise below threshold"
     );
     assert_eq!(sc.state.climate_level, 0);
@@ -33,7 +34,9 @@ fn sea_level_rises_when_co2_crosses_threshold() {
     sc.state.global_co2 = 200;
     let deltas = advance_one(&mut sc);
     assert!(
-        deltas.iter().any(|d| matches!(d, StateDelta::SeaLevelRose { new_level: 1 })),
+        deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::SeaLevelRose { new_level: 1 })),
         "Sea level should rise to 1 at CO2=200"
     );
     assert_eq!(sc.state.climate_level, 1);
@@ -41,7 +44,9 @@ fn sea_level_rises_when_co2_crosses_threshold() {
     // No duplicate rise on the next turn at same CO2.
     let deltas = advance_one(&mut sc);
     assert!(
-        !deltas.iter().any(|d| matches!(d, StateDelta::SeaLevelRose { .. })),
+        !deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::SeaLevelRose { .. })),
         "No duplicate sea level rise at same CO2"
     );
 
@@ -49,7 +54,9 @@ fn sea_level_rises_when_co2_crosses_threshold() {
     sc.state.global_co2 = 600;
     let deltas = advance_one(&mut sc);
     assert!(
-        deltas.iter().any(|d| matches!(d, StateDelta::SeaLevelRose { new_level: 3 })),
+        deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::SeaLevelRose { new_level: 3 })),
         "Sea level should jump to 3 at CO2=600"
     );
     assert_eq!(sc.state.climate_level, 3);
@@ -73,19 +80,26 @@ fn coastal_tile_submerged_on_sea_level_rise() {
 
     // Should emit TileSubmerged.
     assert!(
-        deltas.iter().any(|d| matches!(d, StateDelta::TileSubmerged { coord: c } if *c == coord)),
+        deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::TileSubmerged { coord: c } if *c == coord)),
         "Tile at 1m should be submerged at climate level 1"
     );
 
     // Verify tile state.
     let tile = sc.state.board.tile(coord).unwrap();
     assert!(tile.submerged, "Tile should be marked submerged");
-    assert!(tile.improvement.is_none(), "Improvement should be destroyed on submersion");
+    assert!(
+        tile.improvement.is_none(),
+        "Improvement should be destroyed on submersion"
+    );
 
     // Should not be submerged again on next turn.
     let deltas = advance_one(&mut sc);
     assert!(
-        !deltas.iter().any(|d| matches!(d, StateDelta::TileSubmerged { coord: c } if *c == coord)),
+        !deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::TileSubmerged { coord: c } if *c == coord)),
         "Already-submerged tile should not emit again"
     );
 }
@@ -105,13 +119,18 @@ fn higher_lowland_not_submerged_until_higher_level() {
     sc.state.global_co2 = 200;
     advance_one(&mut sc);
     let tile = sc.state.board.tile(coord).unwrap();
-    assert!(!tile.submerged, "3m tile should not be submerged at level 1");
+    assert!(
+        !tile.submerged,
+        "3m tile should not be submerged at level 1"
+    );
 
     // Climate level 3 — tile SHOULD be submerged.
     sc.state.global_co2 = 600;
     let deltas = advance_one(&mut sc);
     assert!(
-        deltas.iter().any(|d| matches!(d, StateDelta::TileSubmerged { coord: c } if *c == coord)),
+        deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::TileSubmerged { coord: c } if *c == coord)),
         "3m tile should be submerged at level 3"
     );
 }
@@ -137,13 +156,19 @@ fn disaster_can_destroy_improvement() {
     let mut disaster_found = false;
     for _ in 0..200 {
         let deltas = advance_one(&mut sc);
-        if deltas.iter().any(|d| matches!(d, StateDelta::DisasterOccurred { .. })) {
+        if deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::DisasterOccurred { .. }))
+        {
             disaster_found = true;
             break;
         }
     }
 
-    assert!(disaster_found, "At least one disaster should occur in 200 turns at max climate level");
+    assert!(
+        disaster_found,
+        "At least one disaster should occur in 200 turns at max climate level"
+    );
 }
 
 #[test]
@@ -169,8 +194,11 @@ fn disaster_grows_log_and_applies_effect() {
     let mut struck: Option<(HexCoord, u8)> = None;
     for _ in 0..500 {
         let deltas = advance_one(&mut sc);
-        if let Some(StateDelta::DisasterOccurred { coord, severity, .. }) =
-            deltas.iter().find(|d| matches!(d, StateDelta::DisasterOccurred { .. }))
+        if let Some(StateDelta::DisasterOccurred {
+            coord, severity, ..
+        }) = deltas
+            .iter()
+            .find(|d| matches!(d, StateDelta::DisasterOccurred { .. }))
         {
             struck = Some((*coord, *severity));
             break;
@@ -180,7 +208,11 @@ fn disaster_grows_log_and_applies_effect() {
     let (coord, severity) = struck.expect("a disaster should fire within 500 turns");
 
     // The persistent log grew and its newest entry mirrors the fired disaster.
-    assert_eq!(sc.state.disaster_log.len(), 1, "exactly one disaster recorded");
+    assert_eq!(
+        sc.state.disaster_log.len(),
+        1,
+        "exactly one disaster recorded"
+    );
     let rec = sc.state.disaster_log.last().unwrap();
     assert_eq!(rec.coord, coord, "record coord matches the delta");
     assert_eq!(rec.severity, severity, "record severity matches the delta");
@@ -188,11 +220,17 @@ fn disaster_grows_log_and_applies_effect() {
     // The deeper effect hit the units standing on the struck tile.
     if severity >= 3 {
         let survivors = sc.state.units.iter().filter(|u| u.coord == coord).count();
-        assert_eq!(survivors, 0, "severity-3 disaster destroys units on the tile");
+        assert_eq!(
+            survivors, 0,
+            "severity-3 disaster destroys units on the tile"
+        );
     } else {
         let expected_hp = 100 - severity as u32 * 25;
         assert!(
-            sc.state.units.iter().any(|u| u.coord == coord && u.health == expected_hp),
+            sc.state
+                .units
+                .iter()
+                .any(|u| u.coord == coord && u.health == expected_hp),
             "units on the struck tile drop to {expected_hp} HP (severity {severity})"
         );
     }
@@ -221,7 +259,10 @@ fn volcanic_eruption_adds_volcanic_soil() {
     apply_delta(&mut sc.state, &delta);
 
     let tile = sc.state.board.tile(coord).unwrap();
-    assert!(tile.improvement.is_none(), "Improvement destroyed by eruption");
+    assert!(
+        tile.improvement.is_none(),
+        "Improvement destroyed by eruption"
+    );
     assert_eq!(
         tile.feature,
         Some(BuiltinFeature::VolcanicSoil),
@@ -248,7 +289,10 @@ fn non_volcanic_disaster_does_not_add_soil() {
     apply_delta(&mut sc.state, &delta);
 
     let tile = sc.state.board.tile(coord).unwrap();
-    assert!(tile.improvement.is_none(), "Improvement destroyed by tornado");
+    assert!(
+        tile.improvement.is_none(),
+        "Improvement destroyed by tornado"
+    );
     assert_ne!(
         tile.feature,
         Some(BuiltinFeature::VolcanicSoil),

@@ -1,11 +1,11 @@
-use leptos::prelude::*;
-use leptos::prelude::LocalStorage;
-use open4x_protocol::v1::ids::*;
-use open4x_protocol::v1::view::*;
-use open4x_protocol::v1::enums::ProductionItemView;
-use open4x_protocol::v1::messages::{ClientMessage, GameAction};
-use crate::components::ws::WsClient;
 use super::GameTab;
+use crate::components::ws::WsClient;
+use leptos::prelude::LocalStorage;
+use leptos::prelude::*;
+use open4x_protocol::v1::enums::ProductionItemView;
+use open4x_protocol::v1::ids::*;
+use open4x_protocol::v1::messages::{ClientMessage, GameAction};
+use open4x_protocol::v1::view::*;
 
 fn capitalize(s: &str) -> String {
     let mut c = s.chars();
@@ -40,39 +40,52 @@ pub fn CityTab(
         let is_own = city.is_own;
         let worked_count = city.worked_tiles.len();
 
-        let prod_info: Option<(String, u32)> = city.production_queue.first()
-            .and_then(|item| match item {
-                ProductionItemView::Unit(tid) => gv.unit_type_defs.iter()
+        let prod_info: Option<(String, u32)> =
+            city.production_queue.first().and_then(|item| match item {
+                ProductionItemView::Unit(tid) => gv
+                    .unit_type_defs
+                    .iter()
                     .find(|d| d.id == *tid)
                     .map(|d| (capitalize(&d.name), d.production_cost)),
-                ProductionItemView::Building(bid) => gv.building_defs.iter()
+                ProductionItemView::Building(bid) => gv
+                    .building_defs
+                    .iter()
                     .find(|d| d.id == *bid)
                     .map(|d| (d.name.clone(), d.cost)),
                 _ => None,
             });
 
-        let prod_label = prod_info.as_ref()
+        let prod_label = prod_info
+            .as_ref()
             .map(|(name, _)| name.clone())
             .unwrap_or_else(|| "Idle".into());
-        let prod_cost_str = prod_info.as_ref()
+        let prod_cost_str = prod_info
+            .as_ref()
             .map(|(_, cost)| format!("{prod_stored}/{cost}"))
             .unwrap_or_else(|| format!("{prod_stored}/—"));
 
         // Resolve building IDs to names
-        let building_names: Vec<String> = city.buildings.iter()
+        let building_names: Vec<String> = city
+            .buildings
+            .iter()
             .map(|bid| {
-                gv.building_defs.iter()
+                gv.building_defs
+                    .iter()
                     .find(|d| d.id == *bid)
                     .map(|d| d.name.clone())
                     .unwrap_or_else(|| format!("{bid:?}"))
             })
             .collect();
 
-        let unit_defs: Vec<(UnitTypeId, String, u32)> = gv.unit_type_defs.iter()
+        let unit_defs: Vec<(UnitTypeId, String, u32)> = gv
+            .unit_type_defs
+            .iter()
             .map(|d| (d.id, capitalize(&d.name), d.production_cost))
             .collect();
 
-        let bldg_defs: Vec<(BuildingId, String, u32)> = gv.building_defs.iter()
+        let bldg_defs: Vec<(BuildingId, String, u32)> = gv
+            .building_defs
+            .iter()
             .map(|d| (d.id, d.name.clone(), d.cost))
             .collect();
 

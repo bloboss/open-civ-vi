@@ -11,17 +11,17 @@ pub mod short_ids;
 
 use std::path::{Path, PathBuf};
 
-use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
+use rustyline::error::ReadlineError;
 
 use libciv::ai::{Agent, HeuristicAgent};
+use libciv::civ::district::BuiltinDistrict;
 use libciv::game::visibility::recalculate_visibility;
 use libciv::visualize::Visualizer;
 use libciv::world::tile::WorldTile;
-use libciv::civ::district::BuiltinDistrict;
 use libciv::{
-    apply_diff, compute_score, CityId, CivId, DefaultRulesEngine, GameStateDiff,
-    GameState, RulesEngine, UnitId,
+    CityId, CivId, DefaultRulesEngine, GameState, GameStateDiff, RulesEngine, UnitId, apply_diff,
+    compute_score,
 };
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::{HexCoord, HexDir};
@@ -81,11 +81,7 @@ impl ReplSession {
             .collect();
 
         // Select the first owned unit, if any.
-        let selected_unit = state
-            .units
-            .iter()
-            .find(|u| u.owner == civ_id)
-            .map(|u| u.id);
+        let selected_unit = state.units.iter().find(|u| u.owner == civ_id).map(|u| u.id);
 
         // Select the first owned city, if any.
         let selected_city = state
@@ -122,7 +118,10 @@ impl ReplSession {
     pub fn run(&mut self) {
         println!("open4x REPL -- {} ({})", self.civ_name, self.civ_id);
         println!("Type 'help' for commands, 'quit' to exit.");
-        println!("Prompt format: '{}' (change with 'prompt <format>')\n", self.prompt_config.format);
+        println!(
+            "Prompt format: '{}' (change with 'prompt <format>')\n",
+            self.prompt_config.format
+        );
         self.print_turn_header();
         self.print_board();
 
@@ -166,7 +165,9 @@ impl ReplSession {
             let rest = rest.trim();
             if rest.is_empty() {
                 println!("  Current format: {}", self.prompt_config.format);
-                println!("  Placeholders: {{turn}} {{civ}} {{gold}} {{score}} {{city}} {{unit}} {{district}}");
+                println!(
+                    "  Placeholders: {{turn}} {{civ}} {{gold}} {{score}} {{city}} {{unit}} {{district}}"
+                );
                 println!("  Usage: prompt <format_string>");
             } else {
                 self.prompt_config.format = rest.to_string();
@@ -261,12 +262,7 @@ impl ReplSession {
     }
 
     fn dispatch_action_ref(&mut self, kind: &crate::cli::ActionKind) {
-        match handlers::action::dispatch_action(
-            &self.rules,
-            &mut self.state,
-            self.civ_id,
-            kind,
-        ) {
+        match handlers::action::dispatch_action(&self.rules, &mut self.state, self.civ_id, kind) {
             Ok(diff) => {
                 apply_diff(&mut self.state, &diff);
                 recalculate_visibility(&mut self.state, self.civ_id);
@@ -361,7 +357,8 @@ impl ReplSession {
                 formatter::print_tile(&self.state, HexCoord::from_qr(*q, *r));
             }
             QueryKind::TileDir(dir) => {
-                match self.selected_unit
+                match self
+                    .selected_unit
                     .and_then(|uid| self.state.units.iter().find(|u| u.id == uid))
                     .map(|u| u.coord)
                 {
@@ -410,22 +407,14 @@ impl ReplSession {
             }
             QueryKind::BuildListProjects => {
                 if let Some(city_id) = self.current_city_id() {
-                    formatter::print_available_projects(
-                        &self.state,
-                        self.civ_id,
-                        city_id,
-                    );
+                    formatter::print_available_projects(&self.state, self.civ_id, city_id);
                 } else {
                     println!("  No city selected.");
                 }
             }
             QueryKind::DistrictList => {
                 if let Some(city_id) = self.current_city_id() {
-                    formatter::print_available_districts(
-                        &self.state,
-                        self.civ_id,
-                        city_id,
-                    );
+                    formatter::print_available_districts(&self.state, self.civ_id, city_id);
                 } else {
                     println!("  No city selected.");
                 }
@@ -495,7 +484,10 @@ impl ReplSession {
                     .find(|d| d.id == unit.unit_type)
                     .map(|d| d.name)
                     .unwrap_or("?");
-                println!("  Selected: {type_name} ({})", self.unit_short_ids.format_bold(uid));
+                println!(
+                    "  Selected: {type_name} ({})",
+                    self.unit_short_ids.format_bold(uid)
+                );
                 println!("    Coord: ({}, {})", unit.coord.q, unit.coord.r);
                 println!(
                     "    HP: {}  Movement: {}/{}",
@@ -535,7 +527,10 @@ impl ReplSession {
                 let q_len = city.production_queue.len();
                 println!("    Production queue ({q_len}):");
                 for item in &city.production_queue {
-                    println!("      {}", formatter::production_item_name(&self.state, item));
+                    println!(
+                        "      {}",
+                        formatter::production_item_name(&self.state, item)
+                    );
                 }
             }
             None => println!("  No city found matching '{input}'"),
@@ -576,7 +571,10 @@ impl ReplSession {
         self.selected_district = Some(district);
 
         // Show the district and its buildings.
-        let placed = self.state.placed_districts.iter()
+        let placed = self
+            .state
+            .placed_districts
+            .iter()
             .find(|pd| pd.city_id == city_id && pd.district_type == district);
         println!("  Selected district: {}", district.name());
         if let Some(pd) = placed {
@@ -586,7 +584,10 @@ impl ReplSession {
             } else {
                 println!("    Buildings:");
                 for bid in &pd.buildings {
-                    let bname = self.state.building_defs.iter()
+                    let bname = self
+                        .state
+                        .building_defs
+                        .iter()
                         .find(|d| d.id == *bid)
                         .map(|d| d.name)
                         .unwrap_or("?");
@@ -639,10 +640,7 @@ impl ReplSession {
             state
                 .units
                 .iter()
-                .filter(|u| {
-                    u.owner != civ_id
-                        && visible.is_none_or(|v| v.contains(&u.coord))
-                })
+                .filter(|u| u.owner != civ_id && visible.is_none_or(|v| v.contains(&u.coord)))
                 .map(|u| (u.id, u.id.as_ulid().to_string())),
         )
     }

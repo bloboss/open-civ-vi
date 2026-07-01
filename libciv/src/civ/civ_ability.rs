@@ -1,11 +1,11 @@
 //! Civilization ability bundle — all unique mechanics for a civ as data.
 
+use crate::PolicyType;
 use crate::civ::civ_identity::{BuiltinCiv, BuiltinLeader};
 use crate::rules::modifier::Modifier;
 use crate::rules::unique::{
     UniqueBuildingDef, UniqueDistrictDef, UniqueImprovementDef, UniqueUnitDef,
 };
-use crate::PolicyType;
 
 /// Hook that fires when a city is founded.
 #[derive(Debug, Clone)]
@@ -63,7 +63,10 @@ pub enum RuleOverride {
     /// Citizens can work mountain tiles (Inca).
     CanWorkMountains,
     /// Mines +4 Gold, -30% unit/building production (Mali).
-    MineGoldBonusProductionMalus { mine_gold: i32, production_percent: i32 },
+    MineGoldBonusProductionMalus {
+        mine_gold: i32,
+        production_percent: i32,
+    },
     /// Unimproved features +2 Production (Maori).
     UnimprovedFeatureProductionBonus(i32),
     /// +50% siege production, conquered cities no loyalty loss (Ottoman).
@@ -84,7 +87,10 @@ pub enum RuleOverride {
     /// +50% production for campus/harbor/industrial/theater on river (Netherlands).
     RiverDistrictProductionBonus(i32),
     /// +5% science and +5% production in happy cities (Scotland).
-    HappyCityBonus { science_percent: i32, production_percent: i32 },
+    HappyCityBonus {
+        science_percent: i32,
+        production_percent: i32,
+    },
     /// Units can form corps/armies earlier (Zulu).
     EarlyCorpsAndArmies,
     // ── DLC Civilization Packs ──────────────────────────────────────────────
@@ -97,11 +103,17 @@ pub enum RuleOverride {
     /// Adjacent units gain bonus CS; mines +1 Culture (Gaul).
     AdjacentUnitBonusAndMineCulture,
     /// +15% science/culture on hills (Ethiopia).
-    HillsYieldBonus { science_percent: i32, culture_percent: i32 },
+    HillsYieldBonus {
+        science_percent: i32,
+        culture_percent: i32,
+    },
     /// +1 movement for all units (Gran Colombia).
     ExtraMovementAllUnits(i32),
     /// +5% yield per city within 6 tiles of capital (Maya).
-    YieldBonusPerNearbyCity { percent_per_city: i32, max_range: u32 },
+    YieldBonusPerNearbyCity {
+        percent_per_city: i32,
+        max_range: u32,
+    },
     /// Coast tiles provide faith; can purchase naval units with faith (Indonesia).
     CoastFaithAndNavalFaithPurchase,
     /// Holy Sites provide food and housing (Khmer).
@@ -111,7 +123,11 @@ pub enum RuleOverride {
     /// No war weariness; cities don't lose loyalty when conquering (Macedon).
     NoWarWearinessNoConquestLoyaltyLoss,
     /// +1 movement and +5 CS for 10 turns after declaring surprise war (Persia).
-    SurpriseWarBonus { movement: i32, combat_strength: i32, turns: u32 },
+    SurpriseWarBonus {
+        movement: i32,
+        combat_strength: i32,
+        turns: u32,
+    },
     /// +20% production for ranged units; mines over strategic +1 production (Nubia).
     RangedProductionBonusAndMineStrategic { ranged_percent: i32 },
     /// Culture bomb adjacent tiles when completing Encampment/Fort (Poland).

@@ -1,7 +1,5 @@
+use crate::rules::modifier::{EffectType, Modifier, ModifierSource, StackingRule, TargetSelector};
 use crate::{CityId, CivId, GovernorId, YieldType};
-use crate::rules::modifier::{
-    EffectType, Modifier, ModifierSource, StackingRule, TargetSelector,
-};
 
 pub trait GovernorDef: std::fmt::Debug {
     fn id(&self) -> GovernorId;
@@ -74,9 +72,15 @@ macro_rules! define_governor {
                 };
                 GovernorId::from_ulid(::ulid::Ulid::from(hash))
             }
-            fn name(&self) -> &'static str { stringify!($name) }
-            fn title(&self) -> &'static str { $title }
-            fn base_ability_description(&self) -> &'static str { $ability }
+            fn name(&self) -> &'static str {
+                stringify!($name)
+            }
+            fn title(&self) -> &'static str {
+                $title
+            }
+            fn base_ability_description(&self) -> &'static str {
+                $ability
+            }
         }
     };
 }
@@ -129,7 +133,9 @@ pub struct GovernorPromotionDef {
     pub modifiers: fn() -> Vec<Modifier>,
 }
 
-fn no_modifiers() -> Vec<Modifier> { Vec::new() }
+fn no_modifiers() -> Vec<Modifier> {
+    Vec::new()
+}
 
 // ── Reyna promotions ────────────────────────────────────────────────────────
 

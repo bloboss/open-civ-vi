@@ -15,7 +15,11 @@ pub fn end_turn(server: &str, token_file: &Path) -> Result<(), String> {
 
     let resp = client.post_json("/api/v1/turn/end", &json!({}))?;
 
-    if let Some(t) = resp.get("turn_status").and_then(|v| v.get("turn")).and_then(|v| v.as_u64()) {
+    if let Some(t) = resp
+        .get("turn_status")
+        .and_then(|v| v.get("turn"))
+        .and_then(|v| v.as_u64())
+    {
         session.turn = t as u32;
         let _ = session.save(token_file);
     }

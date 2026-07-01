@@ -99,10 +99,21 @@ pub fn parse_command(
                 }
             }
             if parts.len() >= 3
-                && let (Ok(q), Ok(r)) = (parts[parts.len() - 2].parse::<i32>(), parts[parts.len() - 1].parse::<i32>())
+                && let (Ok(q), Ok(r)) = (
+                    parts[parts.len() - 2].parse::<i32>(),
+                    parts[parts.len() - 1].parse::<i32>(),
+                )
             {
-                let u = if parts.len() >= 4 { parts[1].to_string() } else { unit_str() };
-                return ReplCommand::Action(ActionKind::Move { unit: u, to_q: q, to_r: r });
+                let u = if parts.len() >= 4 {
+                    parts[1].to_string()
+                } else {
+                    unit_str()
+                };
+                return ReplCommand::Action(ActionKind::Move {
+                    unit: u,
+                    to_q: q,
+                    to_r: r,
+                });
             }
             ReplCommand::Unknown("Usage: move <dir> | move [unit] <q> <r>".to_string())
         }
@@ -165,14 +176,23 @@ pub fn parse_command(
                     // `build <category> <name>` — queue production.
                     if parts.len() >= 3 {
                         let item = parts[2..].join(" ");
-                        return ReplCommand::Action(ActionKind::Build { city: city_str(), item });
+                        return ReplCommand::Action(ActionKind::Build {
+                            city: city_str(),
+                            item,
+                        });
                     }
                 }
                 // Fallback: `build <name>` queues any production item by name.
                 let item = parts[1..].join(" ");
-                return ReplCommand::Action(ActionKind::Build { city: city_str(), item });
+                return ReplCommand::Action(ActionKind::Build {
+                    city: city_str(),
+                    item,
+                });
             }
-            ReplCommand::Unknown("Usage: build <item> | build list | build <unit|bdg|wonder|project> [list|<name>]".to_string())
+            ReplCommand::Unknown(
+                "Usage: build <item> | build list | build <unit|bdg|wonder|project> [list|<name>]"
+                    .to_string(),
+            )
         }
 
         "cancel-production" | "cancel" => {
@@ -221,9 +241,16 @@ pub fn parse_command(
 
         "road" => {
             if parts.len() >= 3
-                && let (Ok(q), Ok(r)) = (parts[parts.len() - 2].parse::<i32>(), parts[parts.len() - 1].parse::<i32>())
+                && let (Ok(q), Ok(r)) = (
+                    parts[parts.len() - 2].parse::<i32>(),
+                    parts[parts.len() - 1].parse::<i32>(),
+                )
             {
-                let u = if parts.len() >= 4 { parts[1].to_string() } else { unit_str() };
+                let u = if parts.len() >= 4 {
+                    parts[1].to_string()
+                } else {
+                    unit_str()
+                };
                 return ReplCommand::Action(ActionKind::PlaceRoad { unit: u, q, r });
             }
             ReplCommand::Unknown("Usage: road [unit] <q> <r>".to_string())
@@ -254,20 +281,27 @@ pub fn parse_command(
                     }
                 }
             }
-            ReplCommand::Unknown("Usage: district <type> <q> <r> | district list | district select <name>".to_string())
+            ReplCommand::Unknown(
+                "Usage: district <type> <q> <r> | district list | district select <name>"
+                    .to_string(),
+            )
         }
 
         // ── Diplomacy ───────────────────────────────────────────────────
         "declare-war" | "war" => {
             if parts.len() >= 2 {
-                return ReplCommand::Action(ActionKind::DeclareWar { target: parts[1..].join(" ") });
+                return ReplCommand::Action(ActionKind::DeclareWar {
+                    target: parts[1..].join(" "),
+                });
             }
             ReplCommand::Unknown("Usage: declare-war <civ>".to_string())
         }
 
         "make-peace" | "peace" => {
             if parts.len() >= 2 {
-                return ReplCommand::Action(ActionKind::MakePeace { target: parts[1..].join(" ") });
+                return ReplCommand::Action(ActionKind::MakePeace {
+                    target: parts[1..].join(" "),
+                });
             }
             ReplCommand::Unknown("Usage: make-peace <civ>".to_string())
         }
@@ -285,14 +319,18 @@ pub fn parse_command(
         // ── Government & Policy ─────────────────────────────────────────
         "assign-policy" | "policy" => {
             if parts.len() >= 2 {
-                return ReplCommand::Action(ActionKind::AssignPolicy { policy: parts[1..].join(" ") });
+                return ReplCommand::Action(ActionKind::AssignPolicy {
+                    policy: parts[1..].join(" "),
+                });
             }
             ReplCommand::Unknown("Usage: assign-policy <policy>".to_string())
         }
 
         "adopt-government" | "gov" => {
             if parts.len() >= 2 {
-                return ReplCommand::Action(ActionKind::AdoptGovernment { name: parts[1..].join(" ") });
+                return ReplCommand::Action(ActionKind::AdoptGovernment {
+                    name: parts[1..].join(" "),
+                });
             }
             ReplCommand::Unknown("Usage: adopt-government <name>".to_string())
         }
@@ -316,7 +354,9 @@ pub fn parse_command(
         // ── Religion ────────────────────────────────────────────────────
         "found-pantheon" | "pantheon" => {
             if parts.len() >= 2 {
-                return ReplCommand::Action(ActionKind::FoundPantheon { belief: parts[1].to_string() });
+                return ReplCommand::Action(ActionKind::FoundPantheon {
+                    belief: parts[1].to_string(),
+                });
             }
             ReplCommand::Unknown("Usage: found-pantheon <belief>".to_string())
         }
@@ -326,13 +366,23 @@ pub fn parse_command(
                 let prophet = parts[1].to_string();
                 let name = parts[2].to_string();
                 let beliefs = parts[3..].iter().map(|s| s.to_string()).collect();
-                return ReplCommand::Action(ActionKind::FoundReligion { prophet, name, beliefs });
+                return ReplCommand::Action(ActionKind::FoundReligion {
+                    prophet,
+                    name,
+                    beliefs,
+                });
             }
-            ReplCommand::Unknown("Usage: found-religion <prophet> <name> <belief1> [belief2...]".to_string())
+            ReplCommand::Unknown(
+                "Usage: found-religion <prophet> <name> <belief1> [belief2...]".to_string(),
+            )
         }
 
         "spread" => {
-            let u = if parts.len() >= 2 { parts[1].to_string() } else { unit_str() };
+            let u = if parts.len() >= 2 {
+                parts[1].to_string()
+            } else {
+                unit_str()
+            };
             ReplCommand::Action(ActionKind::SpreadReligion { unit: u })
         }
 
@@ -365,7 +415,10 @@ pub fn parse_command(
                 } else {
                     (unit_str(), parts[1].to_string())
                 };
-                return ReplCommand::Action(ActionKind::PromoteUnit { unit: u, promotion: promo });
+                return ReplCommand::Action(ActionKind::PromoteUnit {
+                    unit: u,
+                    promotion: promo,
+                });
             }
             ReplCommand::Unknown("Usage: promote [unit] <promotion>".to_string())
         }

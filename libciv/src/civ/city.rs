@@ -1,9 +1,9 @@
-use std::collections::{HashMap, HashSet, VecDeque};
-use crate::{BuildingId, CityId, CivId, ProjectId, ReligionId, UnitTypeId, WonderId, YieldType};
-use crate::rules::modifier::{EffectType, Modifier, ModifierSource, StackingRule, TargetSelector};
-use libhexgrid::coord::HexCoord;
 use super::city_state::CityStateData;
 use super::district::BuiltinDistrict;
+use crate::rules::modifier::{EffectType, Modifier, ModifierSource, StackingRule, TargetSelector};
+use crate::{BuildingId, CityId, CivId, ProjectId, ReligionId, UnitTypeId, WonderId, YieldType};
+use libhexgrid::coord::HexCoord;
+use std::collections::{HashMap, HashSet, VecDeque};
 
 // ---------------------------------------------------------------------------
 // Domestic unrest tiers
@@ -56,10 +56,7 @@ pub fn city_unrest_modifiers(unrest: i32) -> Vec<Modifier> {
             make(YieldType::Science, -1),
         ]
     } else if unrest >= UNREST_DISCONTENT_TIER {
-        vec![
-            make(YieldType::Production, -1),
-            make(YieldType::Gold, -1),
-        ]
+        vec![make(YieldType::Production, -1), make(YieldType::Gold, -1)]
     } else {
         Vec::new()
     }
@@ -255,7 +252,8 @@ impl City {
     /// A religion is majority when it has more than 50% of the population as followers.
     pub fn majority_religion(&self) -> Option<ReligionId> {
         let threshold = self.population / 2;
-        self.religious_followers.iter()
+        self.religious_followers
+            .iter()
             .filter(|&(_, count)| *count > threshold)
             .max_by_key(|&(_, count)| *count)
             .map(|(&rid, _)| rid)
@@ -273,9 +271,9 @@ impl WallLevel {
     /// Combat strength bonus granted to the city's ranged attack and defense.
     pub fn defense_bonus(&self) -> i32 {
         match self {
-            WallLevel::None        => 0,
-            WallLevel::Ancient     => 3,
-            WallLevel::Medieval    => 5,
+            WallLevel::None => 0,
+            WallLevel::Ancient => 3,
+            WallLevel::Medieval => 5,
             WallLevel::Renaissance => 8,
         }
     }
@@ -283,9 +281,9 @@ impl WallLevel {
     /// Maximum HP of walls at this tier.
     pub fn max_hp(&self) -> u32 {
         match self {
-            WallLevel::None        => 0,
-            WallLevel::Ancient     => 50,
-            WallLevel::Medieval    => 100,
+            WallLevel::None => 0,
+            WallLevel::Ancient => 50,
+            WallLevel::Medieval => 100,
             WallLevel::Renaissance => 200,
         }
     }

@@ -1,18 +1,16 @@
+use super::{DataReportSubTab, GameTab};
 use leptos::prelude::*;
 use open4x_protocol::v1::enums::*;
 use open4x_protocol::v1::view::GameView;
-use super::{GameTab, DataReportSubTab};
 
 #[component]
 pub fn DataReportsTab(
     game_view: ReadSignal<Option<GameView>>,
     active_tab: RwSignal<GameTab>,
 ) -> impl IntoView {
-    let current_sub = move || {
-        match active_tab.get() {
-            GameTab::DataReports(st) => st,
-            _ => DataReportSubTab::Cities,
-        }
+    let current_sub = move || match active_tab.get() {
+        GameTab::DataReports(st) => st,
+        _ => DataReportSubTab::Cities,
     };
 
     let sub_btn = move |label: &'static str, st: DataReportSubTab| {
@@ -63,34 +61,48 @@ fn capitalize(s: &str) -> String {
 #[component]
 fn CitiesTable(game_view: ReadSignal<Option<GameView>>) -> impl IntoView {
     let rows = move || {
-        let Some(gv) = game_view.get() else { return Vec::new() };
-        gv.cities.iter().filter(|c| c.is_own).map(|c| {
-            let prod_name = c.production_queue.first().map(|item| match item {
-                ProductionItemView::Unit(tid) => gv.unit_type_defs.iter()
-                    .find(|d| d.id == *tid)
-                    .map(|d| capitalize(&d.name))
-                    .unwrap_or_else(|| "Unit".into()),
-                ProductionItemView::Building(bid) => gv.building_defs.iter()
-                    .find(|d| d.id == *bid)
-                    .map(|d| capitalize(&d.name))
-                    .unwrap_or_else(|| "Building".into()),
-                ProductionItemView::District(d) => format!("{d:?}"),
-                ProductionItemView::Wonder(_) => "Wonder".into(),
-                ProductionItemView::Project(_) => "Project".into(),
-            }).unwrap_or_else(|| "Idle".into());
-            let capital = if c.is_capital { " *" } else { "" };
-            view! {
-                <tr>
-                    <td>{format!("{}{}", c.name, capital)}</td>
-                    <td>{c.population}</td>
-                    <td>{format!("{}/{}", c.food_stored, c.food_to_grow)}</td>
-                    <td>{c.production_stored}</td>
-                    <td>{prod_name}</td>
-                    <td>{c.buildings.len()}</td>
-                    <td>{c.worked_tiles.len()}</td>
-                </tr>
-            }
-        }).collect::<Vec<_>>()
+        let Some(gv) = game_view.get() else {
+            return Vec::new();
+        };
+        gv.cities
+            .iter()
+            .filter(|c| c.is_own)
+            .map(|c| {
+                let prod_name = c
+                    .production_queue
+                    .first()
+                    .map(|item| match item {
+                        ProductionItemView::Unit(tid) => gv
+                            .unit_type_defs
+                            .iter()
+                            .find(|d| d.id == *tid)
+                            .map(|d| capitalize(&d.name))
+                            .unwrap_or_else(|| "Unit".into()),
+                        ProductionItemView::Building(bid) => gv
+                            .building_defs
+                            .iter()
+                            .find(|d| d.id == *bid)
+                            .map(|d| capitalize(&d.name))
+                            .unwrap_or_else(|| "Building".into()),
+                        ProductionItemView::District(d) => format!("{d:?}"),
+                        ProductionItemView::Wonder(_) => "Wonder".into(),
+                        ProductionItemView::Project(_) => "Project".into(),
+                    })
+                    .unwrap_or_else(|| "Idle".into());
+                let capital = if c.is_capital { " *" } else { "" };
+                view! {
+                    <tr>
+                        <td>{format!("{}{}", c.name, capital)}</td>
+                        <td>{c.population}</td>
+                        <td>{format!("{}/{}", c.food_stored, c.food_to_grow)}</td>
+                        <td>{c.production_stored}</td>
+                        <td>{prod_name}</td>
+                        <td>{c.buildings.len()}</td>
+                        <td>{c.worked_tiles.len()}</td>
+                    </tr>
+                }
+            })
+            .collect::<Vec<_>>()
     };
 
     view! {
@@ -114,8 +126,11 @@ fn CitiesTable(game_view: ReadSignal<Option<GameView>>) -> impl IntoView {
 #[component]
 fn ResourcesTable(game_view: ReadSignal<Option<GameView>>) -> impl IntoView {
     let rows = move || {
-        let Some(gv) = game_view.get() else { return Vec::new() };
-        let mut counts: std::collections::HashMap<String, (u32, u32)> = std::collections::HashMap::new();
+        let Some(gv) = game_view.get() else {
+            return Vec::new();
+        };
+        let mut counts: std::collections::HashMap<String, (u32, u32)> =
+            std::collections::HashMap::new();
         for tile in &gv.board.tiles {
             if let Some(res) = &tile.resource {
                 let name = format!("{res:?}");
@@ -128,15 +143,18 @@ fn ResourcesTable(game_view: ReadSignal<Option<GameView>>) -> impl IntoView {
         }
         let mut sorted: Vec<_> = counts.into_iter().collect();
         sorted.sort_by(|a, b| a.0.cmp(&b.0));
-        sorted.into_iter().map(|(name, (total, improved))| {
-            view! {
-                <tr>
-                    <td>{name}</td>
-                    <td>{total}</td>
-                    <td>{improved}</td>
-                </tr>
-            }
-        }).collect::<Vec<_>>()
+        sorted
+            .into_iter()
+            .map(|(name, (total, improved))| {
+                view! {
+                    <tr>
+                        <td>{name}</td>
+                        <td>{total}</td>
+                        <td>{improved}</td>
+                    </tr>
+                }
+            })
+            .collect::<Vec<_>>()
     };
 
     view! {
@@ -150,7 +168,9 @@ fn ResourcesTable(game_view: ReadSignal<Option<GameView>>) -> impl IntoView {
 #[component]
 fn UnitsTable(game_view: ReadSignal<Option<GameView>>) -> impl IntoView {
     let rows = move || {
-        let Some(gv) = game_view.get() else { return Vec::new() };
+        let Some(gv) = game_view.get() else {
+            return Vec::new();
+        };
         gv.units.iter().filter(|u| u.is_own).map(|u| {
             let type_name = gv.unit_type_defs.iter()
                 .find(|d| d.id == u.unit_type)
@@ -187,10 +207,13 @@ fn UnitsTable(game_view: ReadSignal<Option<GameView>>) -> impl IntoView {
 #[component]
 fn MapStatsPanel(game_view: ReadSignal<Option<GameView>>) -> impl IntoView {
     let stats = move || {
-        let Some(gv) = game_view.get() else { return Vec::new() };
+        let Some(gv) = game_view.get() else {
+            return Vec::new();
+        };
         let mut terrain: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
         let mut features: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
-        let mut resources: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
+        let mut resources: std::collections::HashMap<String, u32> =
+            std::collections::HashMap::new();
         let mut visible = 0u32;
 
         for tile in &gv.board.tiles {
@@ -210,56 +233,89 @@ fn MapStatsPanel(game_view: ReadSignal<Option<GameView>>) -> impl IntoView {
         let enemy_units = gv.units.iter().filter(|u| !u.is_own).count();
 
         let mut rows: Vec<AnyView> = Vec::new();
-        rows.push(view! {
-            <tr class="data-section-header"><td colspan="2">"Map Overview"</td></tr>
-        }.into_any());
-        rows.push(view! {
-            <tr><td>"Tiles explored"</td><td>{gv.board.tiles.len()}</td></tr>
-        }.into_any());
-        rows.push(view! {
-            <tr><td>"Tiles visible"</td><td>{visible}</td></tr>
-        }.into_any());
-        rows.push(view! {
-            <tr><td>"Enemy cities visible"</td><td>{enemy_cities}</td></tr>
-        }.into_any());
-        rows.push(view! {
-            <tr><td>"Enemy units visible"</td><td>{enemy_units}</td></tr>
-        }.into_any());
+        rows.push(
+            view! {
+                <tr class="data-section-header"><td colspan="2">"Map Overview"</td></tr>
+            }
+            .into_any(),
+        );
+        rows.push(
+            view! {
+                <tr><td>"Tiles explored"</td><td>{gv.board.tiles.len()}</td></tr>
+            }
+            .into_any(),
+        );
+        rows.push(
+            view! {
+                <tr><td>"Tiles visible"</td><td>{visible}</td></tr>
+            }
+            .into_any(),
+        );
+        rows.push(
+            view! {
+                <tr><td>"Enemy cities visible"</td><td>{enemy_cities}</td></tr>
+            }
+            .into_any(),
+        );
+        rows.push(
+            view! {
+                <tr><td>"Enemy units visible"</td><td>{enemy_units}</td></tr>
+            }
+            .into_any(),
+        );
 
-        rows.push(view! {
-            <tr class="data-section-header"><td colspan="2">"Terrain"</td></tr>
-        }.into_any());
+        rows.push(
+            view! {
+                <tr class="data-section-header"><td colspan="2">"Terrain"</td></tr>
+            }
+            .into_any(),
+        );
         let mut terrain_sorted: Vec<_> = terrain.into_iter().collect();
         terrain_sorted.sort_by(|a, b| b.1.cmp(&a.1));
         for (name, count) in terrain_sorted {
-            rows.push(view! {
-                <tr><td>{name}</td><td>{count}</td></tr>
-            }.into_any());
+            rows.push(
+                view! {
+                    <tr><td>{name}</td><td>{count}</td></tr>
+                }
+                .into_any(),
+            );
         }
 
         if !features.is_empty() {
-            rows.push(view! {
-                <tr class="data-section-header"><td colspan="2">"Features"</td></tr>
-            }.into_any());
+            rows.push(
+                view! {
+                    <tr class="data-section-header"><td colspan="2">"Features"</td></tr>
+                }
+                .into_any(),
+            );
             let mut features_sorted: Vec<_> = features.into_iter().collect();
             features_sorted.sort_by(|a, b| b.1.cmp(&a.1));
             for (name, count) in features_sorted {
-                rows.push(view! {
-                    <tr><td>{name}</td><td>{count}</td></tr>
-                }.into_any());
+                rows.push(
+                    view! {
+                        <tr><td>{name}</td><td>{count}</td></tr>
+                    }
+                    .into_any(),
+                );
             }
         }
 
         if !resources.is_empty() {
-            rows.push(view! {
-                <tr class="data-section-header"><td colspan="2">"Resources"</td></tr>
-            }.into_any());
+            rows.push(
+                view! {
+                    <tr class="data-section-header"><td colspan="2">"Resources"</td></tr>
+                }
+                .into_any(),
+            );
             let mut resources_sorted: Vec<_> = resources.into_iter().collect();
             resources_sorted.sort_by(|a, b| a.0.cmp(&b.0));
             for (name, count) in resources_sorted {
-                rows.push(view! {
-                    <tr><td>{name}</td><td>{count}</td></tr>
-                }.into_any());
+                rows.push(
+                    view! {
+                        <tr><td>{name}</td><td>{count}</td></tr>
+                    }
+                    .into_any(),
+                );
             }
         }
 

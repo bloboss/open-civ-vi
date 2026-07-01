@@ -8,7 +8,7 @@ mod common;
 use common::SpawnUnit;
 use libciv::game::diff::StateDelta;
 use libciv::world::terrain::BuiltinTerrain;
-use libciv::{apply_diff, DefaultRulesEngine, RulesEngine, UnitDomain};
+use libciv::{DefaultRulesEngine, RulesEngine, UnitDomain, apply_diff};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 
@@ -21,7 +21,10 @@ fn land_unit_cannot_move_onto_ocean() {
     s.state.board.tile_mut(ocean_coord).unwrap().terrain = BuiltinTerrain::Ocean;
 
     let result = rules.move_unit(&mut s.state, s.rome_warrior, ocean_coord);
-    assert!(result.is_err(), "Land unit should not be able to move onto Ocean");
+    assert!(
+        result.is_err(),
+        "Land unit should not be able to move onto Ocean"
+    );
 }
 
 #[test]
@@ -33,7 +36,10 @@ fn land_unit_cannot_move_onto_coast() {
     s.state.board.tile_mut(coast_coord).unwrap().terrain = BuiltinTerrain::Coast;
 
     let result = rules.move_unit(&mut s.state, s.rome_warrior, coast_coord);
-    assert!(result.is_err(), "Land unit should not be able to move onto Coast");
+    assert!(
+        result.is_err(),
+        "Land unit should not be able to move onto Coast"
+    );
 }
 
 #[test]
@@ -42,7 +48,11 @@ fn land_unit_cannot_path_through_water() {
     let rules = DefaultRulesEngine;
 
     // Water barrier at (6,3) between warrior at (5,3) and destination (7,3).
-    s.state.board.tile_mut(HexCoord::from_qr(6, 3)).unwrap().terrain = BuiltinTerrain::Ocean;
+    s.state
+        .board
+        .tile_mut(HexCoord::from_qr(6, 3))
+        .unwrap()
+        .terrain = BuiltinTerrain::Ocean;
 
     let dest = HexCoord::from_qr(7, 3);
     match rules.move_unit(&mut s.state, s.rome_warrior, dest) {
@@ -54,7 +64,8 @@ fn land_unit_cannot_path_through_water() {
                     assert!(
                         tile.terrain.is_land(),
                         "Land unit should not pass through water at ({}, {})",
-                        to.q, to.r
+                        to.q,
+                        to.r
                     );
                 }
             }
@@ -91,7 +102,10 @@ fn sea_unit_cannot_move_onto_land() {
     assert!(s.state.board.tile(land_dest).unwrap().terrain.is_land());
 
     let result = rules.move_unit(&mut s.state, ship_id, land_dest);
-    assert!(result.is_err(), "Sea unit should not be able to move onto land");
+    assert!(
+        result.is_err(),
+        "Sea unit should not be able to move onto land"
+    );
 }
 
 #[test]
@@ -119,29 +133,39 @@ fn settler_cannot_move_onto_ocean() {
     let rules = DefaultRulesEngine;
 
     let settler_coord = HexCoord::from_qr(4, 3);
-    let settler_id = SpawnUnit::civilian(s.settler_type, s.rome_id, settler_coord)
-        .build(&mut s.state);
+    let settler_id =
+        SpawnUnit::civilian(s.settler_type, s.rome_id, settler_coord).build(&mut s.state);
 
     let ocean_coord = HexCoord::from_qr(5, 4);
     s.state.board.tile_mut(ocean_coord).unwrap().terrain = BuiltinTerrain::Ocean;
 
     let result = rules.move_unit(&mut s.state, settler_id, ocean_coord);
-    assert!(result.is_err(), "Settler should not be able to move onto Ocean");
+    assert!(
+        result.is_err(),
+        "Settler should not be able to move onto Ocean"
+    );
 }
 
 // ── Embarkation tests ──────────────────────────────────────────────────────
 
 /// Helper: enable coast embarkation for a civ.
 fn enable_coast_embark(s: &mut common::Scenario) {
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
         .can_embark_coast = true;
 }
 
 /// Helper: enable full (coast + ocean) embarkation for a civ.
 fn enable_full_embark(s: &mut common::Scenario) {
-    let civ = s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap();
+    let civ = s
+        .state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap();
     civ.can_embark_coast = true;
     civ.can_embark_ocean = true;
 }
@@ -179,7 +203,9 @@ fn land_unit_can_embark_coast_with_tech() {
 
     // Should contain UnitEmbarked delta.
     assert!(
-        diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitEmbarked { .. })),
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::UnitEmbarked { .. })),
         "Should emit UnitEmbarked delta"
     );
 }
@@ -194,7 +220,10 @@ fn land_unit_cannot_embark_ocean_with_coast_only() {
     s.state.board.tile_mut(ocean_coord).unwrap().terrain = BuiltinTerrain::Ocean;
 
     let result = rules.move_unit(&mut s.state, s.rome_warrior, ocean_coord);
-    assert!(result.is_err(), "Should not embark onto Ocean with coast-only tech");
+    assert!(
+        result.is_err(),
+        "Should not embark onto Ocean with coast-only tech"
+    );
 }
 
 #[test]
@@ -214,7 +243,9 @@ fn land_unit_can_embark_ocean_with_full_tech() {
     };
 
     assert!(
-        diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitEmbarked { .. })),
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::UnitEmbarked { .. })),
         "Should emit UnitEmbarked delta for Ocean"
     );
 }
@@ -237,9 +268,17 @@ fn embarking_costs_all_movement() {
 
     // The UnitMoved delta should cost the full movement budget (200).
     let moved = diff.deltas.iter().find_map(|d| {
-        if let StateDelta::UnitMoved { cost, .. } = d { Some(*cost) } else { None }
+        if let StateDelta::UnitMoved { cost, .. } = d {
+            Some(*cost)
+        } else {
+            None
+        }
     });
-    assert_eq!(moved, Some(200), "Embarking should consume all 200 movement points");
+    assert_eq!(
+        moved,
+        Some(200),
+        "Embarking should consume all 200 movement points"
+    );
 }
 
 #[test]
@@ -251,11 +290,13 @@ fn disembarking_costs_all_movement() {
     // Place warrior on a Coast tile, already embarked.
     let coast_coord = HexCoord::from_qr(4, 3);
     s.state.board.tile_mut(coast_coord).unwrap().terrain = BuiltinTerrain::Coast;
-    let embarked_id = SpawnUnit::combat(s.warrior_type, s.rome_id, coast_coord)
-        .build(&mut s.state);
+    let embarked_id = SpawnUnit::combat(s.warrior_type, s.rome_id, coast_coord).build(&mut s.state);
     // Manually set embarked state.
-    s.state.units.iter_mut()
-        .find(|u| u.id == embarked_id).unwrap()
+    s.state
+        .units
+        .iter_mut()
+        .find(|u| u.id == embarked_id)
+        .unwrap()
         .is_embarked = true;
 
     // Move to adjacent land tile.
@@ -270,12 +311,18 @@ fn disembarking_costs_all_movement() {
     };
 
     assert!(
-        diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitDisembarked { .. })),
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::UnitDisembarked { .. })),
         "Should emit UnitDisembarked delta"
     );
 
     let moved = diff.deltas.iter().find_map(|d| {
-        if let StateDelta::UnitMoved { cost, .. } = d { Some(*cost) } else { None }
+        if let StateDelta::UnitMoved { cost, .. } = d {
+            Some(*cost)
+        } else {
+            None
+        }
     });
     assert_eq!(moved, Some(200), "Disembarking should consume all movement");
 }
@@ -292,19 +339,27 @@ fn embarked_unit_can_move_on_water() {
     s.state.board.tile_mut(from).unwrap().terrain = BuiltinTerrain::Coast;
     s.state.board.tile_mut(to).unwrap().terrain = BuiltinTerrain::Coast;
 
-    let unit_id = SpawnUnit::combat(s.warrior_type, s.rome_id, from)
-        .build(&mut s.state);
-    s.state.units.iter_mut()
-        .find(|u| u.id == unit_id).unwrap()
+    let unit_id = SpawnUnit::combat(s.warrior_type, s.rome_id, from).build(&mut s.state);
+    s.state
+        .units
+        .iter_mut()
+        .find(|u| u.id == unit_id)
+        .unwrap()
         .is_embarked = true;
 
     let result = rules.move_unit(&mut s.state, unit_id, to);
-    assert!(result.is_ok(), "Embarked unit should be able to move on water");
+    assert!(
+        result.is_ok(),
+        "Embarked unit should be able to move on water"
+    );
 
     let diff = result.unwrap();
     // Should NOT emit embark/disembark — it's water-to-water.
     assert!(
-        !diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitEmbarked { .. } | StateDelta::UnitDisembarked { .. })),
+        !diff.deltas.iter().any(|d| matches!(
+            d,
+            StateDelta::UnitEmbarked { .. } | StateDelta::UnitDisembarked { .. }
+        )),
         "Water-to-water move should not emit embark/disembark deltas"
     );
 }
@@ -321,8 +376,16 @@ fn apply_delta_embark_disembark() {
     });
     apply_diff(&mut s.state, &diff);
 
-    let unit = s.state.units.iter().find(|u| u.id == s.rome_warrior).unwrap();
-    assert!(unit.is_embarked, "Unit should be embarked after apply_delta");
+    let unit = s
+        .state
+        .units
+        .iter()
+        .find(|u| u.id == s.rome_warrior)
+        .unwrap();
+    assert!(
+        unit.is_embarked,
+        "Unit should be embarked after apply_delta"
+    );
 
     // Now disembark.
     let mut diff2 = libciv::GameStateDiff::new();
@@ -332,6 +395,14 @@ fn apply_delta_embark_disembark() {
     });
     apply_diff(&mut s.state, &diff2);
 
-    let unit = s.state.units.iter().find(|u| u.id == s.rome_warrior).unwrap();
-    assert!(!unit.is_embarked, "Unit should not be embarked after disembark delta");
+    let unit = s
+        .state
+        .units
+        .iter()
+        .find(|u| u.id == s.rome_warrior)
+        .unwrap();
+    assert!(
+        !unit.is_embarked,
+        "Unit should not be embarked after disembark delta"
+    );
 }

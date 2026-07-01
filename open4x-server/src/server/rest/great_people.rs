@@ -7,12 +7,12 @@
 
 use std::sync::Arc;
 
+use axum::Json;
 use axum::extract::State;
 use axum::http::HeaderMap;
 use axum::response::IntoResponse;
-use axum::Json;
 
-use crate::server::rest::auth::{auth_or_401, not_found, ApiError};
+use crate::server::rest::auth::{ApiError, auth_or_401, not_found};
 use crate::server::state::{AppState, GameRoom};
 use open4x_protocol::v1::ids::CivId;
 use open4x_protocol::v1::web::great_people as gp_view;
@@ -45,10 +45,7 @@ pub async fn great_people(
 }
 
 /// Project the great-people view for `civ` from a game room's simulation state.
-pub fn build_great_people_from_room(
-    room: &GameRoom,
-    civ: CivId,
-) -> gp_view::GreatPeopleView {
+pub fn build_great_people_from_room(room: &GameRoom, civ: CivId) -> gp_view::GreatPeopleView {
     let libciv_civ = libciv::CivId::from_ulid(civ.as_ulid());
 
     // Per-class progress toward the next recruitment threshold.

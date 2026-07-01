@@ -78,7 +78,10 @@ async fn bootstrap_token(app: &Router) -> String {
     });
     let (status, body) = post_json(app, "/api/v1/games/new", body).await;
     assert_eq!(status, StatusCode::CREATED, "games/new: {body:?}");
-    body["token"].as_str().expect("token in response").to_string()
+    body["token"]
+        .as_str()
+        .expect("token in response")
+        .to_string()
 }
 
 #[tokio::test]

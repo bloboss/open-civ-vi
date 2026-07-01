@@ -4,7 +4,6 @@
 //! shape through this storage layer; accounts crate doesn't
 //! interpret it.
 
-
 use async_trait::async_trait;
 use chrono::Utc;
 use serde::Serialize;
@@ -140,13 +139,11 @@ impl PresetsStore for SqlitePresetsStore {
 
     async fn delete(&self, player_id: PlayerId, id: &str) -> PresetsResult<()> {
         let pid = pid_text(player_id);
-        let res = sqlx::query(
-            "DELETE FROM presets WHERE id = ?1 AND player_id = ?2",
-        )
-        .bind(id)
-        .bind(&pid)
-        .execute(&self.pool)
-        .await?;
+        let res = sqlx::query("DELETE FROM presets WHERE id = ?1 AND player_id = ?2")
+            .bind(id)
+            .bind(&pid)
+            .execute(&self.pool)
+            .await?;
         if res.rows_affected() == 0 {
             return Err(PresetsError::NotFound);
         }
@@ -157,8 +154,8 @@ impl PresetsStore for SqlitePresetsStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::store::{AccountStore, SqliteAccountStore};
     use crate::Identity;
+    use crate::store::{AccountStore, SqliteAccountStore};
 
     struct TempFile(std::path::PathBuf);
     impl Drop for TempFile {
@@ -232,7 +229,10 @@ mod tests {
 
         // Double-delete returns NotFound.
         assert!(matches!(
-            presets.delete(alice.player_id, &created.id).await.unwrap_err(),
+            presets
+                .delete(alice.player_id, &created.id)
+                .await
+                .unwrap_err(),
             PresetsError::NotFound
         ));
 

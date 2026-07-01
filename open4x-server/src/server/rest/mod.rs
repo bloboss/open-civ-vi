@@ -49,17 +49,32 @@ pub fn v1_router() -> Router<Arc<AppState>> {
         .route("/empire/overview", get(handlers::empire_overview))
         .route("/victory", get(handlers::victory))
         .route("/registry", get(handlers::registry))
-        .route("/notifications", get(handlers::notifications).delete(handlers::dismiss_all_notifications))
-        .route("/notifications/{id}", delete(handlers::dismiss_notification))
+        .route(
+            "/notifications",
+            get(handlers::notifications).delete(handlers::dismiss_all_notifications),
+        )
+        .route(
+            "/notifications/{id}",
+            delete(handlers::dismiss_notification),
+        )
         .route("/turn-queue", get(handlers::turn_queue))
         .route("/climate", get(climate::climate))
         // writes
         .route("/cities/{id}/production", post(handlers::queue_production))
-        .route("/cities/{id}/production/{pos}", delete(handlers::cancel_production))
+        .route(
+            "/cities/{id}/production/{pos}",
+            delete(handlers::cancel_production),
+        )
         .route("/cities/{id}/focus", post(handlers::assign_city_focus))
         .route("/cities/{id}/rename", post(handlers::rename_city))
         .route("/units/{id}/action", post(handlers::unit_action))
-        .route("/tech/research", post(handlers::tech_research).delete(handlers::cancel_research))
-        .route("/civics/research", post(handlers::civic_research).delete(handlers::cancel_civic))
+        .route(
+            "/tech/research",
+            post(handlers::tech_research).delete(handlers::cancel_research),
+        )
+        .route(
+            "/civics/research",
+            post(handlers::civic_research).delete(handlers::cancel_civic),
+        )
         .route("/turn/end", post(handlers::end_turn))
 }

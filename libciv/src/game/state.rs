@@ -1,28 +1,30 @@
-use std::collections::VecDeque;
-use crate::{
-    BarbarianCampId, BuildingId, CivId, CivicRefs, CityId, GrievanceId, ProjectId, TechRefs,
-    UnitCategory, UnitDomain, UnitId, UnitTypeId, WonderId, EraId, VictoryId, YieldBundle,
-};
 use super::victory::BuiltinVictoryCondition;
-use crate::civ::{
-    BarbarianCamp, BarbarianConfig, BasicUnit, BeliefRefs, BuiltinBelief, Civilization, City,
-    CityKind, DiplomaticRelation, GreatPerson, GreatPersonDef, Governor, PlacedDistrict,
-    Religion, TradeRoute, WonderTourism, WorldCongress,
-};
 use crate::civ::era::Era;
 use crate::civ::religion::build_beliefs;
-use crate::rules::{TechTree, CivicTree, Government, Policy, OneShotEffect,
-    register_builtin_governments, register_builtin_policies};
-use crate::rules::tech::{build_tech_tree, build_civic_tree};
+use crate::civ::{
+    BarbarianCamp, BarbarianConfig, BasicUnit, BeliefRefs, BuiltinBelief, City, CityKind,
+    Civilization, DiplomaticRelation, Governor, GreatPerson, GreatPersonDef, PlacedDistrict,
+    Religion, TradeRoute, WonderTourism, WorldCongress,
+};
 use crate::rules::building_defs::builtin_building_defs;
-use crate::rules::unit_defs::builtin_unit_type_defs;
 use crate::rules::project_defs::builtin_project_defs;
 use crate::rules::promotion::{RegisteredPromotion, register_builtin_promotions};
+use crate::rules::tech::{build_civic_tree, build_tech_tree};
+use crate::rules::unit_defs::builtin_unit_type_defs;
+use crate::rules::{
+    CivicTree, Government, OneShotEffect, Policy, TechTree, register_builtin_governments,
+    register_builtin_policies,
+};
+use crate::world::disaster::DisasterKind;
+use crate::{
+    BarbarianCampId, BuildingId, CityId, CivId, CivicRefs, EraId, GrievanceId, ProjectId, TechRefs,
+    UnitCategory, UnitDomain, UnitId, UnitTypeId, VictoryId, WonderId, YieldBundle,
+};
+use libhexgrid::coord::HexCoord;
 use rand::SeedableRng;
 use rand::rngs::SmallRng;
+use std::collections::VecDeque;
 use ulid::Ulid;
-use libhexgrid::coord::HexCoord;
-use crate::world::disaster::DisasterKind;
 
 use super::board::WorldBoard;
 
@@ -32,35 +34,35 @@ use super::board::WorldBoard;
 #[derive(Debug, Clone)]
 pub struct UnitTypeDef {
     /// Canonical ID used to match `BasicUnit.unit_type` back to this def.
-    pub id:              UnitTypeId,
-    pub name:            &'static str,
+    pub id: UnitTypeId,
+    pub name: &'static str,
     pub production_cost: u32,
-    pub domain:          UnitDomain,
-    pub category:        UnitCategory,
-    pub max_movement:    u32,
+    pub domain: UnitDomain,
+    pub category: UnitCategory,
+    pub max_movement: u32,
     pub combat_strength: Option<u32>,
     /// Melee = 0; ranged attack range in tiles.
-    pub range:           u8,
+    pub range: u8,
     /// Vision radius for spawned units of this type.
-    pub vision_range:    u8,
+    pub vision_range: u8,
     /// True for settler-class units: `found_city` may be called on them.
-    pub can_found_city:  bool,
+    pub can_found_city: bool,
     /// Strategic resource consumed from the civilization's stockpile when this
     /// unit completes production. `None` means no resource cost.
-    pub resource_cost:   Option<(crate::world::resource::BuiltinResource, u32)>,
+    pub resource_cost: Option<(crate::world::resource::BuiltinResource, u32)>,
     /// Extra combat strength added when this unit attacks a unit on a city tile.
     /// 0 for non-siege units.
-    pub siege_bonus:     u32,
+    pub siege_bonus: u32,
     /// Maximum build charges for builder-type units. 0 for non-builder units.
     /// When a unit is spawned, `BasicUnit.charges` is set to `Some(max_charges)`
     /// if `max_charges > 0`, or `None` otherwise.
-    pub max_charges:     u8,
+    pub max_charges: u8,
     /// If set, this unit is exclusive to the given civilization.
-    pub exclusive_to:    Option<crate::civ::civ_identity::BuiltinCiv>,
+    pub exclusive_to: Option<crate::civ::civ_identity::BuiltinCiv>,
     /// If set, this unit replaces the named base unit for its civilization.
-    pub replaces:        Option<&'static str>,
+    pub replaces: Option<&'static str>,
     /// Era this unit belongs to (for production bonus conditions).
-    pub era:             Option<crate::AgeType>,
+    pub era: Option<crate::AgeType>,
     /// Promotion class for this unit type (determines which promotions are available).
     pub promotion_class: Option<crate::PromotionClass>,
 }
@@ -68,45 +70,45 @@ pub struct UnitTypeDef {
 /// Static descriptor for a wonder; stored in `GameState.wonder_defs`.
 #[derive(Debug, Clone)]
 pub struct WonderDef {
-    pub id:              WonderId,
-    pub name:            &'static str,
+    pub id: WonderId,
+    pub name: &'static str,
     pub production_cost: u32,
     /// Era this wonder belongs to (for production bonus conditions).
-    pub era:             Option<crate::AgeType>,
+    pub era: Option<crate::AgeType>,
     /// Persistent modifiers granted to the owning civilization once this wonder
     /// is completed. Consumed by `compute_yields` (resolved through the standard
     /// modifier pipeline). Empty for wonders whose effect is not yet modelled.
-    pub effects:         Vec<crate::rules::modifier::Modifier>,
+    pub effects: Vec<crate::rules::modifier::Modifier>,
 }
 
 /// Static descriptor for a building type; stored in `GameState.building_defs`.
 /// `id` is the canonical `BuildingId` used when adding the building to a city.
 #[derive(Debug, Clone)]
 pub struct BuildingDef {
-    pub id:                  BuildingId,
-    pub name:                &'static str,
-    pub cost:                u32,
-    pub maintenance:         u32,
-    pub yields:              YieldBundle,
-    pub requires_district:   Option<&'static str>,
+    pub id: BuildingId,
+    pub name: &'static str,
+    pub cost: u32,
+    pub maintenance: u32,
+    pub yields: YieldBundle,
+    pub requires_district: Option<&'static str>,
     /// Another building that must already exist in the city before this one
     /// can be produced (e.g. University requires Library).
-    pub prereq_building:     Option<&'static str>,
+    pub prereq_building: Option<&'static str>,
     /// A building that cannot coexist with this one in the same city
     /// (e.g. Barracks and Stable are mutually exclusive).
-    pub mutually_exclusive:  Option<&'static str>,
+    pub mutually_exclusive: Option<&'static str>,
     /// Great work slots provided when this building is constructed in a city.
-    pub great_work_slots:    Vec<crate::civ::great_works::GreatWorkSlotType>,
+    pub great_work_slots: Vec<crate::civ::great_works::GreatWorkSlotType>,
     /// If set, this building is exclusive to the given civilization.
-    pub exclusive_to:        Option<crate::civ::civ_identity::BuiltinCiv>,
+    pub exclusive_to: Option<crate::civ::civ_identity::BuiltinCiv>,
     /// If set, this building replaces the named base building for its civilization.
-    pub replaces:            Option<&'static str>,
+    pub replaces: Option<&'static str>,
     /// Power consumed per turn (0 for most buildings; late-era buildings need power).
-    pub power_cost:          u32,
+    pub power_cost: u32,
     /// Power generated per turn (only power plant buildings produce power).
-    pub power_generated:     u32,
+    pub power_generated: u32,
     /// CO2 emitted per turn (only fossil fuel power plants).
-    pub co2_per_turn:        u32,
+    pub co2_per_turn: u32,
 }
 
 /// Static descriptor for a city project; stored in `GameState.project_defs`.
@@ -141,7 +143,9 @@ impl serde::Serialize for IdGenerator {
 impl<'de> serde::Deserialize<'de> for IdGenerator {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         #[derive(serde::Deserialize)]
-        struct Helper { timestamp_ms: u64 }
+        struct Helper {
+            timestamp_ms: u64,
+        }
         let h = Helper::deserialize(deserializer)?;
         // The RNG is rebuilt from seed 0; the caller must reseed from GameState.seed.
         let mut id_gen = IdGenerator::new(0);
@@ -386,7 +390,7 @@ impl GameState {
         let board = WorldBoard::new(width, height);
         let mut id_gen = IdGenerator::new(seed);
         let era_id = EraId::from_ulid(id_gen.next_ulid());
-        let (tech_tree, tech_refs)   = build_tech_tree(&mut id_gen);
+        let (tech_tree, tech_refs) = build_tech_tree(&mut id_gen);
         let (civic_tree, civic_refs) = build_civic_tree(&mut id_gen);
         let (belief_defs, belief_refs) = build_beliefs(&mut id_gen);
         let governments = register_builtin_governments(&mut id_gen);
@@ -464,9 +468,9 @@ impl GameState {
     /// Returns the city that represents the given city-state CivId, if one exists.
     /// City states are stored in the cities vec with owner == their diplomatic CivId.
     pub fn city_state_by_civ(&self, civ_id: CivId) -> Option<&City> {
-        self.cities.iter().find(|c| {
-            matches!(c.kind, CityKind::CityState(_)) && c.owner == civ_id
-        })
+        self.cities
+            .iter()
+            .find(|c| matches!(c.kind, CityKind::CityState(_)) && c.owner == civ_id)
     }
 
     pub fn barbarian_camp(&self, id: BarbarianCampId) -> Option<&BarbarianCamp> {

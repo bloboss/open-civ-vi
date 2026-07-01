@@ -21,7 +21,8 @@ pub fn builtin_templates() -> Vec<CivTemplate> {
             civ_name: "Babylon".into(),
             adjective: "Babylonian".into(),
             leader_name: "Hammurabi".into(),
-            ability_description: "Enuma Anu Enlil: Eurekas grant full tech instead of boost.".into(),
+            ability_description: "Enuma Anu Enlil: Eurekas grant full tech instead of boost."
+                .into(),
             unique_unit: Some("Sabum Kibittum".into()),
             unique_infrastructure: Some("Palgum".into()),
         },

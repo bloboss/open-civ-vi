@@ -2,22 +2,31 @@ use leptos::prelude::*;
 use open4x_protocol::v1::view::GameView;
 
 #[component]
-pub fn PlayersTab(
-    game_view: ReadSignal<Option<GameView>>,
-) -> impl IntoView {
+pub fn PlayersTab(game_view: ReadSignal<Option<GameView>>) -> impl IntoView {
     let content = move || {
         let Some(gv) = game_view.get() else {
             return view! { <p>"Loading..."</p> }.into_any();
         };
 
-        let my_score = gv.scores.iter()
+        let my_score = gv
+            .scores
+            .iter()
             .find(|(id, _)| *id == gv.my_civ_id)
             .map(|(_, s)| *s)
             .unwrap_or(0);
 
-        let players: Vec<_> = gv.other_civs.iter().map(|c| {
-            (c.name.clone(), c.leader_name.clone(), c.score, format!("{:?}", c.diplomatic_status))
-        }).collect();
+        let players: Vec<_> = gv
+            .other_civs
+            .iter()
+            .map(|c| {
+                (
+                    c.name.clone(),
+                    c.leader_name.clone(),
+                    c.score,
+                    format!("{:?}", c.diplomatic_status),
+                )
+            })
+            .collect();
 
         view! {
             <div class="tab-content">
@@ -50,7 +59,8 @@ pub fn PlayersTab(
                     </tbody>
                 </table>
             </div>
-        }.into_any()
+        }
+        .into_any()
     };
 
     view! { <div>{content}</div> }

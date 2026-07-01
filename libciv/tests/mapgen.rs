@@ -32,7 +32,9 @@ fn land_fraction_within_tolerance() {
     generate(&config, &mut board);
 
     let total = board.all_coords().len();
-    let land  = board.all_coords().iter()
+    let land = board
+        .all_coords()
+        .iter()
         .filter(|&&c| board.tile(c).map(|t| is_land(t.terrain)).unwrap_or(false))
         .count();
 
@@ -57,7 +59,8 @@ fn no_mountain_with_hills() {
         if let Some(tile) = board.tile(coord) {
             assert!(
                 !(tile.terrain == BuiltinTerrain::Mountain && tile.hills),
-                "tile at {:?} is Mountain+hills", coord,
+                "tile at {:?} is Mountain+hills",
+                coord,
             );
         }
     }
@@ -78,11 +81,15 @@ fn land_tiles_have_real_terrain() {
     generate(&config, &mut board);
 
     let varied = board.all_coords().iter().any(|&c| {
-        board.tile(c).map(|t| {
-            is_land(t.terrain) && t.terrain != BuiltinTerrain::Grassland
-        }).unwrap_or(false)
+        board
+            .tile(c)
+            .map(|t| is_land(t.terrain) && t.terrain != BuiltinTerrain::Grassland)
+            .unwrap_or(false)
     });
-    assert!(varied, "all land tiles are still Grassland — features phase may not have run");
+    assert!(
+        varied,
+        "all land tiles are still Grassland — features phase may not have run"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -92,9 +99,13 @@ fn land_tiles_have_real_terrain() {
 #[test]
 fn starting_positions_valid() {
     let config = MapGenConfig {
-        width: 40, height: 25, seed: 4,
-        land_fraction: None, num_continents: None,
-        num_zone_seeds: None, num_starts: 4,
+        width: 40,
+        height: 25,
+        seed: 4,
+        land_fraction: None,
+        num_continents: None,
+        num_zone_seeds: None,
+        num_starts: 4,
     };
     let mut board = WorldBoard::new(config.width, config.height);
     let result = generate(&config, &mut board);
@@ -105,23 +116,34 @@ fn starting_positions_valid() {
     );
 
     for coord in &result.starting_positions {
-        let tile = board.tile(*coord)
+        let tile = board
+            .tile(*coord)
             .unwrap_or_else(|| panic!("starting position {:?} not on board", coord));
 
         assert!(
-            matches!(tile.terrain, BuiltinTerrain::Grassland | BuiltinTerrain::Plains
-                                  | BuiltinTerrain::Tundra | BuiltinTerrain::Desert
-                                  | BuiltinTerrain::Snow),
+            matches!(
+                tile.terrain,
+                BuiltinTerrain::Grassland
+                    | BuiltinTerrain::Plains
+                    | BuiltinTerrain::Tundra
+                    | BuiltinTerrain::Desert
+                    | BuiltinTerrain::Snow
+            ),
             "starting position {:?} has terrain {:?} — should be land",
-            coord, tile.terrain,
+            coord,
+            tile.terrain,
         );
         assert_ne!(
-            tile.terrain, BuiltinTerrain::Mountain,
-            "starting position {:?} is on Mountain", coord,
+            tile.terrain,
+            BuiltinTerrain::Mountain,
+            "starting position {:?} is on Mountain",
+            coord,
         );
         assert!(
             !matches!(tile.terrain, BuiltinTerrain::Ocean | BuiltinTerrain::Coast),
-            "starting position {:?} is on water ({:?})", coord, tile.terrain,
+            "starting position {:?} is on water ({:?})",
+            coord,
+            tile.terrain,
         );
     }
 }
@@ -141,8 +163,12 @@ fn deterministic() {
     generate(&config, &mut board_b);
 
     for coord in board_a.all_coords() {
-        let ta = board_a.tile(coord).map(|t| (t.terrain, t.hills, t.feature, t.resource));
-        let tb = board_b.tile(coord).map(|t| (t.terrain, t.hills, t.feature, t.resource));
+        let ta = board_a
+            .tile(coord)
+            .map(|t| (t.terrain, t.hills, t.feature, t.resource));
+        let tb = board_b
+            .tile(coord)
+            .map(|t| (t.terrain, t.hills, t.feature, t.resource));
         assert_eq!(ta, tb, "mismatch at {:?}", coord);
     }
 }
@@ -159,11 +185,15 @@ fn different_seeds_differ() {
     let mut board_b = WorldBoard::new(40, 25);
     generate(&MapGenConfig::standard(40, 25, 99), &mut board_b);
 
-    let mismatches = board_a.all_coords().iter().filter(|&&c| {
-        let ta = board_a.tile(c).map(|t| t.terrain);
-        let tb = board_b.tile(c).map(|t| t.terrain);
-        ta != tb
-    }).count();
+    let mismatches = board_a
+        .all_coords()
+        .iter()
+        .filter(|&&c| {
+            let ta = board_a.tile(c).map(|t| t.terrain);
+            let tb = board_b.tile(c).map(|t| t.terrain);
+            ta != tb
+        })
+        .count();
 
     assert!(
         mismatches > 10,

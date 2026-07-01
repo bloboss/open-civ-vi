@@ -13,7 +13,7 @@ use wasm_bindgen_futures::spawn_local;
 
 use crate::components::api::auth as auth_api;
 use crate::components::crypto;
-use crate::components::i18n::{tr, Key};
+use crate::components::i18n::{Key, tr};
 use crate::components::{Btn, Popup, PopupBody, PopupSize};
 
 /// State machine for the Ed25519 pubkey sign-in panel.
@@ -46,12 +46,18 @@ enum EmailFlowError {
     /// the server's hint message so "Retry-After" copy is honest.
     RateLimited { message: Option<String> },
     /// 5xx — mint or mailer failed. Worth retrying after a moment.
-    ServerBusy { code: String, message: Option<String> },
+    ServerBusy {
+        code: String,
+        message: Option<String>,
+    },
     /// Network / transport failure — couldn't reach the server.
     /// `ApiError::status == 0` from the binding.
     Network { detail: String },
     /// Anything else (4xx that isn't 429, unrecognised codes).
-    Other { code: String, message: Option<String> },
+    Other {
+        code: String,
+        message: Option<String>,
+    },
 }
 
 impl EmailFlowError {
@@ -59,7 +65,9 @@ impl EmailFlowError {
         let msg = e.message.clone();
         match e.status {
             0 => EmailFlowError::Network {
-                detail: msg.clone().unwrap_or_else(|| "couldn't reach the server".into()),
+                detail: msg
+                    .clone()
+                    .unwrap_or_else(|| "couldn't reach the server".into()),
             },
             429 => EmailFlowError::RateLimited { message: msg },
             500..=599 => EmailFlowError::ServerBusy {
@@ -89,8 +97,7 @@ impl EmailFlowError {
                 .unwrap_or_else(|| tr(Key::LoginEmailErrorRateLimit).into()),
             EmailFlowError::ServerBusy { code, message } => match message {
                 Some(m) => format!("Server's having trouble ({code}): {m}"),
-                None => tr(Key::LoginEmailErrorServerBusyTemplate)
-                    .replace("{code}", code),
+                None => tr(Key::LoginEmailErrorServerBusyTemplate).replace("{code}", code),
             },
             EmailFlowError::Network { detail } => {
                 format!("{}\n{detail}", tr(Key::LoginEmailErrorNetwork))

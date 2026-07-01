@@ -1,5 +1,5 @@
-use crate::{CivId, GreatPersonId, GreatPersonType, UnitDomain};
 use crate::civ::district::BuiltinDistrict;
+use crate::{CivId, GreatPersonId, GreatPersonType, UnitDomain};
 use libhexgrid::coord::HexCoord;
 
 // ── Great person point constants ─────────────────────────────────────────────
@@ -29,13 +29,17 @@ pub const GP_PATRONAGE_FAITH_PER_POINT: u32 = 2;
 /// Returns an empty slice for districts that don't generate great person points.
 pub fn district_great_person_types(district: BuiltinDistrict) -> &'static [GreatPersonType] {
     match district {
-        BuiltinDistrict::Campus          => &[GreatPersonType::Scientist],
-        BuiltinDistrict::TheaterSquare   => &[GreatPersonType::Writer, GreatPersonType::Artist, GreatPersonType::Musician],
-        BuiltinDistrict::CommercialHub   => &[GreatPersonType::Merchant],
-        BuiltinDistrict::Harbor          => &[GreatPersonType::Admiral],
-        BuiltinDistrict::HolySite        => &[GreatPersonType::Prophet],
-        BuiltinDistrict::Encampment      => &[GreatPersonType::General],
-        BuiltinDistrict::IndustrialZone  => &[GreatPersonType::Engineer],
+        BuiltinDistrict::Campus => &[GreatPersonType::Scientist],
+        BuiltinDistrict::TheaterSquare => &[
+            GreatPersonType::Writer,
+            GreatPersonType::Artist,
+            GreatPersonType::Musician,
+        ],
+        BuiltinDistrict::CommercialHub => &[GreatPersonType::Merchant],
+        BuiltinDistrict::Harbor => &[GreatPersonType::Admiral],
+        BuiltinDistrict::HolySite => &[GreatPersonType::Prophet],
+        BuiltinDistrict::Encampment => &[GreatPersonType::General],
+        BuiltinDistrict::IndustrialZone => &[GreatPersonType::Engineer],
         _ => &[],
     }
 }
@@ -67,9 +71,7 @@ pub fn building_great_person_points(name: &str) -> Option<(GreatPersonType, u32)
         // ── Harbor → Admiral ────────────────────────────────────────────────
         "Lighthouse" | "Shipyard" | "Seaport" => GreatPersonType::Admiral,
         // ── Encampment → General ────────────────────────────────────────────
-        "Barracks" | "Stable" | "Military Academy" | "Basilikoi Paides" => {
-            GreatPersonType::General
-        }
+        "Barracks" | "Stable" | "Military Academy" | "Basilikoi Paides" => GreatPersonType::General,
         // ── Industrial Zone → Engineer ──────────────────────────────────────
         "Workshop" | "Factory" | "Power Plant" => GreatPersonType::Engineer,
         _ => return None,
@@ -80,16 +82,16 @@ pub fn building_great_person_points(name: &str) -> Option<(GreatPersonType, u32)
 /// Era ordering for gating great person candidates.
 fn era_order(era: &str) -> u32 {
     match era {
-        "Ancient"      => 0,
-        "Classical"    => 1,
-        "Medieval"     => 2,
-        "Renaissance"  => 3,
-        "Industrial"   => 4,
-        "Modern"       => 5,
-        "Atomic"       => 6,
-        "Information"  => 7,
-        "Future"       => 8,
-        _              => u32::MAX,
+        "Ancient" => 0,
+        "Classical" => 1,
+        "Medieval" => 2,
+        "Renaissance" => 3,
+        "Industrial" => 4,
+        "Modern" => 5,
+        "Atomic" => 6,
+        "Information" => 7,
+        "Future" => 8,
+        _ => u32::MAX,
     }
 }
 
@@ -100,15 +102,22 @@ pub fn era_is_current_or_earlier(candidate_era: &str, current_era: &str) -> bool
 
 /// Returns the current global era name from the game state's era list.
 pub fn current_era_name(state: &crate::game::state::GameState) -> &'static str {
-    state.eras.get(state.current_era_index)
+    state
+        .eras
+        .get(state.current_era_index)
         .map(|e| e.name)
         .unwrap_or("Ancient")
 }
 
 /// Compute the recruitment threshold for a given GP type based on how many
 /// of that type have already been recruited globally.
-pub fn recruitment_threshold(person_type: GreatPersonType, state: &crate::game::state::GameState) -> u32 {
-    let recruited_count = state.great_people.iter()
+pub fn recruitment_threshold(
+    person_type: GreatPersonType,
+    state: &crate::game::state::GameState,
+) -> u32 {
+    let recruited_count = state
+        .great_people
+        .iter()
         .filter(|gp| gp.person_type == person_type && gp.owner.is_some())
         .count() as u32;
     GP_BASE_THRESHOLD + recruited_count * GP_THRESHOLD_INCREMENT
@@ -121,12 +130,16 @@ pub fn next_candidate_name(
     state: &crate::game::state::GameState,
 ) -> Option<&'static str> {
     let era_name = current_era_name(state);
-    let recruited_names: std::collections::HashSet<&str> = state.great_people.iter()
+    let recruited_names: std::collections::HashSet<&str> = state
+        .great_people
+        .iter()
         .filter(|gp| gp.owner.is_some())
         .map(|gp| gp.name)
         .collect();
 
-    state.great_person_defs.iter()
+    state
+        .great_person_defs
+        .iter()
         .filter(|d| d.person_type == person_type)
         .filter(|d| !recruited_names.contains(d.name))
         .filter(|d| era_is_current_or_earlier(d.era, era_name))
@@ -298,7 +311,6 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Ancient",
             retire_effect: RetireEffect::GoldGrant { amount: 150 },
         },
-
         // ══════════════════════════════════════════════════════════════════════
         // Classical era
         // ══════════════════════════════════════════════════════════════════════
@@ -640,7 +652,6 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Medieval",
             retire_effect: RetireEffect::GoldGrant { amount: 300 },
         },
-
         // ══════════════════════════════════════════════════════════════════════
         // Renaissance era
         // ══════════════════════════════════════════════════════════════════════
@@ -822,7 +833,6 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Renaissance",
             retire_effect: RetireEffect::GoldGrant { amount: 400 },
         },
-
         // ══════════════════════════════════════════════════════════════════════
         // Industrial era
         // ══════════════════════════════════════════════════════════════════════
@@ -1028,7 +1038,6 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Industrial",
             retire_effect: RetireEffect::GoldGrant { amount: 500 },
         },
-
         // ══════════════════════════════════════════════════════════════════════
         // Modern era
         // ══════════════════════════════════════════════════════════════════════
@@ -1183,7 +1192,6 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Modern",
             retire_effect: RetireEffect::GoldGrant { amount: 600 },
         },
-
         // ══════════════════════════════════════════════════════════════════════
         // Atomic era
         // ══════════════════════════════════════════════════════════════════════
@@ -1323,7 +1331,6 @@ pub fn builtin_great_person_defs() -> Vec<GreatPersonDef> {
             era: "Atomic",
             retire_effect: RetireEffect::GoldGrant { amount: 800 },
         },
-
         // ══════════════════════════════════════════════════════════════════════
         // Information era
         // ══════════════════════════════════════════════════════════════════════
@@ -1478,7 +1485,12 @@ pub struct GreatPerson {
 }
 
 impl GreatPerson {
-    pub fn new(id: GreatPersonId, name: &'static str, person_type: GreatPersonType, era: &'static str) -> Self {
+    pub fn new(
+        id: GreatPersonId,
+        name: &'static str,
+        person_type: GreatPersonType,
+        era: &'static str,
+    ) -> Self {
         Self {
             id,
             name,
@@ -1505,7 +1517,9 @@ pub fn spawn_great_person(
     def_name: &str,
     coord: HexCoord,
 ) -> GreatPersonId {
-    let def = state.great_person_defs.iter()
+    let def = state
+        .great_person_defs
+        .iter()
         .find(|d| d.name == def_name)
         .expect("great person def not found");
 
@@ -1540,7 +1554,13 @@ pub fn spawn_great_person(
         health: 100,
         range: 0,
         vision_range: 2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     gp_id

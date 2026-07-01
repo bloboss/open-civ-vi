@@ -1,5 +1,5 @@
-use crate::{AgeType, CivId, EraId, YieldType};
 use crate::rules::modifier::{EffectType, Modifier, ModifierSource, StackingRule, TargetSelector};
+use crate::{AgeType, CivId, EraId, YieldType};
 
 // ---------------------------------------------------------------------------
 // Era trigger trait (existing)
@@ -153,14 +153,10 @@ pub fn era_age_modifiers(age: EraAge) -> Vec<Modifier> {
         )
     };
     match age {
-        EraAge::Golden | EraAge::Heroic => vec![
-            make(YieldType::Culture, 2),
-            make(YieldType::Amenities, 1),
-        ],
-        EraAge::Dark => vec![
-            make(YieldType::Culture, -2),
-            make(YieldType::Amenities, -1),
-        ],
+        EraAge::Golden | EraAge::Heroic => {
+            vec![make(YieldType::Culture, 2), make(YieldType::Amenities, 1)]
+        }
+        EraAge::Dark => vec![make(YieldType::Culture, -2), make(YieldType::Amenities, -1)],
         EraAge::Normal => Vec::new(),
     }
 }
@@ -173,14 +169,12 @@ pub fn era_age_modifiers(age: EraAge) -> Vec<Modifier> {
 /// current era, triggering a global era advancement.
 ///
 /// Returns `true` if the era should advance.
-pub fn should_advance_era(
-    current_era: &Era,
-    civs: &[crate::civ::Civilization],
-) -> bool {
+pub fn should_advance_era(current_era: &Era, civs: &[crate::civ::Civilization]) -> bool {
     for civ in civs {
         let techs = civ.researched_techs.len() as u32;
         let civics = civ.completed_civics.len() as u32;
-        if techs >= current_era.tech_count && civics >= current_era.civic_count
+        if techs >= current_era.tech_count
+            && civics >= current_era.civic_count
             && (current_era.tech_count > 0 || current_era.civic_count > 0)
         {
             return true;

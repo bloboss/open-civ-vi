@@ -9,9 +9,9 @@ use ipnet::IpNet;
 use open4x_accounts::audit::SqliteAuditStore;
 use open4x_accounts::friends::SqliteFriendsStore;
 use open4x_accounts::games::SqliteGameStore;
-use open4x_accounts::presets::SqlitePresetsStore;
 use open4x_accounts::magic_link::MagicLinkSigner;
 use open4x_accounts::mailer::{LogMailer, Mailer, SmtpConfig, SmtpMailer};
+use open4x_accounts::presets::SqlitePresetsStore;
 use open4x_accounts::store::SqliteAccountStore;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::{Pool, Sqlite};
@@ -115,12 +115,12 @@ impl AppState {
             },
             None => Arc::new(LogMailer),
         };
-        let public_base_url =
-            std::env::var("OPEN4X_LOBBY_PUBLIC_URL").unwrap_or_default();
+        let public_base_url = std::env::var("OPEN4X_LOBBY_PUBLIC_URL").unwrap_or_default();
         let game_server_url = std::env::var("OPEN4X_GAME_SERVER_URL")
             .unwrap_or_else(|_| "http://localhost:3001".to_string());
-        let trusted_proxies =
-            parse_trusted_proxies(&std::env::var("OPEN4X_LOBBY_TRUSTED_PROXIES").unwrap_or_default());
+        let trusted_proxies = parse_trusted_proxies(
+            &std::env::var("OPEN4X_LOBBY_TRUSTED_PROXIES").unwrap_or_default(),
+        );
 
         let deploy_mode = DeployMode::from_env();
         let process_orch = match deploy_mode {
@@ -132,7 +132,9 @@ impl AppState {
                     cfg.port_lo,
                     cfg.port_hi,
                     cfg.data_root.display(),
-                    cfg.public_url_template.as_deref().unwrap_or("<none, loopback only>"),
+                    cfg.public_url_template
+                        .as_deref()
+                        .unwrap_or("<none, loopback only>"),
                 );
                 Some(ProcessOrchestrator::new(cfg))
             }

@@ -73,7 +73,10 @@ pub enum ScoutState {
     /// Scout is exploring the map. Contains the scout's `UnitId`.
     Exploring { scout_id: UnitId },
     /// Scout has discovered a player civilization and is returning to camp.
-    Returning { scout_id: UnitId, discovered_civ: CivId },
+    Returning {
+        scout_id: UnitId,
+        discovered_civ: CivId,
+    },
     /// Scout has returned to camp. The camp may now generate combat units
     /// at the full boldness rate. `discovered_civs` tracks which players
     /// the camp is aware of.

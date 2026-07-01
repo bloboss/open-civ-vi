@@ -22,8 +22,13 @@ impl Session {
         let tmp = path.with_extension("tmp");
         std::fs::write(&tmp, &json)
             .map_err(|e| format!("failed to write {}: {e}", tmp.display()))?;
-        std::fs::rename(&tmp, path)
-            .map_err(|e| format!("failed to rename {} -> {}: {e}", tmp.display(), path.display()))?;
+        std::fs::rename(&tmp, path).map_err(|e| {
+            format!(
+                "failed to rename {} -> {}: {e}",
+                tmp.display(),
+                path.display()
+            )
+        })?;
         Ok(())
     }
 

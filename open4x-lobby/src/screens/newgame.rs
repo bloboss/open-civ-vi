@@ -15,9 +15,8 @@ use crate::app::PendingPreset;
 use crate::components::api::games as games_api;
 use crate::components::api::presets as presets_api;
 use crate::components::{
-    Btn, MiniMap, Panel, PanelHead, Popup, PopupActions, PopupBody, PopupList,
-    PopupListItem, PopupSize, PopupTrigger, Segmented, Slider, Tag, Toggle,
-    segmented::Segment, slider::FormatFn,
+    Btn, MiniMap, Panel, PanelHead, Popup, PopupActions, PopupBody, PopupList, PopupListItem,
+    PopupSize, PopupTrigger, Segmented, Slider, Tag, Toggle, segmented::Segment, slider::FormatFn,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -30,7 +29,13 @@ enum Step {
 }
 
 impl Step {
-    const ALL: &'static [Step] = &[Step::Map, Step::Civ, Step::Rules, Step::Players, Step::Review];
+    const ALL: &'static [Step] = &[
+        Step::Map,
+        Step::Civ,
+        Step::Rules,
+        Step::Players,
+        Step::Review,
+    ];
 
     fn label(self) -> &'static str {
         match self {
@@ -51,7 +56,11 @@ impl Step {
     }
 
     fn prev(self) -> Option<Step> {
-        if self.idx() == 0 { None } else { Step::ALL.get(self.idx() - 1).copied() }
+        if self.idx() == 0 {
+            None
+        } else {
+            Step::ALL.get(self.idx() - 1).copied()
+        }
     }
 }
 
@@ -205,7 +214,11 @@ impl WizardState {
     /// Default preset name — mirrors the generated game name so a
     /// saved config reads recognisably in the Presets tab.
     fn default_preset_name(&self) -> String {
-        format!("{}'s {}", self.selected_leader.get(), self.selected_civ.get())
+        format!(
+            "{}'s {}",
+            self.selected_leader.get(),
+            self.selected_civ.get()
+        )
     }
 
     /// Push a deserialised preset back onto every signal — the
@@ -329,7 +342,11 @@ pub fn builtin_presets() -> Vec<BuiltinPreset> {
     vec![
         pack("Standard prince", "continents · standard · prince", &prince),
         pack("Deity duel", "pangaea · duel · deity", &deity),
-        pack("Slow marathon", "continents · large · prince · marathon", &marathon),
+        pack(
+            "Slow marathon",
+            "continents · large · prince · marathon",
+            &marathon,
+        ),
     ]
 }
 
@@ -720,11 +737,15 @@ fn StepMap() -> impl IntoView {
 
     let map_type_opts = Signal::derive(|| {
         ["continents", "pangaea", "archipelago", "fractal", "custom"]
-            .iter().map(|s| Segment::from_str(s)).collect()
+            .iter()
+            .map(|s| Segment::from_str(s))
+            .collect()
     });
     let map_size_opts = Signal::derive(|| {
         ["duel", "tiny", "small", "std", "large", "huge"]
-            .iter().map(|s| Segment::from_str(s)).collect()
+            .iter()
+            .map(|s| Segment::from_str(s))
+            .collect()
     });
 
     view! {
@@ -879,7 +900,13 @@ fn slider_label_barbs(v: i32) -> &'static str {
 }
 
 fn slider_label_aggr(v: i32) -> &'static str {
-    if v < 34 { "passive" } else if v > 66 { "warlike" } else { "balanced" }
+    if v < 34 {
+        "passive"
+    } else if v > 66 {
+        "warlike"
+    } else {
+        "balanced"
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -965,9 +992,21 @@ fn StepReview() -> impl IntoView {
         let players = format!("1 human + 1 invite pending + {players_count} AI");
         let turn_mode = format!(
             "{} · {} · {}",
-            if state.simultaneous.get() { "simultaneous" } else { "play-by-turn" },
-            if state.private_game.get() { "invite-only" } else { "public" },
-            if state.cross_play.get() { "web · API" } else { "web only" },
+            if state.simultaneous.get() {
+                "simultaneous"
+            } else {
+                "play-by-turn"
+            },
+            if state.private_game.get() {
+                "invite-only"
+            } else {
+                "public"
+            },
+            if state.cross_play.get() {
+                "web · API"
+            } else {
+                "web only"
+            },
         );
         let timer_label = state.timer.get();
         let seed = if state.seed_override.get().trim().is_empty() {
@@ -981,10 +1020,20 @@ fn StepReview() -> impl IntoView {
             ("world".into(), world),
             ("civilization".into(), civilization),
             ("difficulty".into(), difficulty_line),
-            ("victory".into(), if victory.is_empty() { "none — disable all and you lose forever".into() } else { victory }),
+            (
+                "victory".into(),
+                if victory.is_empty() {
+                    "none — disable all and you lose forever".into()
+                } else {
+                    victory
+                },
+            ),
             ("dynamics".into(), dynamics),
             ("players".into(), players),
-            ("turn mode".into(), format!("{turn_mode} · timer {timer_label}")),
+            (
+                "turn mode".into(),
+                format!("{turn_mode} · timer {timer_label}"),
+            ),
         ]
     };
 
@@ -1072,14 +1121,78 @@ struct CivPick {
 }
 
 const CIVS: &[CivPick] = &[
-    CivPick { leader: "Saladin",   civ: "Arabia",  trait_: "Trade & faith",     unique_unit: "Mamluk",         unique_building: "Madrasa",     leader_ability: "Righteousness of the Faith", civ_ability: "The Last Prophet" },
-    CivPick { leader: "Trajan",    civ: "Rome",    trait_: "Expansionist",      unique_unit: "Legion",         unique_building: "Bath",        leader_ability: "Trajan's Column",            civ_ability: "All Roads Lead to Rome" },
-    CivPick { leader: "Catherine", civ: "Russia",  trait_: "Wide / faith",      unique_unit: "Cossack",        unique_building: "Lavra",       leader_ability: "The Grand Embassy",          civ_ability: "Mother Russia" },
-    CivPick { leader: "Cleopatra", civ: "Egypt",   trait_: "Wonders / trade",   unique_unit: "Maryannu Chariot Archer", unique_building: "Sphinx", leader_ability: "Mediterranean's Bride",   civ_ability: "Iteru" },
-    CivPick { leader: "Hojo",      civ: "Japan",   trait_: "Coastal / military", unique_unit: "Samurai",       unique_building: "Electronics Factory", leader_ability: "Divine Wind",        civ_ability: "Meiji Restoration" },
-    CivPick { leader: "Gandhi",    civ: "India",   trait_: "Religion / peace",  unique_unit: "Varu",           unique_building: "Stepwell",    leader_ability: "Satyagraha",                 civ_ability: "Dharma" },
-    CivPick { leader: "Pedro II",  civ: "Brazil",  trait_: "Cultural",          unique_unit: "Minas Geraes",   unique_building: "Street Carnival", leader_ability: "Magnanimous",            civ_ability: "Amazon" },
-    CivPick { leader: "Random",    civ: "?",       trait_: "surprise me",       unique_unit: "—",              unique_building: "—",           leader_ability: "—",                          civ_ability: "—" },
+    CivPick {
+        leader: "Saladin",
+        civ: "Arabia",
+        trait_: "Trade & faith",
+        unique_unit: "Mamluk",
+        unique_building: "Madrasa",
+        leader_ability: "Righteousness of the Faith",
+        civ_ability: "The Last Prophet",
+    },
+    CivPick {
+        leader: "Trajan",
+        civ: "Rome",
+        trait_: "Expansionist",
+        unique_unit: "Legion",
+        unique_building: "Bath",
+        leader_ability: "Trajan's Column",
+        civ_ability: "All Roads Lead to Rome",
+    },
+    CivPick {
+        leader: "Catherine",
+        civ: "Russia",
+        trait_: "Wide / faith",
+        unique_unit: "Cossack",
+        unique_building: "Lavra",
+        leader_ability: "The Grand Embassy",
+        civ_ability: "Mother Russia",
+    },
+    CivPick {
+        leader: "Cleopatra",
+        civ: "Egypt",
+        trait_: "Wonders / trade",
+        unique_unit: "Maryannu Chariot Archer",
+        unique_building: "Sphinx",
+        leader_ability: "Mediterranean's Bride",
+        civ_ability: "Iteru",
+    },
+    CivPick {
+        leader: "Hojo",
+        civ: "Japan",
+        trait_: "Coastal / military",
+        unique_unit: "Samurai",
+        unique_building: "Electronics Factory",
+        leader_ability: "Divine Wind",
+        civ_ability: "Meiji Restoration",
+    },
+    CivPick {
+        leader: "Gandhi",
+        civ: "India",
+        trait_: "Religion / peace",
+        unique_unit: "Varu",
+        unique_building: "Stepwell",
+        leader_ability: "Satyagraha",
+        civ_ability: "Dharma",
+    },
+    CivPick {
+        leader: "Pedro II",
+        civ: "Brazil",
+        trait_: "Cultural",
+        unique_unit: "Minas Geraes",
+        unique_building: "Street Carnival",
+        leader_ability: "Magnanimous",
+        civ_ability: "Amazon",
+    },
+    CivPick {
+        leader: "Random",
+        civ: "?",
+        trait_: "surprise me",
+        unique_unit: "—",
+        unique_building: "—",
+        leader_ability: "—",
+        civ_ability: "—",
+    },
 ];
 
 #[component]
@@ -1176,12 +1289,28 @@ fn StepCiv() -> impl IntoView {
 // ─────────────────────────────── Step: rules ──────────────────────────────────
 
 const VICTORY_CONDITIONS: &[(&str, &str, bool)] = &[
-    ("Science",    "Launch a colony to a habitable exoplanet.",                                  true),
-    ("Culture",    "Attract more tourists than any other civ has domestic visitors.",            true),
-    ("Domination", "Capture every other civ's original capital.",                                true),
-    ("Religion",   "Convert every other civ to your founded religion.",                          true),
-    ("Diplomacy",  "Earn the most diplomatic favor in the World Congress.",                      false),
-    ("Score",      "Highest score when the time runs out.",                                      true),
+    ("Science", "Launch a colony to a habitable exoplanet.", true),
+    (
+        "Culture",
+        "Attract more tourists than any other civ has domestic visitors.",
+        true,
+    ),
+    (
+        "Domination",
+        "Capture every other civ's original capital.",
+        true,
+    ),
+    (
+        "Religion",
+        "Convert every other civ to your founded religion.",
+        true,
+    ),
+    (
+        "Diplomacy",
+        "Earn the most diplomatic favor in the World Congress.",
+        false,
+    ),
+    ("Score", "Highest score when the time runs out.", true),
 ];
 
 #[component]
@@ -1198,19 +1327,42 @@ fn StepRules() -> impl IntoView {
     let victory_signals: Vec<RwSignal<bool>> = state.victory.to_vec();
 
     let difficulty_opts = Signal::derive(|| {
-        ["settler", "chieftain", "warlord", "prince", "king", "emperor", "deity"]
-            .iter().map(|s| Segment::from_str(s)).collect()
+        [
+            "settler",
+            "chieftain",
+            "warlord",
+            "prince",
+            "king",
+            "emperor",
+            "deity",
+        ]
+        .iter()
+        .map(|s| Segment::from_str(s))
+        .collect()
     });
     let era_opts = Signal::derive(|| {
-        ["ancient", "classical", "medieval", "renaissance", "industrial"]
-            .iter().map(|s| Segment::from_str(s)).collect()
+        [
+            "ancient",
+            "classical",
+            "medieval",
+            "renaissance",
+            "industrial",
+        ]
+        .iter()
+        .map(|s| Segment::from_str(s))
+        .collect()
     });
     let speed_opts = Signal::derive(|| {
         ["online", "quick", "std", "epic", "marathon"]
-            .iter().map(|s| Segment::from_str(s)).collect()
+            .iter()
+            .map(|s| Segment::from_str(s))
+            .collect()
     });
     let personality_opts = Signal::derive(|| {
-        ["historic", "random", "scripted"].iter().map(|s| Segment::from_str(s)).collect()
+        ["historic", "random", "scripted"]
+            .iter()
+            .map(|s| Segment::from_str(s))
+            .collect()
     });
 
     // Categorical formatters for the world-dynamics sliders.
@@ -1221,7 +1373,14 @@ fn StepRules() -> impl IntoView {
         ["off", "rare", "std", "raging", "horde"][v.clamp(0, 4) as usize].to_string()
     });
     let aggr_fmt: FormatFn = Arc::new(|v: i32| {
-        if v < 34 { "passive" } else if v > 66 { "warlike" } else { "balanced" }.to_string()
+        if v < 34 {
+            "passive"
+        } else if v > 66 {
+            "warlike"
+        } else {
+            "balanced"
+        }
+        .to_string()
     });
 
     view! {
@@ -1416,14 +1575,62 @@ struct PlayerRow {
 }
 
 const PLAYERS: &[PlayerRow] = &[
-    PlayerRow { name: "Alice (you)", civ: "Arabia · Saladin",  kind: SlotKind::Human, you: true,  invite: false },
-    PlayerRow { name: "—",           civ: "—",                 kind: SlotKind::Open,  you: false, invite: true  },
-    PlayerRow { name: "AI",          civ: "Rome · Trajan",     kind: SlotKind::Ai,    you: false, invite: false },
-    PlayerRow { name: "AI",          civ: "Russia · Catherine",kind: SlotKind::Ai,    you: false, invite: false },
-    PlayerRow { name: "AI",          civ: "Random",            kind: SlotKind::Ai,    you: false, invite: false },
-    PlayerRow { name: "AI",          civ: "Random",            kind: SlotKind::Ai,    you: false, invite: false },
-    PlayerRow { name: "AI",          civ: "Random",            kind: SlotKind::Ai,    you: false, invite: false },
-    PlayerRow { name: "AI",          civ: "Random",            kind: SlotKind::Ai,    you: false, invite: false },
+    PlayerRow {
+        name: "Alice (you)",
+        civ: "Arabia · Saladin",
+        kind: SlotKind::Human,
+        you: true,
+        invite: false,
+    },
+    PlayerRow {
+        name: "—",
+        civ: "—",
+        kind: SlotKind::Open,
+        you: false,
+        invite: true,
+    },
+    PlayerRow {
+        name: "AI",
+        civ: "Rome · Trajan",
+        kind: SlotKind::Ai,
+        you: false,
+        invite: false,
+    },
+    PlayerRow {
+        name: "AI",
+        civ: "Russia · Catherine",
+        kind: SlotKind::Ai,
+        you: false,
+        invite: false,
+    },
+    PlayerRow {
+        name: "AI",
+        civ: "Random",
+        kind: SlotKind::Ai,
+        you: false,
+        invite: false,
+    },
+    PlayerRow {
+        name: "AI",
+        civ: "Random",
+        kind: SlotKind::Ai,
+        you: false,
+        invite: false,
+    },
+    PlayerRow {
+        name: "AI",
+        civ: "Random",
+        kind: SlotKind::Ai,
+        you: false,
+        invite: false,
+    },
+    PlayerRow {
+        name: "AI",
+        civ: "Random",
+        kind: SlotKind::Ai,
+        you: false,
+        invite: false,
+    },
 ];
 
 fn slot_class(p: &PlayerRow) -> &'static str {
@@ -1475,11 +1682,20 @@ fn StepPlayers() -> impl IntoView {
     let cross_play = state.cross_play;
 
     let timer_opts = Signal::derive(|| {
-        ["off", "5min", "10min", "30min", "24hr"].iter().map(|s| Segment::from_str(s)).collect()
+        ["off", "5min", "10min", "30min", "24hr"]
+            .iter()
+            .map(|s| Segment::from_str(s))
+            .collect()
     });
 
-    let humans = PLAYERS.iter().filter(|p| matches!(p.kind, SlotKind::Human) || p.you).count();
-    let ais = PLAYERS.iter().filter(|p| matches!(p.kind, SlotKind::Ai)).count();
+    let humans = PLAYERS
+        .iter()
+        .filter(|p| matches!(p.kind, SlotKind::Human) || p.you)
+        .count();
+    let ais = PLAYERS
+        .iter()
+        .filter(|p| matches!(p.kind, SlotKind::Ai))
+        .count();
     let sub = format!("// {humans}H · {ais}AI");
 
     view! {

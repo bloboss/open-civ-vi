@@ -1,10 +1,10 @@
 mod common;
 
-use libciv::game::state::BuildingDef;
-use libciv::game::diff::StateDelta;
-use libciv::{BuildingId, DefaultRulesEngine, TurnEngine, YieldBundle};
-use libciv::game::recalculate_visibility;
 use libciv::CivId;
+use libciv::game::diff::StateDelta;
+use libciv::game::recalculate_visibility;
+use libciv::game::state::BuildingDef;
+use libciv::{BuildingId, DefaultRulesEngine, TurnEngine, YieldBundle};
 
 use common::build_scenario;
 
@@ -67,7 +67,12 @@ fn co2_accumulates_from_coal_plant() {
     assert_eq!(s.state.global_co2, 0);
 
     // Find Rome's city index.
-    let rome_city_idx = s.state.cities.iter().position(|c| c.id == s.rome_city).unwrap();
+    let rome_city_idx = s
+        .state
+        .cities
+        .iter()
+        .position(|c| c.id == s.rome_city)
+        .unwrap();
 
     // Add a Coal Power Plant to Rome's city (power_generated=4, co2_per_turn=1).
     add_power_building(&mut s, rome_city_idx, "Coal Power Plant", 0, 4, 1);
@@ -76,25 +81,42 @@ fn co2_accumulates_from_coal_plant() {
     let diff = advance_turn_with_diff(&mut s);
 
     // CO2 should have increased by 1.
-    assert_eq!(s.state.global_co2, 1, "global_co2 should be 1 after one turn with coal plant");
+    assert_eq!(
+        s.state.global_co2, 1,
+        "global_co2 should be 1 after one turn with coal plant"
+    );
 
     // Check the diff for CO2Accumulated delta.
-    let co2_delta = diff.deltas.iter().find(|d| matches!(d, StateDelta::CO2Accumulated { .. }));
-    assert!(co2_delta.is_some(), "diff should contain CO2Accumulated delta");
+    let co2_delta = diff
+        .deltas
+        .iter()
+        .find(|d| matches!(d, StateDelta::CO2Accumulated { .. }));
+    assert!(
+        co2_delta.is_some(),
+        "diff should contain CO2Accumulated delta"
+    );
     if let Some(StateDelta::CO2Accumulated { total }) = co2_delta {
         assert_eq!(*total, 1);
     }
 
     // Advance another turn: CO2 should accumulate.
     let _diff2 = advance_turn_with_diff(&mut s);
-    assert_eq!(s.state.global_co2, 2, "global_co2 should be 2 after two turns");
+    assert_eq!(
+        s.state.global_co2, 2,
+        "global_co2 should be 2 after two turns"
+    );
 }
 
 #[test]
 fn power_balance_computed() {
     let mut s = build_scenario();
 
-    let rome_city_idx = s.state.cities.iter().position(|c| c.id == s.rome_city).unwrap();
+    let rome_city_idx = s
+        .state
+        .cities
+        .iter()
+        .position(|c| c.id == s.rome_city)
+        .unwrap();
 
     // Add a Factory (power_cost=1) and a Coal Power Plant (power_generated=4).
     add_power_building(&mut s, rome_city_idx, "Factory", 1, 0, 0);
@@ -104,15 +126,26 @@ fn power_balance_computed() {
     advance_turn_with_diff(&mut s);
 
     let city = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap();
-    assert_eq!(city.power_consumed, 1, "city should consume 1 power from Factory");
-    assert_eq!(city.power_generated, 4, "city should generate 4 power from Coal Power Plant");
+    assert_eq!(
+        city.power_consumed, 1,
+        "city should consume 1 power from Factory"
+    );
+    assert_eq!(
+        city.power_generated, 4,
+        "city should generate 4 power from Coal Power Plant"
+    );
 }
 
 #[test]
 fn no_co2_from_nuclear_plant() {
     let mut s = build_scenario();
 
-    let rome_city_idx = s.state.cities.iter().position(|c| c.id == s.rome_city).unwrap();
+    let rome_city_idx = s
+        .state
+        .cities
+        .iter()
+        .position(|c| c.id == s.rome_city)
+        .unwrap();
 
     // Add a Nuclear Power Plant (power_generated=16, co2_per_turn=0).
     add_power_building(&mut s, rome_city_idx, "Nuclear Power Plant", 0, 16, 0);
@@ -122,15 +155,28 @@ fn no_co2_from_nuclear_plant() {
     assert_eq!(s.state.global_co2, 0, "nuclear plant should not emit CO2");
 
     let city = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap();
-    assert_eq!(city.power_generated, 16, "nuclear plant should generate 16 power");
+    assert_eq!(
+        city.power_generated, 16,
+        "nuclear plant should generate 16 power"
+    );
 }
 
 #[test]
 fn multiple_cities_accumulate_co2() {
     let mut s = build_scenario();
 
-    let rome_city_idx = s.state.cities.iter().position(|c| c.id == s.rome_city).unwrap();
-    let babylon_city_idx = s.state.cities.iter().position(|c| c.id == s.babylon_city).unwrap();
+    let rome_city_idx = s
+        .state
+        .cities
+        .iter()
+        .position(|c| c.id == s.rome_city)
+        .unwrap();
+    let babylon_city_idx = s
+        .state
+        .cities
+        .iter()
+        .position(|c| c.id == s.babylon_city)
+        .unwrap();
 
     // Coal plant in Rome and Oil plant in Babylon.
     add_power_building(&mut s, rome_city_idx, "Coal Power Plant", 0, 4, 1);
@@ -138,7 +184,10 @@ fn multiple_cities_accumulate_co2() {
 
     advance_turn_with_diff(&mut s);
 
-    assert_eq!(s.state.global_co2, 2, "both fossil plants should contribute to global CO2");
+    assert_eq!(
+        s.state.global_co2, 2,
+        "both fossil plants should contribute to global CO2"
+    );
 }
 
 /// Add a *builtin* building (looked up by name from the already-registered
@@ -160,7 +209,12 @@ fn factory_emits_co2_clean_building_does_not() {
     let mut s = build_scenario();
     assert_eq!(s.state.global_co2, 0);
 
-    let rome_idx = s.state.cities.iter().position(|c| c.id == s.rome_city).unwrap();
+    let rome_idx = s
+        .state
+        .cities
+        .iter()
+        .position(|c| c.id == s.rome_city)
+        .unwrap();
 
     // A Factory now emits co2_per_turn = 1 (heavy industry).
     add_builtin_building(&mut s, rome_idx, "Factory");
@@ -183,7 +237,12 @@ fn factory_emits_co2_clean_building_does_not() {
 fn fossil_power_plants_emit_per_assigned_scale() {
     let mut s = build_scenario();
 
-    let rome_idx = s.state.cities.iter().position(|c| c.id == s.rome_city).unwrap();
+    let rome_idx = s
+        .state
+        .cities
+        .iter()
+        .position(|c| c.id == s.rome_city)
+        .unwrap();
 
     // Coal (3) + Oil (2) + Power Plant (2) + Nuclear (0, clean) = 7 per turn.
     add_builtin_building(&mut s, rome_idx, "Coal Power Plant");

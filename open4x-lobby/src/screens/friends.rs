@@ -30,7 +30,10 @@ pub fn Friends() -> impl IntoView {
     // True if the input parses as a 16-hex PlayerId (canonical
     // dot-grouped form or bare hex). Skips the search hop.
     fn looks_like_hex_pid(s: &str) -> bool {
-        let body = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")).unwrap_or(s);
+        let body = s
+            .strip_prefix("0x")
+            .or_else(|| s.strip_prefix("0X"))
+            .unwrap_or(s);
         let stripped: String = body.chars().filter(|c| c.is_ascii_hexdigit()).collect();
         stripped.len() == 16
     }
@@ -56,9 +59,7 @@ pub fn Friends() -> impl IntoView {
                         err.set(format!("no match for {q}"));
                         None
                     }
-                    Ok(matches) if matches.len() == 1 => {
-                        Some(matches[0].player_id.clone())
-                    }
+                    Ok(matches) if matches.len() == 1 => Some(matches[0].player_id.clone()),
                     Ok(matches) => {
                         err.set(format!(
                             "multiple matches ({}). paste the player ID directly to disambiguate.",

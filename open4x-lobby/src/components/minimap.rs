@@ -11,7 +11,7 @@
 use leptos::prelude::*;
 
 #[cfg(feature = "csr")]
-use crate::components::thumbnail::{cell_class, ThumbnailGrid};
+use crate::components::thumbnail::{ThumbnailGrid, cell_class};
 
 #[component]
 pub fn MiniMap(
@@ -78,7 +78,8 @@ pub fn MiniMap(
             </g>
             {blob_views}
         </svg>
-    }.into_any()
+    }
+    .into_any()
 }
 
 #[cfg(feature = "csr")]

@@ -16,14 +16,19 @@ fn data_dir() -> PathBuf {
 }
 
 /// Save a game snapshot (the GameView for each player) after turn resolution.
-pub fn save_game_snapshot(game_id: GameId, turn: u32, views: &[(open4x_protocol::v1::ids::CivId, GameView)]) {
+pub fn save_game_snapshot(
+    game_id: GameId,
+    turn: u32,
+    views: &[(open4x_protocol::v1::ids::CivId, GameView)],
+) {
     let dir = data_dir().join("games").join(game_id.to_string());
     if let Err(e) = std::fs::create_dir_all(&dir) {
         eprintln!("persist: failed to create dir {}: {e}", dir.display());
         return;
     }
     let path = dir.join(format!("turn_{turn}.json"));
-    let data: Vec<_> = views.iter()
+    let data: Vec<_> = views
+        .iter()
         .map(|(cid, view)| serde_json::json!({ "civ_id": cid.to_string(), "view": view }))
         .collect();
     match serde_json::to_string_pretty(&data) {
@@ -42,7 +47,9 @@ pub fn save_game_snapshot(game_id: GameId, turn: u32, views: &[(open4x_protocol:
 /// List all saved game IDs (directory names under data/games/).
 pub fn list_saved_games() -> Vec<String> {
     let dir = data_dir().join("games");
-    let Ok(entries) = std::fs::read_dir(&dir) else { return Vec::new() };
+    let Ok(entries) = std::fs::read_dir(&dir) else {
+        return Vec::new();
+    };
     entries
         .filter_map(|e| e.ok())
         .filter(|e| e.path().is_dir())

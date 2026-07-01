@@ -9,7 +9,6 @@
 //! ahead of Phase 2.3 (OIDC) so the session-cookie middleware on the
 //! lobby has a concrete `RawToken` to mint into.
 
-
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD as B64;
 use chrono::{DateTime, Duration, Utc};
@@ -105,8 +104,8 @@ pub async fn validate_session(
     if revoked_at.is_some() {
         return Ok(None);
     }
-    let exp =
-        DateTime::parse_from_rfc3339(&expires_at).map_err(|_| SessionError::Invalid("expires_at"))?;
+    let exp = DateTime::parse_from_rfc3339(&expires_at)
+        .map_err(|_| SessionError::Invalid("expires_at"))?;
     if exp.with_timezone(&Utc) <= Utc::now() {
         return Ok(None);
     }

@@ -12,7 +12,10 @@ fn env_reset_returns_valid_observation() {
     assert!(obs.num_units >= 1, "agent should have at least one unit");
     assert!(!obs.game_over, "game should not be over on reset");
     assert!(!obs.is_winner);
-    assert!(obs.score > 0, "initial score should be positive (city + territory)");
+    assert!(
+        obs.score > 0,
+        "initial score should be positive (city + territory)"
+    );
 }
 
 #[test]
@@ -34,7 +37,9 @@ fn env_step_move_unit() {
 
     // Find the agent's unit and a valid neighbor.
     let actions = env.available_actions();
-    let move_action = actions.iter().find(|a| matches!(a, Action::MoveUnit { .. }));
+    let move_action = actions
+        .iter()
+        .find(|a| matches!(a, Action::MoveUnit { .. }));
 
     if let Some(action) = move_action {
         let result = env.step(action.clone());
@@ -56,16 +61,27 @@ fn env_deterministic() {
         env.reset(77);
         let r1 = env.step(Action::EndTurn);
         let r2 = env.step(Action::EndTurn);
-        (r1.observation.score, r2.observation.score, r2.observation.turn)
+        (
+            r1.observation.score,
+            r2.observation.score,
+            r2.observation.turn,
+        )
     };
     let obs_b = {
         let mut env = CivEnv::new(77, 20, 12);
         env.reset(77);
         let r1 = env.step(Action::EndTurn);
         let r2 = env.step(Action::EndTurn);
-        (r1.observation.score, r2.observation.score, r2.observation.turn)
+        (
+            r1.observation.score,
+            r2.observation.score,
+            r2.observation.turn,
+        )
     };
-    assert_eq!(obs_a, obs_b, "same seed + same actions should be deterministic");
+    assert_eq!(
+        obs_a, obs_b,
+        "same seed + same actions should be deterministic"
+    );
 }
 
 #[test]
@@ -85,7 +101,10 @@ fn env_game_completes() {
             break;
         }
     }
-    assert!(done, "game should complete within 120 turns (score victory at turn 100)");
+    assert!(
+        done,
+        "game should complete within 120 turns (score victory at turn 100)"
+    );
 }
 
 #[test]

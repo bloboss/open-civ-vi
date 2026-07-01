@@ -1,8 +1,8 @@
-use leptos::prelude::*;
+use crate::components::ws::WsClient;
 use leptos::prelude::LocalStorage;
+use leptos::prelude::*;
 use open4x_protocol::v1::messages::{ClientMessage, GameAction};
 use open4x_protocol::v1::view::GameView;
-use crate::components::ws::WsClient;
 
 #[component]
 pub fn CultureTab(
@@ -20,11 +20,17 @@ pub fn CultureTab(
         let government = gv.my_civ.current_government.clone();
 
         let current_info = in_progress.as_ref().map(|cp| {
-            let name = gv.civic_tree.nodes.iter()
+            let name = gv
+                .civic_tree
+                .nodes
+                .iter()
                 .find(|n| n.id == cp.civic_id)
                 .map(|n| n.name.clone())
                 .unwrap_or_else(|| "?".into());
-            let cost = gv.civic_tree.nodes.iter()
+            let cost = gv
+                .civic_tree
+                .nodes
+                .iter()
                 .find(|n| n.id == cp.civic_id)
                 .map(|n| n.cost)
                 .unwrap_or(0);
@@ -33,21 +39,34 @@ pub fn CultureTab(
 
         let in_progress_id = in_progress.as_ref().map(|cp| cp.civic_id);
 
-        let nodes: Vec<_> = gv.civic_tree.nodes.iter().map(|n| {
-            let status = if completed.contains(&n.id) {
-                "researched"
-            } else if in_progress_id == Some(n.id) {
-                "in-progress"
-            } else if n.prerequisites.iter().all(|p| completed.contains(p)) {
-                "available"
-            } else {
-                "locked"
-            };
-            let progress = in_progress.as_ref()
-                .filter(|cp| cp.civic_id == n.id)
-                .map(|cp| cp.progress);
-            (n.id, n.name.clone(), n.cost, status, progress, n.inspiration_description.clone())
-        }).collect();
+        let nodes: Vec<_> = gv
+            .civic_tree
+            .nodes
+            .iter()
+            .map(|n| {
+                let status = if completed.contains(&n.id) {
+                    "researched"
+                } else if in_progress_id == Some(n.id) {
+                    "in-progress"
+                } else if n.prerequisites.iter().all(|p| completed.contains(p)) {
+                    "available"
+                } else {
+                    "locked"
+                };
+                let progress = in_progress
+                    .as_ref()
+                    .filter(|cp| cp.civic_id == n.id)
+                    .map(|cp| cp.progress);
+                (
+                    n.id,
+                    n.name.clone(),
+                    n.cost,
+                    status,
+                    progress,
+                    n.inspiration_description.clone(),
+                )
+            })
+            .collect();
 
         let gov_label = government.unwrap_or_else(|| "None".into());
 

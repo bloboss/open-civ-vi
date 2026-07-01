@@ -14,12 +14,12 @@
 
 #![cfg(feature = "ssr")]
 
+use axum::Json;
 use axum::body::Body;
 use axum::extract::FromRequestParts;
 use axum::http::{HeaderMap, Request, StatusCode, header::COOKIE, request::Parts};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
-use axum::Json;
 use open4x_accounts::PlayerId;
 use open4x_accounts::session;
 use serde::Serialize;
@@ -42,9 +42,7 @@ pub async fn session_layer(
     next: Next,
 ) -> Response {
     if let Some(token) = extract_cookie(req.headers(), SESSION_COOKIE_NAME) {
-        if let Ok(Some(player_id)) =
-            session::validate_session(&state.pool, &token).await
-        {
+        if let Ok(Some(player_id)) = session::validate_session(&state.pool, &token).await {
             req.extensions_mut().insert(player_id);
             req.extensions_mut().insert(AuthCookie(token));
         }

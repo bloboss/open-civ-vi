@@ -2,8 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use open4x_protocol::v1::web::turn_queue::TurnQueue;
 use open4x_protocol::v1::web::MutationResponse;
+use open4x_protocol::v1::web::turn_queue::TurnQueue;
 
 use crate::error::ApiError;
 use crate::transport::{Method, Transport};

@@ -19,25 +19,24 @@ pub mod turn;
 pub mod victory;
 pub mod visibility;
 
+pub use apply_delta::{apply_delta, apply_diff};
 pub use board::WorldBoard;
 pub use diff::{AttackType, GameStateDiff, StateDelta};
+pub use production_helpers::{
+    ALWAYS_AVAILABLE_BUILDINGS, ALWAYS_AVAILABLE_UNITS, available_building_defs,
+    available_buildings_for_city, available_unit_defs, can_produce_building, can_produce_unit,
+    resolve_building_replacement, resolve_unit_replacement,
+};
+#[cfg(feature = "serde")]
+pub use replay::{ReplayRecorder, ReplayViewer};
 pub use rules::{
     CombatPreview, DefaultRulesEngine, FaithPurchaseItem, PendingAction, PendingActionKind,
     PolicyCardEntry, PolicyCardStatus, RulesEngine, RulesError, UnitAction, UnitActionKind,
 };
+#[cfg(feature = "serde")]
+pub use save_load::{load_game, save_game};
 pub use score::{all_scores, compute_score};
 pub use state::{GameState, IdGenerator};
 pub use turn::TurnEngine;
-pub use victory::{BuiltinVictoryCondition, GameOver, VictoryKind, SCIENCE_MILESTONES};
+pub use victory::{BuiltinVictoryCondition, GameOver, SCIENCE_MILESTONES, VictoryKind};
 pub use visibility::recalculate_visibility;
-pub use apply_delta::{apply_delta, apply_diff};
-pub use production_helpers::{
-    available_unit_defs, available_building_defs, available_buildings_for_city,
-    resolve_unit_replacement, resolve_building_replacement,
-    can_produce_unit, can_produce_building,
-    ALWAYS_AVAILABLE_UNITS, ALWAYS_AVAILABLE_BUILDINGS,
-};
-#[cfg(feature = "serde")]
-pub use save_load::{save_game, load_game};
-#[cfg(feature = "serde")]
-pub use replay::{ReplayRecorder, ReplayViewer};

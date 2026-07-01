@@ -20,11 +20,7 @@ pub const ALWAYS_AVAILABLE_UNITS: &[&str] = &[
 ];
 
 /// Buildings that are always available for production without any tech prerequisite.
-pub const ALWAYS_AVAILABLE_BUILDINGS: &[&str] = &[
-    "Monument",
-    "Palace",
-    "Granary",
-];
+pub const ALWAYS_AVAILABLE_BUILDINGS: &[&str] = &["Monument", "Palace", "Granary"];
 
 /// Returns the unit type defs that the given civ can currently produce.
 ///
@@ -43,7 +39,9 @@ pub fn available_unit_defs(state: &GameState, civ_id: CivId) -> Vec<&UnitTypeDef
     };
     let civ_identity = civ.civ_identity;
 
-    state.unit_type_defs.iter()
+    state
+        .unit_type_defs
+        .iter()
         .filter(|d| {
             // Exclude units exclusive to a different civ.
             if let Some(excl) = d.exclusive_to {
@@ -59,8 +57,7 @@ pub fn available_unit_defs(state: &GameState, civ_id: CivId) -> Vec<&UnitTypeDef
             }
 
             // Check if the unit is unlocked or always available.
-            civ.unlocked_units.contains(&d.name)
-                || ALWAYS_AVAILABLE_UNITS.contains(&d.name)
+            civ.unlocked_units.contains(&d.name) || ALWAYS_AVAILABLE_UNITS.contains(&d.name)
         })
         .collect()
 }
@@ -81,7 +78,9 @@ pub fn available_building_defs(state: &GameState, civ_id: CivId) -> Vec<&Buildin
     };
     let civ_identity = civ.civ_identity;
 
-    state.building_defs.iter()
+    state
+        .building_defs
+        .iter()
         .filter(|d| {
             // Exclude buildings exclusive to a different civ.
             if let Some(excl) = d.exclusive_to {
@@ -94,8 +93,7 @@ pub fn available_building_defs(state: &GameState, civ_id: CivId) -> Vec<&Buildin
                 }
             }
 
-            civ.unlocked_buildings.contains(&d.name)
-                || ALWAYS_AVAILABLE_BUILDINGS.contains(&d.name)
+            civ.unlocked_buildings.contains(&d.name) || ALWAYS_AVAILABLE_BUILDINGS.contains(&d.name)
         })
         .collect()
 }
@@ -198,14 +196,17 @@ pub fn resolve_unit_replacement(
         Some(d) => d,
         None => return (unit_type_id, "?"),
     };
-    let civ_identity = state.civilizations.iter()
+    let civ_identity = state
+        .civilizations
+        .iter()
         .find(|c| c.id == civ_id)
         .and_then(|c| c.civ_identity);
 
     if let Some(civ_ident) = civ_identity
-        && let Some(replacement) = state.unit_type_defs.iter().find(|d| {
-            d.exclusive_to == Some(civ_ident) && d.replaces == Some(base_def.name)
-        })
+        && let Some(replacement) = state
+            .unit_type_defs
+            .iter()
+            .find(|d| d.exclusive_to == Some(civ_ident) && d.replaces == Some(base_def.name))
     {
         return (replacement.id, replacement.name);
     }
@@ -224,14 +225,17 @@ pub fn resolve_building_replacement(
         Some(d) => d,
         None => return (building_id, "?"),
     };
-    let civ_identity = state.civilizations.iter()
+    let civ_identity = state
+        .civilizations
+        .iter()
         .find(|c| c.id == civ_id)
         .and_then(|c| c.civ_identity);
 
     if let Some(civ_ident) = civ_identity
-        && let Some(replacement) = state.building_defs.iter().find(|d| {
-            d.exclusive_to == Some(civ_ident) && d.replaces == Some(base_def.name)
-        })
+        && let Some(replacement) = state
+            .building_defs
+            .iter()
+            .find(|d| d.exclusive_to == Some(civ_ident) && d.replaces == Some(base_def.name))
     {
         return (replacement.id, replacement.name);
     }
@@ -243,19 +247,23 @@ pub fn resolve_building_replacement(
 ///
 /// Returns `true` if the unit is in the available set for this civ.
 pub fn can_produce_unit(state: &GameState, civ_id: CivId, unit_type_id: UnitTypeId) -> bool {
-    available_unit_defs(state, civ_id).iter().any(|d| d.id == unit_type_id)
+    available_unit_defs(state, civ_id)
+        .iter()
+        .any(|d| d.id == unit_type_id)
 }
 
 /// Check whether a civ can produce a specific building.
 pub fn can_produce_building(state: &GameState, civ_id: CivId, building_id: BuildingId) -> bool {
-    available_building_defs(state, civ_id).iter().any(|d| d.id == building_id)
+    available_building_defs(state, civ_id)
+        .iter()
+        .any(|d| d.id == building_id)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::civ::civilization::{Civilization, Leader, BuiltinAgenda};
     use crate::civ::civ_identity::BuiltinCiv;
+    use crate::civ::civilization::{BuiltinAgenda, Civilization, Leader};
     use crate::game::state::GameState;
 
     fn setup_state() -> GameState {
@@ -265,8 +273,14 @@ mod tests {
     fn add_civ(state: &mut GameState, identity: Option<BuiltinCiv>) -> CivId {
         let civ_id = state.id_gen.next_civ_id();
         let mut civ = Civilization::new(
-            civ_id, "TestCiv", "Test",
-            Leader { name: "Leader", civ_id, agenda: BuiltinAgenda::Default },
+            civ_id,
+            "TestCiv",
+            "Test",
+            Leader {
+                name: "Leader",
+                civ_id,
+                agenda: BuiltinAgenda::Default,
+            },
         );
         civ.civ_identity = identity;
         state.civilizations.push(civ);
@@ -295,8 +309,14 @@ mod tests {
         let names: Vec<&str> = available.iter().map(|d| d.name).collect();
 
         // Swordsman requires Iron Working tech unlock.
-        assert!(!names.contains(&"Swordsman"), "Swordsman should not be available without tech");
-        assert!(!names.contains(&"Archer"), "Archer should not be available without tech");
+        assert!(
+            !names.contains(&"Swordsman"),
+            "Swordsman should not be available without tech"
+        );
+        assert!(
+            !names.contains(&"Archer"),
+            "Archer should not be available without tech"
+        );
     }
 
     #[test]
@@ -305,13 +325,20 @@ mod tests {
         let civ_id = add_civ(&mut state, None);
 
         // Manually unlock Swordsman.
-        state.civilizations.iter_mut()
-            .find(|c| c.id == civ_id).unwrap()
-            .unlocked_units.push("Swordsman");
+        state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap()
+            .unlocked_units
+            .push("Swordsman");
 
         let available = available_unit_defs(&state, civ_id);
         let names: Vec<&str> = available.iter().map(|d| d.name).collect();
-        assert!(names.contains(&"Swordsman"), "Swordsman should be available after unlock");
+        assert!(
+            names.contains(&"Swordsman"),
+            "Swordsman should be available after unlock"
+        );
     }
 
     #[test]
@@ -320,17 +347,27 @@ mod tests {
         let civ_id = add_civ(&mut state, Some(BuiltinCiv::Greece));
 
         // Unlock the base unit that Legion replaces.
-        state.civilizations.iter_mut()
-            .find(|c| c.id == civ_id).unwrap()
-            .unlocked_units.push("Swordsman");
+        state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap()
+            .unlocked_units
+            .push("Swordsman");
 
         let available = available_unit_defs(&state, civ_id);
         let names: Vec<&str> = available.iter().map(|d| d.name).collect();
 
         // Legion is exclusive to Rome, so Greece should not see it.
-        assert!(!names.contains(&"Legion"), "Legion should not be available to Greece");
+        assert!(
+            !names.contains(&"Legion"),
+            "Legion should not be available to Greece"
+        );
         // Greece should still see Swordsman (no replacement).
-        assert!(names.contains(&"Swordsman"), "Swordsman should be available to Greece");
+        assert!(
+            names.contains(&"Swordsman"),
+            "Swordsman should be available to Greece"
+        );
     }
 
     #[test]
@@ -339,19 +376,33 @@ mod tests {
         let civ_id = add_civ(&mut state, Some(BuiltinCiv::Rome));
 
         // Unlock Swordsman (the base unit that Legion replaces).
-        state.civilizations.iter_mut()
-            .find(|c| c.id == civ_id).unwrap()
-            .unlocked_units.push("Swordsman");
+        state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap()
+            .unlocked_units
+            .push("Swordsman");
 
         // Available list shows the base unit (Swordsman), not the replacement.
         let available = available_unit_defs(&state, civ_id);
         let names: Vec<&str> = available.iter().map(|d| d.name).collect();
-        assert!(names.contains(&"Swordsman"), "Rome should see Swordsman in available list");
-        assert!(!names.contains(&"Legion"), "Legion is resolved at completion, not shown in available list");
+        assert!(
+            names.contains(&"Swordsman"),
+            "Rome should see Swordsman in available list"
+        );
+        assert!(
+            !names.contains(&"Legion"),
+            "Legion is resolved at completion, not shown in available list"
+        );
 
         // But resolve_unit_replacement swaps it to Legion at production time.
-        let swordsman_id = state.unit_type_defs.iter()
-            .find(|d| d.name == "Swordsman").unwrap().id;
+        let swordsman_id = state
+            .unit_type_defs
+            .iter()
+            .find(|d| d.name == "Swordsman")
+            .unwrap()
+            .id;
         let (resolved_id, resolved_name) = resolve_unit_replacement(&state, civ_id, swordsman_id);
         assert_eq!(resolved_name, "Legion");
         assert_ne!(resolved_id, swordsman_id);
@@ -362,8 +413,12 @@ mod tests {
         let mut state = setup_state();
         let civ_id = add_civ(&mut state, Some(BuiltinCiv::Rome));
 
-        let swordsman_id = state.unit_type_defs.iter()
-            .find(|d| d.name == "Swordsman").unwrap().id;
+        let swordsman_id = state
+            .unit_type_defs
+            .iter()
+            .find(|d| d.name == "Swordsman")
+            .unwrap()
+            .id;
 
         let (resolved_id, resolved_name) = resolve_unit_replacement(&state, civ_id, swordsman_id);
         assert_eq!(resolved_name, "Legion");
@@ -375,8 +430,12 @@ mod tests {
         let mut state = setup_state();
         let civ_id = add_civ(&mut state, None);
 
-        let swordsman_id = state.unit_type_defs.iter()
-            .find(|d| d.name == "Swordsman").unwrap().id;
+        let swordsman_id = state
+            .unit_type_defs
+            .iter()
+            .find(|d| d.name == "Swordsman")
+            .unwrap()
+            .id;
 
         let (resolved_id, resolved_name) = resolve_unit_replacement(&state, civ_id, swordsman_id);
         assert_eq!(resolved_name, "Swordsman");
@@ -389,19 +448,33 @@ mod tests {
         let civ_id = add_civ(&mut state, Some(BuiltinCiv::Norway));
 
         // Unlock Temple (the base building that Stave Church replaces).
-        state.civilizations.iter_mut()
-            .find(|c| c.id == civ_id).unwrap()
-            .unlocked_buildings.push("Temple");
+        state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap()
+            .unlocked_buildings
+            .push("Temple");
 
         // Available list shows the base building (Temple), not the replacement.
         let available = available_building_defs(&state, civ_id);
         let names: Vec<&str> = available.iter().map(|d| d.name).collect();
-        assert!(names.contains(&"Temple"), "Norway should see Temple in available list");
-        assert!(!names.contains(&"Stave Church"), "Stave Church is resolved at completion");
+        assert!(
+            names.contains(&"Temple"),
+            "Norway should see Temple in available list"
+        );
+        assert!(
+            !names.contains(&"Stave Church"),
+            "Stave Church is resolved at completion"
+        );
 
         // But resolve_building_replacement swaps it at production time.
-        let temple_id = state.building_defs.iter()
-            .find(|d| d.name == "Temple").unwrap().id;
+        let temple_id = state
+            .building_defs
+            .iter()
+            .find(|d| d.name == "Temple")
+            .unwrap()
+            .id;
         let (resolved_id, resolved_name) = resolve_building_replacement(&state, civ_id, temple_id);
         assert_eq!(resolved_name, "Stave Church");
         assert_ne!(resolved_id, temple_id);
@@ -412,10 +485,18 @@ mod tests {
         let mut state = setup_state();
         let civ_id = add_civ(&mut state, None);
 
-        let warrior_id = state.unit_type_defs.iter()
-            .find(|d| d.name == "Warrior").unwrap().id;
-        let swordsman_id = state.unit_type_defs.iter()
-            .find(|d| d.name == "Swordsman").unwrap().id;
+        let warrior_id = state
+            .unit_type_defs
+            .iter()
+            .find(|d| d.name == "Warrior")
+            .unwrap()
+            .id;
+        let swordsman_id = state
+            .unit_type_defs
+            .iter()
+            .find(|d| d.name == "Swordsman")
+            .unwrap()
+            .id;
 
         assert!(can_produce_unit(&state, civ_id, warrior_id));
         assert!(!can_produce_unit(&state, civ_id, swordsman_id));
@@ -441,7 +522,12 @@ mod tests {
         use libhexgrid::coord::HexCoord;
 
         let city_id = state.id_gen.next_city_id();
-        let city = City::new(city_id, "TestCity".to_string(), civ_id, HexCoord::from_qr(5, 5));
+        let city = City::new(
+            city_id,
+            "TestCity".to_string(),
+            civ_id,
+            HexCoord::from_qr(5, 5),
+        );
         state.cities.push(city);
         city_id
     }
@@ -456,8 +542,14 @@ mod tests {
         let names: Vec<&str> = available.iter().map(|d| d.name).collect();
 
         // Monument and Granary require City Center district, which is implicit.
-        assert!(names.contains(&"Monument"), "Monument should be available (City Center is implicit)");
-        assert!(names.contains(&"Granary"), "Granary should be available (City Center is implicit)");
+        assert!(
+            names.contains(&"Monument"),
+            "Monument should be available (City Center is implicit)"
+        );
+        assert!(
+            names.contains(&"Granary"),
+            "Granary should be available (City Center is implicit)"
+        );
     }
 
     #[test]
@@ -466,17 +558,28 @@ mod tests {
         let civ_id = add_civ(&mut state, None);
         let city_id = add_city(&mut state, civ_id);
 
-        let monument_id = state.building_defs.iter()
-            .find(|d| d.name == "Monument").unwrap().id;
+        let monument_id = state
+            .building_defs
+            .iter()
+            .find(|d| d.name == "Monument")
+            .unwrap()
+            .id;
 
         // Add Monument to the city's built buildings.
-        state.cities.iter_mut()
-            .find(|c| c.id == city_id).unwrap()
-            .buildings.push(monument_id);
+        state
+            .cities
+            .iter_mut()
+            .find(|c| c.id == city_id)
+            .unwrap()
+            .buildings
+            .push(monument_id);
 
         let available = available_buildings_for_city(&state, civ_id, city_id);
         let names: Vec<&str> = available.iter().map(|d| d.name).collect();
-        assert!(!names.contains(&"Monument"), "Already built Monument should not appear");
+        assert!(
+            !names.contains(&"Monument"),
+            "Already built Monument should not appear"
+        );
     }
 
     #[test]
@@ -486,22 +589,36 @@ mod tests {
         let city_id = add_city(&mut state, civ_id);
 
         // Unlock Library (requires Campus district).
-        state.civilizations.iter_mut()
-            .find(|c| c.id == civ_id).unwrap()
-            .unlocked_buildings.push("Library");
+        state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap()
+            .unlocked_buildings
+            .push("Library");
 
         let available = available_buildings_for_city(&state, civ_id, city_id);
         let names: Vec<&str> = available.iter().map(|d| d.name).collect();
-        assert!(!names.contains(&"Library"), "Library should not be available without Campus");
+        assert!(
+            !names.contains(&"Library"),
+            "Library should not be available without Campus"
+        );
 
         // Add Campus district to the city.
-        state.cities.iter_mut()
-            .find(|c| c.id == city_id).unwrap()
-            .districts.push(crate::civ::district::BuiltinDistrict::Campus);
+        state
+            .cities
+            .iter_mut()
+            .find(|c| c.id == city_id)
+            .unwrap()
+            .districts
+            .push(crate::civ::district::BuiltinDistrict::Campus);
 
         let available = available_buildings_for_city(&state, civ_id, city_id);
         let names: Vec<&str> = available.iter().map(|d| d.name).collect();
-        assert!(names.contains(&"Library"), "Library should be available with Campus");
+        assert!(
+            names.contains(&"Library"),
+            "Library should be available with Campus"
+        );
     }
 
     #[test]
@@ -511,31 +628,53 @@ mod tests {
         let city_id = add_city(&mut state, civ_id);
 
         // Unlock University (requires Library as prereq building + Campus district).
-        let civ = state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap();
+        let civ = state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap();
         civ.unlocked_buildings.push("Library");
         civ.unlocked_buildings.push("University");
 
         // Add Campus to the city.
-        state.cities.iter_mut()
-            .find(|c| c.id == city_id).unwrap()
-            .districts.push(crate::civ::district::BuiltinDistrict::Campus);
+        state
+            .cities
+            .iter_mut()
+            .find(|c| c.id == city_id)
+            .unwrap()
+            .districts
+            .push(crate::civ::district::BuiltinDistrict::Campus);
 
         // Without Library built, University should not be available.
         let available = available_buildings_for_city(&state, civ_id, city_id);
         let names: Vec<&str> = available.iter().map(|d| d.name).collect();
         assert!(names.contains(&"Library"), "Library should be available");
-        assert!(!names.contains(&"University"), "University requires Library");
+        assert!(
+            !names.contains(&"University"),
+            "University requires Library"
+        );
 
         // Build Library.
-        let library_id = state.building_defs.iter()
-            .find(|d| d.name == "Library").unwrap().id;
-        state.cities.iter_mut()
-            .find(|c| c.id == city_id).unwrap()
-            .buildings.push(library_id);
+        let library_id = state
+            .building_defs
+            .iter()
+            .find(|d| d.name == "Library")
+            .unwrap()
+            .id;
+        state
+            .cities
+            .iter_mut()
+            .find(|c| c.id == city_id)
+            .unwrap()
+            .buildings
+            .push(library_id);
 
         let available = available_buildings_for_city(&state, civ_id, city_id);
         let names: Vec<&str> = available.iter().map(|d| d.name).collect();
-        assert!(names.contains(&"University"), "University should be available with Library");
+        assert!(
+            names.contains(&"University"),
+            "University should be available with Library"
+        );
     }
 
     #[test]
@@ -545,14 +684,22 @@ mod tests {
         let city_id = add_city(&mut state, civ_id);
 
         // Unlock both Barracks and Stable (mutually exclusive).
-        let civ = state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap();
+        let civ = state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap();
         civ.unlocked_buildings.push("Barracks");
         civ.unlocked_buildings.push("Stable");
 
         // Add Encampment district.
-        state.cities.iter_mut()
-            .find(|c| c.id == city_id).unwrap()
-            .districts.push(crate::civ::district::BuiltinDistrict::Encampment);
+        state
+            .cities
+            .iter_mut()
+            .find(|c| c.id == city_id)
+            .unwrap()
+            .districts
+            .push(crate::civ::district::BuiltinDistrict::Encampment);
 
         // Both should be available initially.
         let available = available_buildings_for_city(&state, civ_id, city_id);
@@ -561,17 +708,31 @@ mod tests {
         assert!(names.contains(&"Stable"));
 
         // Build Barracks — Stable should be excluded.
-        let barracks_id = state.building_defs.iter()
-            .find(|d| d.name == "Barracks").unwrap().id;
-        state.cities.iter_mut()
-            .find(|c| c.id == city_id).unwrap()
-            .buildings.push(barracks_id);
+        let barracks_id = state
+            .building_defs
+            .iter()
+            .find(|d| d.name == "Barracks")
+            .unwrap()
+            .id;
+        state
+            .cities
+            .iter_mut()
+            .find(|c| c.id == city_id)
+            .unwrap()
+            .buildings
+            .push(barracks_id);
 
         let available = available_buildings_for_city(&state, civ_id, city_id);
         let names: Vec<&str> = available.iter().map(|d| d.name).collect();
-        assert!(!names.contains(&"Stable"), "Stable should be excluded (Barracks is mutually exclusive)");
+        assert!(
+            !names.contains(&"Stable"),
+            "Stable should be excluded (Barracks is mutually exclusive)"
+        );
         // Barracks is already built, so it's also excluded.
-        assert!(!names.contains(&"Barracks"), "Already built Barracks should not appear");
+        assert!(
+            !names.contains(&"Barracks"),
+            "Already built Barracks should not appear"
+        );
     }
 
     #[test]
@@ -580,16 +741,27 @@ mod tests {
         let civ_id = add_civ(&mut state, None);
         let city_id = add_city(&mut state, civ_id);
 
-        let monument_id = state.building_defs.iter()
-            .find(|d| d.name == "Monument").unwrap().id;
+        let monument_id = state
+            .building_defs
+            .iter()
+            .find(|d| d.name == "Monument")
+            .unwrap()
+            .id;
 
         // Queue Monument.
-        state.cities.iter_mut()
-            .find(|c| c.id == city_id).unwrap()
-            .production_queue.push_back(crate::civ::ProductionItem::Building(monument_id));
+        state
+            .cities
+            .iter_mut()
+            .find(|c| c.id == city_id)
+            .unwrap()
+            .production_queue
+            .push_back(crate::civ::ProductionItem::Building(monument_id));
 
         let available = available_buildings_for_city(&state, civ_id, city_id);
         let names: Vec<&str> = available.iter().map(|d| d.name).collect();
-        assert!(!names.contains(&"Monument"), "Queued Monument should not appear in available list");
+        assert!(
+            !names.contains(&"Monument"),
+            "Queued Monument should not appear in available list"
+        );
     }
 }

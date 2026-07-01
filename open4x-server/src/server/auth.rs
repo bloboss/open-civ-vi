@@ -1,6 +1,6 @@
 //! Ed25519 challenge-response authentication.
 
-use ed25519_dalek::{Signature, VerifyingKey, Verifier};
+use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use rand::Rng;
 
 /// A pending auth challenge.
@@ -41,12 +41,9 @@ pub fn verify_auth(
     pubkey_bytes: &[u8],
     signature_bytes: &[u8],
 ) -> Result<[u8; 32], AuthError> {
-    let key_arr: [u8; 32] = pubkey_bytes
-        .try_into()
-        .map_err(|_| AuthError::InvalidKey)?;
+    let key_arr: [u8; 32] = pubkey_bytes.try_into().map_err(|_| AuthError::InvalidKey)?;
 
-    let pubkey = VerifyingKey::from_bytes(&key_arr)
-        .map_err(|_| AuthError::InvalidKey)?;
+    let pubkey = VerifyingKey::from_bytes(&key_arr).map_err(|_| AuthError::InvalidKey)?;
 
     let sig_arr: [u8; 64] = signature_bytes
         .try_into()
@@ -54,7 +51,8 @@ pub fn verify_auth(
 
     let sig = Signature::from_bytes(&sig_arr);
 
-    pubkey.verify(&challenge.nonce, &sig)
+    pubkey
+        .verify(&challenge.nonce, &sig)
         .map_err(|_| AuthError::VerificationFailed)?;
 
     Ok(key_arr)

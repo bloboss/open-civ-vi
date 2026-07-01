@@ -5,14 +5,12 @@
 
 use std::path::Path;
 
-use libciv::civ::{BasicUnit, City, Civilization, Leader};
 use libciv::civ::civilization::BuiltinAgenda;
+use libciv::civ::{BasicUnit, City, Civilization, Leader};
 use libciv::game::state::PlayerSlot;
 use libciv::game::visibility::recalculate_visibility;
 use libciv::world::mapgen::{MapGenConfig, generate as mapgen_generate};
-use libciv::{
-    BuiltinVictoryCondition, GameState, UnitCategory, UnitDomain,
-};
+use libciv::{BuiltinVictoryCondition, GameState, UnitCategory, UnitDomain};
 
 use crate::state_io;
 
@@ -102,12 +100,7 @@ pub fn handle_new_game(
             .copied()
             .ok_or_else(|| format!("not enough starting positions for player {i}"))?;
         let city_id = state.id_gen.next_city_id();
-        let mut city = City::new(
-            city_id,
-            format!("{name} Capital"),
-            civ_id,
-            city_coord,
-        );
+        let mut city = City::new(city_id, format!("{name} Capital"), civ_id, city_coord);
         city.is_capital = true;
         state.cities.push(city);
         state
@@ -140,7 +133,8 @@ pub fn handle_new_game(
             trade_destination: None,
             religion_id: None,
             spread_charges: None,
-            religious_strength: None, is_embarked: false,
+            religious_strength: None,
+            is_embarked: false,
         });
 
         // Starting Settler at capital.
@@ -165,7 +159,8 @@ pub fn handle_new_game(
             trade_destination: None,
             religion_id: None,
             spread_charges: None,
-            religious_strength: None, is_embarked: false,
+            religious_strength: None,
+            is_embarked: false,
         });
 
         // Player config slot.
@@ -203,10 +198,7 @@ pub fn handle_new_game(
         "ai_players": ai_players,
         "turn": state.turn,
     });
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&result).unwrap()
-    );
+    println!("{}", serde_json::to_string_pretty(&result).unwrap());
 
     Ok(())
 }

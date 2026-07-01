@@ -12,12 +12,12 @@ use crate::civ::civilization::{Leader, TechProgress};
 use crate::civ::{BasicUnit, BuiltinAgenda, City, CityKind, Civilization};
 use crate::game::state::{GameState, UnitTypeDef};
 use crate::game::visibility::recalculate_visibility;
-use crate::game::{compute_score, BuiltinVictoryCondition, DefaultRulesEngine, RulesEngine};
+use crate::game::{BuiltinVictoryCondition, DefaultRulesEngine, RulesEngine, compute_score};
 use crate::world::mapgen::{self, MapGenConfig};
 use crate::{CivId, UnitCategory, UnitDomain, UnitTypeId};
 
 use super::action::Action;
-use super::observation::{observe, Observation};
+use super::observation::{Observation, observe};
 use super::reward::compute_reward;
 
 // ── Public result types ─────────────────────────────────────────────────────
@@ -98,11 +98,8 @@ impl CivEnv {
         if matches!(action, Action::EndTurn) {
             // Opponent agents take their turns.
             for (civ_id, agent) in &self.opponent_agents {
-                let _ = crate::ai::deterministic::Agent::take_turn(
-                    agent,
-                    &mut self.state,
-                    &self.rules,
-                );
+                let _ =
+                    crate::ai::deterministic::Agent::take_turn(agent, &mut self.state, &self.rules);
                 recalculate_visibility(&mut self.state, *civ_id);
             }
 
@@ -186,9 +183,12 @@ impl CivEnv {
 
         // Per-city production actions: if the city has an empty production queue,
         // offer every unit type that could be produced.
-        for city in self.state.cities.iter().filter(|c| {
-            c.owner == civ_id && !matches!(c.kind, CityKind::CityState(_))
-        }) {
+        for city in self
+            .state
+            .cities
+            .iter()
+            .filter(|c| c.owner == civ_id && !matches!(c.kind, CityKind::CityState(_)))
+        {
             if city.production_queue.is_empty() {
                 for def in &self.state.unit_type_defs {
                     actions.push(Action::QueueProduction {
@@ -221,10 +221,7 @@ impl CivEnv {
         );
 
         let starts = &mapgen_result.starting_positions;
-        let agent_start = starts
-            .first()
-            .copied()
-            .unwrap_or(HexCoord::from_qr(3, 3));
+        let agent_start = starts.first().copied().unwrap_or(HexCoord::from_qr(3, 3));
         let opponent_start = starts
             .get(1)
             .copied()
@@ -287,8 +284,12 @@ impl CivEnv {
             .push(Civilization::new(agent_id, "Agent", "Agent", leader));
 
         let agent_city_id = self.state.id_gen.next_city_id();
-        let mut agent_city =
-            City::new(agent_city_id, "AgentCapital".to_string(), agent_id, agent_start);
+        let mut agent_city = City::new(
+            agent_city_id,
+            "AgentCapital".to_string(),
+            agent_id,
+            agent_start,
+        );
         agent_city.is_capital = true;
         self.state.cities.push(agent_city);
         self.state
@@ -332,9 +333,9 @@ impl CivEnv {
             civ_id: opp_id,
             agenda: BuiltinAgenda::Default,
         };
-        self.state
-            .civilizations
-            .push(Civilization::new(opp_id, "Opponent", "Opposing", opp_leader));
+        self.state.civilizations.push(Civilization::new(
+            opp_id, "Opponent", "Opposing", opp_leader,
+        ));
 
         let opp_city_id = self.state.id_gen.next_city_id();
         let mut opp_city = City::new(
@@ -424,9 +425,7 @@ impl CivEnv {
                 }
             }
             Action::Attack { attacker, target } => {
-                let _diff = self
-                    .rules
-                    .attack(&mut self.state, *attacker, *target)?;
+                let _diff = self.rules.attack(&mut self.state, *attacker, *target)?;
                 Ok(())
             }
             Action::FoundCity { settler, name } => {

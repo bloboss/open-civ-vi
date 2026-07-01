@@ -4,7 +4,6 @@
 //! synthesize the inverse direction at query time so we don't
 //! duplicate rows.
 
-
 use async_trait::async_trait;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -120,13 +119,17 @@ impl FriendsStore for SqliteFriendsStore {
             .into_iter()
             .filter_map(|r| {
                 let i_am_a = r.a_player_id == me_text;
-                let other_text = if i_am_a { &r.b_player_id } else { &r.a_player_id };
+                let other_text = if i_am_a {
+                    &r.b_player_id
+                } else {
+                    &r.a_player_id
+                };
                 let other = pid_from(other_text)?;
                 let status = match (r.status.as_str(), i_am_a) {
-                    ("pending", true)  => FriendStatus::PendingOutgoing,
+                    ("pending", true) => FriendStatus::PendingOutgoing,
                     ("pending", false) => FriendStatus::PendingIncoming,
-                    ("accepted", _)    => FriendStatus::Accepted,
-                    ("blocked", true)  => FriendStatus::Blocked,
+                    ("accepted", _) => FriendStatus::Accepted,
+                    ("blocked", true) => FriendStatus::Blocked,
                     // The blocked party never gets their row served.
                     ("blocked", false) => return None,
                     _ => return None,
@@ -209,8 +212,8 @@ impl FriendsStore for SqliteFriendsStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::store::{AccountStore, SqliteAccountStore};
     use crate::Identity;
+    use crate::store::{AccountStore, SqliteAccountStore};
 
     struct TempFile(std::path::PathBuf);
     impl Drop for TempFile {
@@ -221,7 +224,13 @@ mod tests {
         }
     }
 
-    async fn fixture() -> (TempFile, SqliteAccountStore, SqliteFriendsStore, PlayerId, PlayerId) {
+    async fn fixture() -> (
+        TempFile,
+        SqliteAccountStore,
+        SqliteFriendsStore,
+        PlayerId,
+        PlayerId,
+    ) {
         let mut p = std::env::temp_dir();
         p.push(format!(
             "open4x_friends_{}_{}.sqlite",

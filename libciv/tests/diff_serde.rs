@@ -59,7 +59,12 @@ fn unit_moved_round_trip() {
     let rt = round_trip(&diff);
     assert_eq!(rt.len(), 1);
     match &rt.deltas[0] {
-        StateDelta::UnitMoved { unit, from, to, cost } => {
+        StateDelta::UnitMoved {
+            unit,
+            from,
+            to,
+            cost,
+        } => {
             assert_eq!(*unit, s.rome_warrior);
             assert_eq!(from.q, 5);
             assert_eq!(to.q, 6);
@@ -212,7 +217,11 @@ fn move_unit_diff_round_trips() {
     assert_eq!(rt.len(), diff.len());
 
     // Verify the UnitMoved delta survived.
-    assert!(rt.deltas.iter().any(|d| matches!(d, StateDelta::UnitMoved { .. })));
+    assert!(
+        rt.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::UnitMoved { .. }))
+    );
 }
 
 #[test]
@@ -227,7 +236,9 @@ fn jsonl_log_format() {
         .move_unit(&mut s.state, s.rome_warrior, HexCoord::from_qr(6, 3))
         .expect("move");
     log_lines.push(Box::leak(
-        serde_json::to_string(&diff1).expect("serialize").into_boxed_str(),
+        serde_json::to_string(&diff1)
+            .expect("serialize")
+            .into_boxed_str(),
     ));
 
     // Apply the move so state is consistent.
@@ -235,7 +246,9 @@ fn jsonl_log_format() {
 
     let diff2 = rules.advance_turn(&mut s.state);
     log_lines.push(Box::leak(
-        serde_json::to_string(&diff2).expect("serialize").into_boxed_str(),
+        serde_json::to_string(&diff2)
+            .expect("serialize")
+            .into_boxed_str(),
     ));
 
     // Each line should be independently parseable.

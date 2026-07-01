@@ -12,24 +12,36 @@ pub trait EdgeFeatureDef: std::fmt::Debug {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct River;
 impl EdgeFeatureDef for River {
-    fn name(&self) -> &'static str { "River" }
-    fn crossing_cost(&self) -> MovementCost { MovementCost::THREE }
+    fn name(&self) -> &'static str {
+        "River"
+    }
+    fn crossing_cost(&self) -> MovementCost {
+        MovementCost::THREE
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Canal;
 impl EdgeFeatureDef for Canal {
-    fn name(&self) -> &'static str { "Canal" }
-    fn crossing_cost(&self) -> MovementCost { MovementCost::ONE }
+    fn name(&self) -> &'static str {
+        "Canal"
+    }
+    fn crossing_cost(&self) -> MovementCost {
+        MovementCost::ONE
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MountainPass;
 impl EdgeFeatureDef for MountainPass {
-    fn name(&self) -> &'static str { "Mountain Pass" }
-    fn crossing_cost(&self) -> MovementCost { MovementCost::TWO }
+    fn name(&self) -> &'static str {
+        "Mountain Pass"
+    }
+    fn crossing_cost(&self) -> MovementCost {
+        MovementCost::TWO
+    }
 }
 
 /// Enum of built-in edge features.
@@ -72,7 +84,11 @@ impl WorldEdge {
             matches!(dir, HexDir::E | HexDir::NE | HexDir::NW),
             "WorldEdge::new requires a forward-half direction (E, NE, NW); use WorldBoard::set_edge for automatic canonicalization"
         );
-        Self { coord, dir, feature: None }
+        Self {
+            coord,
+            dir,
+            feature: None,
+        }
     }
 
     pub fn with_feature(mut self, feature: BuiltinEdgeFeature) -> Self {
@@ -82,8 +98,12 @@ impl WorldEdge {
 }
 
 impl HexEdge for WorldEdge {
-    fn coord(&self) -> HexCoord { self.coord }
-    fn dir(&self) -> HexDir { self.dir }
+    fn coord(&self) -> HexCoord {
+        self.coord
+    }
+    fn dir(&self) -> HexDir {
+        self.dir
+    }
 
     fn crossing_cost(&self) -> MovementCost {
         self.feature

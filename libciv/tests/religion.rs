@@ -6,12 +6,11 @@
 ///   - Faith purchasing
 ///   - Passive religious pressure (advance_turn phase 3d)
 ///   - Faith accumulation (advance_turn phase 3e)
-
 mod common;
 
 use common::build_scenario;
-use libciv::civ::district::{BuiltinDistrict, PlacedDistrict};
 use libciv::civ::BasicUnit;
+use libciv::civ::district::{BuiltinDistrict, PlacedDistrict};
 use libciv::game::diff::StateDelta;
 use libciv::game::rules::FaithPurchaseItem;
 use libciv::{DefaultRulesEngine, RulesEngine, UnitCategory, UnitDomain};
@@ -41,13 +40,19 @@ fn add_district(
 }
 
 fn grant_faith(state: &mut libciv::GameState, civ_id: libciv::CivId, amount: u32) {
-    let civ = state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap();
+    let civ = state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == civ_id)
+        .unwrap();
     civ.faith += amount;
 }
 
 /// Add a named building to a city (registers a building def if needed).
 fn add_building(state: &mut libciv::GameState, city_id: libciv::CityId, name: &'static str) {
-    let bid = state.building_defs.iter()
+    let bid = state
+        .building_defs
+        .iter()
         .find(|b| b.name == name)
         .map(|b| b.id)
         .unwrap_or_else(|| {
@@ -64,7 +69,9 @@ fn add_building(state: &mut libciv::GameState, city_id: libciv::CityId, name: &'
                 great_work_slots: Vec::new(),
                 exclusive_to: None,
                 replaces: None,
-                power_cost: 0, power_generated: 0, co2_per_turn: 0,
+                power_cost: 0,
+                power_generated: 0,
+                co2_per_turn: 0,
             });
             id
         });
@@ -73,7 +80,12 @@ fn add_building(state: &mut libciv::GameState, city_id: libciv::CityId, name: &'
     }
 }
 
-fn spawn_great_prophet(state: &mut libciv::GameState, warrior_type: libciv::UnitTypeId, civ_id: libciv::CivId, coord: HexCoord) -> libciv::UnitId {
+fn spawn_great_prophet(
+    state: &mut libciv::GameState,
+    warrior_type: libciv::UnitTypeId,
+    civ_id: libciv::CivId,
+    coord: HexCoord,
+) -> libciv::UnitId {
     let unit_id = state.id_gen.next_unit_id();
     state.units.push(BasicUnit {
         id: unit_id,
@@ -95,7 +107,8 @@ fn spawn_great_prophet(state: &mut libciv::GameState, warrior_type: libciv::Unit
         trade_destination: None,
         religion_id: None,
         spread_charges: None,
-        religious_strength: None, is_embarked: false,
+        religious_strength: None,
+        is_embarked: false,
     });
     unit_id
 }
@@ -128,7 +141,8 @@ fn spawn_missionary(
         trade_destination: None,
         religion_id: Some(religion_id),
         spread_charges: Some(3),
-        religious_strength: None, is_embarked: false,
+        religious_strength: None,
+        is_embarked: false,
     });
     unit_id
 }
@@ -175,7 +189,12 @@ fn found_rome_religion(s: &mut common::Scenario) -> libciv::ReligionId {
     // Give Rome faith and a Holy Site district adjacent to capital.
     grant_faith(&mut s.state, s.rome_id, 100);
     let holy_site_coord = HexCoord::from_qr(4, 3);
-    add_district(&mut s.state, s.rome_city, BuiltinDistrict::HolySite, holy_site_coord);
+    add_district(
+        &mut s.state,
+        s.rome_city,
+        BuiltinDistrict::HolySite,
+        holy_site_coord,
+    );
 
     // Spawn Great Prophet at the Holy Site.
     let prophet = spawn_great_prophet(&mut s.state, s.warrior_type, s.rome_id, holy_site_coord);
@@ -194,13 +213,17 @@ fn found_rome_religion(s: &mut common::Scenario) -> libciv::ReligionId {
         .expect("found_religion should succeed");
 
     // Extract religion ID from diff.
-    let religion_id = diff.deltas.iter().find_map(|d| {
-        if let StateDelta::ReligionFounded { religion, .. } = d {
-            Some(*religion)
-        } else {
-            None
-        }
-    }).expect("ReligionFounded delta expected");
+    let religion_id = diff
+        .deltas
+        .iter()
+        .find_map(|d| {
+            if let StateDelta::ReligionFounded { religion, .. } = d {
+                Some(*religion)
+            } else {
+                None
+            }
+        })
+        .expect("ReligionFounded delta expected");
 
     religion_id
 }
@@ -216,10 +239,15 @@ fn found_pantheon_success() {
     grant_faith(&mut s.state, s.rome_id, 30);
 
     let belief = s.state.belief_refs.stone_circles;
-    let diff = rules.found_pantheon(&mut s.state, s.rome_id, belief)
+    let diff = rules
+        .found_pantheon(&mut s.state, s.rome_id, belief)
         .expect("should succeed");
 
-    assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::PantheonFounded { .. })));
+    assert!(
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::PantheonFounded { .. }))
+    );
     let civ = s.state.civ(s.rome_id).unwrap();
     assert_eq!(civ.pantheon_belief, Some(belief));
     assert_eq!(civ.faith, 5); // 30 - 25
@@ -233,7 +261,10 @@ fn found_pantheon_insufficient_faith() {
 
     let belief = s.state.belief_refs.stone_circles;
     let result = rules.found_pantheon(&mut s.state, s.rome_id, belief);
-    assert!(matches!(result, Err(libciv::game::RulesError::InsufficientFaith)));
+    assert!(matches!(
+        result,
+        Err(libciv::game::RulesError::InsufficientFaith)
+    ));
 }
 
 #[test]
@@ -243,11 +274,16 @@ fn found_pantheon_already_founded() {
     grant_faith(&mut s.state, s.rome_id, 60);
 
     let belief = s.state.belief_refs.stone_circles;
-    rules.found_pantheon(&mut s.state, s.rome_id, belief).unwrap();
+    rules
+        .found_pantheon(&mut s.state, s.rome_id, belief)
+        .unwrap();
 
     let belief2 = s.state.belief_refs.desert_folklore;
     let result = rules.found_pantheon(&mut s.state, s.rome_id, belief2);
-    assert!(matches!(result, Err(libciv::game::RulesError::PantheonAlreadyFounded)));
+    assert!(matches!(
+        result,
+        Err(libciv::game::RulesError::PantheonAlreadyFounded)
+    ));
 }
 
 #[test]
@@ -258,11 +294,16 @@ fn found_pantheon_belief_already_taken() {
     grant_faith(&mut s.state, s.babylon_id, 30);
 
     let belief = s.state.belief_refs.stone_circles;
-    rules.found_pantheon(&mut s.state, s.rome_id, belief).unwrap();
+    rules
+        .found_pantheon(&mut s.state, s.rome_id, belief)
+        .unwrap();
 
     // Babylon tries the same belief.
     let result = rules.found_pantheon(&mut s.state, s.babylon_id, belief);
-    assert!(matches!(result, Err(libciv::game::RulesError::InvalidBelief)));
+    assert!(matches!(
+        result,
+        Err(libciv::game::RulesError::InvalidBelief)
+    ));
 }
 
 // ===========================================================================
@@ -275,7 +316,12 @@ fn found_religion_success() {
     let religion_id = found_rome_religion(&mut s);
 
     // Religion exists in state.
-    let religion = s.state.religions.iter().find(|r| r.id == religion_id).unwrap();
+    let religion = s
+        .state
+        .religions
+        .iter()
+        .find(|r| r.id == religion_id)
+        .unwrap();
     assert_eq!(religion.name, "Civ Faith");
     assert_eq!(religion.founded_by, s.rome_id);
     assert_eq!(religion.beliefs.len(), 2);
@@ -286,7 +332,13 @@ fn found_religion_success() {
 
     // Holy city has followers.
     let city = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap();
-    assert!(city.religious_followers.get(&religion_id).copied().unwrap_or(0) > 0);
+    assert!(
+        city.religious_followers
+            .get(&religion_id)
+            .copied()
+            .unwrap_or(0)
+            > 0
+    );
 }
 
 #[test]
@@ -296,7 +348,12 @@ fn found_religion_no_holy_site() {
     grant_faith(&mut s.state, s.rome_id, 100);
 
     // Spawn prophet at capital (no Holy Site there).
-    let prophet = spawn_great_prophet(&mut s.state, s.warrior_type, s.rome_id, HexCoord::from_qr(3, 3));
+    let prophet = spawn_great_prophet(
+        &mut s.state,
+        s.warrior_type,
+        s.rome_id,
+        HexCoord::from_qr(3, 3),
+    );
 
     let founder_belief = s.state.belief_refs.tithe;
     let follower_belief = s.state.belief_refs.divine_inspiration;
@@ -326,7 +383,10 @@ fn found_religion_already_founded() {
         "Second Faith".to_string(),
         vec![b1, b2],
     );
-    assert!(matches!(result, Err(libciv::game::RulesError::ReligionAlreadyFounded)));
+    assert!(matches!(
+        result,
+        Err(libciv::game::RulesError::ReligionAlreadyFounded)
+    ));
 }
 
 #[test]
@@ -338,18 +398,21 @@ fn found_religion_duplicate_name() {
     // Babylon tries founding with the same name.
     grant_faith(&mut s.state, s.babylon_id, 100);
     let holy_site_coord = HexCoord::from_qr(11, 5);
-    add_district(&mut s.state, s.babylon_city, BuiltinDistrict::HolySite, holy_site_coord);
+    add_district(
+        &mut s.state,
+        s.babylon_city,
+        BuiltinDistrict::HolySite,
+        holy_site_coord,
+    );
     let prophet = spawn_great_prophet(&mut s.state, s.warrior_type, s.babylon_id, holy_site_coord);
     let b1 = s.state.belief_refs.church_property;
     let b2 = s.state.belief_refs.choral_music;
 
-    let result = rules.found_religion(
-        &mut s.state,
-        prophet,
-        "Civ Faith".to_string(),
-        vec![b1, b2],
-    );
-    assert!(matches!(result, Err(libciv::game::RulesError::ReligionNameTaken)));
+    let result = rules.found_religion(&mut s.state, prophet, "Civ Faith".to_string(), vec![b1, b2]);
+    assert!(matches!(
+        result,
+        Err(libciv::game::RulesError::ReligionNameTaken)
+    ));
 }
 
 #[test]
@@ -358,20 +421,25 @@ fn found_religion_prophet_consumed() {
     let rules = DefaultRulesEngine;
     grant_faith(&mut s.state, s.rome_id, 100);
     let holy_site_coord = HexCoord::from_qr(4, 3);
-    add_district(&mut s.state, s.rome_city, BuiltinDistrict::HolySite, holy_site_coord);
+    add_district(
+        &mut s.state,
+        s.rome_city,
+        BuiltinDistrict::HolySite,
+        holy_site_coord,
+    );
     let prophet = spawn_great_prophet(&mut s.state, s.warrior_type, s.rome_id, holy_site_coord);
     let b1 = s.state.belief_refs.tithe;
     let b2 = s.state.belief_refs.divine_inspiration;
 
-    rules.found_religion(
-        &mut s.state,
-        prophet,
-        "Test".to_string(),
-        vec![b1, b2],
-    ).unwrap();
+    rules
+        .found_religion(&mut s.state, prophet, "Test".to_string(), vec![b1, b2])
+        .unwrap();
 
     // Prophet should be consumed.
-    assert!(s.state.unit(prophet).is_none(), "Great Prophet should be consumed after founding");
+    assert!(
+        s.state.unit(prophet).is_none(),
+        "Great Prophet should be consumed after founding"
+    );
 }
 
 // ===========================================================================
@@ -385,14 +453,35 @@ fn spread_religion_success() {
     let religion_id = found_rome_religion(&mut s);
 
     // Spawn missionary at Babylon's city.
-    let missionary = spawn_missionary(&mut s.state, s.warrior_type, s.rome_id, HexCoord::from_qr(10, 5), religion_id);
+    let missionary = spawn_missionary(
+        &mut s.state,
+        s.warrior_type,
+        s.rome_id,
+        HexCoord::from_qr(10, 5),
+        religion_id,
+    );
 
     let diff = rules.spread_religion(&mut s.state, missionary).unwrap();
-    assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::ReligionSpread { .. })));
+    assert!(
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::ReligionSpread { .. }))
+    );
 
     // Babylon city should have some followers.
-    let city = s.state.cities.iter().find(|c| c.id == s.babylon_city).unwrap();
-    assert!(city.religious_followers.get(&religion_id).copied().unwrap_or(0) > 0);
+    let city = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.babylon_city)
+        .unwrap();
+    assert!(
+        city.religious_followers
+            .get(&religion_id)
+            .copied()
+            .unwrap_or(0)
+            > 0
+    );
 }
 
 #[test]
@@ -401,7 +490,13 @@ fn spread_religion_decrements_charges() {
     let rules = DefaultRulesEngine;
     let religion_id = found_rome_religion(&mut s);
 
-    let missionary = spawn_missionary(&mut s.state, s.warrior_type, s.rome_id, HexCoord::from_qr(10, 5), religion_id);
+    let missionary = spawn_missionary(
+        &mut s.state,
+        s.warrior_type,
+        s.rome_id,
+        HexCoord::from_qr(10, 5),
+        religion_id,
+    );
 
     rules.spread_religion(&mut s.state, missionary).unwrap();
     // Reset movement for the next spread.
@@ -441,12 +536,20 @@ fn spread_religion_unit_destroyed_at_zero_charges() {
         trade_destination: None,
         religion_id: Some(religion_id),
         spread_charges: Some(1),
-        religious_strength: None, is_embarked: false,
+        religious_strength: None,
+        is_embarked: false,
     });
 
     let diff = rules.spread_religion(&mut s.state, unit_id).unwrap();
-    assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitDestroyed { .. })));
-    assert!(s.state.unit(unit_id).is_none(), "unit should be destroyed at zero charges");
+    assert!(
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::UnitDestroyed { .. }))
+    );
+    assert!(
+        s.state.unit(unit_id).is_none(),
+        "unit should be destroyed at zero charges"
+    );
 }
 
 #[test]
@@ -456,9 +559,18 @@ fn spread_religion_not_on_city() {
     let religion_id = found_rome_religion(&mut s);
 
     // Missionary in the middle of nowhere.
-    let missionary = spawn_missionary(&mut s.state, s.warrior_type, s.rome_id, HexCoord::from_qr(7, 4), religion_id);
+    let missionary = spawn_missionary(
+        &mut s.state,
+        s.warrior_type,
+        s.rome_id,
+        HexCoord::from_qr(7, 4),
+        religion_id,
+    );
     let result = rules.spread_religion(&mut s.state, missionary);
-    assert!(matches!(result, Err(libciv::game::RulesError::CityNotFound)));
+    assert!(matches!(
+        result,
+        Err(libciv::game::RulesError::CityNotFound)
+    ));
 }
 
 // ===========================================================================
@@ -474,26 +586,59 @@ fn theological_combat_success() {
     // Found Babylon's religion too.
     grant_faith(&mut s.state, s.babylon_id, 100);
     let bab_hs_coord = HexCoord::from_qr(11, 5);
-    add_district(&mut s.state, s.babylon_city, BuiltinDistrict::HolySite, bab_hs_coord);
+    add_district(
+        &mut s.state,
+        s.babylon_city,
+        BuiltinDistrict::HolySite,
+        bab_hs_coord,
+    );
     let bab_prophet = spawn_great_prophet(&mut s.state, s.warrior_type, s.babylon_id, bab_hs_coord);
     let b1 = s.state.belief_refs.church_property;
     let b2 = s.state.belief_refs.choral_music;
-    let bab_diff = rules.found_religion(
-        &mut s.state,
-        bab_prophet,
-        "Bab Faith".to_string(),
-        vec![b1, b2],
-    ).unwrap();
-    let bab_religion = bab_diff.deltas.iter().find_map(|d| {
-        if let StateDelta::ReligionFounded { religion, .. } = d { Some(*religion) } else { None }
-    }).unwrap();
+    let bab_diff = rules
+        .found_religion(
+            &mut s.state,
+            bab_prophet,
+            "Bab Faith".to_string(),
+            vec![b1, b2],
+        )
+        .unwrap();
+    let bab_religion = bab_diff
+        .deltas
+        .iter()
+        .find_map(|d| {
+            if let StateDelta::ReligionFounded { religion, .. } = d {
+                Some(*religion)
+            } else {
+                None
+            }
+        })
+        .unwrap();
 
     // Place apostles adjacent to each other.
-    let rome_apostle = spawn_apostle(&mut s.state, s.warrior_type, s.rome_id, HexCoord::from_qr(6, 3), rome_religion);
-    let bab_apostle = spawn_apostle(&mut s.state, s.warrior_type, s.babylon_id, HexCoord::from_qr(7, 3), bab_religion);
+    let rome_apostle = spawn_apostle(
+        &mut s.state,
+        s.warrior_type,
+        s.rome_id,
+        HexCoord::from_qr(6, 3),
+        rome_religion,
+    );
+    let bab_apostle = spawn_apostle(
+        &mut s.state,
+        s.warrior_type,
+        s.babylon_id,
+        HexCoord::from_qr(7, 3),
+        bab_religion,
+    );
 
-    let diff = rules.theological_combat(&mut s.state, rome_apostle, bab_apostle).unwrap();
-    assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::TheologicalCombat { .. })));
+    let diff = rules
+        .theological_combat(&mut s.state, rome_apostle, bab_apostle)
+        .unwrap();
+    assert!(
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::TheologicalCombat { .. }))
+    );
 }
 
 #[test]
@@ -503,8 +648,20 @@ fn theological_combat_not_adjacent() {
     let rome_religion = found_rome_religion(&mut s);
 
     // Two apostles far apart.
-    let a1 = spawn_apostle(&mut s.state, s.warrior_type, s.rome_id, HexCoord::from_qr(3, 3), rome_religion);
-    let a2 = spawn_apostle(&mut s.state, s.warrior_type, s.babylon_id, HexCoord::from_qr(10, 5), rome_religion);
+    let a1 = spawn_apostle(
+        &mut s.state,
+        s.warrior_type,
+        s.rome_id,
+        HexCoord::from_qr(3, 3),
+        rome_religion,
+    );
+    let a2 = spawn_apostle(
+        &mut s.state,
+        s.warrior_type,
+        s.babylon_id,
+        HexCoord::from_qr(10, 5),
+        rome_religion,
+    );
 
     let result = rules.theological_combat(&mut s.state, a1, a2);
     assert!(matches!(result, Err(libciv::game::RulesError::NotInRange)));
@@ -516,11 +673,26 @@ fn theological_combat_same_civ() {
     let rules = DefaultRulesEngine;
     let rome_religion = found_rome_religion(&mut s);
 
-    let a1 = spawn_apostle(&mut s.state, s.warrior_type, s.rome_id, HexCoord::from_qr(6, 3), rome_religion);
-    let a2 = spawn_apostle(&mut s.state, s.warrior_type, s.rome_id, HexCoord::from_qr(7, 3), rome_religion);
+    let a1 = spawn_apostle(
+        &mut s.state,
+        s.warrior_type,
+        s.rome_id,
+        HexCoord::from_qr(6, 3),
+        rome_religion,
+    );
+    let a2 = spawn_apostle(
+        &mut s.state,
+        s.warrior_type,
+        s.rome_id,
+        HexCoord::from_qr(7, 3),
+        rome_religion,
+    );
 
     let result = rules.theological_combat(&mut s.state, a1, a2);
-    assert!(matches!(result, Err(libciv::game::RulesError::SameCivilization)));
+    assert!(matches!(
+        result,
+        Err(libciv::game::RulesError::SameCivilization)
+    ));
 }
 
 #[test]
@@ -529,16 +701,28 @@ fn theological_combat_non_religious_unit() {
     let rules = DefaultRulesEngine;
     let rome_religion = found_rome_religion(&mut s);
 
-    let apostle = spawn_apostle(&mut s.state, s.warrior_type, s.rome_id, HexCoord::from_qr(6, 3), rome_religion);
+    let apostle = spawn_apostle(
+        &mut s.state,
+        s.warrior_type,
+        s.rome_id,
+        HexCoord::from_qr(6, 3),
+        rome_religion,
+    );
 
     // Try combat with a warrior (non-religious).
     // Move Rome's warrior adjacent.
-    s.state.units.iter_mut()
-        .find(|u| u.id == s.babylon_warrior).unwrap()
+    s.state
+        .units
+        .iter_mut()
+        .find(|u| u.id == s.babylon_warrior)
+        .unwrap()
         .coord = HexCoord::from_qr(7, 3);
 
     let result = rules.theological_combat(&mut s.state, apostle, s.babylon_warrior);
-    assert!(matches!(result, Err(libciv::game::RulesError::NotAReligiousUnit)));
+    assert!(matches!(
+        result,
+        Err(libciv::game::RulesError::NotAReligiousUnit)
+    ));
 }
 
 // ===========================================================================
@@ -553,23 +737,27 @@ fn purchase_missionary_with_faith() {
 
     // Need a Missionary unit type in the registry.
     let missionary_type_id = libciv::UnitTypeId::from_ulid(s.state.id_gen.next_ulid());
-    s.state.unit_type_defs.push(libciv::game::state::UnitTypeDef {
-        id: missionary_type_id,
-        name: "Missionary",
-        production_cost: 0,
-        max_movement: 200,
-        combat_strength: None,
-        domain: UnitDomain::Land,
-        category: UnitCategory::Religious,
-        range: 0,
-        vision_range: 2,
-        can_found_city: false,
-        resource_cost: None,
-        siege_bonus: 0,
-        max_charges: 0,
-        exclusive_to: None,
-        replaces: None, era: None, promotion_class: None,
-    });
+    s.state
+        .unit_type_defs
+        .push(libciv::game::state::UnitTypeDef {
+            id: missionary_type_id,
+            name: "Missionary",
+            production_cost: 0,
+            max_movement: 200,
+            combat_strength: None,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Religious,
+            range: 0,
+            vision_range: 2,
+            can_found_city: false,
+            resource_cost: None,
+            siege_bonus: 0,
+            max_charges: 0,
+            exclusive_to: None,
+            replaces: None,
+            era: None,
+            promotion_class: None,
+        });
 
     // Missionary requires a Shrine building.
     add_building(&mut s.state, s.rome_city, "Shrine");
@@ -579,15 +767,25 @@ fn purchase_missionary_with_faith() {
 
     let faith_before = s.state.civ(s.rome_id).unwrap().faith;
 
-    let diff = rules.purchase_with_faith(
-        &mut s.state,
-        s.rome_id,
-        s.rome_city,
-        FaithPurchaseItem::Unit("Missionary"),
-    ).unwrap();
+    let diff = rules
+        .purchase_with_faith(
+            &mut s.state,
+            s.rome_id,
+            s.rome_city,
+            FaithPurchaseItem::Unit("Missionary"),
+        )
+        .unwrap();
 
-    assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitCreated { .. })));
-    assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::FaithChanged { .. })));
+    assert!(
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::UnitCreated { .. }))
+    );
+    assert!(
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::FaithChanged { .. }))
+    );
 
     let civ = s.state.civ(s.rome_id).unwrap();
     assert!(civ.faith < faith_before, "faith should have been spent");
@@ -601,27 +799,36 @@ fn purchase_with_insufficient_faith() {
 
     // Register Missionary type.
     let missionary_type_id = libciv::UnitTypeId::from_ulid(s.state.id_gen.next_ulid());
-    s.state.unit_type_defs.push(libciv::game::state::UnitTypeDef {
-        id: missionary_type_id,
-        name: "Missionary",
-        production_cost: 0,
-        max_movement: 200,
-        combat_strength: None,
-        domain: UnitDomain::Land,
-        category: UnitCategory::Religious,
-        range: 0,
-        vision_range: 2,
-        can_found_city: false,
-        resource_cost: None,
-        siege_bonus: 0,
-        max_charges: 0,
-        exclusive_to: None,
-        replaces: None, era: None, promotion_class: None,
-    });
+    s.state
+        .unit_type_defs
+        .push(libciv::game::state::UnitTypeDef {
+            id: missionary_type_id,
+            name: "Missionary",
+            production_cost: 0,
+            max_movement: 200,
+            combat_strength: None,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Religious,
+            range: 0,
+            vision_range: 2,
+            can_found_city: false,
+            resource_cost: None,
+            siege_bonus: 0,
+            max_charges: 0,
+            exclusive_to: None,
+            replaces: None,
+            era: None,
+            promotion_class: None,
+        });
 
     // No extra faith (founding spent the 100 we gave, leaving whatever is left).
     // Set faith to 0 explicitly.
-    s.state.civilizations.iter_mut().find(|c| c.id == s.rome_id).unwrap().faith = 0;
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .faith = 0;
 
     let result = rules.purchase_with_faith(
         &mut s.state,
@@ -629,7 +836,10 @@ fn purchase_with_insufficient_faith() {
         s.rome_city,
         FaithPurchaseItem::Unit("Missionary"),
     );
-    assert!(matches!(result, Err(libciv::game::RulesError::InsufficientFaith)));
+    assert!(matches!(
+        result,
+        Err(libciv::game::RulesError::InsufficientFaith)
+    ));
 }
 
 // ===========================================================================
@@ -641,7 +851,12 @@ fn religion_total_followers() {
     let mut s = build_scenario();
     let religion_id = found_rome_religion(&mut s);
 
-    let religion = s.state.religions.iter().find(|r| r.id == religion_id).unwrap();
+    let religion = s
+        .state
+        .religions
+        .iter()
+        .find(|r| r.id == religion_id)
+        .unwrap();
     let total = religion.total_followers(&s.state.cities);
     assert!(total > 0, "holy city should have followers");
 }
@@ -651,10 +866,18 @@ fn religion_majority_cities() {
     let mut s = build_scenario();
     let religion_id = found_rome_religion(&mut s);
 
-    let religion = s.state.religions.iter().find(|r| r.id == religion_id).unwrap();
+    let religion = s
+        .state
+        .religions
+        .iter()
+        .find(|r| r.id == religion_id)
+        .unwrap();
     let majority = religion.majority_cities(&s.state.cities);
     // Holy city should be majority.
-    assert!(majority.contains(&s.rome_city), "holy city should have majority");
+    assert!(
+        majority.contains(&s.rome_city),
+        "holy city should have majority"
+    );
 }
 
 #[test]
@@ -671,13 +894,23 @@ fn religion_is_enhanced() {
     let mut s = build_scenario();
     let religion_id = found_rome_religion(&mut s);
 
-    let religion = s.state.religions.iter().find(|r| r.id == religion_id).unwrap();
+    let religion = s
+        .state
+        .religions
+        .iter()
+        .find(|r| r.id == religion_id)
+        .unwrap();
     // Initially has Founder + Follower, not enhanced.
     assert!(!religion.is_enhanced(&s.state.belief_defs));
 
     // Add an Enhancer belief.
     let enhancer = s.state.belief_refs.missionary_zeal;
-    let religion = s.state.religions.iter_mut().find(|r| r.id == religion_id).unwrap();
+    let religion = s
+        .state
+        .religions
+        .iter_mut()
+        .find(|r| r.id == religion_id)
+        .unwrap();
     religion.beliefs.push(enhancer);
     assert!(religion.is_enhanced(&s.state.belief_defs));
 }
@@ -686,19 +919,23 @@ fn religion_is_enhanced() {
 fn belief_defs_loaded() {
     let s = build_scenario();
     // Verify that beliefs were loaded into state.
-    assert!(!s.state.belief_defs.is_empty(), "belief_defs should be populated");
-    assert!(s.state.belief_defs.len() >= 38, "at least 38 built-in beliefs (18 original + 20 pantheon)");
+    assert!(
+        !s.state.belief_defs.is_empty(),
+        "belief_defs should be populated"
+    );
+    assert!(
+        s.state.belief_defs.len() >= 38,
+        "at least 38 built-in beliefs (18 original + 20 pantheon)"
+    );
 }
 
 // ===========================================================================
 // Pantheon adjacency bonus tests
 // ===========================================================================
 
-use libciv::rules::modifier::{
-    Condition, ConditionContext, ConditionResult, evaluate_condition,
-};
-use libciv::world::terrain::BuiltinTerrain;
+use libciv::rules::modifier::{Condition, ConditionContext, ConditionResult, evaluate_condition};
 use libciv::world::feature::BuiltinFeature;
+use libciv::world::terrain::BuiltinTerrain;
 use libhexgrid::board::HexBoard;
 
 /// Helper: set the terrain of a tile on the board.
@@ -741,10 +978,7 @@ fn per_adjacent_terrain_counts_neighbors_not_self() {
         unit_id: None,
         city_id: None,
     };
-    let result = evaluate_condition(
-        &Condition::PerAdjacentTerrain(BuiltinTerrain::Tundra),
-        &ctx,
-    );
+    let result = evaluate_condition(&Condition::PerAdjacentTerrain(BuiltinTerrain::Tundra), &ctx);
     // Should count exactly 3 neighbors, NOT the tile itself.
     assert_eq!(result, ConditionResult::Scale(3));
 }
@@ -762,10 +996,7 @@ fn per_adjacent_terrain_zero_when_no_match() {
         unit_id: None,
         city_id: None,
     };
-    let result = evaluate_condition(
-        &Condition::PerAdjacentTerrain(BuiltinTerrain::Tundra),
-        &ctx,
-    );
+    let result = evaluate_condition(&Condition::PerAdjacentTerrain(BuiltinTerrain::Tundra), &ctx);
     assert_eq!(result, ConditionResult::Scale(0));
 }
 
@@ -804,11 +1035,18 @@ fn dance_of_the_aurora_belief_has_tundra_condition() {
     let s = build_scenario();
 
     // Find the "Dance of the Aurora" belief and verify it has the right condition.
-    let belief = s.state.belief_defs.iter()
+    let belief = s
+        .state
+        .belief_defs
+        .iter()
         .find(|b| b.name == "Dance of the Aurora")
         .expect("Dance of the Aurora should exist");
 
-    assert_eq!(belief.modifiers.len(), 1, "should have exactly one modifier");
+    assert_eq!(
+        belief.modifiers.len(),
+        1,
+        "should have exactly one modifier"
+    );
     let modifier = &belief.modifiers[0];
     assert_eq!(
         modifier.condition,
@@ -821,7 +1059,10 @@ fn dance_of_the_aurora_belief_has_tundra_condition() {
 fn desert_folklore_belief_has_desert_condition() {
     let s = build_scenario();
 
-    let belief = s.state.belief_defs.iter()
+    let belief = s
+        .state
+        .belief_defs
+        .iter()
         .find(|b| b.name == "Desert Folklore")
         .expect("Desert Folklore should exist");
 
@@ -838,7 +1079,10 @@ fn desert_folklore_belief_has_desert_condition() {
 fn sacred_path_belief_has_rainforest_condition() {
     let s = build_scenario();
 
-    let belief = s.state.belief_defs.iter()
+    let belief = s
+        .state
+        .belief_defs
+        .iter()
         .find(|b| b.name == "Sacred Path")
         .expect("Sacred Path should exist");
 
@@ -872,10 +1116,7 @@ fn per_adjacent_terrain_all_six_neighbors() {
         unit_id: None,
         city_id: None,
     };
-    let result = evaluate_condition(
-        &Condition::PerAdjacentTerrain(BuiltinTerrain::Desert),
-        &ctx,
-    );
+    let result = evaluate_condition(&Condition::PerAdjacentTerrain(BuiltinTerrain::Desert), &ctx);
     assert_eq!(result, ConditionResult::Scale(6));
 }
 
@@ -883,9 +1124,9 @@ fn per_adjacent_terrain_all_six_neighbors() {
 // Tile-level condition tests
 // ===========================================================================
 
+use libciv::ResourceCategory;
 use libciv::world::improvement::BuiltinImprovement;
 use libciv::world::resource::BuiltinResource;
-use libciv::ResourceCategory;
 
 /// Helper: set improvement on a tile.
 fn set_improvement(state: &mut libciv::GameState, coord: HexCoord, imp: BuiltinImprovement) {
@@ -908,11 +1149,17 @@ fn tile_has_improvement_passes_when_present() {
     set_improvement(&mut s.state, coord, BuiltinImprovement::Mine);
 
     let ctx = ConditionContext {
-        civ_id: s.rome_id, state: &s.state,
-        tile: Some(coord), unit_id: None, city_id: None,
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(coord),
+        unit_id: None,
+        city_id: None,
     };
     assert_eq!(
-        evaluate_condition(&Condition::TileHasImprovement(BuiltinImprovement::Mine), &ctx),
+        evaluate_condition(
+            &Condition::TileHasImprovement(BuiltinImprovement::Mine),
+            &ctx
+        ),
         ConditionResult::Pass,
     );
 }
@@ -924,11 +1171,17 @@ fn tile_has_improvement_fails_wrong_type() {
     set_improvement(&mut s.state, coord, BuiltinImprovement::Farm);
 
     let ctx = ConditionContext {
-        civ_id: s.rome_id, state: &s.state,
-        tile: Some(coord), unit_id: None, city_id: None,
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(coord),
+        unit_id: None,
+        city_id: None,
     };
     assert_eq!(
-        evaluate_condition(&Condition::TileHasImprovement(BuiltinImprovement::Mine), &ctx),
+        evaluate_condition(
+            &Condition::TileHasImprovement(BuiltinImprovement::Mine),
+            &ctx
+        ),
         ConditionResult::Fail,
     );
 }
@@ -940,8 +1193,11 @@ fn tile_has_any_improvement_passes() {
     set_improvement(&mut s.state, coord, BuiltinImprovement::Pasture);
 
     let ctx = ConditionContext {
-        civ_id: s.rome_id, state: &s.state,
-        tile: Some(coord), unit_id: None, city_id: None,
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(coord),
+        unit_id: None,
+        city_id: None,
     };
     assert_eq!(
         evaluate_condition(&Condition::TileHasAnyImprovement, &ctx),
@@ -955,8 +1211,11 @@ fn tile_has_any_improvement_fails_when_empty() {
     let coord = HexCoord::from_qr(4, 3);
 
     let ctx = ConditionContext {
-        civ_id: s.rome_id, state: &s.state,
-        tile: Some(coord), unit_id: None, city_id: None,
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(coord),
+        unit_id: None,
+        city_id: None,
     };
     assert_eq!(
         evaluate_condition(&Condition::TileHasAnyImprovement, &ctx),
@@ -971,11 +1230,17 @@ fn tile_has_resource_of_category_passes() {
     set_resource(&mut s.state, coord, BuiltinResource::Iron); // Strategic
 
     let ctx = ConditionContext {
-        civ_id: s.rome_id, state: &s.state,
-        tile: Some(coord), unit_id: None, city_id: None,
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(coord),
+        unit_id: None,
+        city_id: None,
     };
     assert_eq!(
-        evaluate_condition(&Condition::TileHasResourceOfCategory(ResourceCategory::Strategic), &ctx),
+        evaluate_condition(
+            &Condition::TileHasResourceOfCategory(ResourceCategory::Strategic),
+            &ctx
+        ),
         ConditionResult::Pass,
     );
 }
@@ -987,11 +1252,17 @@ fn tile_has_resource_of_category_fails_wrong_category() {
     set_resource(&mut s.state, coord, BuiltinResource::Wheat); // Bonus, not Strategic
 
     let ctx = ConditionContext {
-        civ_id: s.rome_id, state: &s.state,
-        tile: Some(coord), unit_id: None, city_id: None,
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(coord),
+        unit_id: None,
+        city_id: None,
     };
     assert_eq!(
-        evaluate_condition(&Condition::TileHasResourceOfCategory(ResourceCategory::Strategic), &ctx),
+        evaluate_condition(
+            &Condition::TileHasResourceOfCategory(ResourceCategory::Strategic),
+            &ctx
+        ),
         ConditionResult::Fail,
     );
 }
@@ -1003,8 +1274,11 @@ fn tile_has_feature_passes() {
     set_feature(&mut s.state, coord, BuiltinFeature::Marsh);
 
     let ctx = ConditionContext {
-        civ_id: s.rome_id, state: &s.state,
-        tile: Some(coord), unit_id: None, city_id: None,
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(coord),
+        unit_id: None,
+        city_id: None,
     };
     assert_eq!(
         evaluate_condition(&Condition::TileHasFeature(BuiltinFeature::Marsh), &ctx),
@@ -1022,14 +1296,19 @@ fn and_condition_both_required() {
     set_resource(&mut s.state, coord, BuiltinResource::Iron);
 
     let ctx = ConditionContext {
-        civ_id: s.rome_id, state: &s.state,
-        tile: Some(coord), unit_id: None, city_id: None,
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(coord),
+        unit_id: None,
+        city_id: None,
     };
 
     // And(Mine, Strategic) should pass.
     let cond = Condition::And(
         Box::new(Condition::TileHasImprovement(BuiltinImprovement::Mine)),
-        Box::new(Condition::TileHasResourceOfCategory(ResourceCategory::Strategic)),
+        Box::new(Condition::TileHasResourceOfCategory(
+            ResourceCategory::Strategic,
+        )),
     );
     assert_eq!(evaluate_condition(&cond, &ctx), ConditionResult::Pass);
 }
@@ -1043,12 +1322,17 @@ fn and_condition_fails_when_one_missing() {
     set_improvement(&mut s.state, coord, BuiltinImprovement::Mine);
 
     let ctx = ConditionContext {
-        civ_id: s.rome_id, state: &s.state,
-        tile: Some(coord), unit_id: None, city_id: None,
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(coord),
+        unit_id: None,
+        city_id: None,
     };
     let cond = Condition::And(
         Box::new(Condition::TileHasImprovement(BuiltinImprovement::Mine)),
-        Box::new(Condition::TileHasResourceOfCategory(ResourceCategory::Strategic)),
+        Box::new(Condition::TileHasResourceOfCategory(
+            ResourceCategory::Strategic,
+        )),
     );
     assert_eq!(evaluate_condition(&cond, &ctx), ConditionResult::Fail);
 }
@@ -1062,14 +1346,21 @@ fn or_condition_passes_on_either() {
     set_resource(&mut s.state, coord, BuiltinResource::Wine); // Luxury
 
     let ctx = ConditionContext {
-        civ_id: s.rome_id, state: &s.state,
-        tile: Some(coord), unit_id: None, city_id: None,
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(coord),
+        unit_id: None,
+        city_id: None,
     };
 
     // Or(Luxury, Bonus) should pass because Luxury is present.
     let cond = Condition::Or(
-        Box::new(Condition::TileHasResourceOfCategory(ResourceCategory::Luxury)),
-        Box::new(Condition::TileHasResourceOfCategory(ResourceCategory::Bonus)),
+        Box::new(Condition::TileHasResourceOfCategory(
+            ResourceCategory::Luxury,
+        )),
+        Box::new(Condition::TileHasResourceOfCategory(
+            ResourceCategory::Bonus,
+        )),
     );
     assert_eq!(evaluate_condition(&cond, &ctx), ConditionResult::Pass);
 }
@@ -1083,12 +1374,19 @@ fn or_condition_fails_when_neither() {
     set_resource(&mut s.state, coord, BuiltinResource::Iron);
 
     let ctx = ConditionContext {
-        civ_id: s.rome_id, state: &s.state,
-        tile: Some(coord), unit_id: None, city_id: None,
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(coord),
+        unit_id: None,
+        city_id: None,
     };
     let cond = Condition::Or(
-        Box::new(Condition::TileHasResourceOfCategory(ResourceCategory::Luxury)),
-        Box::new(Condition::TileHasResourceOfCategory(ResourceCategory::Bonus)),
+        Box::new(Condition::TileHasResourceOfCategory(
+            ResourceCategory::Luxury,
+        )),
+        Box::new(Condition::TileHasResourceOfCategory(
+            ResourceCategory::Bonus,
+        )),
     );
     assert_eq!(evaluate_condition(&cond, &ctx), ConditionResult::Fail);
 }
@@ -1104,16 +1402,29 @@ fn religious_idols_compound_condition() {
     set_resource(&mut s.state, coord, BuiltinResource::Wine);
 
     let ctx = ConditionContext {
-        civ_id: s.rome_id, state: &s.state,
-        tile: Some(coord), unit_id: None, city_id: None,
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(coord),
+        unit_id: None,
+        city_id: None,
     };
 
-    let belief = s.state.belief_defs.iter()
+    let belief = s
+        .state
+        .belief_defs
+        .iter()
         .find(|b| b.name == "Religious Idols")
         .expect("Religious Idols should exist");
-    assert_eq!(belief.modifiers.len(), 1, "should have one compound modifier");
+    assert_eq!(
+        belief.modifiers.len(),
+        1,
+        "should have one compound modifier"
+    );
 
-    let cond = belief.modifiers[0].condition.as_ref().expect("should have condition");
+    let cond = belief.modifiers[0]
+        .condition
+        .as_ref()
+        .expect("should have condition");
     assert_eq!(evaluate_condition(cond, &ctx), ConditionResult::Pass);
 }
 
@@ -1126,14 +1437,23 @@ fn religious_idols_fails_mine_over_strategic() {
     set_resource(&mut s.state, coord, BuiltinResource::Iron);
 
     let ctx = ConditionContext {
-        civ_id: s.rome_id, state: &s.state,
-        tile: Some(coord), unit_id: None, city_id: None,
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(coord),
+        unit_id: None,
+        city_id: None,
     };
 
-    let belief = s.state.belief_defs.iter()
+    let belief = s
+        .state
+        .belief_defs
+        .iter()
         .find(|b| b.name == "Religious Idols")
         .expect("Religious Idols should exist");
-    let cond = belief.modifiers[0].condition.as_ref().expect("should have condition");
+    let cond = belief.modifiers[0]
+        .condition
+        .as_ref()
+        .expect("should have condition");
     assert_eq!(evaluate_condition(cond, &ctx), ConditionResult::Fail);
 }
 
@@ -1147,14 +1467,23 @@ fn god_of_craftsmen_requires_improved_strategic() {
     set_improvement(&mut s.state, coord, BuiltinImprovement::Mine);
 
     let ctx = ConditionContext {
-        civ_id: s.rome_id, state: &s.state,
-        tile: Some(coord), unit_id: None, city_id: None,
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(coord),
+        unit_id: None,
+        city_id: None,
     };
 
-    let belief = s.state.belief_defs.iter()
+    let belief = s
+        .state
+        .belief_defs
+        .iter()
         .find(|b| b.name == "God of Craftsmen")
         .expect("God of Craftsmen should exist");
-    let cond = belief.modifiers[0].condition.as_ref().expect("should have condition");
+    let cond = belief.modifiers[0]
+        .condition
+        .as_ref()
+        .expect("should have condition");
     assert_eq!(evaluate_condition(cond, &ctx), ConditionResult::Pass);
 }
 
@@ -1167,14 +1496,23 @@ fn god_of_craftsmen_fails_unimproved_strategic() {
     set_resource(&mut s.state, coord, BuiltinResource::Iron);
 
     let ctx = ConditionContext {
-        civ_id: s.rome_id, state: &s.state,
-        tile: Some(coord), unit_id: None, city_id: None,
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(coord),
+        unit_id: None,
+        city_id: None,
     };
 
-    let belief = s.state.belief_defs.iter()
+    let belief = s
+        .state
+        .belief_defs
+        .iter()
         .find(|b| b.name == "God of Craftsmen")
         .expect("God of Craftsmen should exist");
-    let cond = belief.modifiers[0].condition.as_ref().expect("should have condition");
+    let cond = belief.modifiers[0]
+        .condition
+        .as_ref()
+        .expect("should have condition");
     assert_eq!(evaluate_condition(cond, &ctx), ConditionResult::Fail);
 }
 
@@ -1182,8 +1520,8 @@ fn god_of_craftsmen_fails_unimproved_strategic() {
 // Appeal, era, and production queue condition tests
 // ===========================================================================
 
-use libciv::rules::modifier::compute_tile_appeal;
 use libciv::AgeType;
+use libciv::rules::modifier::compute_tile_appeal;
 
 #[test]
 fn appeal_increases_from_adjacent_mountains() {
@@ -1241,8 +1579,11 @@ fn tile_min_appeal_condition_charming() {
     set_terrain(&mut s.state, neighbors[1], BuiltinTerrain::Mountain);
 
     let ctx = ConditionContext {
-        civ_id: s.rome_id, state: &s.state,
-        tile: Some(coord), unit_id: None, city_id: None,
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: Some(coord),
+        unit_id: None,
+        city_id: None,
     };
 
     // Charming (2+) should pass.
@@ -1260,7 +1601,10 @@ fn tile_min_appeal_condition_charming() {
 #[test]
 fn earth_goddess_belief_has_appeal_condition() {
     let s = build_scenario();
-    let belief = s.state.belief_defs.iter()
+    let belief = s
+        .state
+        .belief_defs
+        .iter()
         .find(|b| b.name == "Earth Goddess")
         .expect("Earth Goddess should exist");
     assert_eq!(belief.modifiers.len(), 1);
@@ -1273,22 +1617,34 @@ fn earth_goddess_belief_has_appeal_condition() {
 #[test]
 fn god_of_the_forge_belief_has_era_condition() {
     let s = build_scenario();
-    let belief = s.state.belief_defs.iter()
+    let belief = s
+        .state
+        .belief_defs
+        .iter()
         .find(|b| b.name == "God of the Forge")
         .expect("God of the Forge should exist");
     assert_eq!(belief.modifiers.len(), 1);
-    let cond = belief.modifiers[0].condition.as_ref().expect("should have condition");
+    let cond = belief.modifiers[0]
+        .condition
+        .as_ref()
+        .expect("should have condition");
     assert!(matches!(cond, Condition::Or(_, _)));
 }
 
 #[test]
 fn monument_to_the_gods_belief_has_wonder_era_condition() {
     let s = build_scenario();
-    let belief = s.state.belief_defs.iter()
+    let belief = s
+        .state
+        .belief_defs
+        .iter()
         .find(|b| b.name == "Monument to the Gods")
         .expect("Monument to the Gods should exist");
     assert_eq!(belief.modifiers.len(), 1);
-    let cond = belief.modifiers[0].condition.as_ref().expect("should have condition");
+    let cond = belief.modifiers[0]
+        .condition
+        .as_ref()
+        .expect("should have condition");
     assert!(matches!(cond, Condition::Or(_, _)));
 }
 
@@ -1298,43 +1654,55 @@ fn producing_military_unit_of_era_passes() {
 
     // Register a warrior unit type with era = Ancient.
     let warrior_type_id = libciv::UnitTypeId::from_ulid(s.state.id_gen.next_ulid());
-    s.state.unit_type_defs.push(libciv::game::state::UnitTypeDef {
-        id: warrior_type_id,
-        name: "TestWarrior",
-        production_cost: 40,
-        max_movement: 200,
-        combat_strength: Some(20),
-        domain: UnitDomain::Land,
-        category: UnitCategory::Combat,
-        range: 0,
-        vision_range: 2,
-        can_found_city: false,
-        resource_cost: None,
-        siege_bonus: 0,
-        max_charges: 0,
-        exclusive_to: None,
-        replaces: None,
-        era: Some(AgeType::Ancient),
-        promotion_class: None,
-    });
+    s.state
+        .unit_type_defs
+        .push(libciv::game::state::UnitTypeDef {
+            id: warrior_type_id,
+            name: "TestWarrior",
+            production_cost: 40,
+            max_movement: 200,
+            combat_strength: Some(20),
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            range: 0,
+            vision_range: 2,
+            can_found_city: false,
+            resource_cost: None,
+            siege_bonus: 0,
+            max_charges: 0,
+            exclusive_to: None,
+            replaces: None,
+            era: Some(AgeType::Ancient),
+            promotion_class: None,
+        });
 
     // Set Rome's production queue to produce this warrior.
     if let Some(city) = s.state.cities.iter_mut().find(|c| c.id == s.rome_city) {
-        city.production_queue.push_back(libciv::civ::ProductionItem::Unit(warrior_type_id));
+        city.production_queue
+            .push_back(libciv::civ::ProductionItem::Unit(warrior_type_id));
     }
 
     let ctx = ConditionContext {
-        civ_id: s.rome_id, state: &s.state,
-        tile: None, unit_id: None, city_id: Some(s.rome_city),
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: None,
+        unit_id: None,
+        city_id: Some(s.rome_city),
     };
 
     assert_eq!(
-        evaluate_condition(&Condition::ProducingMilitaryUnitOfEra(AgeType::Ancient), &ctx),
+        evaluate_condition(
+            &Condition::ProducingMilitaryUnitOfEra(AgeType::Ancient),
+            &ctx
+        ),
         ConditionResult::Pass,
     );
     // Wrong era should fail.
     assert_eq!(
-        evaluate_condition(&Condition::ProducingMilitaryUnitOfEra(AgeType::Medieval), &ctx),
+        evaluate_condition(
+            &Condition::ProducingMilitaryUnitOfEra(AgeType::Medieval),
+            &ctx
+        ),
         ConditionResult::Fail,
     );
 }
@@ -1345,38 +1713,47 @@ fn producing_military_unit_fails_for_civilian() {
 
     // Register a settler (Civilian) with era = Ancient.
     let settler_type_id = libciv::UnitTypeId::from_ulid(s.state.id_gen.next_ulid());
-    s.state.unit_type_defs.push(libciv::game::state::UnitTypeDef {
-        id: settler_type_id,
-        name: "TestSettler",
-        production_cost: 80,
-        max_movement: 200,
-        combat_strength: None,
-        domain: UnitDomain::Land,
-        category: UnitCategory::Civilian,
-        range: 0,
-        vision_range: 2,
-        can_found_city: true,
-        resource_cost: None,
-        siege_bonus: 0,
-        max_charges: 0,
-        exclusive_to: None,
-        replaces: None,
-        era: Some(AgeType::Ancient),
-        promotion_class: None,
-    });
+    s.state
+        .unit_type_defs
+        .push(libciv::game::state::UnitTypeDef {
+            id: settler_type_id,
+            name: "TestSettler",
+            production_cost: 80,
+            max_movement: 200,
+            combat_strength: None,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Civilian,
+            range: 0,
+            vision_range: 2,
+            can_found_city: true,
+            resource_cost: None,
+            siege_bonus: 0,
+            max_charges: 0,
+            exclusive_to: None,
+            replaces: None,
+            era: Some(AgeType::Ancient),
+            promotion_class: None,
+        });
 
     if let Some(city) = s.state.cities.iter_mut().find(|c| c.id == s.rome_city) {
-        city.production_queue.push_back(libciv::civ::ProductionItem::Unit(settler_type_id));
+        city.production_queue
+            .push_back(libciv::civ::ProductionItem::Unit(settler_type_id));
     }
 
     let ctx = ConditionContext {
-        civ_id: s.rome_id, state: &s.state,
-        tile: None, unit_id: None, city_id: Some(s.rome_city),
+        civ_id: s.rome_id,
+        state: &s.state,
+        tile: None,
+        unit_id: None,
+        city_id: Some(s.rome_city),
     };
 
     // Settler is Civilian, not Combat/Support — should fail.
     assert_eq!(
-        evaluate_condition(&Condition::ProducingMilitaryUnitOfEra(AgeType::Ancient), &ctx),
+        evaluate_condition(
+            &Condition::ProducingMilitaryUnitOfEra(AgeType::Ancient),
+            &ctx
+        ),
         ConditionResult::Fail,
     );
 }

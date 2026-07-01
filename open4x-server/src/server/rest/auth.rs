@@ -33,7 +33,10 @@ fn extract_token(headers: &HeaderMap) -> Option<&str> {
 }
 
 /// Resolve `Authorization: Bearer <token>` to its `(GameId, CivId)` pair.
-pub fn auth_or_401(state: &Arc<AppState>, headers: &HeaderMap) -> Result<(GameId, CivId), ApiError> {
+pub fn auth_or_401(
+    state: &Arc<AppState>,
+    headers: &HeaderMap,
+) -> Result<(GameId, CivId), ApiError> {
     let token = extract_token(headers).ok_or_else(|| {
         err(
             StatusCode::UNAUTHORIZED,

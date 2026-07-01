@@ -25,14 +25,14 @@
 
 use std::collections::BTreeMap;
 
+use libhexgrid::HexTile;
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 use libhexgrid::types::MovementCost;
-use libhexgrid::HexTile;
 
 use crate::civ::ProductionItem;
-use crate::game::{GameStateDiff, RulesEngine, StateDelta};
 use crate::game::state::GameState;
+use crate::game::{GameStateDiff, RulesEngine, StateDelta};
 use crate::{CivId, UnitCategory, UnitId};
 
 // ── Agent trait ───────────────────────────────────────────────────────────────
@@ -83,7 +83,7 @@ impl HeuristicAgent {
 
         let civ = match state.civ(civ_id) {
             Some(c) => c,
-            None    => return i32::MIN,
+            None => return i32::MIN,
         };
 
         if !civ.explored_tiles.contains(&coord) {
@@ -132,7 +132,8 @@ impl HeuristicAgent {
 
             // Deterministic sort: highest production_cost first; ties by name.
             candidates.sort_by(|a, b| {
-                b.production_cost.cmp(&a.production_cost)
+                b.production_cost
+                    .cmp(&a.production_cost)
                     .then_with(|| a.name.cmp(b.name))
             });
 
@@ -142,9 +143,11 @@ impl HeuristicAgent {
         if let Some((unit_type_id, unit_name)) = best_unit_type {
             for city_id in city_ids {
                 if let Some(city) = state.cities.iter_mut().find(|c| c.id == city_id)
-                    && city.owner == self.civ_id && city.production_queue.is_empty()
+                    && city.owner == self.civ_id
+                    && city.production_queue.is_empty()
                 {
-                    city.production_queue.push_back(ProductionItem::Unit(unit_type_id));
+                    city.production_queue
+                        .push_back(ProductionItem::Unit(unit_type_id));
                     diff.push(StateDelta::ProductionStarted {
                         city: city_id,
                         item: unit_name,
@@ -163,9 +166,12 @@ impl HeuristicAgent {
         // Skip traders with assigned trade destinations — they move autonomously
         // during advance_turn.
         let unit_ids: Vec<UnitId> = {
-            let mut ids: Vec<UnitId> = state.units.iter()
-                .filter(|u| u.owner == self.civ_id && u.movement_left > 0
-                    && u.trade_destination.is_none())
+            let mut ids: Vec<UnitId> = state
+                .units
+                .iter()
+                .filter(|u| {
+                    u.owner == self.civ_id && u.movement_left > 0 && u.trade_destination.is_none()
+                })
                 .map(|u| u.id)
                 .collect();
             ids.sort();
@@ -213,10 +219,14 @@ impl Agent for HeuristicAgent {
         let mut aggregate = GameStateDiff::new();
 
         // 1. Production decisions (no rules-engine call needed; direct queue mutation).
-        aggregate.deltas.extend(self.decide_production(state).deltas);
+        aggregate
+            .deltas
+            .extend(self.decide_production(state).deltas);
 
         // 2. Movement decisions.
-        aggregate.deltas.extend(self.decide_movement(state, rules).deltas);
+        aggregate
+            .deltas
+            .extend(self.decide_movement(state, rules).deltas);
 
         aggregate
     }
@@ -234,7 +244,7 @@ fn apply_unit_moved(state: &mut GameState, diff: &GameStateDiff) {
         if let StateDelta::UnitMoved { unit, to, cost, .. } = delta
             && let Some(u) = state.unit_mut(*unit)
         {
-            u.coord         = *to;
+            u.coord = *to;
             u.movement_left = u.movement_left.saturating_sub(*cost);
         }
     }
@@ -245,13 +255,17 @@ fn apply_unit_moved(state: &mut GameState, diff: &GameStateDiff) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use libhexgrid::coord::HexCoord;
-    use crate::{GameState, UnitDomain, UnitCategory, UnitTypeId};
-    use crate::civ::{BasicUnit, City, Civilization, Leader, BuiltinAgenda};
+    use crate::civ::{BasicUnit, BuiltinAgenda, City, Civilization, Leader};
     use crate::game::state::UnitTypeDef;
+    use crate::{GameState, UnitCategory, UnitDomain, UnitTypeId};
+    use libhexgrid::coord::HexCoord;
 
     fn stub_leader(name: &'static str, civ_id: CivId) -> Leader {
-        Leader { name, civ_id, agenda: BuiltinAgenda::Default }
+        Leader {
+            name,
+            civ_id,
+            agenda: BuiltinAgenda::Default,
+        }
     }
 
     /// Build a minimal state with one civ and one unit.
@@ -262,10 +276,23 @@ mod tests {
 
         let warrior_type = UnitTypeId::from_ulid(state.id_gen.next_ulid());
         state.unit_type_defs.push(UnitTypeDef {
-            id: warrior_type, name: "warrior", production_cost: 40,
-            domain: UnitDomain::Land, category: UnitCategory::Combat,
-            max_movement: 200, combat_strength: Some(20),
-            range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None,
+            id: warrior_type,
+            name: "warrior",
+            production_cost: 40,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            max_movement: 200,
+            combat_strength: Some(20),
+            range: 0,
+            vision_range: 2,
+            can_found_city: false,
+            resource_cost: None,
+            siege_bonus: 0,
+            max_charges: 0,
+            exclusive_to: None,
+            replaces: None,
+            era: None,
+            promotion_class: None,
         });
 
         let civ_id = state.id_gen.next_civ_id();
@@ -276,13 +303,27 @@ mod tests {
 
         let unit_id = state.id_gen.next_unit_id();
         state.units.push(BasicUnit {
-            id: unit_id, unit_type: warrior_type, owner: civ_id,
+            id: unit_id,
+            unit_type: warrior_type,
+            owner: civ_id,
             coord: HexCoord::from_qr(5, 5),
-            domain: UnitDomain::Land, category: UnitCategory::Combat,
-            movement_left: 200, max_movement: 200,
-            combat_strength: Some(20), promotions: Vec::new(),
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            movement_left: 200,
+            max_movement: 200,
+            combat_strength: Some(20),
+            promotions: Vec::new(),
             experience: 0,
-            health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+            health: 100,
+            range: 0,
+            vision_range: 2,
+            charges: None,
+            trade_origin: None,
+            trade_destination: None,
+            religion_id: None,
+            spread_charges: None,
+            religious_strength: None,
+            is_embarked: false,
         });
 
         (state, civ_id, unit_id, warrior_type)
@@ -303,7 +344,11 @@ mod tests {
         let (mut state, civ_id, _, _) = minimal_state();
         let coord = HexCoord::from_qr(3, 3);
         // Mark as explored but not visible.
-        let civ = state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap();
+        let civ = state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap();
         civ.explored_tiles.insert(coord);
         assert_eq!(HeuristicAgent::score_tile(coord, &state, civ_id), 50);
     }
@@ -312,7 +357,11 @@ mod tests {
     fn score_visible_tile_is_10() {
         let (mut state, civ_id, _, _) = minimal_state();
         let coord = HexCoord::from_qr(3, 3);
-        let civ = state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap();
+        let civ = state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap();
         civ.explored_tiles.insert(coord);
         civ.visible_tiles.insert(coord);
         assert_eq!(HeuristicAgent::score_tile(coord, &state, civ_id), 10);
@@ -334,10 +383,19 @@ mod tests {
 
         // Add a city with an empty queue.
         let city_id = state.id_gen.next_city_id();
-        state.cities.push(City::new(city_id, "Roma".into(), civ_id, HexCoord::from_qr(3, 3)));
-        state.civilizations.iter_mut()
-            .find(|c| c.id == civ_id).unwrap()
-            .cities.push(city_id);
+        state.cities.push(City::new(
+            city_id,
+            "Roma".into(),
+            civ_id,
+            HexCoord::from_qr(3, 3),
+        ));
+        state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap()
+            .cities
+            .push(city_id);
 
         let agent = HeuristicAgent::new(civ_id);
         let rules = crate::DefaultRulesEngine;
@@ -358,11 +416,16 @@ mod tests {
         let city_id = state.id_gen.next_city_id();
         let mut city = City::new(city_id, "Roma".into(), civ_id, HexCoord::from_qr(3, 3));
         // Pre-populate queue.
-        city.production_queue.push_back(ProductionItem::Unit(warrior_type));
+        city.production_queue
+            .push_back(ProductionItem::Unit(warrior_type));
         state.cities.push(city);
-        state.civilizations.iter_mut()
-            .find(|c| c.id == civ_id).unwrap()
-            .cities.push(city_id);
+        state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap()
+            .cities
+            .push(city_id);
 
         let agent = HeuristicAgent::new(civ_id);
         let rules = crate::DefaultRulesEngine;
@@ -370,7 +433,8 @@ mod tests {
 
         // Queue length must remain 1 (not 2).
         assert_eq!(
-            state.city(city_id).unwrap().production_queue.len(), 1,
+            state.city(city_id).unwrap().production_queue.len(),
+            1,
             "agent must not double-queue when queue is non-empty"
         );
     }
@@ -382,22 +446,48 @@ mod tests {
         // Add a second, more expensive combat unit type.
         let legion_type = UnitTypeId::from_ulid(state.id_gen.next_ulid());
         state.unit_type_defs.push(UnitTypeDef {
-            id: legion_type, name: "legionary", production_cost: 80,
-            domain: UnitDomain::Land, category: UnitCategory::Combat,
-            max_movement: 200, combat_strength: Some(35),
-            range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None,
+            id: legion_type,
+            name: "legionary",
+            production_cost: 80,
+            domain: UnitDomain::Land,
+            category: UnitCategory::Combat,
+            max_movement: 200,
+            combat_strength: Some(35),
+            range: 0,
+            vision_range: 2,
+            can_found_city: false,
+            resource_cost: None,
+            siege_bonus: 0,
+            max_charges: 0,
+            exclusive_to: None,
+            replaces: None,
+            era: None,
+            promotion_class: None,
         });
         // Unlock the new unit so it passes production gating.
-        state.civilizations.iter_mut()
-            .find(|c| c.id == civ_id).unwrap()
-            .unlocked_units.push("legionary");
+        state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap()
+            .unlocked_units
+            .push("legionary");
         let _ = warrior_type; // lower cost; should not be chosen
 
         let city_id = state.id_gen.next_city_id();
-        state.cities.push(City::new(city_id, "Roma".into(), civ_id, HexCoord::from_qr(3, 3)));
-        state.civilizations.iter_mut()
-            .find(|c| c.id == civ_id).unwrap()
-            .cities.push(city_id);
+        state.cities.push(City::new(
+            city_id,
+            "Roma".into(),
+            civ_id,
+            HexCoord::from_qr(3, 3),
+        ));
+        state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap()
+            .cities
+            .push(city_id);
 
         let agent = HeuristicAgent::new(civ_id);
         let rules = crate::DefaultRulesEngine;
@@ -421,7 +511,11 @@ mod tests {
         let target = HexCoord::from_qr(6, 5); // one neighbour
 
         let all_neighbors = unit_coord.neighbors();
-        let civ = state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap();
+        let civ = state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap();
         for n in all_neighbors {
             if n != target {
                 civ.explored_tiles.insert(n);
@@ -448,7 +542,11 @@ mod tests {
 
         // Mark the unit tile and all neighbours as visible (score=10 everywhere).
         let unit_coord = HexCoord::from_qr(5, 5);
-        let civ = state.civilizations.iter_mut().find(|c| c.id == civ_id).unwrap();
+        let civ = state
+            .civilizations
+            .iter_mut()
+            .find(|c| c.id == civ_id)
+            .unwrap();
         civ.explored_tiles.insert(unit_coord);
         civ.visible_tiles.insert(unit_coord);
         for n in unit_coord.neighbors() {
@@ -462,7 +560,8 @@ mod tests {
 
         // All neighbours score 10 (tied); tie-break picks the smallest HexCoord.
         let neighbors = unit_coord.neighbors();
-        let expected = *neighbors.iter()
+        let expected = *neighbors
+            .iter()
             .filter(|&&c| {
                 // Must be passable (on-board).
                 matches!(state.board.tile(c), Some(_))
@@ -491,27 +590,60 @@ mod tests {
 
             let warrior_type = UnitTypeId::from_ulid(state.id_gen.next_ulid());
             state.unit_type_defs.push(UnitTypeDef {
-                id: warrior_type, name: "warrior", production_cost: 40,
-                domain: UnitDomain::Land, category: UnitCategory::Combat,
-                max_movement: 200, combat_strength: Some(20),
-                range: 0, vision_range: 2, can_found_city: false, resource_cost: None, siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None,
+                id: warrior_type,
+                name: "warrior",
+                production_cost: 40,
+                domain: UnitDomain::Land,
+                category: UnitCategory::Combat,
+                max_movement: 200,
+                combat_strength: Some(20),
+                range: 0,
+                vision_range: 2,
+                can_found_city: false,
+                resource_cost: None,
+                siege_bonus: 0,
+                max_charges: 0,
+                exclusive_to: None,
+                replaces: None,
+                era: None,
+                promotion_class: None,
             });
 
             let civ_id = state.id_gen.next_civ_id();
-            state.civilizations.push(
-                Civilization::new(civ_id, "Rome", "Roman",
-                    Leader { name: "Caesar", civ_id, agenda: BuiltinAgenda::Default })
-            );
+            state.civilizations.push(Civilization::new(
+                civ_id,
+                "Rome",
+                "Roman",
+                Leader {
+                    name: "Caesar",
+                    civ_id,
+                    agenda: BuiltinAgenda::Default,
+                },
+            ));
 
             let unit_id = state.id_gen.next_unit_id();
             state.units.push(BasicUnit {
-                id: unit_id, unit_type: warrior_type, owner: civ_id,
+                id: unit_id,
+                unit_type: warrior_type,
+                owner: civ_id,
                 coord: HexCoord::from_qr(5, 5),
-                domain: UnitDomain::Land, category: UnitCategory::Combat,
-                movement_left: 200, max_movement: 200,
-                combat_strength: Some(20), promotions: Vec::new(),
+                domain: UnitDomain::Land,
+                category: UnitCategory::Combat,
+                movement_left: 200,
+                max_movement: 200,
+                combat_strength: Some(20),
+                promotions: Vec::new(),
                 experience: 0,
-                health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+                health: 100,
+                range: 0,
+                vision_range: 2,
+                charges: None,
+                trade_origin: None,
+                trade_destination: None,
+                religion_id: None,
+                spread_charges: None,
+                religious_strength: None,
+                is_embarked: false,
             });
 
             (state, civ_id)
@@ -527,13 +659,17 @@ mod tests {
 
         // Both runs must produce diffs of the same length.
         assert_eq!(
-            diff_a.len(), diff_b.len(),
+            diff_a.len(),
+            diff_b.len(),
             "same input state must yield same number of diff events"
         );
 
         // Units must end on the same tile.
         let unit_a = state_a.units.first().unwrap();
         let unit_b = state_b.units.first().unwrap();
-        assert_eq!(unit_a.coord, unit_b.coord, "unit positions must be identical");
+        assert_eq!(
+            unit_a.coord, unit_b.coord,
+            "unit positions must be identical"
+        );
     }
 }

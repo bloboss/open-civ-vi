@@ -20,7 +20,6 @@ pub mod player_state {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -35,7 +34,6 @@ pub mod player_state {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -49,7 +47,6 @@ pub mod player_state {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -65,7 +62,6 @@ pub mod world {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -77,7 +73,6 @@ pub mod world {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -91,7 +86,6 @@ pub mod world {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -103,7 +97,6 @@ pub mod world {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -113,7 +106,6 @@ pub mod world {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -124,7 +116,6 @@ pub mod world {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -147,7 +138,6 @@ pub mod world {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -161,7 +151,6 @@ pub mod world {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -174,7 +163,6 @@ pub mod world {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -192,7 +180,6 @@ pub mod tech_tree {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -202,7 +189,6 @@ pub mod tech_tree {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -224,7 +210,6 @@ pub mod civics_tree {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -234,7 +219,6 @@ pub mod civics_tree {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -256,7 +240,6 @@ pub mod government {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -267,7 +250,6 @@ pub mod government {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -280,7 +262,6 @@ pub mod government {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -292,7 +273,6 @@ pub mod government {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -304,7 +284,6 @@ pub mod government {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -328,7 +307,6 @@ pub mod diplomacy {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -340,7 +318,6 @@ pub mod diplomacy {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -358,7 +335,6 @@ pub mod diplomacy {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -369,7 +345,6 @@ pub mod diplomacy {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -382,7 +357,6 @@ pub mod diplomacy {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -402,7 +376,6 @@ pub mod empire_overview {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -416,7 +389,6 @@ pub mod empire_overview {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -429,7 +401,6 @@ pub mod empire_overview {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     // Renamed for TS to avoid colliding with the canonical `/cities` CityRow
@@ -443,7 +414,6 @@ pub mod empire_overview {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -454,7 +424,6 @@ pub mod empire_overview {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -471,7 +440,6 @@ pub mod victory {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -488,7 +456,6 @@ pub mod victory {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -499,7 +466,6 @@ pub mod victory {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -518,7 +484,6 @@ pub mod city_data {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -527,7 +492,6 @@ pub mod city_data {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -558,7 +522,6 @@ pub mod city_tiles {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -569,7 +532,6 @@ pub mod city_tiles {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -591,7 +553,6 @@ pub mod unit_data {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -600,7 +561,6 @@ pub mod unit_data {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -626,7 +586,6 @@ pub mod unit_data {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -644,7 +603,6 @@ pub mod combat_preview {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -659,7 +617,6 @@ pub mod combat_preview {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -675,7 +632,6 @@ pub mod army_data {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -684,7 +640,6 @@ pub mod army_data {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -701,7 +656,6 @@ pub mod notifications {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -711,7 +665,6 @@ pub mod notifications {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -725,7 +678,6 @@ pub mod notifications {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -740,7 +692,6 @@ pub mod turn_queue {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -750,7 +701,6 @@ pub mod turn_queue {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -772,7 +722,6 @@ pub mod map_overlays {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -781,7 +730,6 @@ pub mod map_overlays {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -798,7 +746,6 @@ pub mod registry {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -808,7 +755,6 @@ pub mod registry {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -825,7 +771,6 @@ pub mod registry {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
     #[cfg_attr(feature = "ts", ts(export))]
@@ -840,7 +785,6 @@ pub mod registry {
 // ── /turn/end response ───────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
@@ -879,7 +823,6 @@ pub mod governors {
     use super::*;
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct GovernorsView {
         /// Unspent governor titles available to appoint or promote with.
@@ -888,7 +831,6 @@ pub mod governors {
     }
 
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct GovernorEntry {
         pub id: String,
@@ -913,7 +855,6 @@ pub mod climate {
     /// (libciv GS-2). Mirrors `GameState.global_co2` / `climate_level` plus a
     /// best-effort summary of the player's emissions and submerged tiles.
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct ClimateView {
         /// Cumulative global CO2 emitted across all civilizations.
@@ -933,7 +874,6 @@ pub mod climate {
 
     /// A single environmental disaster occurrence.
     #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-
     #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
     pub struct DisasterEntry {
         /// Disaster kind as a string (e.g. "Flood", "Hurricane").

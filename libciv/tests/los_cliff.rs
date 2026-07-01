@@ -3,7 +3,6 @@
 /// Cliffs are not explicitly placed — they emerge when adjacent tiles have an
 /// elevation level difference > 1 (e.g., Ocean Level(0) directly bordering
 /// flat inland Level(2)).
-
 use libciv::game::WorldBoard;
 use libciv::world::terrain::BuiltinTerrain;
 use libhexgrid::board::HexBoard;
@@ -19,8 +18,8 @@ use libhexgrid::coord::HexCoord;
 fn ocean_adjacent_to_inland_blocks_los() {
     let mut board = WorldBoard::new(10, 10);
 
-    let ocean_coord  = HexCoord::from_qr(4, 5);
-    let inland_coord = HexCoord::from_qr(5, 5);  // adjacent
+    let ocean_coord = HexCoord::from_qr(4, 5);
+    let inland_coord = HexCoord::from_qr(5, 5); // adjacent
 
     // Set the ocean tile (default is Grassland; switch to Ocean).
     if let Some(t) = board.tile_mut(ocean_coord) {

@@ -1,10 +1,10 @@
 //! Human-readable formatting for state deltas and queries.
 
-use libciv::civ::district::BuiltinDistrict;
 use libciv::civ::ProductionItem;
+use libciv::civ::district::BuiltinDistrict;
 use libciv::game::diff::StateDelta;
 use libciv::game::production_helpers::{available_buildings_for_city, available_unit_defs};
-use libciv::{all_scores, CityId, CivId, GameState, UnitId, UnitTypeId};
+use libciv::{CityId, CivId, GameState, UnitId, UnitTypeId, all_scores};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 
@@ -14,49 +14,56 @@ use super::short_ids::ShortIds;
 /// Returns `None` for deltas that should be suppressed (noise).
 pub fn format_delta(delta: &StateDelta, state: &GameState) -> Option<String> {
     match delta {
-        StateDelta::TurnAdvanced { to, .. } => {
-            Some(format!("--- Turn {to} ---"))
-        }
-        StateDelta::UnitMoved { to, .. } => {
-            Some(format!("Unit moved to ({}, {})", to.q, to.r))
-        }
+        StateDelta::TurnAdvanced { to, .. } => Some(format!("--- Turn {to} ---")),
+        StateDelta::UnitMoved { to, .. } => Some(format!("Unit moved to ({}, {})", to.q, to.r)),
         StateDelta::UnitCreated { coord, .. } => {
             Some(format!("New unit at ({}, {})", coord.q, coord.r))
         }
-        StateDelta::UnitDestroyed { unit } => {
-            Some(format!("Unit destroyed: {unit}"))
-        }
-        StateDelta::UnitAttacked { attacker_damage, defender_damage, .. } => {
-            Some(format!("Combat: dealt {defender_damage} dmg, took {attacker_damage}"))
-        }
+        StateDelta::UnitDestroyed { unit } => Some(format!("Unit destroyed: {unit}")),
+        StateDelta::UnitAttacked {
+            attacker_damage,
+            defender_damage,
+            ..
+        } => Some(format!(
+            "Combat: dealt {defender_damage} dmg, took {attacker_damage}"
+        )),
         StateDelta::CityFounded { coord, .. } => {
             // Try to find the city name from state.
-            let name = state.cities.iter()
+            let name = state
+                .cities
+                .iter()
                 .find(|c| c.coord == *coord)
                 .map(|c| c.name.as_str())
                 .unwrap_or("?");
-            Some(format!("City founded: {name} at ({}, {})", coord.q, coord.r))
+            Some(format!(
+                "City founded: {name} at ({}, {})",
+                coord.q, coord.r
+            ))
         }
-        StateDelta::PopulationGrew { city, new_population } => {
+        StateDelta::PopulationGrew {
+            city,
+            new_population,
+        } => {
             let name = city_name(state, *city);
             Some(format!("{name}: population grew to {new_population}"))
         }
-        StateDelta::GoldChanged { delta, .. } => {
-            Some(format!("Gold: {delta:+}"))
-        }
-        StateDelta::TechResearched { tech, .. } => {
-            Some(format!("Technology researched: {tech}"))
-        }
-        StateDelta::CivicCompleted { civic, .. } => {
-            Some(format!("Civic completed: {civic}"))
-        }
+        StateDelta::GoldChanged { delta, .. } => Some(format!("Gold: {delta:+}")),
+        StateDelta::TechResearched { tech, .. } => Some(format!("Technology researched: {tech}")),
+        StateDelta::CivicCompleted { civic, .. } => Some(format!("Civic completed: {civic}")),
         StateDelta::BuildingCompleted { city, building } => {
             let name = city_name(state, *city);
             Some(format!("{name}: building completed: {building}"))
         }
-        StateDelta::DistrictBuilt { city, district, coord } => {
+        StateDelta::DistrictBuilt {
+            city,
+            district,
+            coord,
+        } => {
             let name = city_name(state, *city);
-            Some(format!("{name}: {district:?} built at ({}, {})", coord.q, coord.r))
+            Some(format!(
+                "{name}: {district:?} built at ({}, {})",
+                coord.q, coord.r
+            ))
         }
         StateDelta::WonderBuilt { wonder, city, .. } => {
             let name = city_name(state, *city);
@@ -66,44 +73,47 @@ pub fn format_delta(delta: &StateDelta, state: &GameState) -> Option<String> {
             let name = city_name(state, *city);
             Some(format!("{name}: started producing {item}"))
         }
-        StateDelta::ImprovementPlaced { coord, improvement } => {
-            Some(format!("{improvement:?} built at ({}, {})", coord.q, coord.r))
-        }
+        StateDelta::ImprovementPlaced { coord, improvement } => Some(format!(
+            "{improvement:?} built at ({}, {})",
+            coord.q, coord.r
+        )),
         StateDelta::RoadPlaced { coord, .. } => {
             Some(format!("Road built at ({}, {})", coord.q, coord.r))
         }
-        StateDelta::ExperienceGained { amount, .. } => {
-            Some(format!("+{amount} XP"))
-        }
+        StateDelta::ExperienceGained { amount, .. } => Some(format!("+{amount} XP")),
         StateDelta::UnitPromoted { promotion_name, .. } => {
             Some(format!("Unit promoted: {promotion_name}"))
         }
         StateDelta::VictoryAchieved { condition, civ } => {
-            let civ_name = state.civilizations.iter()
+            let civ_name = state
+                .civilizations
+                .iter()
                 .find(|c| c.id == *civ)
                 .map(|c| c.name)
                 .unwrap_or("?");
             Some(format!("VICTORY! {civ_name} wins by {condition}!"))
         }
-        StateDelta::DiplomacyChanged { civ_a, civ_b, new_status } => {
+        StateDelta::DiplomacyChanged {
+            civ_a,
+            civ_b,
+            new_status,
+        } => {
             let a = civ_display_name(state, *civ_a);
             let b = civ_display_name(state, *civ_b);
             Some(format!("Diplomacy: {a} <-> {b} now {new_status:?}"))
         }
-        StateDelta::TradeRouteEstablished { origin, destination, .. } => {
+        StateDelta::TradeRouteEstablished {
+            origin,
+            destination,
+            ..
+        } => {
             let o = city_name(state, *origin);
             let d = city_name(state, *destination);
             Some(format!("Trade route established: {o} -> {d}"))
         }
-        StateDelta::TradeRouteExpired { .. } => {
-            Some("Trade route expired".to_string())
-        }
-        StateDelta::ReligionFounded { name, .. } => {
-            Some(format!("Religion founded: {name}"))
-        }
-        StateDelta::FaithChanged { delta, .. } => {
-            Some(format!("Faith: {delta:+}"))
-        }
+        StateDelta::TradeRouteExpired { .. } => Some("Trade route expired".to_string()),
+        StateDelta::ReligionFounded { name, .. } => Some(format!("Religion founded: {name}")),
+        StateDelta::FaithChanged { delta, .. } => Some(format!("Faith: {delta:+}")),
         StateDelta::ChargesChanged { remaining, .. } => {
             Some(format!("Builder charges remaining: {remaining}"))
         }
@@ -113,14 +123,16 @@ pub fn format_delta(delta: &StateDelta, state: &GameState) -> Option<String> {
         StateDelta::GreatPersonRecruited { person_type, .. } => {
             Some(format!("Great {person_type:?} recruited"))
         }
-        StateDelta::GovernorAssigned { .. } => {
-            Some("Governor assigned".to_string())
-        }
+        StateDelta::GovernorAssigned { .. } => Some("Governor assigned".to_string()),
         StateDelta::CityRevolted { city, .. } => {
             let name = city_name(state, *city);
             Some(format!("{name} revolted!"))
         }
-        StateDelta::EraAdvanced { civ, new_era, era_age } => {
+        StateDelta::EraAdvanced {
+            civ,
+            new_era,
+            era_age,
+        } => {
             let name = civ_display_name(state, *civ);
             Some(format!("{name} entered {new_era:?} ({era_age:?})"))
         }
@@ -130,12 +142,8 @@ pub fn format_delta(delta: &StateDelta, state: &GameState) -> Option<String> {
         StateDelta::UnitDisembarked { coord, .. } => {
             Some(format!("Unit disembarked at ({}, {})", coord.q, coord.r))
         }
-        StateDelta::EmbarkCoastUnlocked { .. } => {
-            Some("Coast embarkation unlocked!".to_string())
-        }
-        StateDelta::EmbarkOceanUnlocked { .. } => {
-            Some("Ocean embarkation unlocked!".to_string())
-        }
+        StateDelta::EmbarkCoastUnlocked { .. } => Some("Coast embarkation unlocked!".to_string()),
+        StateDelta::EmbarkOceanUnlocked { .. } => Some("Ocean embarkation unlocked!".to_string()),
         // Suppress noise.
         StateDelta::TilesRevealed { .. } => None,
         StateDelta::CitizenAssigned { .. } => None,
@@ -199,10 +207,7 @@ pub fn print_units(
     let others: Vec<_> = state
         .units
         .iter()
-        .filter(|u| {
-            u.owner != civ_id
-                && visible.is_none_or(|v| v.contains(&u.coord))
-        })
+        .filter(|u| u.owner != civ_id && visible.is_none_or(|v| v.contains(&u.coord)))
         .collect();
 
     if others.is_empty() {
@@ -273,7 +278,9 @@ pub fn print_cities(state: &GameState, civ_id: CivId, short_ids: &ShortIds<CityI
 
         // Show districts indented under the city.
         for dist in &c.districts {
-            let placed = state.placed_districts.iter()
+            let placed = state
+                .placed_districts
+                .iter()
                 .find(|pd| pd.city_id == c.id && pd.district_type == *dist);
             let coord_str = placed
                 .map(|pd| format!("({:>3},{:>3})", pd.coord.q, pd.coord.r))
@@ -286,7 +293,10 @@ pub fn print_cities(state: &GameState, civ_id: CivId, short_ids: &ShortIds<CityI
             };
             println!(
                 "    {:<26} {:<16} {:>8}      {:<20}",
-                "", dist.name(), coord_str, bldg_str
+                "",
+                dist.name(),
+                coord_str,
+                bldg_str
             );
         }
     }
@@ -309,12 +319,16 @@ pub fn print_available_units(state: &GameState, civ_id: CivId) {
     );
     println!("  {}", "-".repeat(55));
     for d in &available {
-        let cs = d.combat_strength
+        let cs = d
+            .combat_strength
             .map(|v| format!("{v}"))
             .unwrap_or_else(|| "-".to_string());
         println!(
             "  {:<24} {:>6} {:>4} {:>3} {:<10}",
-            d.name, d.production_cost, d.max_movement / 100, cs,
+            d.name,
+            d.production_cost,
+            d.max_movement / 100,
+            cs,
             format!("{:?}", d.domain),
         );
     }
@@ -356,7 +370,9 @@ pub fn print_available_projects(state: &GameState, _civ_id: CivId, city_id: City
         .chain(city.districts.iter().map(|d| d.name()))
         .collect();
 
-    let queued_project_ids: Vec<_> = city.production_queue.iter()
+    let queued_project_ids: Vec<_> = city
+        .production_queue
+        .iter()
         .filter_map(|item| {
             if let ProductionItem::Project(pid) = item {
                 Some(*pid)
@@ -366,7 +382,9 @@ pub fn print_available_projects(state: &GameState, _civ_id: CivId, city_id: City
         })
         .collect();
 
-    let mut available: Vec<_> = state.project_defs.iter()
+    let mut available: Vec<_> = state
+        .project_defs
+        .iter()
         .filter(|d| {
             // District requirement.
             if let Some(req) = d.requires_district
@@ -389,15 +407,15 @@ pub fn print_available_projects(state: &GameState, _civ_id: CivId, city_id: City
     }
 
     println!("  Available projects for {}:", city.name);
-    println!(
-        "  {:<24} {:>6}  District",
-        "Name", "Cost"
-    );
+    println!("  {:<24} {:>6}  District", "Name", "Cost");
     println!("  {}", "-".repeat(45));
     for d in &available {
         let district = d.requires_district.unwrap_or("-");
         let repeat = if d.repeatable { " (repeatable)" } else { "" };
-        println!("  {:<24} {:>6}  {}{}", d.name, d.production_cost, district, repeat);
+        println!(
+            "  {:<24} {:>6}  {}{}",
+            d.name, d.production_cost, district, repeat
+        );
     }
 }
 
@@ -424,7 +442,8 @@ pub fn print_build_list_all(
         println!();
         println!("  Units:");
         for d in &units {
-            let cs = d.combat_strength
+            let cs = d
+                .combat_strength
                 .map(|v| format!("{v}"))
                 .unwrap_or_else(|| "-".to_string());
             println!(
@@ -473,7 +492,9 @@ pub fn print_build_list_all(
     let district_names: Vec<&str> = std::iter::once("City Center")
         .chain(city.districts.iter().map(|d| d.name()))
         .collect();
-    let queued_project_ids: Vec<_> = city.production_queue.iter()
+    let queued_project_ids: Vec<_> = city
+        .production_queue
+        .iter()
         .filter_map(|item| {
             if let ProductionItem::Project(pid) = item {
                 Some(*pid)
@@ -482,7 +503,9 @@ pub fn print_build_list_all(
             }
         })
         .collect();
-    let mut projects: Vec<_> = state.project_defs.iter()
+    let mut projects: Vec<_> = state
+        .project_defs
+        .iter()
         .filter(|d| {
             if let Some(req) = d.requires_district
                 && !district_names.iter().any(|n| n.eq_ignore_ascii_case(req))
@@ -502,7 +525,10 @@ pub fn print_build_list_all(
         for d in &projects {
             let district = d.requires_district.unwrap_or("-");
             let repeat = if d.repeatable { " (repeatable)" } else { "" };
-            println!("    {:<22} {:>6}  {}{}", d.name, d.production_cost, district, repeat);
+            println!(
+                "    {:<22} {:>6}  {}{}",
+                d.name, d.production_cost, district, repeat
+            );
         }
     }
 
@@ -552,10 +578,7 @@ pub fn print_available_buildings(
         .map(|d| format!("Available buildings for {} ({}):", city.name, d.name()))
         .unwrap_or_else(|| format!("Available buildings for {}:", city.name));
     println!("  {header}");
-    println!(
-        "  {:<24} {:>6} {:>6}  District",
-        "Name", "Cost", "Maint"
-    );
+    println!("  {:<24} {:>6} {:>6}  District", "Name", "Cost", "Maint");
     println!("  {}", "-".repeat(60));
     for d in &available {
         let district = d.requires_district.unwrap_or("-");
@@ -658,12 +681,20 @@ pub fn print_available_districts(state: &GameState, civ_id: CivId, city_id: City
 pub fn print_yields(state: &GameState, civ_id: CivId) {
     let civ = match state.civilizations.iter().find(|c| c.id == civ_id) {
         Some(c) => c,
-        None => { println!("  Civilization not found."); return; }
+        None => {
+            println!("  Civilization not found.");
+            return;
+        }
     };
     println!("  Gold: {}", civ.gold);
     println!("  Faith: {}", civ.faith);
     let city_count = state.cities.iter().filter(|c| c.owner == civ_id).count();
-    let pop: u32 = state.cities.iter().filter(|c| c.owner == civ_id).map(|c| c.population).sum();
+    let pop: u32 = state
+        .cities
+        .iter()
+        .filter(|c| c.owner == civ_id)
+        .map(|c| c.population)
+        .sum();
     println!("  Cities: {city_count}  Population: {pop}");
 }
 
@@ -671,14 +702,20 @@ pub fn print_yields(state: &GameState, civ_id: CivId) {
 pub fn print_techs(state: &GameState, civ_id: CivId) {
     let civ = match state.civilizations.iter().find(|c| c.id == civ_id) {
         Some(c) => c,
-        None => { println!("  Civilization not found."); return; }
+        None => {
+            println!("  Civilization not found.");
+            return;
+        }
     };
     println!("  Researched:");
     if civ.researched_techs.is_empty() {
         println!("    (none)");
     } else {
         for tid in &civ.researched_techs {
-            let name = state.tech_tree.nodes.values()
+            let name = state
+                .tech_tree
+                .nodes
+                .values()
                 .find(|n| n.id == *tid)
                 .map(|n| n.name)
                 .unwrap_or("?");
@@ -690,7 +727,10 @@ pub fn print_techs(state: &GameState, civ_id: CivId) {
         println!("    (empty)");
     } else {
         for tp in &civ.research_queue {
-            let name = state.tech_tree.nodes.values()
+            let name = state
+                .tech_tree
+                .nodes
+                .values()
                 .find(|n| n.id == tp.tech_id)
                 .map(|n| n.name)
                 .unwrap_or("?");
@@ -703,14 +743,20 @@ pub fn print_techs(state: &GameState, civ_id: CivId) {
 pub fn print_civics(state: &GameState, civ_id: CivId) {
     let civ = match state.civilizations.iter().find(|c| c.id == civ_id) {
         Some(c) => c,
-        None => { println!("  Civilization not found."); return; }
+        None => {
+            println!("  Civilization not found.");
+            return;
+        }
     };
     println!("  Completed civics:");
     if civ.completed_civics.is_empty() {
         println!("    (none)");
     } else {
         for cid in &civ.completed_civics {
-            let name = state.civic_tree.nodes.values()
+            let name = state
+                .civic_tree
+                .nodes
+                .values()
                 .find(|n| n.id == *cid)
                 .map(|n| n.name)
                 .unwrap_or("?");
@@ -720,7 +766,10 @@ pub fn print_civics(state: &GameState, civ_id: CivId) {
     println!("  Current civic:");
     match &civ.civic_in_progress {
         Some(cp) => {
-            let name = state.civic_tree.nodes.values()
+            let name = state
+                .civic_tree
+                .nodes
+                .values()
                 .find(|n| n.id == cp.civic_id)
                 .map(|n| n.name)
                 .unwrap_or("?");
@@ -845,7 +894,9 @@ pub fn print_scores(state: &GameState) {
     println!("  {:<20} {:>6}", "Civilization", "Score");
     println!("  {}", "-".repeat(28));
     for (cid, score) in &scores {
-        let name = state.civilizations.iter()
+        let name = state
+            .civilizations
+            .iter()
             .find(|c| c.id == *cid)
             .map(|c| c.name)
             .unwrap_or("?");
@@ -855,7 +906,9 @@ pub fn print_scores(state: &GameState) {
 
 /// Print diplomatic relations for a civ.
 pub fn print_diplomacy(state: &GameState, civ_id: CivId) {
-    let rels: Vec<_> = state.diplomatic_relations.iter()
+    let rels: Vec<_> = state
+        .diplomatic_relations
+        .iter()
         .filter(|r| r.civ_a == civ_id || r.civ_b == civ_id)
         .collect();
     if rels.is_empty() {
@@ -895,13 +948,13 @@ pub fn print_tile(state: &GameState, coord: HexCoord) {
                 println!("    Owner: {name}");
             }
             // Units at this coord.
-            let units_here: Vec<_> = state.units.iter()
-                .filter(|u| u.coord == coord)
-                .collect();
+            let units_here: Vec<_> = state.units.iter().filter(|u| u.coord == coord).collect();
             if !units_here.is_empty() {
                 println!("    Units:");
                 for u in &units_here {
-                    let type_name = state.unit_type_defs.iter()
+                    let type_name = state
+                        .unit_type_defs
+                        .iter()
                         .find(|d| d.id == u.unit_type)
                         .map(|d| d.name)
                         .unwrap_or("?");
@@ -917,14 +970,18 @@ pub fn print_tile(state: &GameState, coord: HexCoord) {
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 fn city_name(state: &GameState, city_id: libciv::CityId) -> String {
-    state.cities.iter()
+    state
+        .cities
+        .iter()
         .find(|c| c.id == city_id)
         .map(|c| c.name.clone())
         .unwrap_or_else(|| "?".to_string())
 }
 
 fn civ_display_name(state: &GameState, civ_id: CivId) -> &'static str {
-    state.civilizations.iter()
+    state
+        .civilizations
+        .iter()
         .find(|c| c.id == civ_id)
         .map(|c| c.name)
         .unwrap_or("?")

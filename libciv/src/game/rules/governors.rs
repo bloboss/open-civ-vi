@@ -2,9 +2,9 @@
 
 use crate::{CityId, GovernorId};
 
-use super::RulesError;
 use super::super::diff::{GameStateDiff, StateDelta};
 use super::super::state::GameState;
+use super::RulesError;
 
 /// Assign (or reassign) a governor to a city.
 pub(crate) fn assign_governor(
@@ -13,13 +13,17 @@ pub(crate) fn assign_governor(
     city_id: CityId,
 ) -> Result<GameStateDiff, RulesError> {
     let (owner, current_city) = {
-        let gov = state.governors.iter()
+        let gov = state
+            .governors
+            .iter()
             .find(|g| g.id == governor_id)
             .ok_or(RulesError::GovernorNotFound)?;
         (gov.owner, gov.assigned_city)
     };
 
-    let city = state.cities.iter()
+    let city = state
+        .cities
+        .iter()
         .find(|c| c.id == city_id)
         .ok_or(RulesError::CityNotFound)?;
     if city.owner != owner {
@@ -30,14 +34,20 @@ pub(crate) fn assign_governor(
         return Err(RulesError::GovernorAlreadyInCity);
     }
 
-    let gov = state.governors.iter_mut()
+    let gov = state
+        .governors
+        .iter_mut()
         .find(|g| g.id == governor_id)
         .unwrap();
     gov.assigned_city = Some(city_id);
     gov.turns_to_establish = 5;
 
     let mut diff = GameStateDiff::new();
-    diff.push(StateDelta::GovernorAssigned { governor: governor_id, city: city_id, owner });
+    diff.push(StateDelta::GovernorAssigned {
+        governor: governor_id,
+        city: city_id,
+        owner,
+    });
     Ok(diff)
 }
 
@@ -50,21 +60,25 @@ pub(crate) fn promote_governor(
     use crate::civ::governor::promotion_def;
 
     let (owner, def_name) = {
-        let gov = state.governors.iter()
+        let gov = state
+            .governors
+            .iter()
             .find(|g| g.id == governor_id)
             .ok_or(RulesError::GovernorNotFound)?;
         (gov.owner, gov.def_name)
     };
 
-    let promo = promotion_def(promotion_name)
-        .ok_or(RulesError::PromotionNotFound)?;
+    let promo = promotion_def(promotion_name).ok_or(RulesError::PromotionNotFound)?;
     if promo.governor != def_name {
         return Err(RulesError::PromotionNotFound);
     }
 
     {
-        let gov = state.governors.iter()
-            .find(|g| g.id == governor_id).unwrap();
+        let gov = state
+            .governors
+            .iter()
+            .find(|g| g.id == governor_id)
+            .unwrap();
         if gov.has_promotion(promotion_name) {
             return Err(RulesError::PromotionAlreadyUnlocked);
         }
@@ -75,22 +89,34 @@ pub(crate) fn promote_governor(
         }
     }
 
-    let civ = state.civilizations.iter()
+    let civ = state
+        .civilizations
+        .iter()
         .find(|c| c.id == owner)
         .ok_or(RulesError::CivNotFound)?;
     if civ.governor_titles < 1 {
         return Err(RulesError::InsufficientGovernorTitles);
     }
 
-    state.civilizations.iter_mut()
-        .find(|c| c.id == owner).unwrap()
+    state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == owner)
+        .unwrap()
         .governor_titles -= 1;
-    state.governors.iter_mut()
-        .find(|g| g.id == governor_id).unwrap()
-        .promotions.push(promotion_name);
+    state
+        .governors
+        .iter_mut()
+        .find(|g| g.id == governor_id)
+        .unwrap()
+        .promotions
+        .push(promotion_name);
 
     let mut diff = GameStateDiff::new();
-    diff.push(StateDelta::GovernorPromoted { governor: governor_id, promotion: promotion_name });
+    diff.push(StateDelta::GovernorPromoted {
+        governor: governor_id,
+        promotion: promotion_name,
+    });
     Ok(diff)
 }
 

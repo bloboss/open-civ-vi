@@ -112,11 +112,19 @@ pub fn OngoingGames(on_new: Callback<()>) -> impl IntoView {
         let f = filter.get();
         let s = sort.get();
         let q = search.get();
-        push_query_state(&QueryState { filter: f, sort: s, q });
+        push_query_state(&QueryState {
+            filter: f,
+            sort: s,
+            q,
+        });
     });
 
     let chip_class = move |target: Filter| -> &'static str {
-        if filter.get() == target { "chip active" } else { "chip" }
+        if filter.get() == target {
+            "chip active"
+        } else {
+            "chip"
+        }
     };
 
     view! {
@@ -487,10 +495,7 @@ fn render_menu_rows(
     .into_any()
 }
 
-fn render_summary_kv(
-    game: Arc<games_api::GameView>,
-    view_mode: RwSignal<SummaryMode>,
-) -> AnyView {
+fn render_summary_kv(game: Arc<games_api::GameView>, view_mode: RwSignal<SummaryMode>) -> AnyView {
     let players = format!("{}H · {}AI", game.players_human, game.players_ai);
     let last = game.last_played_at.clone().unwrap_or_else(|| "—".into());
     view! {
@@ -652,7 +657,9 @@ fn read_query_state() -> QueryState {
     let q_str = search.strip_prefix('?').unwrap_or(&search);
     let mut state = QueryState::default();
     for pair in q_str.split('&') {
-        let Some((k, v)) = pair.split_once('=') else { continue };
+        let Some((k, v)) = pair.split_once('=') else {
+            continue;
+        };
         let v = decode_query(v);
         match k {
             "filter" => {
@@ -722,10 +729,9 @@ fn decode_query(s: &str) -> String {
     while i < bytes.len() {
         match bytes[i] {
             b'%' if i + 2 < bytes.len() => {
-                if let Ok(h) = u8::from_str_radix(
-                    std::str::from_utf8(&bytes[i + 1..i + 3]).unwrap_or(""),
-                    16,
-                ) {
+                if let Ok(h) =
+                    u8::from_str_radix(std::str::from_utf8(&bytes[i + 1..i + 3]).unwrap_or(""), 16)
+                {
                     out.push(h as char);
                     i += 3;
                     continue;

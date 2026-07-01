@@ -2,18 +2,17 @@
 /// city capture, domination condition, and verification of all victory types.
 mod common;
 
-use libciv::{
-    BuiltinVictoryCondition, CivId, DefaultRulesEngine,
-    GameState, RulesEngine,
-    UnitCategory, UnitDomain, UnitId, UnitTypeId,
-};
-use libciv::civ::{BasicUnit, City};
 use libciv::civ::great_works::{GreatWorkSlot, GreatWorkSlotType};
-use libciv::game::victory::VictoryKind;
+use libciv::civ::{BasicUnit, City};
 use libciv::game::StateDelta;
+use libciv::game::victory::VictoryKind;
+use libciv::{
+    BuiltinVictoryCondition, CivId, DefaultRulesEngine, GameState, RulesEngine, UnitCategory,
+    UnitDomain, UnitId, UnitTypeId,
+};
 use libhexgrid::coord::HexCoord;
 
-use common::{build_scenario, advance_turn};
+use common::{advance_turn, build_scenario};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -23,10 +22,27 @@ use common::{build_scenario, advance_turn};
 fn spawn_strong_unit(s: &mut common::Scenario, owner: CivId, coord: HexCoord, cs: u32) -> UnitId {
     let uid = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
-        id: uid, unit_type: s.warrior_type, owner,
-        coord, domain: UnitDomain::Land, category: UnitCategory::Combat,
-        movement_left: 200, max_movement: 200, combat_strength: Some(cs),
-        promotions: Vec::new(), experience: 0, health: 100, range: 0, vision_range: 2, charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        id: uid,
+        unit_type: s.warrior_type,
+        owner,
+        coord,
+        domain: UnitDomain::Land,
+        category: UnitCategory::Combat,
+        movement_left: 200,
+        max_movement: 200,
+        combat_strength: Some(cs),
+        promotions: Vec::new(),
+        experience: 0,
+        health: 100,
+        range: 0,
+        vision_range: 2,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
     uid
 }
@@ -54,19 +70,40 @@ fn test_city_capture_on_melee_kill() {
     let diff = rules.attack(&mut s.state, attacker, weak_defender).unwrap();
 
     // Defender should be dead.
-    assert!(s.state.unit(weak_defender).is_none(), "defender should be dead");
+    assert!(
+        s.state.unit(weak_defender).is_none(),
+        "defender should be dead"
+    );
 
     // City should be captured.
-    let captured = diff.deltas.iter().any(|d| matches!(d, StateDelta::CityCaptured { .. }));
+    let captured = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::CityCaptured { .. }));
     assert!(captured, "should emit CityCaptured delta");
 
-    let city = s.state.cities.iter().find(|c| c.id == s.babylon_city).unwrap();
-    assert_eq!(city.owner, rome_id, "Babylon's capital should now be owned by Rome");
-    assert_eq!(city.founded_by, babylon_id, "founded_by should still be Babylon");
+    let city = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.babylon_city)
+        .unwrap();
+    assert_eq!(
+        city.owner, rome_id,
+        "Babylon's capital should now be owned by Rome"
+    );
+    assert_eq!(
+        city.founded_by, babylon_id,
+        "founded_by should still be Babylon"
+    );
 
     // Attacker should have moved onto the city tile.
     let atk = s.state.unit(attacker).unwrap();
-    assert_eq!(atk.coord, HexCoord::from_qr(10, 5), "attacker should be on the captured city tile");
+    assert_eq!(
+        atk.coord,
+        HexCoord::from_qr(10, 5),
+        "attacker should be on the captured city tile"
+    );
 }
 
 #[test]
@@ -89,11 +126,22 @@ fn test_city_not_captured_if_defenders_remain() {
     let diff = rules.attack(&mut s.state, attacker, def1).unwrap();
 
     // City should NOT be captured because def2 is still on the tile.
-    let captured = diff.deltas.iter().any(|d| matches!(d, StateDelta::CityCaptured { .. }));
+    let captured = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::CityCaptured { .. }));
     assert!(!captured, "should not capture city while defenders remain");
 
-    let city = s.state.cities.iter().find(|c| c.id == s.babylon_city).unwrap();
-    assert_eq!(city.owner, babylon_id, "city should still belong to Babylon");
+    let city = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.babylon_city)
+        .unwrap();
+    assert_eq!(
+        city.owner, babylon_id,
+        "city should still belong to Babylon"
+    );
 }
 
 #[test]
@@ -105,7 +153,9 @@ fn test_domination_victory_fires_on_all_capitals_captured() {
 
     // Register domination victory.
     let vid = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(BuiltinVictoryCondition::Domination { id: vid });
+    s.state
+        .victory_conditions
+        .push(BuiltinVictoryCondition::Domination { id: vid });
 
     // Capture Babylon's capital: remove defender, place strong attacker.
     s.state.units.retain(|u| u.id != s.babylon_warrior);
@@ -114,7 +164,12 @@ fn test_domination_victory_fires_on_all_capitals_captured() {
     rules.attack(&mut s.state, attacker, weak_def).unwrap();
 
     // Verify Babylon's capital is now owned by Rome.
-    let bab_capital = s.state.cities.iter().find(|c| c.id == s.babylon_city).unwrap();
+    let bab_capital = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.babylon_city)
+        .unwrap();
     assert_eq!(bab_capital.owner, rome_id);
 
     // Advance turn to trigger victory check.
@@ -132,12 +187,17 @@ fn test_domination_victory_not_fired_if_capitals_remain() {
     let rome_id = s.rome_id;
 
     let vid = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(BuiltinVictoryCondition::Domination { id: vid });
+    s.state
+        .victory_conditions
+        .push(BuiltinVictoryCondition::Domination { id: vid });
 
     // Don't capture Babylon's capital.
     advance_turn(&mut s);
 
-    assert!(s.state.game_over.is_none(), "no domination victory without capturing all capitals");
+    assert!(
+        s.state.game_over.is_none(),
+        "no domination victory without capturing all capitals"
+    );
 }
 
 #[test]
@@ -166,14 +226,22 @@ fn test_score_victory_fires_at_turn_limit() {
 
     // Register score victory with turn limit = 5.
     let vid = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(BuiltinVictoryCondition::Score { id: vid, turn_limit: 5 });
+    s.state
+        .victory_conditions
+        .push(BuiltinVictoryCondition::Score {
+            id: vid,
+            turn_limit: 5,
+        });
 
     // Advance 5 turns.
     for _ in 0..5 {
         advance_turn(&mut s);
     }
 
-    assert!(s.state.game_over.is_some(), "score victory should fire at turn limit");
+    assert!(
+        s.state.game_over.is_some(),
+        "score victory should fire at turn limit"
+    );
     let go = s.state.game_over.as_ref().unwrap();
     assert_eq!(go.condition, "Score Victory");
     // Winner should be deterministic — same setup, same seed.
@@ -184,13 +252,21 @@ fn test_score_victory_not_before_limit() {
     let mut s = build_scenario();
 
     let vid = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(BuiltinVictoryCondition::Score { id: vid, turn_limit: 10 });
+    s.state
+        .victory_conditions
+        .push(BuiltinVictoryCondition::Score {
+            id: vid,
+            turn_limit: 10,
+        });
 
     for _ in 0..5 {
         advance_turn(&mut s);
     }
 
-    assert!(s.state.game_over.is_none(), "score victory should not fire before turn limit");
+    assert!(
+        s.state.game_over.is_none(),
+        "score victory should not fire before turn limit"
+    );
 }
 
 // ===========================================================================
@@ -204,42 +280,70 @@ fn test_culture_victory_requires_tourism_exceeding_all() {
     let babylon_id = s.babylon_id;
 
     let vid = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(BuiltinVictoryCondition::Culture { id: vid });
+    s.state
+        .victory_conditions
+        .push(BuiltinVictoryCondition::Culture { id: vid });
 
     // Give Rome great work slots and works to generate tourism.
     // 6 great works → 18 tourism (well above any domestic culture from 1 turn).
-    use libciv::civ::great_works::GreatWorkSlot;
-    use libciv::civ::great_people::GreatPerson;
     use libciv::GreatPersonType;
+    use libciv::civ::great_people::GreatPerson;
+    use libciv::civ::great_works::GreatWorkSlot;
     let rc = s.rome_city;
     if let Some(city) = s.state.cities.iter_mut().find(|c| c.id == rc) {
         for _ in 0..3 {
-            city.great_work_slots.push(GreatWorkSlot::new(GreatWorkSlotType::Writing));
+            city.great_work_slots
+                .push(GreatWorkSlot::new(GreatWorkSlotType::Writing));
         }
         for _ in 0..3 {
-            city.great_work_slots.push(GreatWorkSlot::new(GreatWorkSlotType::Art));
+            city.great_work_slots
+                .push(GreatWorkSlot::new(GreatWorkSlotType::Art));
         }
     }
     for i in 0..6 {
         let name: &'static str = match i {
-            0 => "W1", 1 => "W2", 2 => "W3", 3 => "A1", 4 => "A2", _ => "A3",
+            0 => "W1",
+            1 => "W2",
+            2 => "W3",
+            3 => "A1",
+            4 => "A2",
+            _ => "A3",
         };
-        let gp_type = if i < 3 { GreatPersonType::Writer } else { GreatPersonType::Artist };
+        let gp_type = if i < 3 {
+            GreatPersonType::Writer
+        } else {
+            GreatPersonType::Artist
+        };
         let gp_id = libciv::GreatPersonId::from_ulid(s.state.id_gen.next_ulid());
         let mut gp = GreatPerson::new(gp_id, name, gp_type, "Ancient");
         gp.owner = Some(rome_id);
         s.state.great_people.push(gp);
-        DefaultRulesEngine.create_great_work(&mut s.state, gp_id).unwrap();
+        DefaultRulesEngine
+            .create_great_work(&mut s.state, gp_id)
+            .unwrap();
     }
 
     // Advance turn — tourism computed from great works, domestic_culture starts low.
     advance_turn(&mut s);
 
-    let rome_civ = s.state.civilizations.iter().find(|c| c.id == rome_id).unwrap();
-    let bab_civ = s.state.civilizations.iter().find(|c| c.id == babylon_id).unwrap();
-    assert!(rome_civ.tourism_output > bab_civ.domestic_culture,
+    let rome_civ = s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == rome_id)
+        .unwrap();
+    let bab_civ = s
+        .state
+        .civilizations
+        .iter()
+        .find(|c| c.id == babylon_id)
+        .unwrap();
+    assert!(
+        rome_civ.tourism_output > bab_civ.domestic_culture,
         "Rome tourism {} should exceed Babylon domestic_culture {}",
-        rome_civ.tourism_output, bab_civ.domestic_culture);
+        rome_civ.tourism_output,
+        bab_civ.domestic_culture
+    );
     assert!(s.state.game_over.is_some(), "culture victory should fire");
     let go = s.state.game_over.as_ref().unwrap();
     assert_eq!(go.winner, rome_id);
@@ -253,19 +357,29 @@ fn test_culture_victory_blocked_when_opponent_culture_higher() {
     let babylon_id = s.babylon_id;
 
     let vid = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(BuiltinVictoryCondition::Culture { id: vid });
+    s.state
+        .victory_conditions
+        .push(BuiltinVictoryCondition::Culture { id: vid });
 
     // Rome has some tourism but Babylon has massive domestic culture.
     if let Some(civ) = s.state.civilizations.iter_mut().find(|c| c.id == rome_id) {
         civ.tourism_output = 50;
     }
-    if let Some(civ) = s.state.civilizations.iter_mut().find(|c| c.id == babylon_id) {
+    if let Some(civ) = s
+        .state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == babylon_id)
+    {
         civ.domestic_culture = 500;
     }
 
     advance_turn(&mut s);
 
-    assert!(s.state.game_over.is_none(), "culture victory blocked when opponent culture is higher");
+    assert!(
+        s.state.game_over.is_none(),
+        "culture victory blocked when opponent culture is higher"
+    );
 }
 
 // ===========================================================================
@@ -281,9 +395,16 @@ fn test_immediate_win_takes_priority_over_turn_limit() {
 
     // Register both domination (ImmediateWin) and score (TurnLimit at turn 3).
     let vid1 = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(BuiltinVictoryCondition::Domination { id: vid1 });
+    s.state
+        .victory_conditions
+        .push(BuiltinVictoryCondition::Domination { id: vid1 });
     let vid2 = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(BuiltinVictoryCondition::Score { id: vid2, turn_limit: 3 });
+    s.state
+        .victory_conditions
+        .push(BuiltinVictoryCondition::Score {
+            id: vid2,
+            turn_limit: 3,
+        });
 
     // Capture Babylon's capital on turn 2.
     advance_turn(&mut s);
@@ -300,8 +421,10 @@ fn test_immediate_win_takes_priority_over_turn_limit() {
     advance_turn(&mut s);
 
     let go = s.state.game_over.as_ref().expect("game should be over");
-    assert_eq!(go.condition, "Domination Victory",
-        "ImmediateWin should take priority over TurnLimit");
+    assert_eq!(
+        go.condition, "Domination Victory",
+        "ImmediateWin should take priority over TurnLimit"
+    );
     assert_eq!(go.winner, rome_id);
 }
 
@@ -341,20 +464,38 @@ fn test_domination_three_civs_requires_both_capitals() {
 
     // Add a third civ: Egypt.
     let egypt_id = s.state.id_gen.next_civ_id();
-    s.state.civilizations.push(
-        libciv::civ::Civilization::new(egypt_id, "Egypt", "Egyptian",
-            libciv::civ::Leader { name: "Cleopatra", civ_id: egypt_id, agenda: libciv::civ::BuiltinAgenda::Default })
-    );
+    s.state.civilizations.push(libciv::civ::Civilization::new(
+        egypt_id,
+        "Egypt",
+        "Egyptian",
+        libciv::civ::Leader {
+            name: "Cleopatra",
+            civ_id: egypt_id,
+            agenda: libciv::civ::BuiltinAgenda::Default,
+        },
+    ));
     let egypt_city_id = s.state.id_gen.next_city_id();
-    let mut egypt_city = City::new(egypt_city_id, "Thebes".into(), egypt_id, HexCoord::from_qr(7, 6));
+    let mut egypt_city = City::new(
+        egypt_city_id,
+        "Thebes".into(),
+        egypt_id,
+        HexCoord::from_qr(7, 6),
+    );
     egypt_city.is_capital = true;
     s.state.cities.push(egypt_city);
-    s.state.civilizations.iter_mut().find(|c| c.id == egypt_id).unwrap()
-        .cities.push(egypt_city_id);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == egypt_id)
+        .unwrap()
+        .cities
+        .push(egypt_city_id);
 
     // Register domination.
     let vid = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(BuiltinVictoryCondition::Domination { id: vid });
+    s.state
+        .victory_conditions
+        .push(BuiltinVictoryCondition::Domination { id: vid });
 
     // Check progress: Rome needs 2 foreign capitals.
     let vc = BuiltinVictoryCondition::Domination { id: vid };
@@ -373,7 +514,10 @@ fn test_domination_three_civs_requires_both_capitals() {
     assert!(!p.is_won(), "not yet won — Egypt's capital remains");
 
     advance_turn(&mut s);
-    assert!(s.state.game_over.is_none(), "no victory with only 1 of 2 capitals");
+    assert!(
+        s.state.game_over.is_none(),
+        "no victory with only 1 of 2 capitals"
+    );
 
     // Now capture Egypt's capital.
     let def2 = spawn_strong_unit(&mut s, egypt_id, HexCoord::from_qr(7, 6), 1);
@@ -385,6 +529,12 @@ fn test_domination_three_civs_requires_both_capitals() {
     assert!(p.is_won(), "should win with both capitals captured");
 
     advance_turn(&mut s);
-    assert!(s.state.game_over.is_some(), "domination victory should fire");
-    assert_eq!(s.state.game_over.as_ref().unwrap().condition, "Domination Victory");
+    assert!(
+        s.state.game_over.is_some(),
+        "domination victory should fire"
+    );
+    assert_eq!(
+        s.state.game_over.as_ref().unwrap().condition,
+        "Domination Victory"
+    );
 }

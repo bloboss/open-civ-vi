@@ -6,7 +6,6 @@
 //! booting an `open4x-server` `GameRoom`; the lobby reads from it to
 //! render the OngoingGames screen and to mint Resume tokens.
 
-
 use async_trait::async_trait;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -110,10 +109,7 @@ pub struct NewGame {
 pub trait GameStore: Send + Sync {
     async fn create_game(&self, body: NewGame) -> GameStoreResult<GameRecord>;
     async fn get_game(&self, game_id: &str) -> GameStoreResult<Option<GameRecord>>;
-    async fn list_for_player(
-        &self,
-        player_id: PlayerId,
-    ) -> GameStoreResult<Vec<GameRecord>>;
+    async fn list_for_player(&self, player_id: PlayerId) -> GameStoreResult<Vec<GameRecord>>;
     async fn soft_delete(&self, game_id: &str, requester: PlayerId) -> GameStoreResult<()>;
     async fn touch_last_played(&self, game_id: &str) -> GameStoreResult<()>;
     async fn update_runtime_view(
@@ -220,10 +216,7 @@ impl GameStore for SqliteGameStore {
         row.map(|r| r.try_into()).transpose()
     }
 
-    async fn list_for_player(
-        &self,
-        player_id: PlayerId,
-    ) -> GameStoreResult<Vec<GameRecord>> {
+    async fn list_for_player(&self, player_id: PlayerId) -> GameStoreResult<Vec<GameRecord>> {
         let pid = player_id_text(&player_id);
         let rows: Vec<GameRow> = sqlx::query_as::<_, GameRow>(
             "SELECT g.* FROM games g \
@@ -301,13 +294,12 @@ impl GameStore for SqliteGameStore {
     }
 
     async fn set_notes(&self, game_id: &str, notes: &str) -> GameStoreResult<()> {
-        let res = sqlx::query(
-            "UPDATE games SET notes = ?1 WHERE game_id = ?2 AND deleted_at IS NULL",
-        )
-        .bind(notes)
-        .bind(game_id)
-        .execute(&self.pool)
-        .await?;
+        let res =
+            sqlx::query("UPDATE games SET notes = ?1 WHERE game_id = ?2 AND deleted_at IS NULL")
+                .bind(notes)
+                .bind(game_id)
+                .execute(&self.pool)
+                .await?;
         if res.rows_affected() == 0 {
             return Err(GameStoreError::NotFound);
         }

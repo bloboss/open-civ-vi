@@ -8,7 +8,6 @@
 //! minting / OIDC client / atproto resolver / session token issuance
 //! land in 2.2-2.5; this module just owns the durable rows.
 
-
 use std::path::Path;
 
 use async_trait::async_trait;
@@ -56,10 +55,8 @@ pub trait AccountStore: Send + Sync {
     /// its account; otherwise mint a fresh `PlayerId`, create an
     /// `accounts` row, and link the identity. Idempotent — repeated
     /// calls with the same identity return the same account.
-    async fn find_or_create_account_for_identity(
-        &self,
-        identity: Identity,
-    ) -> StoreResult<Account>;
+    async fn find_or_create_account_for_identity(&self, identity: Identity)
+    -> StoreResult<Account>;
 
     /// Add a new identity to an existing account. Refused with
     /// `IdentityConflict` if the (kind, primary_key) is already linked
@@ -144,10 +141,7 @@ impl SqliteAccountStore {
     /// `Preferences.discoverable_by_id` so users can opt out of
     /// being findable. Returns at most 8 matches to keep the UX
     /// honest.
-    pub async fn search_for_friend(
-        &self,
-        query: &str,
-    ) -> StoreResult<Vec<SearchHit>> {
+    pub async fn search_for_friend(&self, query: &str) -> StoreResult<Vec<SearchHit>> {
         let q = query.trim();
         if q.is_empty() {
             return Ok(Vec::new());
@@ -223,10 +217,7 @@ fn parse_player_id_query(s: &str) -> Option<PlayerId> {
         .strip_prefix("0x")
         .or_else(|| s.strip_prefix("0X"))
         .unwrap_or(s);
-    let stripped: String = body
-        .chars()
-        .filter(|c| c.is_ascii_hexdigit())
-        .collect();
+    let stripped: String = body.chars().filter(|c| c.is_ascii_hexdigit()).collect();
     if stripped.len() != 16 {
         return None;
     }
@@ -399,7 +390,10 @@ impl AccountStore for SqliteAccountStore {
         .bind(&pid)
         .fetch_all(&self.pool)
         .await?;
-        Ok(rows.iter().map(|r| (r.id.clone(), row_to_identity(r))).collect())
+        Ok(rows
+            .iter()
+            .map(|r| (r.id.clone(), row_to_identity(r)))
+            .collect())
     }
 
     async fn mark_email_verified(&self, address: &str) -> StoreResult<bool> {
@@ -440,7 +434,9 @@ struct AccountRow {
 fn identity_key(identity: &Identity) -> (&'static str, String) {
     match identity {
         Identity::Email { address, .. } => ("email", address.to_lowercase()),
-        Identity::OpenId { issuer, subject, .. } => ("oidc", format!("{issuer}|{subject}")),
+        Identity::OpenId {
+            issuer, subject, ..
+        } => ("oidc", format!("{issuer}|{subject}")),
         Identity::Atproto { did, .. } => ("atproto", did.clone()),
         Identity::PublicKey { ed25519_hex, .. } => ("pubkey", ed25519_hex.to_lowercase()),
     }
@@ -449,7 +445,7 @@ fn identity_key(identity: &Identity) -> (&'static str, String) {
 fn rand_player_id() -> u64 {
     // Derive a u64 from a fresh ULID so the IdGenerator path stays
     // single-source (ULIDs are seeded with rand under the hood).
-    
+
     Ulid::new().0 as u64
 }
 
@@ -479,7 +475,9 @@ async fn insert_identity(
     let (kind, primary_key) = identity_key(identity);
     let label = identity.label();
     let (is_primary, verified) = match identity {
-        Identity::Email { primary, verified, .. } => (*primary as i64, *verified as i64),
+        Identity::Email {
+            primary, verified, ..
+        } => (*primary as i64, *verified as i64),
         _ => (0, 1),
     };
     sqlx::query(
@@ -624,7 +622,10 @@ mod mem {
                 identities: vec![identity],
                 ..Account::default()
             };
-            self.accounts.lock().unwrap().insert(player_id, acct.clone());
+            self.accounts
+                .lock()
+                .unwrap()
+                .insert(player_id, acct.clone());
             Ok(acct)
         }
 
@@ -707,7 +708,12 @@ mod mem {
             let mut map = self.accounts.lock().unwrap();
             for acct in map.values_mut() {
                 for ident in acct.identities.iter_mut() {
-                    if let Identity::Email { address: a, verified, .. } = ident {
+                    if let Identity::Email {
+                        address: a,
+                        verified,
+                        ..
+                    } = ident
+                    {
                         if a.to_lowercase() == key && !*verified {
                             *verified = true;
                             return Ok(true);
@@ -731,10 +737,7 @@ mod mem {
             .find_or_create_account_for_identity(id.clone())
             .await
             .unwrap();
-        let b = store
-            .find_or_create_account_for_identity(id)
-            .await
-            .unwrap();
+        let b = store.find_or_create_account_for_identity(id).await.unwrap();
         assert_eq!(a.player_id, b.player_id);
     }
 
@@ -842,7 +845,10 @@ mod mem {
             .fetch_one(&store.pool)
             .await
             .unwrap();
-        assert_eq!(game_count.0, 1, "host's game must survive a member's deletion");
+        assert_eq!(
+            game_count.0, 1,
+            "host's game must survive a member's deletion"
+        );
 
         // Alice's row is gone, but a sentinel-anonymised row took
         // its place — i.e. the host still has a non-empty roster.

@@ -89,7 +89,9 @@ pub mod serde_static_str_vec {
         D: Deserializer<'de>,
     {
         let v: Vec<String> = Vec::deserialize(deserializer)?;
-        Ok(v.into_iter().map(|s| &*Box::leak(s.into_boxed_str())).collect())
+        Ok(v.into_iter()
+            .map(|s| &*Box::leak(s.into_boxed_str()))
+            .collect())
     }
 }
 
@@ -132,7 +134,9 @@ pub mod serde_static_str_set {
         D: Deserializer<'de>,
     {
         let v: Vec<String> = Vec::deserialize(deserializer)?;
-        Ok(v.into_iter().map(|s| &*Box::leak(s.into_boxed_str())).collect())
+        Ok(v.into_iter()
+            .map(|s| &*Box::leak(s.into_boxed_str()))
+            .collect())
     }
 }
 
@@ -140,18 +144,26 @@ pub mod serde_static_str_set {
 /// Serializes as a Vec of `(K, V)` pairs.
 #[cfg(feature = "serde")]
 pub mod serde_hashmap_as_vec {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use std::collections::HashMap;
     use std::hash::Hash;
-    use serde::{Serialize, Deserialize, Serializer, Deserializer};
 
     pub fn serialize<S, K, V>(map: &HashMap<K, V>, serializer: S) -> Result<S::Ok, S::Error>
-    where S: Serializer, K: Serialize + Eq + Hash, V: Serialize {
+    where
+        S: Serializer,
+        K: Serialize + Eq + Hash,
+        V: Serialize,
+    {
         let pairs: Vec<(&K, &V)> = map.iter().collect();
         pairs.serialize(serializer)
     }
 
     pub fn deserialize<'de, D, K, V>(deserializer: D) -> Result<HashMap<K, V>, D::Error>
-    where D: Deserializer<'de>, K: Deserialize<'de> + Eq + Hash, V: Deserialize<'de> {
+    where
+        D: Deserializer<'de>,
+        K: Deserialize<'de> + Eq + Hash,
+        V: Deserialize<'de>,
+    {
         let pairs: Vec<(K, V)> = Vec::deserialize(deserializer)?;
         Ok(pairs.into_iter().collect())
     }
@@ -171,12 +183,11 @@ pub use ids::*;
 pub use yields::*;
 
 // Top-level re-exports for the most commonly used game-loop types.
-pub use game::{
-    all_scores, compute_score,
-    BuiltinVictoryCondition, CombatPreview, DefaultRulesEngine, GameOver,
-    GameState, GameStateDiff, PendingAction, PendingActionKind, PolicyCardEntry,
-    PolicyCardStatus, RulesEngine, SCIENCE_MILESTONES, TurnEngine, UnitAction,
-    UnitActionKind, VictoryKind,
-};
 pub use civ::era::EraAge;
+pub use game::{
+    BuiltinVictoryCondition, CombatPreview, DefaultRulesEngine, GameOver, GameState, GameStateDiff,
+    PendingAction, PendingActionKind, PolicyCardEntry, PolicyCardStatus, RulesEngine,
+    SCIENCE_MILESTONES, TurnEngine, UnitAction, UnitActionKind, VictoryKind, all_scores,
+    compute_score,
+};
 pub use game::{apply_delta, apply_diff};

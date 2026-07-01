@@ -9,18 +9,18 @@
 
 #![cfg(feature = "ssr")]
 
+use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::Json;
 use open4x_accounts::audit::{AuditEventKind, AuditStore, NewAuditEvent};
 use open4x_accounts::games::{GameRecord, GameStatus, GameStore, GameStoreError, NewGame};
 use serde::{Deserialize, Serialize};
 
+use crate::server::AppState;
 use crate::server::auth::RequireSession;
 use crate::server::orchestrator::{self, NewGameRequest};
 use crate::server::process::DeployMode;
-use crate::server::AppState;
 
 #[derive(Debug, Serialize)]
 struct ErrorBody {
@@ -210,12 +210,12 @@ pub async fn create(
 /// 60×38 · small 74×46 · std 84×54 · large 96×60 · huge 106×66").
 fn map_size_to_dims(size: &str) -> (u32, u32) {
     match size {
-        "duel"  => (44, 26),
-        "tiny"  => (60, 38),
+        "duel" => (44, 26),
+        "tiny" => (60, 38),
         "small" => (74, 46),
         "large" => (96, 60),
-        "huge"  => (106, 66),
-        _       => (84, 54), // std default
+        "huge" => (106, 66),
+        _ => (84, 54), // std default
     }
 }
 
@@ -243,9 +243,7 @@ pub async fn get_one(
     Path(game_id): Path<String>,
 ) -> Response {
     match state.games.get_game(&game_id).await {
-        Ok(Some(g)) if g.owner_player_id == player_id => {
-            Json(GameView::from(g)).into_response()
-        }
+        Ok(Some(g)) if g.owner_player_id == player_id => Json(GameView::from(g)).into_response(),
         Ok(Some(_)) => (
             StatusCode::FORBIDDEN,
             Json(ErrorBody {
@@ -509,7 +507,7 @@ pub async fn resume(
                     message: None,
                 }),
             )
-                .into_response()
+                .into_response();
         }
         Ok(None) => {
             return (
@@ -519,7 +517,7 @@ pub async fn resume(
                     message: None,
                 }),
             )
-                .into_response()
+                .into_response();
         }
         Err(e) => return store_error_response(e),
     };

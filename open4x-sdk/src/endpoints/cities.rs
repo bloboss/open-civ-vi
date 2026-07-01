@@ -3,9 +3,9 @@
 
 use serde::Serialize;
 
+use open4x_protocol::v1::web::MutationResponse;
 use open4x_protocol::v1::web::city_data::{CityData, CityRow};
 use open4x_protocol::v1::web::city_tiles::CityTiles;
-use open4x_protocol::v1::web::MutationResponse;
 
 use crate::error::ApiError;
 use crate::transport::{Method, Transport};

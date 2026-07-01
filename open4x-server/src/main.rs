@@ -29,8 +29,12 @@ async fn main() {
     let addr = format!("0.0.0.0:{port}");
     println!("open4x-server listening on {addr}");
     println!("  static files: {static_dir}");
-    println!("  data dir:     {}", std::env::var("OPEN4X_DATA_DIR").unwrap_or_else(|_| "./data".into()));
-    let listener = tokio::net::TcpListener::bind(&addr).await
+    println!(
+        "  data dir:     {}",
+        std::env::var("OPEN4X_DATA_DIR").unwrap_or_else(|_| "./data".into())
+    );
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
         .expect("failed to bind");
     axum::serve(listener, app).await.expect("server error");
 }

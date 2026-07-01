@@ -1,11 +1,11 @@
 /// Integration tests for Rock Band cultural combat (GS-16).
 mod common;
 
-use libciv::{DefaultRulesEngine, RulesEngine};
-use libciv::game::{RulesError, StateDelta};
-use libciv::{UnitCategory, UnitDomain, UnitTypeId};
-use libciv::game::state::UnitTypeDef;
 use libciv::civ::BasicUnit;
+use libciv::game::state::UnitTypeDef;
+use libciv::game::{RulesError, StateDelta};
+use libciv::{DefaultRulesEngine, RulesEngine};
+use libciv::{UnitCategory, UnitDomain, UnitTypeId};
 use libhexgrid::coord::HexCoord;
 
 // ---------------------------------------------------------------------------
@@ -13,7 +13,11 @@ use libhexgrid::coord::HexCoord;
 // ---------------------------------------------------------------------------
 
 /// Add a Rock Band unit at `coord` owned by `owner` and return its UnitId.
-fn spawn_rock_band(s: &mut common::Scenario, owner: libciv::CivId, coord: HexCoord) -> libciv::UnitId {
+fn spawn_rock_band(
+    s: &mut common::Scenario,
+    owner: libciv::CivId,
+    coord: HexCoord,
+) -> libciv::UnitId {
     let rock_band_type = UnitTypeId::from_ulid(s.state.id_gen.next_ulid());
     s.state.unit_type_defs.push(UnitTypeDef {
         id: rock_band_type,
@@ -55,7 +59,8 @@ fn spawn_rock_band(s: &mut common::Scenario, owner: libciv::CivId, coord: HexCoo
         trade_destination: None,
         religion_id: None,
         spread_charges: None,
-        religious_strength: None, is_embarked: false,
+        religious_strength: None,
+        is_embarked: false,
     });
     unit_id
 }
@@ -72,8 +77,13 @@ fn rock_band_performs_at_foreign_city() {
     let rules = DefaultRulesEngine;
 
     // Place a Rome Rock Band on Babylon's city tile.
-    let babylon_coord = s.state.cities.iter()
-        .find(|c| c.id == s.babylon_city).unwrap().coord;
+    let babylon_coord = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.babylon_city)
+        .unwrap()
+        .coord;
     let rome_id = s.rome_id;
     let babylon_city = s.babylon_city;
     let band = spawn_rock_band(&mut s, rome_id, babylon_coord);
@@ -81,10 +91,21 @@ fn rock_band_performs_at_foreign_city() {
     let diff = rules.rock_band_perform(&mut s.state, band).unwrap();
 
     // Should have RockBandPerformed with tourism >= 500.
-    let performed = diff.deltas.iter().find(|d| matches!(d, StateDelta::RockBandPerformed { .. }));
+    let performed = diff
+        .deltas
+        .iter()
+        .find(|d| matches!(d, StateDelta::RockBandPerformed { .. }));
     assert!(performed.is_some(), "expected RockBandPerformed delta");
-    if let Some(StateDelta::RockBandPerformed { tourism_gained, city, .. }) = performed {
-        assert!(*tourism_gained >= 500, "tourism should be at least 500, got {tourism_gained}");
+    if let Some(StateDelta::RockBandPerformed {
+        tourism_gained,
+        city,
+        ..
+    }) = performed
+    {
+        assert!(
+            *tourism_gained >= 500,
+            "tourism should be at least 500, got {tourism_gained}"
+        );
         assert_eq!(*city, babylon_city);
     }
 }
@@ -96,8 +117,13 @@ fn rock_band_fails_on_own_city() {
     let rules = DefaultRulesEngine;
 
     // Place a Rome Rock Band on Rome's own city tile.
-    let rome_coord = s.state.cities.iter()
-        .find(|c| c.id == s.rome_city).unwrap().coord;
+    let rome_coord = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
+        .coord;
     let rome_id = s.rome_id;
     let band = spawn_rock_band(&mut s, rome_id, rome_coord);
 
@@ -114,8 +140,13 @@ fn rock_band_destroyed_after_performance() {
     let mut s = common::build_scenario();
     let rules = DefaultRulesEngine;
 
-    let babylon_coord = s.state.cities.iter()
-        .find(|c| c.id == s.babylon_city).unwrap().coord;
+    let babylon_coord = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.babylon_city)
+        .unwrap()
+        .coord;
     let rome_id = s.rome_id;
     let band = spawn_rock_band(&mut s, rome_id, babylon_coord);
 
@@ -124,7 +155,9 @@ fn rock_band_destroyed_after_performance() {
     // With 1 charge, the band should always be destroyed:
     // either the 30% disband roll triggers, or the charge reaches 0.
     assert!(
-        diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitDestroyed { unit } if *unit == band)),
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::UnitDestroyed { unit } if *unit == band)),
         "Rock Band should be destroyed after performing with 1 charge"
     );
     assert!(

@@ -1,6 +1,6 @@
 use crate::civ::civ_identity::BuiltinCiv;
-use crate::game::state::UnitTypeDef;
 use crate::game::IdGenerator;
+use crate::game::state::UnitTypeDef;
 use crate::world::resource::BuiltinResource;
 use crate::{AgeType, PromotionClass, UnitCategory, UnitDomain, UnitTypeId};
 
@@ -1506,7 +1506,6 @@ pub fn builtin_unit_type_defs(id_gen: &mut IdGenerator) -> Vec<UnitTypeDef> {
             era: Some(AgeType::Modern),
             promotion_class: Some(PromotionClass::NavalRanged),
         },
-
         // ── Civilian specialists ────────────────────────────────────────────
         UnitTypeDef {
             id: UnitTypeId::from_ulid(id_gen.next_ulid()),
@@ -1546,9 +1545,7 @@ pub fn builtin_unit_type_defs(id_gen: &mut IdGenerator) -> Vec<UnitTypeDef> {
             era: Some(AgeType::Modern),
             promotion_class: None,
         },
-
         // ── Unique units (also in civ_registry; registered here for completeness) ──
-
         UnitTypeDef {
             id: UnitTypeId::from_ulid(id_gen.next_ulid()),
             name: "Legion",
@@ -1911,9 +1908,7 @@ pub fn builtin_unit_type_defs(id_gen: &mut IdGenerator) -> Vec<UnitTypeDef> {
             era: Some(AgeType::Renaissance),
             promotion_class: Some(PromotionClass::AntiCavalry),
         },
-
         // ── Gathering Storm generic units ───────────────────────────────────
-
         UnitTypeDef {
             id: UnitTypeId::from_ulid(id_gen.next_ulid()),
             name: "Skirmisher",
@@ -2009,7 +2004,6 @@ pub fn builtin_unit_type_defs(id_gen: &mut IdGenerator) -> Vec<UnitTypeDef> {
             era: Some(AgeType::Atomic),
             promotion_class: Some(PromotionClass::HeavyCavalry),
         },
-
         // ── Rise & Fall unique units ────────────────────────────────────────
         UnitTypeDef {
             id: UnitTypeId::from_ulid(id_gen.next_ulid()),
@@ -2163,9 +2157,7 @@ pub fn builtin_unit_type_defs(id_gen: &mut IdGenerator) -> Vec<UnitTypeDef> {
             era: Some(AgeType::Medieval),
             promotion_class: Some(PromotionClass::AntiCavalry),
         },
-
         // ── Rise & Fall generic units ───────────────────────────────────────
-
         UnitTypeDef {
             id: UnitTypeId::from_ulid(id_gen.next_ulid()),
             name: "Pike and Shot",
@@ -2223,7 +2215,6 @@ pub fn builtin_unit_type_defs(id_gen: &mut IdGenerator) -> Vec<UnitTypeDef> {
             era: Some(AgeType::Atomic),
             promotion_class: None,
         },
-
         // ── DLC Civilization Pack unique units ──────────────────────────────
         UnitTypeDef {
             id: UnitTypeId::from_ulid(id_gen.next_ulid()),

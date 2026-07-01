@@ -1,13 +1,13 @@
-use std::collections::{BinaryHeap, HashMap};
 use std::cmp::Reverse;
+use std::collections::{BinaryHeap, HashMap};
 
+use crate::world::edge::WorldEdge;
+use crate::world::terrain::BuiltinTerrain;
+use crate::world::tile::WorldTile;
 use libhexgrid::board::{BoardTopology, HexBoard};
 use libhexgrid::coord::{HexCoord, HexDir};
 use libhexgrid::types::{Elevation, MovementCost};
 use libhexgrid::{HexEdge, HexTile};
-use crate::world::edge::WorldEdge;
-use crate::world::terrain::BuiltinTerrain;
-use crate::world::tile::WorldTile;
 
 /// Concrete hex board for the world map.
 #[derive(Debug)]
@@ -182,8 +182,12 @@ impl WorldBoard {
 
             for dir in HexDir::ALL {
                 let neighbor_raw = coord + dir.unit_vec();
-                let Some(neighbor) = self.normalize_coord(neighbor_raw) else { continue };
-                let Some(tile) = self.tile(neighbor) else { continue };
+                let Some(neighbor) = self.normalize_coord(neighbor_raw) else {
+                    continue;
+                };
+                let Some(tile) = self.tile(neighbor) else {
+                    continue;
+                };
 
                 // Domain filter: skip tiles incompatible with the unit's domain.
                 if !tile_passable(tile) {
@@ -193,11 +197,11 @@ impl WorldBoard {
                 // Roads override terrain movement cost when present.
                 let base_cost = match tile.road.as_ref() {
                     Some(road) => road.as_def().movement_cost(),
-                    None       => tile.movement_cost(),
+                    None => tile.movement_cost(),
                 };
                 let tile_cost = match base_cost {
                     MovementCost::Impassable => continue,
-                    MovementCost::Cost(c)    => c,
+                    MovementCost::Cost(c) => c,
                 };
 
                 let edge_cost = self
@@ -247,25 +251,35 @@ impl WorldBoard {
     ///    the from→first and last→to steps) has an elevation level difference > 1,
     ///    LOS is blocked (emergent cliff from topology).
     pub fn has_los(&self, from: HexCoord, to: HexCoord) -> bool {
-        let Some(from) = self.normalize_coord(from) else { return false };
-        let Some(to)   = self.normalize_coord(to)   else { return false };
+        let Some(from) = self.normalize_coord(from) else {
+            return false;
+        };
+        let Some(to) = self.normalize_coord(to) else {
+            return false;
+        };
 
         if from == to {
             return true;
         }
 
-        let from_elev = self.tile(from).map(|t| t.elevation()).unwrap_or(Elevation::FLAT);
-        let to_elev   = self.tile(to).map(|t| t.elevation()).unwrap_or(Elevation::FLAT);
-        let max_elev  = from_elev.max(to_elev);
+        let from_elev = self
+            .tile(from)
+            .map(|t| t.elevation())
+            .unwrap_or(Elevation::FLAT);
+        let to_elev = self
+            .tile(to)
+            .map(|t| t.elevation())
+            .unwrap_or(Elevation::FLAT);
+        let max_elev = from_elev.max(to_elev);
 
         let dist = from.distance(&to) as i32;
 
         // Helper: numeric level for cliff diff checks (High = 255).
         let level = |e: Elevation| -> i32 {
             match e {
-                Elevation::Low      => -1,
+                Elevation::Low => -1,
                 Elevation::Level(n) => n as i32,
-                Elevation::High     => 255,
+                Elevation::High => 255,
             }
         };
 
@@ -275,9 +289,14 @@ impl WorldBoard {
             let frac_q = from.q as f32 + (to.q - from.q) as f32 * step as f32 / dist as f32;
             let frac_r = from.r as f32 + (to.r - from.r) as f32 * step as f32 / dist as f32;
             let mid = hex_round(frac_q, frac_r);
-            let Some(mid) = self.normalize_coord(mid) else { continue };
+            let Some(mid) = self.normalize_coord(mid) else {
+                continue;
+            };
 
-            let mid_elev = self.tile(mid).map(|t| t.elevation()).unwrap_or(Elevation::FLAT);
+            let mid_elev = self
+                .tile(mid)
+                .map(|t| t.elevation())
+                .unwrap_or(Elevation::FLAT);
 
             // Rule 1: Mountain always blocks.
             if mid_elev == Elevation::High {
@@ -333,9 +352,15 @@ impl HexBoard for WorldBoard {
     type Tile = WorldTile;
     type Edge = WorldEdge;
 
-    fn topology(&self) -> BoardTopology { self.topology }
-    fn width(&self) -> u32 { self.width }
-    fn height(&self) -> u32 { self.height }
+    fn topology(&self) -> BoardTopology {
+        self.topology
+    }
+    fn width(&self) -> u32 {
+        self.width
+    }
+    fn height(&self) -> u32 {
+        self.height
+    }
 
     fn tile(&self, coord: HexCoord) -> Option<&WorldTile> {
         let idx = self.coord_to_index(coord)?;
@@ -373,8 +398,8 @@ impl HexBoard for WorldBoard {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::feature::BuiltinFeature;
     use crate::world::edge::{BuiltinEdgeFeature, River};
+    use crate::world::feature::BuiltinFeature;
 
     fn small_board() -> WorldBoard {
         WorldBoard::new(10, 10)
@@ -417,13 +442,16 @@ mod tests {
         // from and to are both at Elevation::FLAT (Grassland).
         // The Mountain in between must block line-of-sight.
         let from = HexCoord::from_qr(3, 5);
-        let to   = HexCoord::from_qr(7, 5);
+        let to = HexCoord::from_qr(7, 5);
         assert!(!board.has_los(from, to), "mountain should block LOS");
 
         // Sanity check: unobstructed sightline on the same row works.
         let clear_from = HexCoord::from_qr(0, 0);
-        let clear_to   = HexCoord::from_qr(2, 0);
-        assert!(board.has_los(clear_from, clear_to), "clear path should have LOS");
+        let clear_to = HexCoord::from_qr(2, 0);
+        assert!(
+            board.has_los(clear_from, clear_to),
+            "clear path should have LOS"
+        );
     }
 
     #[test]
@@ -438,7 +466,10 @@ mod tests {
         let path = board.find_path(start, goal, 10_000);
         assert!(path.is_some());
         let path = path.unwrap();
-        assert!(!path.contains(&blocker), "path must not pass through impassable tile");
+        assert!(
+            !path.contains(&blocker),
+            "path must not pass through impassable tile"
+        );
     }
 
     #[test]
@@ -461,19 +492,28 @@ mod tests {
         }
 
         let start = HexCoord::from_qr(0, 1);
-        let goal  = HexCoord::from_qr(2, 1);
+        let goal = HexCoord::from_qr(2, 1);
 
         let path = board.find_path(start, goal, 160);
-        assert!(path.is_some(), "road should make the path reachable within budget 160");
+        assert!(
+            path.is_some(),
+            "road should make the path reachable within budget 160"
+        );
 
         let path = path.unwrap();
-        assert!(path.contains(&roaded), "path should pass through the roaded tile");
+        assert!(
+            path.contains(&roaded),
+            "path should pass through the roaded tile"
+        );
         assert_eq!(*path.last().unwrap(), goal);
 
         // Confirm that without the road the same budget is insufficient.
         let board_no_road = WorldBoard::new(5, 3);
         // (no road set)
         let path_no_road = board_no_road.find_path(start, goal, 160);
-        assert!(path_no_road.is_none(), "without road the budget of 160 should be insufficient");
+        assert!(
+            path_no_road.is_none(),
+            "without road the budget of 160 should be insufficient"
+        );
     }
 }

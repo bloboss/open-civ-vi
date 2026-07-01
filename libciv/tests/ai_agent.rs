@@ -7,7 +7,7 @@ mod common;
 
 use libciv::ai::{Agent, HeuristicAgent};
 use libciv::civ::ProductionItem;
-use libciv::game::{recalculate_visibility, StateDelta};
+use libciv::game::{StateDelta, recalculate_visibility};
 use libciv::{DefaultRulesEngine, GameStateDiff, TurnEngine};
 use libhexgrid::coord::HexCoord;
 
@@ -21,7 +21,7 @@ fn run_agent_turn(
     babylon_agent: &HeuristicAgent,
 ) -> (GameStateDiff, GameStateDiff) {
     let engine = TurnEngine::new();
-    let rules  = DefaultRulesEngine;
+    let rules = DefaultRulesEngine;
 
     // End-of-turn processing.
     engine.process_turn(&mut s.state, &rules);
@@ -38,8 +38,8 @@ fn run_agent_turn(
     }
 
     // Agent decisions.
-    let rome_diff     = rome_agent.take_turn(&mut s.state, &rules);
-    let babylon_diff  = babylon_agent.take_turn(&mut s.state, &rules);
+    let rome_diff = rome_agent.take_turn(&mut s.state, &rules);
+    let babylon_diff = babylon_agent.take_turn(&mut s.state, &rules);
     (rome_diff, babylon_diff)
 }
 
@@ -56,14 +56,21 @@ fn agent_queues_production_on_first_turn() {
     let diff = rome_agent.take_turn(&mut s.state, &rules);
 
     // A ProductionStarted delta must appear.
-    let has_production_started = diff.deltas.iter().any(|d| {
-        matches!(d, StateDelta::ProductionStarted { city, .. } if *city == s.rome_city)
-    });
-    assert!(has_production_started, "expected ProductionStarted for Rome's city");
+    let has_production_started = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::ProductionStarted { city, .. } if *city == s.rome_city));
+    assert!(
+        has_production_started,
+        "expected ProductionStarted for Rome's city"
+    );
 
     // The city's queue must be non-empty.
     let city = s.state.city(s.rome_city).unwrap();
-    assert!(!city.production_queue.is_empty(), "production queue should be non-empty");
+    assert!(
+        !city.production_queue.is_empty(),
+        "production queue should be non-empty"
+    );
 
     // Must be a unit (the only registered type is warrior/settler; warrior is Combat).
     assert!(
@@ -115,10 +122,14 @@ fn agent_moves_warrior_toward_unexplored_territory() {
     );
 
     // A UnitMoved delta must be present.
-    let has_unit_moved = diff.deltas.iter().any(|d| {
-        matches!(d, StateDelta::UnitMoved { unit, .. } if *unit == s.rome_warrior)
-    });
-    assert!(has_unit_moved, "diff must contain a UnitMoved delta for Rome's warrior");
+    let has_unit_moved = diff
+        .deltas
+        .iter()
+        .any(|d| matches!(d, StateDelta::UnitMoved { unit, .. } if *unit == s.rome_warrior));
+    assert!(
+        has_unit_moved,
+        "diff must contain a UnitMoved delta for Rome's warrior"
+    );
 }
 
 /// The agent only moves units that it owns.
@@ -146,8 +157,8 @@ fn both_agents_take_first_turn_without_panic() {
     let mut s = common::build_scenario();
     let rules = DefaultRulesEngine;
 
-    let rome_agent     = HeuristicAgent::new(s.rome_id);
-    let babylon_agent  = HeuristicAgent::new(s.babylon_id);
+    let rome_agent = HeuristicAgent::new(s.rome_id);
+    let babylon_agent = HeuristicAgent::new(s.babylon_id);
 
     // Should not panic.
     let _rd = rome_agent.take_turn(&mut s.state, &rules);
@@ -160,13 +171,14 @@ fn both_agents_take_first_turn_without_panic() {
 fn agent_is_deterministic_same_seed() {
     let mut s1 = common::build_scenario();
     let mut s2 = common::build_scenario();
-    let rules  = DefaultRulesEngine;
+    let rules = DefaultRulesEngine;
 
     let diff1 = HeuristicAgent::new(s1.rome_id).take_turn(&mut s1.state, &rules);
     let diff2 = HeuristicAgent::new(s2.rome_id).take_turn(&mut s2.state, &rules);
 
     assert_eq!(
-        diff1.len(), diff2.len(),
+        diff1.len(),
+        diff2.len(),
         "agent must produce the same number of diff events for identical states"
     );
 
@@ -184,14 +196,17 @@ fn agent_is_deterministic_same_seed() {
 fn agent_runs_multiple_turns_without_panic() {
     let mut s = common::build_scenario();
 
-    let rome_agent    = HeuristicAgent::new(s.rome_id);
+    let rome_agent = HeuristicAgent::new(s.rome_id);
     let babylon_agent = HeuristicAgent::new(s.babylon_id);
 
     for _ in 0..5 {
         run_agent_turn(&mut s, &rome_agent, &babylon_agent);
     }
 
-    assert_eq!(s.state.turn, 5, "turn counter should be 5 after 5 agent turns");
+    assert_eq!(
+        s.state.turn, 5,
+        "turn counter should be 5 after 5 agent turns"
+    );
 }
 
 /// After running for several turns, Rome's warrior must have moved away from
@@ -201,7 +216,7 @@ fn warrior_explores_over_multiple_turns() {
     let initial_coord = HexCoord::from_qr(5, 3); // Rome's warrior starts here
 
     let mut s = common::build_scenario();
-    let rome_agent    = HeuristicAgent::new(s.rome_id);
+    let rome_agent = HeuristicAgent::new(s.rome_id);
     let babylon_agent = HeuristicAgent::new(s.babylon_id);
 
     for _ in 0..3 {
@@ -223,14 +238,21 @@ fn production_diff_contains_correct_city_id() {
 
     let diff = HeuristicAgent::new(s.rome_id).take_turn(&mut s.state, &rules);
 
-    let started: Vec<_> = diff.deltas.iter().filter_map(|d| {
-        if let StateDelta::ProductionStarted { city, item } = d {
-            Some((*city, *item))
-        } else {
-            None
-        }
-    }).collect();
+    let started: Vec<_> = diff
+        .deltas
+        .iter()
+        .filter_map(|d| {
+            if let StateDelta::ProductionStarted { city, item } = d {
+                Some((*city, *item))
+            } else {
+                None
+            }
+        })
+        .collect();
 
     assert_eq!(started.len(), 1, "exactly one ProductionStarted expected");
-    assert_eq!(started[0].0, s.rome_city, "ProductionStarted must reference Rome's city");
+    assert_eq!(
+        started[0].0, s.rome_city,
+        "ProductionStarted must reference Rome's city"
+    );
 }

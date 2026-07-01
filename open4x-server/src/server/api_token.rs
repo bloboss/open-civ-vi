@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use open4x_protocol::v1::ids::{CivId, GameId};
 use crate::server::state::AppState;
+use open4x_protocol::v1::ids::{CivId, GameId};
 
 /// Record for an API bearer token.
 pub struct ApiTokenRecord {
@@ -20,9 +20,6 @@ pub fn generate_token() -> String {
 }
 
 /// Resolve a bearer token to its associated game and civ.
-pub fn resolve_token(
-    state: &Arc<AppState>,
-    token: &str,
-) -> Option<(GameId, CivId)> {
+pub fn resolve_token(state: &Arc<AppState>, token: &str) -> Option<(GameId, CivId)> {
     state.api_tokens.get(token).map(|r| (r.game_id, r.civ_id))
 }

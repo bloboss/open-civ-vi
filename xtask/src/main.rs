@@ -15,7 +15,7 @@ use clap::{Parser, Subcommand};
 #[command(
     name = "cargo xtask",
     about = "Workspace recipe runner. See `cargo xtask <recipe> --help`.",
-    bin_name = "cargo xtask",
+    bin_name = "cargo xtask"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -156,7 +156,11 @@ fn run(recipe: Recipe) -> Result<(), String> {
         }
         Recipe::Book { serve } => {
             let sub = if serve { "serve" } else { "build" };
-            tool("mdbook", &[sub], Some(workspace_root().join("book").as_path()))
+            tool(
+                "mdbook",
+                &[sub],
+                Some(workspace_root().join("book").as_path()),
+            )
         }
         Recipe::Server { release, args } => {
             let mut cargo_args: Vec<String> =
@@ -211,12 +215,18 @@ fn openapi_check() -> Result<(), String> {
 
     gen_openapi(Some(&tmp))?;
 
-    let a = std::fs::read(&committed).map_err(|e| format!(
-        "couldn't read committed openapi.json at {}: {e}", committed.display()
-    ))?;
-    let b = std::fs::read(&tmp).map_err(|e| format!(
-        "couldn't read freshly-generated openapi.json at {}: {e}", tmp.display()
-    ))?;
+    let a = std::fs::read(&committed).map_err(|e| {
+        format!(
+            "couldn't read committed openapi.json at {}: {e}",
+            committed.display()
+        )
+    })?;
+    let b = std::fs::read(&tmp).map_err(|e| {
+        format!(
+            "couldn't read freshly-generated openapi.json at {}: {e}",
+            tmp.display()
+        )
+    })?;
     let _ = std::fs::remove_file(&tmp);
 
     if a == b {
@@ -239,9 +249,9 @@ fn openapi_check() -> Result<(), String> {
 /// run with `TS_RS_EXPORT_DIR` pointing at the target dir; we then emit a
 /// `protocol.ts` barrel re-exporting them.
 fn gen_ts(out: Option<&Path>) -> Result<(), String> {
-    let dir = out.map(Path::to_path_buf).unwrap_or_else(|| {
-        workspace_root().join("open4x-client-js/src/gen/protocol")
-    });
+    let dir = out
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| workspace_root().join("open4x-client-js/src/gen/protocol"));
     // Clean stale output so types removed from the protocol don't linger.
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
@@ -350,7 +360,10 @@ fn diff_ts_dirs(committed: &Path, fresh: &Path) -> Result<(), String> {
             let entry = entry.map_err(|e| e.to_string())?;
             let name = entry.file_name().to_string_lossy().into_owned();
             if name.ends_with(".ts") {
-                map.insert(name, std::fs::read(entry.path()).map_err(|e| e.to_string())?);
+                map.insert(
+                    name,
+                    std::fs::read(entry.path()).map_err(|e| e.to_string())?,
+                );
             }
         }
         Ok(map)
@@ -395,8 +408,14 @@ fn check_all(no_wasm: bool) -> Result<(), String> {
 
     cargo(&["test", "-p", "open4x-server", "--features", "openapi"])?;
     cargo(&[
-        "clippy", "-p", "open4x-server", "--features", "openapi",
-        "--", "-D", "warnings",
+        "clippy",
+        "-p",
+        "open4x-server",
+        "--features",
+        "openapi",
+        "--",
+        "-D",
+        "warnings",
     ])?;
 
     openapi_check()?;

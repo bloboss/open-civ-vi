@@ -61,10 +61,7 @@ pub fn new_game(
         .and_then(|v| v.as_str())
         .ok_or_else(|| format!("response missing token: {resp}"))?
         .to_string();
-    let turn = resp
-        .get("turn")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0) as u32;
+    let turn = resp.get("turn").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
 
     let session = Session {
         server: server.to_string(),

@@ -20,7 +20,7 @@ use std::time::Duration;
 
 use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
-use tokio::time::{sleep, Instant};
+use tokio::time::{Instant, sleep};
 
 use super::orchestrator::{self, BootstrappedGame, NewGameRequest, OrchestratorError};
 
@@ -264,11 +264,8 @@ impl ProcessOrchestrator {
         // browser at Resume time) sees if a public template is
         // configured. The lobby itself keeps talking to the child
         // over the loopback URL stored in `GameProcess.url`.
-        bootstrapped.server_url = render_public_url(
-            self.cfg.public_url_template.as_deref(),
-            port,
-            &url,
-        );
+        bootstrapped.server_url =
+            render_public_url(self.cfg.public_url_template.as_deref(), port, &url);
 
         let proc = GameProcess {
             port,

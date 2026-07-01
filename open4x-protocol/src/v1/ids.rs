@@ -3,7 +3,9 @@ use ulid::Ulid;
 
 macro_rules! define_api_id {
     ($name:ident) => {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+        #[derive(
+            Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
+        )]
         #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
         #[cfg_attr(feature = "ts", ts(export))]
         // On the wire every ID is a bare ULID string, so the inner Ulid is
@@ -35,7 +37,9 @@ macro_rules! define_api_id {
                 use utoipa::openapi::schema::{ObjectBuilder, SchemaType, Type};
                 ObjectBuilder::new()
                     .schema_type(SchemaType::Type(Type::String))
-                    .format(Some(utoipa::openapi::SchemaFormat::Custom("ulid".to_string())))
+                    .format(Some(utoipa::openapi::SchemaFormat::Custom(
+                        "ulid".to_string(),
+                    )))
                     .description(Some(concat!(
                         stringify!($name),
                         " — Crockford-base32 ULID (26 chars). Wire form is the bare ULID string."

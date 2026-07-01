@@ -12,11 +12,7 @@ impl TurnEngine {
     }
 
     /// Process all civilization turns (AI + human input stubs) and return aggregate diff.
-    pub fn process_turn(
-        &self,
-        state: &mut GameState,
-        rules: &dyn RulesEngine,
-    ) -> GameStateDiff {
+    pub fn process_turn(&self, state: &mut GameState, rules: &dyn RulesEngine) -> GameStateDiff {
         rules.advance_turn(state)
     }
 }

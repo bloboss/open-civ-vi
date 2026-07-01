@@ -69,12 +69,14 @@ pub fn build_resource_report(view: &GameView) -> ResourceReport {
 
     let resources = resource_map
         .into_iter()
-        .map(|(name, (category, total_count, improved_count))| ResourceEntry {
-            name,
-            category,
-            total_count,
-            improved_count,
-        })
+        .map(
+            |(name, (category, total_count, improved_count))| ResourceEntry {
+                name,
+                category,
+                total_count,
+                improved_count,
+            },
+        )
         .collect();
 
     ResourceReport { resources }
@@ -162,7 +164,9 @@ pub fn build_map_stats(view: &GameView) -> MapStatistics {
     let mut tiles_visible = 0u32;
 
     for tile in &view.board.tiles {
-        *terrain_counts.entry(format!("{:?}", tile.terrain)).or_default() += 1;
+        *terrain_counts
+            .entry(format!("{:?}", tile.terrain))
+            .or_default() += 1;
         if let Some(f) = &tile.feature {
             *feature_counts.entry(format!("{f:?}")).or_default() += 1;
         }

@@ -1,31 +1,25 @@
+use leptos::prelude::LocalStorage;
 /// Game page: top bar, tab bar, hex viewport, and tab content panels.
 ///
 /// All game state comes from a `GameView` signal populated by the WebSocket
 /// connection.  Mutations are sent as `ClientMessage::Action(...)` over WS.
 use leptos::prelude::*;
-use leptos::prelude::LocalStorage;
 
 use open4x_protocol::v1::coord::HexCoord;
 use open4x_protocol::v1::enums::*;
 use open4x_protocol::v1::ids::*;
-use open4x_protocol::v1::messages::{ClientMessage, GameAction, ServerMessage, CreateGameRequest};
+use open4x_protocol::v1::messages::{ClientMessage, CreateGameRequest, GameAction, ServerMessage};
 use open4x_protocol::v1::view::*;
 
 use crate::components::client_auth as auth;
 use crate::components::hexmap::HexMap;
-use crate::components::ws::WsClient;
 use crate::components::session::GameConfig;
+use crate::components::ws::WsClient;
 
 use crate::tabs::{
-    GameTab, TabBar,
-    city::CityTab,
-    climate::ClimateTab,
-    culture::CultureTab,
-    data_reports::DataReportsTab,
-    governors::GovernorsTab,
-    great_people::GreatPeopleTab,
-    players::PlayersTab,
-    science::ScienceTab,
+    GameTab, TabBar, city::CityTab, climate::ClimateTab, culture::CultureTab,
+    data_reports::DataReportsTab, governors::GovernorsTab, great_people::GreatPeopleTab,
+    players::PlayersTab, science::ScienceTab,
 };
 
 // ---------------------------------------------------------------------------
@@ -124,9 +118,7 @@ pub fn GamePage(
                 set_game_view.set(Some(view));
             }
             ServerMessage::ActionResult { ok, error } => {
-                if !ok
-                    && let Some(e) = error
-                {
+                if !ok && let Some(e) = error {
                     web_sys::console::warn_1(&format!("Action failed: {e}").into());
                 }
             }
@@ -189,7 +181,8 @@ pub fn GamePage(
 
         // Select friendly unit on this tile.
         let unit_here = game_view.get().and_then(|gv| {
-            gv.units.iter()
+            gv.units
+                .iter()
                 .find(|u| u.coord == coord && u.is_own)
                 .map(|u| u.id)
         });
@@ -314,13 +307,15 @@ fn download_text(filename: &str, content: &str) {
     parts.push(&JsValue::from_str(content));
     let opts = web_sys::BlobPropertyBag::new();
     opts.set_type("text/plain");
-    let blob = web_sys::Blob::new_with_str_sequence_and_options(&parts, &opts)
-        .expect("Blob::new failed");
-    let url = web_sys::Url::create_object_url_with_blob(&blob)
-        .expect("URL.createObjectURL failed");
+    let blob =
+        web_sys::Blob::new_with_str_sequence_and_options(&parts, &opts).expect("Blob::new failed");
+    let url = web_sys::Url::create_object_url_with_blob(&blob).expect("URL.createObjectURL failed");
     let document = web_sys::window().unwrap().document().unwrap();
-    let a = document.create_element("a").unwrap()
-        .dyn_into::<web_sys::HtmlAnchorElement>().unwrap();
+    let a = document
+        .create_element("a")
+        .unwrap()
+        .dyn_into::<web_sys::HtmlAnchorElement>()
+        .unwrap();
     a.set_href(&url);
     a.set_download(filename);
     let body = document.body().unwrap();
@@ -342,19 +337,28 @@ fn TopBar(
     on_quit: impl Fn() + 'static,
 ) -> impl IntoView {
     let turn_label = move || {
-        game_view.get().map(|gv| format!("Turn {}", gv.turn)).unwrap_or_default()
+        game_view
+            .get()
+            .map(|gv| format!("Turn {}", gv.turn))
+            .unwrap_or_default()
     };
     let civ_name = move || {
-        game_view.get().map(|gv| gv.my_civ.name.clone()).unwrap_or_default()
+        game_view
+            .get()
+            .map(|gv| gv.my_civ.name.clone())
+            .unwrap_or_default()
     };
     let gold_label = move || {
-        game_view.get().map(|gv| format!("{} gold", gv.my_civ.gold)).unwrap_or_default()
+        game_view
+            .get()
+            .map(|gv| format!("{} gold", gv.my_civ.gold))
+            .unwrap_or_default()
     };
     let ai_status = move || {
         game_view.get().and_then(|gv| {
-            gv.other_civs.first().map(|c| {
-                format!("{}: score {}", c.name, c.score)
-            })
+            gv.other_civs
+                .first()
+                .map(|c| format!("{}: score {}", c.name, c.score))
         })
     };
 
@@ -427,14 +431,22 @@ fn TileInfo(
         let terrain = format!("{:?}", tile.terrain);
         let (q, r) = (coord.q, coord.r);
 
-        let owner_name: String = tile.owner
+        let owner_name: String = tile
+            .owner
             .and_then(|id| {
-                if gv.my_civ.id == id { Some(gv.my_civ.name.clone()) }
-                else { gv.other_civs.iter().find(|c| c.id == id).map(|c| c.name.clone()) }
+                if gv.my_civ.id == id {
+                    Some(gv.my_civ.name.clone())
+                } else {
+                    gv.other_civs
+                        .iter()
+                        .find(|c| c.id == id)
+                        .map(|c| c.name.clone())
+                }
             })
             .unwrap_or_default();
 
-        let improvement_name: String = tile.improvement
+        let improvement_name: String = tile
+            .improvement
             .map(|i| format!("{i:?}"))
             .unwrap_or_default();
 
@@ -462,7 +474,8 @@ fn TileInfo(
                     </div>
                 })}
             </div>
-        }.into_any()
+        }
+        .into_any()
     };
 
     view! { <div>{content}</div> }
@@ -499,24 +512,30 @@ fn CityPanel(
         let prod_stored = city.production_stored;
         let capital_tag = if city.is_capital { " ★" } else { "" };
 
-        let prod_info: Option<(String, u32)> = city.production_queue.first()
-            .and_then(|item| match item {
-                ProductionItemView::Unit(tid) => gv.unit_type_defs.iter()
+        let prod_info: Option<(String, u32)> =
+            city.production_queue.first().and_then(|item| match item {
+                ProductionItemView::Unit(tid) => gv
+                    .unit_type_defs
+                    .iter()
                     .find(|d| d.id == *tid)
                     .map(|d| (capitalize(&d.name), d.production_cost)),
                 _ => None,
             });
 
-        let prod_label = prod_info.as_ref()
+        let prod_label = prod_info
+            .as_ref()
             .map(|(name, _)| name.clone())
             .unwrap_or_else(|| "idle".to_string());
-        let prod_cost_str = prod_info.as_ref()
+        let prod_cost_str = prod_info
+            .as_ref()
             .map(|(_, cost)| format!("{prod_stored}/{cost}"))
             .unwrap_or_else(|| format!("{prod_stored}/—"));
 
         let worked_count = city.worked_tiles.len();
 
-        let unit_defs: Vec<(UnitTypeId, String, u32)> = gv.unit_type_defs.iter()
+        let unit_defs: Vec<(UnitTypeId, String, u32)> = gv
+            .unit_type_defs
+            .iter()
             .map(|d| (d.id, capitalize(&d.name), d.production_cost))
             .collect();
 
@@ -617,7 +636,9 @@ fn UnitInfo(
             return view! { <span /> }.into_any();
         };
 
-        let type_name = gv.unit_type_defs.iter()
+        let type_name = gv
+            .unit_type_defs
+            .iter()
             .find(|d| d.id == unit.unit_type)
             .map(|d| capitalize(&d.name))
             .unwrap_or_else(|| "Unknown".into());
@@ -625,7 +646,9 @@ fn UnitInfo(
         let owner_name = if unit.is_own {
             gv.my_civ.name.clone()
         } else {
-            gv.other_civs.iter().find(|c| c.id == unit.owner)
+            gv.other_civs
+                .iter()
+                .find(|c| c.id == unit.owner)
                 .map(|c| c.name.clone())
                 .unwrap_or_else(|| "Unknown".into())
         };
@@ -635,10 +658,13 @@ fn UnitInfo(
         let move_max = unit.max_movement;
         let cs = unit.combat_strength;
         let is_own = unit.is_own;
-        let can_found = gv.unit_type_defs.iter()
+        let can_found = gv
+            .unit_type_defs
+            .iter()
             .find(|d| d.id == unit.unit_type)
             .is_some_and(|d| d.can_found_city);
-        let is_builder = unit.category == UnitCategory::Civilian && !can_found
+        let is_builder = unit.category == UnitCategory::Civilian
+            && !can_found
             && unit.category != UnitCategory::Trader;
 
         let settler_uid = uid;
@@ -726,9 +752,7 @@ fn UnitInfo(
 // ---------------------------------------------------------------------------
 
 #[component]
-fn YieldsPanel(
-    game_view: ReadSignal<Option<GameView>>,
-) -> impl IntoView {
+fn YieldsPanel(game_view: ReadSignal<Option<GameView>>) -> impl IntoView {
     let content = move || {
         let Some(gv) = game_view.get() else {
             return view! { <span /> }.into_any();
@@ -773,11 +797,17 @@ fn TechPanel(
 
         // Current research.
         let current_info = queue.first().map(|tp| {
-            let name = gv.tech_tree.nodes.iter()
+            let name = gv
+                .tech_tree
+                .nodes
+                .iter()
                 .find(|n| n.id == tp.tech_id)
                 .map(|n| n.name.clone())
                 .unwrap_or_else(|| "?".into());
-            let cost = gv.tech_tree.nodes.iter()
+            let cost = gv
+                .tech_tree
+                .nodes
+                .iter()
                 .find(|n| n.id == tp.tech_id)
                 .map(|n| n.cost)
                 .unwrap_or(0);
@@ -786,7 +816,10 @@ fn TechPanel(
 
         // Available techs to queue.
         let queued_ids: Vec<TechId> = queue.iter().map(|tp| tp.tech_id).collect();
-        let available: Vec<(TechId, String, u32)> = gv.tech_tree.nodes.iter()
+        let available: Vec<(TechId, String, u32)> = gv
+            .tech_tree
+            .nodes
+            .iter()
             .filter(|n| {
                 !researched.contains(&n.id)
                     && !queued_ids.contains(&n.id)

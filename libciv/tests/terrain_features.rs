@@ -1,9 +1,9 @@
 /// Tests for resource concealment by terrain features (Forest / Rainforest).
 mod common;
 
-use libciv::{DefaultRulesEngine, RulesEngine};
 use libciv::world::feature::BuiltinFeature;
 use libciv::world::resource::BuiltinResource;
+use libciv::{DefaultRulesEngine, RulesEngine};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 
@@ -15,11 +15,11 @@ use libhexgrid::coord::HexCoord;
 /// Returns the scenario with the city worked_tiles pointing at just that tile.
 fn setup_wine_under_forest() -> common::Scenario {
     let mut s = common::build_scenario();
-    let coord = HexCoord::from_qr(3, 3);  // Rome's city center (set in build_scenario)
+    let coord = HexCoord::from_qr(3, 3); // Rome's city center (set in build_scenario)
 
     if let Some(tile) = s.state.board.tile_mut(coord) {
         tile.resource = Some(BuiltinResource::Wine);
-        tile.feature  = Some(BuiltinFeature::Forest);
+        tile.feature = Some(BuiltinFeature::Forest);
     }
 
     // Work only the center tile for a predictable yield.
@@ -44,8 +44,8 @@ fn wine_under_forest_yields_are_concealed() {
     let engine = DefaultRulesEngine;
     let yields = engine.compute_yields(&s.state, s.rome_id);
 
-    assert_eq!(yields.food, 2,   "Wine Food should be concealed by Forest");
-    assert_eq!(yields.gold, 0,   "Wine Gold should be concealed by Forest");
+    assert_eq!(yields.food, 2, "Wine Food should be concealed by Forest");
+    assert_eq!(yields.gold, 0, "Wine Gold should be concealed by Forest");
     assert_eq!(yields.production, 1, "Forest +1 production still applies");
 }
 
@@ -65,6 +65,9 @@ fn wine_with_forest_cleared_appears_in_yields() {
     let engine = DefaultRulesEngine;
     let yields = engine.compute_yields(&s.state, s.rome_id);
 
-    assert_eq!(yields.food, 3,   "Grassland 2 + Wine 1 = 3 food after clearing Forest");
-    assert_eq!(yields.gold, 1,   "Wine +1 gold should now appear");
+    assert_eq!(
+        yields.food, 3,
+        "Grassland 2 + Wine 1 = 3 food after clearing Forest"
+    );
+    assert_eq!(yields.gold, 1, "Wine +1 gold should now appear");
 }

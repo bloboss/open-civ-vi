@@ -35,7 +35,8 @@ fn advance_turn_does_not_lose_units() {
     assert!(
         s.state.units.len() >= units_before,
         "units must not be silently dropped by advance_turn (no combat occurred): had {}, now {}",
-        units_before, s.state.units.len()
+        units_before,
+        s.state.units.len()
     );
 }
 
@@ -168,9 +169,12 @@ fn city_owner_matches_civ_cities_list() {
     }
 
     for city in &s.state.cities {
-        let civ = s.state
-            .civ(city.owner)
-            .unwrap_or_else(|| panic!("city {:?} owner {:?} not found in civs", city.id, city.owner));
+        let civ = s.state.civ(city.owner).unwrap_or_else(|| {
+            panic!(
+                "city {:?} owner {:?} not found in civs",
+                city.id, city.owner
+            )
+        });
         assert!(
             civ.cities.contains(&city.id),
             "civ {:?} does not list city {:?} in its cities vec",

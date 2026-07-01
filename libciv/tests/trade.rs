@@ -1,11 +1,11 @@
 /// Integration tests for trade routes and the Trader unit.
 mod common;
 
-use libciv::{DefaultRulesEngine, RulesEngine};
-use libciv::game::{RulesError, StateDelta};
-use libciv::{CivId, UnitId, UnitCategory, UnitDomain, UnitTypeId};
-use libciv::game::state::UnitTypeDef;
 use libciv::civ::BasicUnit;
+use libciv::game::state::UnitTypeDef;
+use libciv::game::{RulesError, StateDelta};
+use libciv::{CivId, UnitCategory, UnitDomain, UnitId, UnitTypeId};
+use libciv::{DefaultRulesEngine, RulesEngine};
 use libhexgrid::coord::HexCoord;
 
 // ---------------------------------------------------------------------------
@@ -27,7 +27,12 @@ fn spawn_trader(s: &mut common::Scenario, owner: CivId, coord: HexCoord) -> Unit
         vision_range: 2,
         can_found_city: false,
         resource_cost: None,
-        siege_bonus: 0, max_charges: 0, exclusive_to: None, replaces: None, era: None, promotion_class: None,
+        siege_bonus: 0,
+        max_charges: 0,
+        exclusive_to: None,
+        replaces: None,
+        era: None,
+        promotion_class: None,
     });
     let unit_id = s.state.id_gen.next_unit_id();
     s.state.units.push(BasicUnit {
@@ -45,7 +50,13 @@ fn spawn_trader(s: &mut common::Scenario, owner: CivId, coord: HexCoord) -> Unit
         health: 100,
         range: 0,
         vision_range: 2,
-        charges: None, trade_origin: None, trade_destination: None, religion_id: None, spread_charges: None, religious_strength: None, is_embarked: false,
+        charges: None,
+        trade_origin: None,
+        trade_destination: None,
+        religion_id: None,
+        spread_charges: None,
+        religious_strength: None,
+        is_embarked: false,
     });
     unit_id
 }
@@ -64,10 +75,18 @@ fn establish_route_consumes_trader_unit() {
     // Snapshot IDs before any mutable borrow.
     let rome_id = s.rome_id;
     let babylon_city = s.babylon_city;
-    let rome_coord = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap().coord;
+    let rome_coord = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
+        .coord;
     let trader = spawn_trader(&mut s, rome_id, rome_coord);
 
-    let diff = rules.establish_trade_route(&mut s.state, trader, babylon_city).unwrap();
+    let diff = rules
+        .establish_trade_route(&mut s.state, trader, babylon_city)
+        .unwrap();
 
     // Trader no longer in state.
     assert!(!s.state.units.iter().any(|u| u.id == trader));
@@ -76,8 +95,16 @@ fn establish_route_consumes_trader_unit() {
     assert_eq!(s.state.trade_routes.len(), 1);
 
     // Diff contains UnitDestroyed and TradeRouteEstablished.
-    assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::UnitDestroyed { unit } if *unit == trader)));
-    assert!(diff.deltas.iter().any(|d| matches!(d, StateDelta::TradeRouteEstablished { .. })));
+    assert!(
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::UnitDestroyed { unit } if *unit == trader))
+    );
+    assert!(
+        diff.deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::TradeRouteEstablished { .. }))
+    );
 }
 
 /// Domestic route (same-civ cities) yields: origin 3 gold, destination 1 gold.
@@ -93,14 +120,26 @@ fn establish_route_domestic_yields() {
     city2.is_capital = false;
     s.state.cities.push(city2);
     let rome_id = s.rome_id;
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == rome_id).unwrap()
-        .cities.push(second_city_id);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == rome_id)
+        .unwrap()
+        .cities
+        .push(second_city_id);
 
-    let rome_coord = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap().coord;
+    let rome_coord = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
+        .coord;
     let trader = spawn_trader(&mut s, rome_id, rome_coord);
 
-    rules.establish_trade_route(&mut s.state, trader, second_city_id).unwrap();
+    rules
+        .establish_trade_route(&mut s.state, trader, second_city_id)
+        .unwrap();
 
     let route = &s.state.trade_routes[0];
     assert_eq!(route.origin_yields.gold, 3);
@@ -115,10 +154,18 @@ fn establish_route_international_yields() {
 
     let rome_id = s.rome_id;
     let babylon_city = s.babylon_city;
-    let rome_coord = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap().coord;
+    let rome_coord = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
+        .coord;
     let trader = spawn_trader(&mut s, rome_id, rome_coord);
 
-    rules.establish_trade_route(&mut s.state, trader, babylon_city).unwrap();
+    rules
+        .establish_trade_route(&mut s.state, trader, babylon_city)
+        .unwrap();
 
     let route = &s.state.trade_routes[0];
     assert_eq!(route.origin_yields.gold, 6);
@@ -136,9 +183,17 @@ fn compute_yields_includes_trade_gold() {
 
     let before_gold = rules.compute_yields(&s.state, rome_id).gold;
 
-    let rome_coord = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap().coord;
+    let rome_coord = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
+        .coord;
     let trader = spawn_trader(&mut s, rome_id, rome_coord);
-    rules.establish_trade_route(&mut s.state, trader, babylon_city).unwrap();
+    rules
+        .establish_trade_route(&mut s.state, trader, babylon_city)
+        .unwrap();
 
     let after_gold = rules.compute_yields(&s.state, rome_id).gold;
     // International: origin gets +6 gold.
@@ -154,9 +209,17 @@ fn route_expires_after_30_turns() {
 
     let rome_id = s.rome_id;
     let babylon_city = s.babylon_city;
-    let rome_coord = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap().coord;
+    let rome_coord = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
+        .coord;
     let trader = spawn_trader(&mut s, rome_id, rome_coord);
-    rules.establish_trade_route(&mut s.state, trader, babylon_city).unwrap();
+    rules
+        .establish_trade_route(&mut s.state, trader, babylon_city)
+        .unwrap();
 
     assert_eq!(s.state.trade_routes.len(), 1);
 
@@ -164,12 +227,24 @@ fn route_expires_after_30_turns() {
     for _ in 0..30 {
         rules.advance_turn(&mut s.state);
     }
-    assert_eq!(s.state.trade_routes.len(), 1, "route should survive 30 turns");
+    assert_eq!(
+        s.state.trade_routes.len(),
+        1,
+        "route should survive 30 turns"
+    );
 
     // On turn 31 the route (turns_remaining == 0) is expired at Phase 2b.
     let diff_31 = rules.advance_turn(&mut s.state);
-    assert!(s.state.trade_routes.is_empty(), "route should be removed after 31 turns");
-    assert!(diff_31.deltas.iter().any(|d| matches!(d, StateDelta::TradeRouteExpired { .. })));
+    assert!(
+        s.state.trade_routes.is_empty(),
+        "route should be removed after 31 turns"
+    );
+    assert!(
+        diff_31
+            .deltas
+            .iter()
+            .any(|d| matches!(d, StateDelta::TradeRouteExpired { .. }))
+    );
 }
 
 /// establish_trade_route with a non-trader unit returns NotATrader.
@@ -195,10 +270,18 @@ fn assign_trade_route_sets_destination() {
 
     let rome_id = s.rome_id;
     let babylon_city = s.babylon_city;
-    let rome_coord = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap().coord;
+    let rome_coord = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
+        .coord;
     let trader = spawn_trader(&mut s, rome_id, rome_coord);
 
-    let diff = rules.assign_trade_route(&mut s.state, trader, babylon_city).unwrap();
+    let diff = rules
+        .assign_trade_route(&mut s.state, trader, babylon_city)
+        .unwrap();
 
     // Check unit fields were set.
     let unit = s.state.units.iter().find(|u| u.id == trader).unwrap();
@@ -244,13 +327,21 @@ fn trader_moves_autonomously_toward_destination() {
     let rules = DefaultRulesEngine;
 
     let rome_id = s.rome_id;
-    let rome_coord = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap().coord;
+    let rome_coord = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
+        .coord;
     let trader = spawn_trader(&mut s, rome_id, rome_coord);
 
     // Remove warriors to avoid occupancy conflicts during trader movement.
     s.state.units.retain(|u| u.category == UnitCategory::Trader);
 
-    rules.assign_trade_route(&mut s.state, trader, s.babylon_city).unwrap();
+    rules
+        .assign_trade_route(&mut s.state, trader, s.babylon_city)
+        .unwrap();
 
     let start_coord = s.state.units.iter().find(|u| u.id == trader).unwrap().coord;
 
@@ -259,7 +350,10 @@ fn trader_moves_autonomously_toward_destination() {
 
     // The trader may still exist (hasn't arrived yet) — check it moved.
     if let Some(unit) = s.state.units.iter().find(|u| u.id == trader) {
-        assert_ne!(unit.coord, start_coord, "trader should have moved from start position");
+        assert_ne!(
+            unit.coord, start_coord,
+            "trader should have moved from start position"
+        );
     }
     // Or it may have already arrived and been consumed (on very small maps).
 }
@@ -272,13 +366,21 @@ fn trader_auto_establishes_route_on_arrival() {
     let rules = DefaultRulesEngine;
 
     let rome_id = s.rome_id;
-    let rome_coord = s.state.cities.iter().find(|c| c.id == s.rome_city).unwrap().coord;
+    let rome_coord = s
+        .state
+        .cities
+        .iter()
+        .find(|c| c.id == s.rome_city)
+        .unwrap()
+        .coord;
     let trader = spawn_trader(&mut s, rome_id, rome_coord);
 
     // Remove warriors to avoid occupancy conflicts.
     s.state.units.retain(|u| u.category == UnitCategory::Trader);
 
-    rules.assign_trade_route(&mut s.state, trader, s.babylon_city).unwrap();
+    rules
+        .assign_trade_route(&mut s.state, trader, s.babylon_city)
+        .unwrap();
 
     assert!(s.state.trade_routes.is_empty(), "no trade route yet");
 
@@ -292,11 +394,17 @@ fn trader_auto_establishes_route_on_arrival() {
     }
 
     // Trade route should have been established.
-    assert_eq!(s.state.trade_routes.len(), 1, "trade route should be established on arrival");
+    assert_eq!(
+        s.state.trade_routes.len(),
+        1,
+        "trade route should be established on arrival"
+    );
 
     // Trader should have been consumed.
-    assert!(!s.state.units.iter().any(|u| u.id == trader),
-        "trader should be consumed after establishing route");
+    assert!(
+        !s.state.units.iter().any(|u| u.id == trader),
+        "trader should be consumed after establishing route"
+    );
 
     // Route should have correct origin and destination.
     let route = &s.state.trade_routes[0];

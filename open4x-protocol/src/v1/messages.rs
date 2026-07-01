@@ -9,25 +9,19 @@ use super::view::GameView;
 // ── Client → Server ──────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub enum ClientMessage {
     // Auth
-    Authenticate {
-        pubkey: Vec<u8>,
-        signature: Vec<u8>,
-    },
+    Authenticate { pubkey: Vec<u8>, signature: Vec<u8> },
 
     // Profile
     SetProfile(ProfileUpdate),
 
     // Lobby
     CreateGame(CreateGameRequest),
-    JoinGame {
-        game_id: GameId,
-    },
+    JoinGame { game_id: GameId },
     ListGames,
 
     // In-game actions (applied within the current turn)
@@ -149,7 +143,6 @@ pub enum GameAction {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
@@ -164,7 +157,6 @@ pub struct CreateGameRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
@@ -176,7 +168,6 @@ pub struct ProfileUpdate {
 // ── Server → Client ──────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
@@ -233,7 +224,6 @@ pub enum ServerMessage {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
@@ -247,7 +237,6 @@ pub struct GameListEntry {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]

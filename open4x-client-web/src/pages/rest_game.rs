@@ -213,8 +213,12 @@ pub fn RestGamePage() -> impl IntoView {
         spawn_local(async move {
             let Some(tok) = tok else { return };
             let c = client(Some(&tok));
-            let Ok(tt) = api::tech::get(&c).await else { return };
-            let Some(first) = tt.techs.iter().find(|t| t.status == "available") else { return };
+            let Ok(tt) = api::tech::get(&c).await else {
+                return;
+            };
+            let Some(first) = tt.techs.iter().find(|t| t.status == "available") else {
+                return;
+            };
             let body = api::tech::TechResearchBody {
                 tech_id: first.id.clone(),
             };
@@ -238,7 +242,10 @@ pub fn RestGamePage() -> impl IntoView {
     let required_count = move || {
         turn_queue
             .get()
-            .and_then(|w| w.as_ref().map(|q| q.items.iter().filter(|i| i.required).count()))
+            .and_then(|w| {
+                w.as_ref()
+                    .map(|q| q.items.iter().filter(|i| i.required).count())
+            })
             .unwrap_or(0)
     };
 

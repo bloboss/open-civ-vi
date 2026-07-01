@@ -4,7 +4,10 @@
 
 use std::path::Path;
 
-use libciv::{all_scores, CityId, DefaultRulesEngine, PendingActionKind, PolicyCardStatus, RulesEngine, UnitActionKind};
+use libciv::{
+    CityId, DefaultRulesEngine, PendingActionKind, PolicyCardStatus, RulesEngine, UnitActionKind,
+    all_scores,
+};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 use serde_json::json;
@@ -15,11 +18,7 @@ use crate::state_io;
 use super::{find_civ_by_name, parse_ulid};
 
 /// Execute a read-only status query and print the result as JSON.
-pub fn handle_status(
-    game_file: &Path,
-    player: &str,
-    kind: &StatusKind,
-) -> Result<(), String> {
+pub fn handle_status(game_file: &Path, player: &str, kind: &StatusKind) -> Result<(), String> {
     let state = state_io::load_game_file(game_file)?;
     let civ_id = find_civ_by_name(&state, player)?;
 
@@ -47,14 +46,18 @@ pub fn handle_status(
                 .iter()
                 .find(|c| c.id == city_id)
                 .ok_or_else(|| format!("city not found: {id}"))?;
-            let buildings: Vec<&str> = city.buildings.iter().map(|b| {
-                state
-                    .building_defs
-                    .iter()
-                    .find(|d| d.id == *b)
-                    .map(|d| d.name)
-                    .unwrap_or("?")
-            }).collect();
+            let buildings: Vec<&str> = city
+                .buildings
+                .iter()
+                .map(|b| {
+                    state
+                        .building_defs
+                        .iter()
+                        .find(|d| d.id == *b)
+                        .map(|d| d.name)
+                        .unwrap_or("?")
+                })
+                .collect();
             json!({
                 "id": format!("{:?}", city.id),
                 "name": city.name,
@@ -193,9 +196,7 @@ pub fn handle_status(
             let researched: Vec<&str> = civ
                 .researched_techs
                 .iter()
-                .filter_map(|tid| {
-                    state.tech_tree.get(*tid).map(|n| n.name)
-                })
+                .filter_map(|tid| state.tech_tree.get(*tid).map(|n| n.name))
                 .collect();
             let in_progress: Vec<_> = civ
                 .research_queue
@@ -222,9 +223,9 @@ pub fn handle_status(
                 .into_iter()
                 .map(|e| {
                     let status = match e.status {
-                        PolicyCardStatus::Active    => "active",
+                        PolicyCardStatus::Active => "active",
                         PolicyCardStatus::Available => "available",
-                        PolicyCardStatus::Locked    => "locked",
+                        PolicyCardStatus::Locked => "locked",
                     };
                     json!({
                         "id":           e.policy_id.as_ulid().to_string(),
@@ -262,13 +263,13 @@ pub fn handle_status(
                 .into_iter()
                 .map(|a| {
                     let kind = match a.kind {
-                        UnitActionKind::Move           => "move",
-                        UnitActionKind::Attack         => "attack",
-                        UnitActionKind::Fortify        => "fortify",
-                        UnitActionKind::Sleep          => "sleep",
-                        UnitActionKind::FoundCity      => "found_city",
-                        UnitActionKind::Build          => "build",
-                        UnitActionKind::TradeRoute     => "trade_route",
+                        UnitActionKind::Move => "move",
+                        UnitActionKind::Attack => "attack",
+                        UnitActionKind::Fortify => "fortify",
+                        UnitActionKind::Sleep => "sleep",
+                        UnitActionKind::FoundCity => "found_city",
+                        UnitActionKind::Build => "build",
+                        UnitActionKind::TradeRoute => "trade_route",
                         UnitActionKind::SpreadReligion => "spread_religion",
                     };
                     json!({ "kind": kind, "enabled": a.enabled })
@@ -302,7 +303,7 @@ pub fn handle_status(
                 .map(|a| {
                     let (kind, detail) = match a.kind {
                         PendingActionKind::ChooseResearch => ("choose_research", json!(null)),
-                        PendingActionKind::ChooseCivic    => ("choose_civic", json!(null)),
+                        PendingActionKind::ChooseCivic => ("choose_civic", json!(null)),
                         PendingActionKind::UnitNeedsOrders { unit_id, coord } => (
                             "unit_needs_orders",
                             json!({
@@ -333,9 +334,7 @@ pub fn handle_status(
             let completed: Vec<&str> = civ
                 .completed_civics
                 .iter()
-                .filter_map(|cid| {
-                    state.civic_tree.get(*cid).map(|n| n.name)
-                })
+                .filter_map(|cid| state.civic_tree.get(*cid).map(|n| n.name))
                 .collect();
             let in_progress = civ.civic_in_progress.as_ref().and_then(|cp| {
                 state.civic_tree.get(cp.civic_id).map(|n| {

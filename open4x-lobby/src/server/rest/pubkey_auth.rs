@@ -18,22 +18,22 @@
 
 #![cfg(feature = "ssr")]
 
+use axum::Json;
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use axum::Json;
 use chrono::Utc;
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 
+use open4x_accounts::Identity;
 use open4x_accounts::audit::{AuditEventKind, AuditStore, NewAuditEvent};
 use open4x_accounts::session;
 use open4x_accounts::store::AccountStore;
-use open4x_accounts::Identity;
 
 use super::email_auth::cookie_value;
-use crate::server::auth::SESSION_COOKIE_NAME;
 use crate::server::AppState;
+use crate::server::auth::SESSION_COOKIE_NAME;
 
 #[derive(Debug, Serialize)]
 struct ErrorBody {
@@ -187,17 +187,17 @@ pub async fn verify(State(state): State<AppState>, Json(body): Json<VerifyBody>)
         }
     }
 
-    let raw = match session::mint_session(&state.pool, account.player_id, session::DEFAULT_TTL).await
-    {
-        Ok(t) => t,
-        Err(e) => {
-            return err(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "session_failed",
-                Some(e.to_string()),
-            );
-        }
-    };
+    let raw =
+        match session::mint_session(&state.pool, account.player_id, session::DEFAULT_TTL).await {
+            Ok(t) => t,
+            Err(e) => {
+                return err(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "session_failed",
+                    Some(e.to_string()),
+                );
+            }
+        };
 
     let _ = state
         .audit
@@ -205,7 +205,10 @@ pub async fn verify(State(state): State<AppState>, Json(body): Json<VerifyBody>)
             kind: AuditEventKind::SignIn,
             player_id: Some(account.player_id),
             ip: None,
-            detail: format!("pubkey:{}", open4x_accounts::pubkey_fingerprint(&pubkey_hex)),
+            detail: format!(
+                "pubkey:{}",
+                open4x_accounts::pubkey_fingerprint(&pubkey_hex)
+            ),
         })
         .await;
 

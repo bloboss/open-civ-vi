@@ -5,11 +5,11 @@
 /// - CultureVictory condition
 mod common;
 
-use libciv::{BuiltinVictoryCondition, CivId, DefaultRulesEngine, GameStateDiff};
 use libciv::civ::tourism::{
-    compute_tourism, domestic_tourists, has_cultural_dominance, WonderTourism,
+    WonderTourism, compute_tourism, domestic_tourists, has_cultural_dominance,
 };
 use libciv::game::{RulesEngine, StateDelta};
+use libciv::{BuiltinVictoryCondition, CivId, DefaultRulesEngine, GameStateDiff};
 
 // ---------------------------------------------------------------------------
 // Lifetime culture accumulation
@@ -27,7 +27,10 @@ fn lifetime_culture_accumulates_each_turn() {
     rules.advance_turn(&mut s.state);
 
     let rome_lc = s.state.civ(s.rome_id).unwrap().lifetime_culture;
-    assert!(rome_lc > 0, "Rome should have accumulated lifetime culture, got {rome_lc}");
+    assert!(
+        rome_lc > 0,
+        "Rome should have accumulated lifetime culture, got {rome_lc}"
+    );
 }
 
 #[test]
@@ -41,7 +44,10 @@ fn lifetime_culture_grows_over_multiple_turns() {
     rules.advance_turn(&mut s.state);
     let after_2 = s.state.civ(s.rome_id).unwrap().lifetime_culture;
 
-    assert!(after_2 > after_1, "lifetime culture should grow: {after_1} -> {after_2}");
+    assert!(
+        after_2 > after_1,
+        "lifetime culture should grow: {after_1} -> {after_2}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -107,15 +113,23 @@ fn tourism_accumulated_grows_with_wonders() {
     rules.advance_turn(&mut s.state);
 
     let rome = s.state.civ(s.rome_id).unwrap();
-    let tourism_toward_babylon = rome.tourism_accumulated
-        .get(&s.babylon_id).copied().unwrap_or(0);
-    assert_eq!(tourism_toward_babylon, 10,
-        "Rome should have pushed 10 tourism toward Babylon");
+    let tourism_toward_babylon = rome
+        .tourism_accumulated
+        .get(&s.babylon_id)
+        .copied()
+        .unwrap_or(0);
+    assert_eq!(
+        tourism_toward_babylon, 10,
+        "Rome should have pushed 10 tourism toward Babylon"
+    );
 
     // Babylon has no wonders, so no tourism toward Rome.
     let babylon = s.state.civ(s.babylon_id).unwrap();
-    let tourism_toward_rome = babylon.tourism_accumulated
-        .get(&s.rome_id).copied().unwrap_or(0);
+    let tourism_toward_rome = babylon
+        .tourism_accumulated
+        .get(&s.rome_id)
+        .copied()
+        .unwrap_or(0);
     assert_eq!(tourism_toward_rome, 0);
 }
 
@@ -132,12 +146,20 @@ fn tourism_generated_delta_emitted() {
 
     let diff = rules.advance_turn(&mut s.state);
 
-    let tourism_deltas: Vec<_> = diff.deltas.iter().filter(|d| {
-        matches!(d, StateDelta::TourismGenerated { civ, tourism, .. }
+    let tourism_deltas: Vec<_> = diff
+        .deltas
+        .iter()
+        .filter(|d| {
+            matches!(d, StateDelta::TourismGenerated { civ, tourism, .. }
             if *civ == s.rome_id && *tourism == 7)
-    }).collect();
+        })
+        .collect();
 
-    assert_eq!(tourism_deltas.len(), 1, "should emit TourismGenerated for Rome");
+    assert_eq!(
+        tourism_deltas.len(),
+        1,
+        "should emit TourismGenerated for Rome"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -153,8 +175,11 @@ fn domestic_tourists_formula() {
     assert_eq!(domestic_tourists(rome), 0);
 
     // Manually set lifetime culture.
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
         .lifetime_culture = 350;
 
     let rome = s.state.civ(s.rome_id).unwrap();
@@ -176,14 +201,21 @@ fn cultural_dominance_achieved_when_tourism_exceeds_culture() {
     let mut s = common::build_scenario();
 
     // Babylon has 200 lifetime culture → 2 domestic tourists.
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.babylon_id).unwrap()
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.babylon_id)
+        .unwrap()
         .lifetime_culture = 200;
 
     // Rome sends 3 tourism toward Babylon (> 2 domestic tourists).
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .tourism_accumulated.insert(s.babylon_id, 3);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .tourism_accumulated
+        .insert(s.babylon_id, 3);
 
     assert!(has_cultural_dominance(&s.state, s.rome_id));
 }
@@ -193,14 +225,21 @@ fn cultural_dominance_fails_if_tied() {
     let mut s = common::build_scenario();
 
     // Babylon: 200 culture → 2 domestic tourists.
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.babylon_id).unwrap()
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.babylon_id)
+        .unwrap()
         .lifetime_culture = 200;
 
     // Rome sends exactly 2 — tie, not enough.
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .tourism_accumulated.insert(s.babylon_id, 2);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .tourism_accumulated
+        .insert(s.babylon_id, 2);
 
     assert!(!has_cultural_dominance(&s.state, s.rome_id));
 }
@@ -226,14 +265,21 @@ fn culture_victory_won_with_dominance() {
     let mut s = common::build_scenario();
 
     // Give Babylon some culture so the victory is meaningful.
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.babylon_id).unwrap()
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.babylon_id)
+        .unwrap()
         .lifetime_culture = 100; // → 1 domestic tourist
 
     // Rome pushes 2 tourism toward Babylon (> 1).
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .tourism_accumulated.insert(s.babylon_id, 2);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .tourism_accumulated
+        .insert(s.babylon_id, 2);
 
     let vid = s.state.id_gen.next_victory_id();
     let cv = BuiltinVictoryCondition::Culture { id: vid };
@@ -251,16 +297,25 @@ fn culture_victory_triggers_game_over_in_advance_turn() {
 
     // Set up dominance: Babylon has 100 culture (1 domestic tourist),
     // Rome has 2 tourism accumulated toward Babylon.
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.babylon_id).unwrap()
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.babylon_id)
+        .unwrap()
         .lifetime_culture = 100;
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
-        .tourism_accumulated.insert(s.babylon_id, 2);
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
+        .tourism_accumulated
+        .insert(s.babylon_id, 2);
 
     // Register a CultureVictory condition.
     let vid = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(BuiltinVictoryCondition::Culture { id: vid });
+    s.state
+        .victory_conditions
+        .push(BuiltinVictoryCondition::Culture { id: vid });
 
     let diff = rules.advance_turn(&mut s.state);
 
@@ -290,17 +345,26 @@ fn culture_victory_end_to_end_via_tourism_accumulation() {
 
     // Register culture victory.
     let vid = s.state.id_gen.next_victory_id();
-    s.state.victory_conditions.push(BuiltinVictoryCondition::Culture { id: vid });
+    s.state
+        .victory_conditions
+        .push(BuiltinVictoryCondition::Culture { id: vid });
 
     // Advance several turns — Babylon accumulates culture each turn (defense),
     // but Rome pushes 200 tourism/turn which should overwhelm it.
     for _ in 0..20 {
-        if s.state.game_over.is_some() { break; }
+        if s.state.game_over.is_some() {
+            break;
+        }
         rules.advance_turn(&mut s.state);
     }
 
-    assert!(s.state.game_over.is_some(),
-        "Rome should have won culture victory within 20 turns");
+    assert!(
+        s.state.game_over.is_some(),
+        "Rome should have won culture victory within 20 turns"
+    );
     assert_eq!(s.state.game_over.as_ref().unwrap().winner, s.rome_id);
-    assert_eq!(s.state.game_over.as_ref().unwrap().condition, "Culture Victory");
+    assert_eq!(
+        s.state.game_over.as_ref().unwrap().condition,
+        "Culture Victory"
+    );
 }

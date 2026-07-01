@@ -1,8 +1,8 @@
-use crate::{CivId, PolicyType, ResourceCategory, UnitDomain, YieldType};
 use crate::civ::district::BuiltinDistrict;
 use crate::world::feature::BuiltinFeature;
 use crate::world::improvement::BuiltinImprovement;
 use crate::world::terrain::BuiltinTerrain;
+use crate::{CivId, PolicyType, ResourceCategory, UnitDomain, YieldType};
 
 // ── Effect types ─────────────────────────────────────────────────────────────
 
@@ -204,13 +204,22 @@ pub struct ConditionContext<'a> {
 
 impl<'a> ConditionContext<'a> {
     pub fn for_civ(civ_id: CivId, state: &'a crate::game::state::GameState) -> Self {
-        Self { civ_id, state, tile: None, unit_id: None, city_id: None }
+        Self {
+            civ_id,
+            state,
+            tile: None,
+            unit_id: None,
+            city_id: None,
+        }
     }
 }
 
 /// Compute the appeal of a tile based on adjacent terrain, features, and districts.
 /// Charming = 2+, Breathtaking = 4+.
-pub fn compute_tile_appeal(coord: libhexgrid::coord::HexCoord, state: &crate::game::state::GameState) -> i32 {
+pub fn compute_tile_appeal(
+    coord: libhexgrid::coord::HexCoord,
+    state: &crate::game::state::GameState,
+) -> i32 {
     use libhexgrid::board::HexBoard;
     let mut appeal: i32 = 0;
     for nb in state.board.neighbors(coord) {
@@ -218,13 +227,14 @@ pub fn compute_tile_appeal(coord: libhexgrid::coord::HexCoord, state: &crate::ga
             // Terrain bonuses.
             match tile.terrain {
                 BuiltinTerrain::Mountain => appeal += 1,
-                BuiltinTerrain::Coast    => appeal += 1,
+                BuiltinTerrain::Coast => appeal += 1,
                 _ => {}
             }
             // Feature bonuses/penalties.
             match tile.feature {
                 Some(BuiltinFeature::Forest) | Some(BuiltinFeature::Oasis) => appeal += 1,
-                Some(BuiltinFeature::Rainforest) | Some(BuiltinFeature::Marsh)
+                Some(BuiltinFeature::Rainforest)
+                | Some(BuiltinFeature::Marsh)
                 | Some(BuiltinFeature::Floodplain) => appeal -= 1,
                 _ => {}
             }
@@ -259,9 +269,9 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
                 // Check if tile has any river edges.
                 for dir in libhexgrid::coord::HexDir::ALL {
                     if let Some(edge) = ctx.state.board.edge(coord, dir) {
-                        if edge.feature.as_ref().is_some_and(|f|
-                            matches!(f, crate::world::edge::BuiltinEdgeFeature::River(_)))
-                        {
+                        if edge.feature.as_ref().is_some_and(|f| {
+                            matches!(f, crate::world::edge::BuiltinEdgeFeature::River(_))
+                        }) {
                             return ConditionResult::Pass;
                         }
                     }
@@ -288,7 +298,10 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
                     // Also check if adjacent to coast.
                     for nb in ctx.state.board.neighbors(coord) {
                         if let Some(nb_tile) = ctx.state.board.tile(nb) {
-                            if matches!(nb_tile.terrain, crate::world::terrain::BuiltinTerrain::Coast) {
+                            if matches!(
+                                nb_tile.terrain,
+                                crate::world::terrain::BuiltinTerrain::Coast
+                            ) {
                                 return ConditionResult::Pass;
                             }
                         }
@@ -331,9 +344,15 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
         }
         Condition::PerAdjacentTerrain(terrain) => {
             if let Some(coord) = ctx.tile {
-                let count = ctx.state.board.neighbors(coord).iter()
+                let count = ctx
+                    .state
+                    .board
+                    .neighbors(coord)
+                    .iter()
                     .filter(|nb| {
-                        ctx.state.board.tile(**nb)
+                        ctx.state
+                            .board
+                            .tile(**nb)
                             .is_some_and(|t| t.terrain == *terrain)
                     })
                     .count();
@@ -344,9 +363,15 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
         }
         Condition::PerAdjacentFeature(feature) => {
             if let Some(coord) = ctx.tile {
-                let count = ctx.state.board.neighbors(coord).iter()
+                let count = ctx
+                    .state
+                    .board
+                    .neighbors(coord)
+                    .iter()
                     .filter(|nb| {
-                        ctx.state.board.tile(**nb)
+                        ctx.state
+                            .board
+                            .tile(**nb)
                             .is_some_and(|t| t.feature == Some(*feature))
                     })
                     .count();
@@ -359,11 +384,16 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
             // Count city-states where this civ is suzerain. City-states are
             // cities with `CityKind::CityState`; suzerainty is cached on the
             // per-city `CityStateData`.
-            let count = ctx.state.cities.iter()
-                .filter(|c| matches!(
-                    &c.kind,
-                    crate::civ::city::CityKind::CityState(cs) if cs.suzerain == Some(ctx.civ_id)
-                ))
+            let count = ctx
+                .state
+                .cities
+                .iter()
+                .filter(|c| {
+                    matches!(
+                        &c.kind,
+                        crate::civ::city::CityKind::CityState(cs) if cs.suzerain == Some(ctx.civ_id)
+                    )
+                })
                 .count();
             ConditionResult::Scale(count as i32)
         }
@@ -373,7 +403,10 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
             // computation, guaranteeing termination even when the modifier that
             // carries this condition is itself sourced from a wonder. Distinct
             // wonder ids are counted (a wonder listed twice counts once).
-            let count = ctx.state.cities.iter()
+            let count = ctx
+                .state
+                .cities
+                .iter()
                 .filter(|c| c.owner == ctx.civ_id)
                 .flat_map(|c| c.wonders.iter().copied())
                 .collect::<std::collections::HashSet<_>>()
@@ -382,7 +415,10 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
         }
         Condition::PerAdjacentDistrict => {
             if let Some(coord) = ctx.tile {
-                let count = ctx.state.placed_districts.iter()
+                let count = ctx
+                    .state
+                    .placed_districts
+                    .iter()
                     .filter(|pd| {
                         let d = pd.coord.distance(&coord);
                         d == 1
@@ -395,7 +431,10 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
         }
         Condition::PerTradingPostInRoute => {
             // Simplified: count trade routes owned by this civ.
-            let count = ctx.state.trade_routes.iter()
+            let count = ctx
+                .state
+                .trade_routes
+                .iter()
                 .filter(|tr| tr.owner == ctx.civ_id)
                 .count();
             ConditionResult::Scale(count as i32)
@@ -407,23 +446,37 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
         Condition::PerCivMetWithReligionNotAtWar => {
             // Count civs that are not at war with us.
             // Simplified: count civs we have Neutral/Friendly/Alliance relations with.
-            let count = ctx.state.diplomatic_relations.iter()
-                .filter(|r| {
-                    (r.civ_a == ctx.civ_id || r.civ_b == ctx.civ_id)
-                        && !r.is_at_war()
-                })
+            let count = ctx
+                .state
+                .diplomatic_relations
+                .iter()
+                .filter(|r| (r.civ_a == ctx.civ_id || r.civ_b == ctx.civ_id) && !r.is_at_war())
                 .count();
             ConditionResult::Scale(count as i32)
         }
         Condition::AtWar => {
-            let at_war = ctx.state.diplomatic_relations.iter()
+            let at_war = ctx
+                .state
+                .diplomatic_relations
+                .iter()
                 .any(|r| (r.civ_a == ctx.civ_id || r.civ_b == ctx.civ_id) && r.is_at_war());
-            if at_war { ConditionResult::Pass } else { ConditionResult::Fail }
+            if at_war {
+                ConditionResult::Pass
+            } else {
+                ConditionResult::Fail
+            }
         }
         Condition::NotAtWar => {
-            let at_war = ctx.state.diplomatic_relations.iter()
+            let at_war = ctx
+                .state
+                .diplomatic_relations
+                .iter()
                 .any(|r| (r.civ_a == ctx.civ_id || r.civ_b == ctx.civ_id) && r.is_at_war());
-            if at_war { ConditionResult::Fail } else { ConditionResult::Pass }
+            if at_war {
+                ConditionResult::Fail
+            } else {
+                ConditionResult::Pass
+            }
         }
         Condition::UnitDamaged => {
             if let Some(uid) = ctx.unit_id {
@@ -438,7 +491,10 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
         Condition::AdjacentToSameUnitType => {
             if let Some(uid) = ctx.unit_id {
                 if let Some(u) = ctx.state.unit(uid) {
-                    let count = ctx.state.units.iter()
+                    let count = ctx
+                        .state
+                        .units
+                        .iter()
                         .filter(|other| {
                             other.id != u.id
                                 && other.owner == u.owner
@@ -456,9 +512,10 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
         Condition::AdjacentToEnemy => {
             if let Some(uid) = ctx.unit_id {
                 if let Some(u) = ctx.state.unit(uid) {
-                    let has_adj_enemy = ctx.state.units.iter().any(|other| {
-                        other.owner != u.owner && other.coord.distance(&u.coord) == 1
-                    });
+                    let has_adj_enemy =
+                        ctx.state.units.iter().any(|other| {
+                            other.owner != u.owner && other.coord.distance(&u.coord) == 1
+                        });
                     if has_adj_enemy {
                         return ConditionResult::Pass;
                     }
@@ -476,7 +533,10 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
                 if let Some(city) = ctx.state.cities.iter().find(|c| c.id == city_id) {
                     if let Some(front) = city.production_queue.front() {
                         use crate::civ::ProductionItem;
-                        if matches!(front, ProductionItem::District(_) | ProductionItem::Wonder(_)) {
+                        if matches!(
+                            front,
+                            ProductionItem::District(_) | ProductionItem::Wonder(_)
+                        ) {
                             return ConditionResult::Pass;
                         }
                     }
@@ -500,10 +560,14 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
         Condition::ProducingMilitaryUnitOfEra(era) => {
             if let Some(city_id) = ctx.city_id {
                 if let Some(city) = ctx.state.cities.iter().find(|c| c.id == city_id) {
-                    if let Some(crate::civ::ProductionItem::Unit(utid)) = city.production_queue.front() {
+                    if let Some(crate::civ::ProductionItem::Unit(utid)) =
+                        city.production_queue.front()
+                    {
                         if let Some(utd) = ctx.state.unit_type_defs.iter().find(|u| u.id == *utid) {
-                            if matches!(utd.category, crate::UnitCategory::Combat | crate::UnitCategory::Support)
-                                && utd.era == Some(*era)
+                            if matches!(
+                                utd.category,
+                                crate::UnitCategory::Combat | crate::UnitCategory::Support
+                            ) && utd.era == Some(*era)
                             {
                                 return ConditionResult::Pass;
                             }
@@ -516,7 +580,9 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
         Condition::ProducingWonderOfEra(era) => {
             if let Some(city_id) = ctx.city_id {
                 if let Some(city) = ctx.state.cities.iter().find(|c| c.id == city_id) {
-                    if let Some(crate::civ::ProductionItem::Wonder(wid)) = city.production_queue.front() {
+                    if let Some(crate::civ::ProductionItem::Wonder(wid)) =
+                        city.production_queue.front()
+                    {
                         // Check wonder era via wonder_defs if available.
                         if let Some(wdef) = ctx.state.wonder_defs.iter().find(|w| w.id == *wid) {
                             if wdef.era == Some(*era) {
@@ -549,8 +615,12 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
             }
             // If both Scale, multiply. If one Scale and one Pass, use Scale. If both Pass, Pass.
             match (ra, rb) {
-                (ConditionResult::Scale(a), ConditionResult::Scale(b)) => ConditionResult::Scale(a * b),
-                (ConditionResult::Scale(n), _) | (_, ConditionResult::Scale(n)) => ConditionResult::Scale(n),
+                (ConditionResult::Scale(a), ConditionResult::Scale(b)) => {
+                    ConditionResult::Scale(a * b)
+                }
+                (ConditionResult::Scale(n), _) | (_, ConditionResult::Scale(n)) => {
+                    ConditionResult::Scale(n)
+                }
                 _ => ConditionResult::Pass,
             }
         }
@@ -584,7 +654,13 @@ impl Modifier {
         effect: EffectType,
         stacking: StackingRule,
     ) -> Self {
-        Self { source, target, effect, stacking, condition: None }
+        Self {
+            source,
+            target,
+            effect,
+            stacking,
+            condition: None,
+        }
     }
 
     pub fn with_condition(mut self, condition: Condition) -> Self {
@@ -598,18 +674,21 @@ impl Modifier {
 /// Resolve a list of modifiers into a deduplicated set of effects by applying
 /// stacking rules. If a `ConditionContext` is provided, conditional modifiers
 /// are evaluated and filtered/scaled accordingly.
-pub fn resolve_modifiers(modifiers: &[Modifier], ctx: Option<&ConditionContext<'_>>) -> Vec<EffectType> {
+pub fn resolve_modifiers(
+    modifiers: &[Modifier],
+    ctx: Option<&ConditionContext<'_>>,
+) -> Vec<EffectType> {
     if modifiers.is_empty() {
         return vec![];
     }
 
     use std::collections::HashMap;
 
-    let mut yield_flat:  HashMap<(YieldType, StackingRule), Vec<i32>> = HashMap::new();
-    let mut yield_pct:   HashMap<(YieldType, StackingRule), Vec<i32>> = HashMap::new();
-    let mut combat_flat: HashMap<StackingRule, Vec<i32>>              = HashMap::new();
-    let mut combat_pct:  HashMap<StackingRule, Vec<i32>>              = HashMap::new();
-    let mut movement:    HashMap<StackingRule, Vec<u32>>              = HashMap::new();
+    let mut yield_flat: HashMap<(YieldType, StackingRule), Vec<i32>> = HashMap::new();
+    let mut yield_pct: HashMap<(YieldType, StackingRule), Vec<i32>> = HashMap::new();
+    let mut combat_flat: HashMap<StackingRule, Vec<i32>> = HashMap::new();
+    let mut combat_pct: HashMap<StackingRule, Vec<i32>> = HashMap::new();
+    let mut movement: HashMap<StackingRule, Vec<u32>> = HashMap::new();
     // New effect types — collected separately.
     let mut other_effects: Vec<EffectType> = Vec::new();
 
@@ -621,7 +700,9 @@ pub fn resolve_modifiers(modifiers: &[Modifier], ctx: Option<&ConditionContext<'
                     ConditionResult::Fail => continue, // skip this modifier
                     ConditionResult::Pass => 1,
                     ConditionResult::Scale(n) => {
-                        if n == 0 { continue; } // scale by 0 = no effect
+                        if n == 0 {
+                            continue;
+                        } // scale by 0 = no effect
                         n
                     }
                 }
@@ -633,16 +714,24 @@ pub fn resolve_modifiers(modifiers: &[Modifier], ctx: Option<&ConditionContext<'
         };
 
         match m.effect {
-            EffectType::YieldFlat(yt, v) =>
-                yield_flat.entry((yt, m.stacking)).or_default().push(v * scale),
-            EffectType::YieldPercent(yt, v) =>
-                yield_pct.entry((yt, m.stacking)).or_default().push(v * scale),
-            EffectType::CombatStrengthFlat(v) =>
-                combat_flat.entry(m.stacking).or_default().push(v * scale),
-            EffectType::CombatStrengthPercent(v) =>
-                combat_pct.entry(m.stacking).or_default().push(v * scale),
-            EffectType::MovementBonus(v) =>
-                movement.entry(m.stacking).or_default().push(v * scale as u32),
+            EffectType::YieldFlat(yt, v) => yield_flat
+                .entry((yt, m.stacking))
+                .or_default()
+                .push(v * scale),
+            EffectType::YieldPercent(yt, v) => yield_pct
+                .entry((yt, m.stacking))
+                .or_default()
+                .push(v * scale),
+            EffectType::CombatStrengthFlat(v) => {
+                combat_flat.entry(m.stacking).or_default().push(v * scale)
+            }
+            EffectType::CombatStrengthPercent(v) => {
+                combat_pct.entry(m.stacking).or_default().push(v * scale)
+            }
+            EffectType::MovementBonus(v) => movement
+                .entry(m.stacking)
+                .or_default()
+                .push(v * scale as u32),
             // New effect types pass through directly (not stacking-resolved).
             other => other_effects.push(other),
         }
@@ -673,16 +762,16 @@ pub fn resolve_modifiers(modifiers: &[Modifier], ctx: Option<&ConditionContext<'
 fn reduce_i32(vals: &[i32], rule: StackingRule) -> i32 {
     match rule {
         StackingRule::Additive => vals.iter().sum(),
-        StackingRule::Max      => *vals.iter().max().unwrap_or(&0),
-        StackingRule::Replace  => *vals.last().unwrap_or(&0),
+        StackingRule::Max => *vals.iter().max().unwrap_or(&0),
+        StackingRule::Replace => *vals.last().unwrap_or(&0),
     }
 }
 
 fn reduce_u32(vals: &[u32], rule: StackingRule) -> u32 {
     match rule {
         StackingRule::Additive => vals.iter().sum(),
-        StackingRule::Max      => *vals.iter().max().unwrap_or(&0),
-        StackingRule::Replace  => *vals.last().unwrap_or(&0),
+        StackingRule::Max => *vals.iter().max().unwrap_or(&0),
+        StackingRule::Replace => *vals.last().unwrap_or(&0),
     }
 }
 
@@ -769,8 +858,12 @@ mod tests {
             TargetSelector::Global,
             EffectType::YieldFlat(YieldType::Gold, 5),
             StackingRule::Additive,
-        ).with_condition(Condition::AdjacentToRiver);
+        )
+        .with_condition(Condition::AdjacentToRiver);
         let effects = resolve_modifiers(&[m], None);
-        assert!(effects.is_empty(), "conditional modifier should be skipped without context");
+        assert!(
+            effects.is_empty(),
+            "conditional modifier should be skipped without context"
+        );
     }
 }

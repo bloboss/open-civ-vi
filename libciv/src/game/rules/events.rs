@@ -221,10 +221,13 @@ fn resolve_delta_owner(pattern: DeltaPattern, delta: &StateDelta) -> Option<CivI
             Some(*civ)
         }
         (DeltaPattern::WonderBuilt, StateDelta::WonderBuilt { civ, .. }) => Some(*civ),
-        (DeltaPattern::NaturalWonderDiscovered, StateDelta::NaturalWonderDiscovered { civ, .. }) => {
-            Some(*civ)
+        (
+            DeltaPattern::NaturalWonderDiscovered,
+            StateDelta::NaturalWonderDiscovered { civ, .. },
+        ) => Some(*civ),
+        (DeltaPattern::CityRevolted, StateDelta::CityRevolted { old_owner, .. }) => {
+            Some(*old_owner)
         }
-        (DeltaPattern::CityRevolted, StateDelta::CityRevolted { old_owner, .. }) => Some(*old_owner),
         (DeltaPattern::EspionageResolved, StateDelta::EspionageResolved { owner, .. }) => {
             Some(*owner)
         }

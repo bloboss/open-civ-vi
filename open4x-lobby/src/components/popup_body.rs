@@ -20,11 +20,12 @@ pub fn PopupBody(children: Children) -> impl IntoView {
 /// `<div class="popup-actions">` — footer button row. Set `right=true`
 /// to right-align the buttons (matches the JSX `<PopupActions right>`).
 #[component]
-pub fn PopupActions(
-    #[prop(optional)] right: bool,
-    children: Children,
-) -> impl IntoView {
-    let class = if right { "popup-actions right" } else { "popup-actions" };
+pub fn PopupActions(#[prop(optional)] right: bool, children: Children) -> impl IntoView {
+    let class = if right {
+        "popup-actions right"
+    } else {
+        "popup-actions"
+    };
     view! { <div class=class>{children()}</div> }
 }
 
@@ -44,11 +45,19 @@ pub enum PopupListItem {
 
 impl PopupListItem {
     pub fn row(icon: &'static str, label: &'static str) -> Self {
-        Self::Row { icon, label, desc: None }
+        Self::Row {
+            icon,
+            label,
+            desc: None,
+        }
     }
 
     pub fn row_with_desc(icon: &'static str, label: &'static str, desc: &'static str) -> Self {
-        Self::Row { icon, label, desc: Some(desc) }
+        Self::Row {
+            icon,
+            label,
+            desc: Some(desc),
+        }
     }
 
     pub fn sep() -> Self {

@@ -1,3 +1,8 @@
+use leptos::prelude::*;
+use open4x_protocol::v1::coord::HexCoord;
+use open4x_protocol::v1::enums::{BuiltinTerrain, TileVisibility};
+use open4x_protocol::v1::ids::{CivId, UnitId};
+use open4x_protocol::v1::view::GameView;
 /// SVG hex-grid renderer backed by `GameView`.
 ///
 /// Renders the board as pointy-top hexagons coloured by terrain type.
@@ -9,11 +14,6 @@
 ///   py = size * 3/2     * r
 use std::collections::HashMap;
 use std::sync::Arc;
-use leptos::prelude::*;
-use open4x_protocol::v1::enums::{BuiltinTerrain, TileVisibility};
-use open4x_protocol::v1::ids::{CivId, UnitId};
-use open4x_protocol::v1::coord::HexCoord;
-use open4x_protocol::v1::view::GameView;
 
 // ---------------------------------------------------------------------------
 // Geometry helpers
@@ -39,7 +39,8 @@ fn hex_corners(cx: f64, cy: f64) -> [(f64, f64); 6] {
 }
 
 fn corners_to_points(corners: &[(f64, f64); 6]) -> String {
-    corners.iter()
+    corners
+        .iter()
         .map(|(x, y)| format!("{x:.1},{y:.1}"))
         .collect::<Vec<_>>()
         .join(" ")
@@ -54,13 +55,9 @@ pub fn svg_dimensions(board_w: u32, board_h: u32) -> (f64, f64) {
 // Territory rendering helpers
 // ---------------------------------------------------------------------------
 
-const NEIGHBOR_OFFSETS: [(i32, i32); 6] = [
-    ( 1,  0), ( 1, -1), ( 0, -1), (-1,  0), (-1,  1), ( 0,  1),
-];
+const NEIGHBOR_OFFSETS: [(i32, i32); 6] = [(1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)];
 
-const BORDER_CORNER_PAIRS: [(usize, usize); 6] = [
-    (0, 1), (5, 0), (4, 5), (3, 4), (2, 3), (1, 2),
-];
+const BORDER_CORNER_PAIRS: [(usize, usize); 6] = [(0, 1), (5, 0), (4, 5), (3, 4), (2, 3), (1, 2)];
 
 fn civ_territory_color(civ_index: usize) -> (&'static str, &'static str) {
     const PALETTE: &[(&str, &str)] = &[
@@ -81,26 +78,26 @@ fn civ_territory_color(civ_index: usize) -> (&'static str, &'static str) {
 fn terrain_fill(t: BuiltinTerrain) -> &'static str {
     match t {
         BuiltinTerrain::Grassland => "#3a6b45",
-        BuiltinTerrain::Plains    => "#8a7d3a",
-        BuiltinTerrain::Desert    => "#c8a84b",
-        BuiltinTerrain::Tundra    => "#6b7a5e",
-        BuiltinTerrain::Snow      => "#d8e0e8",
-        BuiltinTerrain::Coast     => "#3a7a9e",
-        BuiltinTerrain::Ocean     => "#1a3a5e",
-        BuiltinTerrain::Mountain  => "#5e5e5e",
+        BuiltinTerrain::Plains => "#8a7d3a",
+        BuiltinTerrain::Desert => "#c8a84b",
+        BuiltinTerrain::Tundra => "#6b7a5e",
+        BuiltinTerrain::Snow => "#d8e0e8",
+        BuiltinTerrain::Coast => "#3a7a9e",
+        BuiltinTerrain::Ocean => "#1a3a5e",
+        BuiltinTerrain::Mountain => "#5e5e5e",
     }
 }
 
 fn terrain_label(t: BuiltinTerrain) -> &'static str {
     match t {
         BuiltinTerrain::Grassland => "G",
-        BuiltinTerrain::Plains    => "P",
-        BuiltinTerrain::Desert    => "D",
-        BuiltinTerrain::Tundra    => "T",
-        BuiltinTerrain::Snow      => "S",
-        BuiltinTerrain::Coast     => "C",
-        BuiltinTerrain::Ocean     => "~",
-        BuiltinTerrain::Mountain  => "M",
+        BuiltinTerrain::Plains => "P",
+        BuiltinTerrain::Desert => "D",
+        BuiltinTerrain::Tundra => "T",
+        BuiltinTerrain::Snow => "S",
+        BuiltinTerrain::Coast => "C",
+        BuiltinTerrain::Ocean => "~",
+        BuiltinTerrain::Mountain => "M",
     }
 }
 
@@ -128,7 +125,10 @@ pub fn HexMap(
         let my_civ = gv.my_civ_id;
 
         // Build a tile lookup by coord for fast access.
-        let tile_map: HashMap<(i32, i32), &open4x_protocol::v1::view::TileView> = gv.board.tiles.iter()
+        let tile_map: HashMap<(i32, i32), &open4x_protocol::v1::view::TileView> = gv
+            .board
+            .tiles
+            .iter()
             .map(|t| ((t.coord.q, t.coord.r), t))
             .collect();
 
@@ -154,12 +154,16 @@ pub fn HexMap(
         }
 
         // Unit lookup by coord.
-        let unit_map: HashMap<(i32, i32), &open4x_protocol::v1::view::UnitView> = gv.units.iter()
+        let unit_map: HashMap<(i32, i32), &open4x_protocol::v1::view::UnitView> = gv
+            .units
+            .iter()
             .map(|u| ((u.coord.q, u.coord.r), u))
             .collect();
 
         // City lookup by coord.
-        let city_map: HashMap<(i32, i32), &open4x_protocol::v1::view::CityView> = gv.cities.iter()
+        let city_map: HashMap<(i32, i32), &open4x_protocol::v1::view::CityView> = gv
+            .cities
+            .iter()
             .map(|c| ((c.coord.q, c.coord.r), c))
             .collect();
 
@@ -221,27 +225,29 @@ pub fn HexMap(
                     None => Vec::new(),
                     Some(own_idx) => {
                         let (_, stroke_color) = territory_colors.unwrap();
-                        (0..6usize).filter_map(|d| {
-                            let (dq, dr) = NEIGHBOR_OFFSETS[d];
-                            let nb_key = (q + dq, r + dr);
-                            let nb_idx = territory_mask.get(&nb_key).copied();
-                            if nb_idx != Some(own_idx) {
-                                let (ci, cj) = BORDER_CORNER_PAIRS[d];
-                                let (ax, ay) = corners[ci];
-                                let (bx, by) = corners[cj];
-                                Some(view! {
-                                    <line
-                                        x1=ax y1=ay x2=bx y2=by
-                                        stroke=stroke_color
-                                        stroke-width="2.5"
-                                        stroke-linecap="round"
-                                        pointer-events="none"
-                                    />
-                                })
-                            } else {
-                                None
-                            }
-                        }).collect::<Vec<_>>()
+                        (0..6usize)
+                            .filter_map(|d| {
+                                let (dq, dr) = NEIGHBOR_OFFSETS[d];
+                                let nb_key = (q + dq, r + dr);
+                                let nb_idx = territory_mask.get(&nb_key).copied();
+                                if nb_idx != Some(own_idx) {
+                                    let (ci, cj) = BORDER_CORNER_PAIRS[d];
+                                    let (ax, ay) = corners[ci];
+                                    let (bx, by) = corners[cj];
+                                    Some(view! {
+                                        <line
+                                            x1=ax y1=ay x2=bx y2=by
+                                            stroke=stroke_color
+                                            stroke-width="2.5"
+                                            stroke-linecap="round"
+                                            pointer-events="none"
+                                        />
+                                    })
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<_>>()
                     }
                 };
 
@@ -340,7 +346,9 @@ pub fn HexMap(
 
     // We need the dimensions for the SVG; read from the game view.
     let dims = move || {
-        game_view.get().map(|gv| svg_dimensions(gv.board.width, gv.board.height))
+        game_view
+            .get()
+            .map(|gv| svg_dimensions(gv.board.width, gv.board.height))
             .unwrap_or((800.0, 600.0))
     };
 

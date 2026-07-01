@@ -77,14 +77,19 @@ pub struct DiplomacyView {
 
 /// Build a `PlayerView` for the given civ, respecting fog of war.
 pub fn build_player_view(state: &GameState, civ_id: CivId) -> PlayerView {
-    let civ = state.civilizations.iter().find(|c| c.id == civ_id)
+    let civ = state
+        .civilizations
+        .iter()
+        .find(|c| c.id == civ_id)
         .expect("civ not found");
     let rules = libciv::DefaultRulesEngine;
     let yields = rules.compute_yields(state, civ_id);
     let score = libciv::compute_score(state, civ_id);
 
     // Own cities
-    let cities: Vec<CityView> = state.cities.iter()
+    let cities: Vec<CityView> = state
+        .cities
+        .iter()
         .filter(|c| c.owner == civ_id)
         .map(|c| CityView {
             id: format!("{:?}", c.id),
@@ -96,10 +101,14 @@ pub fn build_player_view(state: &GameState, civ_id: CivId) -> PlayerView {
         .collect();
 
     // Own units
-    let units: Vec<UnitView> = state.units.iter()
+    let units: Vec<UnitView> = state
+        .units
+        .iter()
         .filter(|u| u.owner == civ_id)
         .map(|u| {
-            let type_name = state.unit_type_defs.iter()
+            let type_name = state
+                .unit_type_defs
+                .iter()
                 .find(|d| d.id == u.unit_type)
                 .map(|d| d.name.to_string())
                 .unwrap_or_else(|| "?".to_string());
@@ -114,24 +123,40 @@ pub fn build_player_view(state: &GameState, civ_id: CivId) -> PlayerView {
         .collect();
 
     // Visible tiles
-    let visible_tiles: Vec<TileView> = civ.visible_tiles.iter()
+    let visible_tiles: Vec<TileView> = civ
+        .visible_tiles
+        .iter()
         .filter_map(|&coord| {
             let tile = state.board.tile(coord)?;
             let owner_name = tile.owner.and_then(|oid| {
-                state.civilizations.iter().find(|c| c.id == oid).map(|c| c.name.to_string())
+                state
+                    .civilizations
+                    .iter()
+                    .find(|c| c.id == oid)
+                    .map(|c| c.name.to_string())
             });
             let has_city = state.cities.iter().any(|c| c.coord == coord);
-            let tile_units: Vec<String> = state.units.iter()
+            let tile_units: Vec<String> = state
+                .units
+                .iter()
                 .filter(|u| u.coord == coord)
                 .map(|u| {
-                    let owner = state.civilizations.iter()
+                    let owner = state
+                        .civilizations
+                        .iter()
                         .find(|c| c.id == u.owner)
                         .map(|c| c.name.to_string())
                         .unwrap_or_else(|| "?".to_string());
-                    format!("{}({})", state.unit_type_defs.iter()
-                        .find(|d| d.id == u.unit_type)
-                        .map(|d| d.name)
-                        .unwrap_or("?"), owner)
+                    format!(
+                        "{}({})",
+                        state
+                            .unit_type_defs
+                            .iter()
+                            .find(|d| d.id == u.unit_type)
+                            .map(|d| d.name)
+                            .unwrap_or("?"),
+                        owner
+                    )
                 })
                 .collect();
             Some(TileView {
@@ -148,17 +173,23 @@ pub fn build_player_view(state: &GameState, civ_id: CivId) -> PlayerView {
         .collect();
 
     // Explored but not visible
-    let explored_tiles: Vec<HexCoord> = civ.explored_tiles.iter()
+    let explored_tiles: Vec<HexCoord> = civ
+        .explored_tiles
+        .iter()
         .filter(|c| !civ.visible_tiles.contains(c))
         .copied()
         .collect();
 
     // Diplomacy
-    let diplomacy: Vec<DiplomacyView> = state.diplomatic_relations.iter()
+    let diplomacy: Vec<DiplomacyView> = state
+        .diplomatic_relations
+        .iter()
         .filter(|r| r.civ_a == civ_id || r.civ_b == civ_id)
         .map(|r| {
             let other_id = if r.civ_a == civ_id { r.civ_b } else { r.civ_a };
-            let other_name = state.civilizations.iter()
+            let other_name = state
+                .civilizations
+                .iter()
                 .find(|c| c.id == other_id)
                 .map(|c| c.name.to_string())
                 .unwrap_or_else(|| "?".to_string());

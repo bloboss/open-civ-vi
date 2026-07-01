@@ -18,7 +18,6 @@
 //! the DB is reachable, e.g. from a CLI tool); only `verify` consumes
 //! the nonce.
 
-
 use std::path::{Path, PathBuf};
 
 use base64::Engine;
@@ -161,11 +160,7 @@ impl MagicLinkSigner {
 
     /// Verify a token end-to-end and consume its single-use nonce.
     /// Returns the email address embedded in the token on success.
-    pub async fn verify(
-        &self,
-        pool: &Pool<Sqlite>,
-        token: &str,
-    ) -> Result<String, MagicLinkError> {
+    pub async fn verify(&self, pool: &Pool<Sqlite>, token: &str) -> Result<String, MagicLinkError> {
         // Split + decode envelope.
         let (payload_b64, sig_b64) = token.split_once('.').ok_or(MagicLinkError::Malformed)?;
         let payload = B64
@@ -208,8 +203,7 @@ impl MagicLinkSigner {
     }
 
     fn sign(&self, payload: &[u8]) -> Vec<u8> {
-        let mut mac =
-            HmacSha256::new_from_slice(&self.key).expect("HMAC accepts any key length");
+        let mut mac = HmacSha256::new_from_slice(&self.key).expect("HMAC accepts any key length");
         mac.update(payload);
         mac.finalize().into_bytes().to_vec()
     }
@@ -337,7 +331,10 @@ mod tests {
         t.push(flipped);
         let err = s.verify(&pool, &t).await.unwrap_err();
         assert!(
-            matches!(err, MagicLinkError::BadSignature | MagicLinkError::Malformed),
+            matches!(
+                err,
+                MagicLinkError::BadSignature | MagicLinkError::Malformed
+            ),
             "got {err:?}"
         );
     }

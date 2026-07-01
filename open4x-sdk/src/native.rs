@@ -94,13 +94,16 @@ impl NativeBlockingClient {
                 .body(b.to_vec());
         }
 
-        let resp = req
-            .send()
-            .map_err(|e| ApiError::transport(format!("{method} {path}: {e}", method = method.as_str())))?;
+        let resp = req.send().map_err(|e| {
+            ApiError::transport(format!("{method} {path}: {e}", method = method.as_str()))
+        })?;
         let status = resp.status().as_u16();
-        let bytes = resp
-            .bytes()
-            .map_err(|e| ApiError::transport(format!("{method} {path}: read body: {e}", method = method.as_str())))?;
+        let bytes = resp.bytes().map_err(|e| {
+            ApiError::transport(format!(
+                "{method} {path}: read body: {e}",
+                method = method.as_str()
+            ))
+        })?;
 
         if (200..300).contains(&status) {
             Ok(bytes.to_vec())

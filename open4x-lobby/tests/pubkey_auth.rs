@@ -7,8 +7,8 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use ed25519_dalek::{Signer, SigningKey};
 use http_body_util::BodyExt;
-use open4x_lobby::server::{api_app, AppState};
-use serde_json::{json, Value};
+use open4x_lobby::server::{AppState, api_app};
+use serde_json::{Value, json};
 use tower::ServiceExt;
 
 /// POST a JSON body, optionally with a session cookie. Returns
@@ -49,7 +49,10 @@ async fn get(app: &axum::Router, path: &str, cookie: &str) -> (StatusCode, Value
     let resp = app.clone().oneshot(req).await.unwrap();
     let status = resp.status();
     let bytes = resp.into_body().collect().await.unwrap().to_bytes();
-    (status, serde_json::from_slice(&bytes).unwrap_or(Value::Null))
+    (
+        status,
+        serde_json::from_slice(&bytes).unwrap_or(Value::Null),
+    )
 }
 
 /// Extract the `lobby_session=...` pair from a Set-Cookie header for replay
@@ -61,7 +64,13 @@ fn session_cookie(set_cookie: &str) -> String {
 /// Request a fresh challenge for `pubkey_hex` and return the signed-nonce
 /// signature hex, using the given key.
 async fn challenge_and_sign(app: &axum::Router, sk: &SigningKey, pubkey_hex: &str) -> String {
-    let (st, _, body) = post(app, "/api/v1/auth/pubkey/challenge", json!({"pubkey": pubkey_hex}), None).await;
+    let (st, _, body) = post(
+        app,
+        "/api/v1/auth/pubkey/challenge",
+        json!({"pubkey": pubkey_hex}),
+        None,
+    )
+    .await;
     assert_eq!(st, StatusCode::OK, "challenge failed: {body}");
     let nonce_hex = body["nonce"].as_str().expect("nonce in challenge response");
     let nonce = hex::decode(nonce_hex).expect("hex nonce");
@@ -112,11 +121,21 @@ async fn pubkey_auth_full_flow() {
         None,
     )
     .await;
-    assert_eq!(st, StatusCode::UNAUTHORIZED, "replay should be rejected: {body}");
+    assert_eq!(
+        st,
+        StatusCode::UNAUTHORIZED,
+        "replay should be rejected: {body}"
+    );
     assert_eq!(body["error"], "no_pending_challenge");
 
     // 4. Fresh challenge, BAD signature → 401.
-    let (st, _, _) = post(&app, "/api/v1/auth/pubkey/challenge", json!({"pubkey": pubkey_hex}), None).await;
+    let (st, _, _) = post(
+        &app,
+        "/api/v1/auth/pubkey/challenge",
+        json!({"pubkey": pubkey_hex}),
+        None,
+    )
+    .await;
     assert_eq!(st, StatusCode::OK);
     let bad_sig = hex::encode(sk.sign(b"not the nonce").to_bytes());
     let (st, _, body) = post(
@@ -126,7 +145,11 @@ async fn pubkey_auth_full_flow() {
         None,
     )
     .await;
-    assert_eq!(st, StatusCode::UNAUTHORIZED, "bad sig should be rejected: {body}");
+    assert_eq!(
+        st,
+        StatusCode::UNAUTHORIZED,
+        "bad sig should be rejected: {body}"
+    );
     assert_eq!(body["error"], "bad_signature");
 
     // 5. Re-login with the same key → same account (idempotent identity).
@@ -139,7 +162,11 @@ async fn pubkey_auth_full_flow() {
     )
     .await;
     assert_eq!(st, StatusCode::OK);
-    assert_eq!(body["player_id"].as_str().unwrap(), player_id, "same key must map to same account");
+    assert_eq!(
+        body["player_id"].as_str().unwrap(),
+        player_id,
+        "same key must map to same account"
+    );
 }
 
 #[tokio::test]
@@ -148,7 +175,13 @@ async fn pubkey_challenge_rejects_malformed_key() {
     let state = AppState::boot(dir.path()).await.expect("boot");
     let app = api_app(state);
 
-    let (st, _, body) = post(&app, "/api/v1/auth/pubkey/challenge", json!({"pubkey": "abcd"}), None).await;
+    let (st, _, body) = post(
+        &app,
+        "/api/v1/auth/pubkey/challenge",
+        json!({"pubkey": "abcd"}),
+        None,
+    )
+    .await;
     assert_eq!(st, StatusCode::BAD_REQUEST);
     assert_eq!(body["error"], "invalid_pubkey");
 }

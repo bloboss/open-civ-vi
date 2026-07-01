@@ -9,7 +9,7 @@
 
 use std::path::Path;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::cli::ActionKind;
 use crate::handlers::parse_ulid;
@@ -79,10 +79,9 @@ pub fn action(server: &str, token_file: &Path, action: &ActionKind) -> Result<()
             client.post_json("/api/v1/civics/research", &json!({ "civic_id": civic_id }))?
         }
         ActionKind::CancelCivic => client.delete_json("/api/v1/civics/research")?,
-        ActionKind::AdoptGovernment { name } => client.post_json(
-            "/api/v1/government/change",
-            &json!({ "government": name }),
-        )?,
+        ActionKind::AdoptGovernment { name } => {
+            client.post_json("/api/v1/government/change", &json!({ "government": name }))?
+        }
 
         // ── City state ──────────────────────────────────────────────
         ActionKind::AssignCityFocus { city, focus } => {
@@ -119,7 +118,10 @@ fn extract_coord(unit: &Value) -> Option<(i32, i32)> {
     // on the projection — try the documented `coord` object first,
     // then fall back to flat top-level fields.
     if let Some(c) = unit.get("coord")
-        && let (Some(q), Some(r)) = (c.get("q").and_then(Value::as_i64), c.get("r").and_then(Value::as_i64))
+        && let (Some(q), Some(r)) = (
+            c.get("q").and_then(Value::as_i64),
+            c.get("r").and_then(Value::as_i64),
+        )
     {
         return Some((q as i32, r as i32));
     }
@@ -144,7 +146,9 @@ fn resolve_buildable(client: &ApiClient, name: &str) -> Result<(String, String),
         ("wonders", "wonder"),
         ("projects", "project"),
     ] {
-        let Some(arr) = registry.get(key).and_then(|v| v.as_array()) else { continue };
+        let Some(arr) = registry.get(key).and_then(|v| v.as_array()) else {
+            continue;
+        };
         for entry in arr {
             let entry_name = entry
                 .get("name")

@@ -42,7 +42,11 @@ struct BookAssets;
 /// take a `Uri` and pull the path off it ourselves.
 pub async fn spa_fallback(uri: Uri) -> Response {
     let trimmed = uri.path().trim_start_matches('/');
-    let candidate = if trimmed.is_empty() { "index.html" } else { trimmed };
+    let candidate = if trimmed.is_empty() {
+        "index.html"
+    } else {
+        trimmed
+    };
     if let Some(file) = SpaAssets::get(candidate) {
         return embedded_response(candidate, file);
     }
@@ -51,7 +55,10 @@ pub async fn spa_fallback(uri: Uri) -> Response {
     if let Some(file) = SpaAssets::get("index.html") {
         return embedded_response("index.html", file);
     }
-    (StatusCode::NOT_FOUND, "Lobby SPA not embedded — build with `trunk build` first.")
+    (
+        StatusCode::NOT_FOUND,
+        "Lobby SPA not embedded — build with `trunk build` first.",
+    )
         .into_response()
 }
 

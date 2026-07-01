@@ -1,6 +1,6 @@
 mod common;
 
-use common::{build_scenario, advance_turn};
+use common::{advance_turn, build_scenario};
 
 #[test]
 fn congress_session_fires_at_interval() {
@@ -27,11 +27,17 @@ fn congress_session_fires_at_interval() {
 fn winner_gets_diplomatic_vp() {
     let mut s = build_scenario();
     // Give Rome more diplomatic favor than Babylon.
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.rome_id).unwrap()
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.rome_id)
+        .unwrap()
         .diplomatic_favor = 100;
-    s.state.civilizations.iter_mut()
-        .find(|c| c.id == s.babylon_id).unwrap()
+    s.state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == s.babylon_id)
+        .unwrap()
         .diplomatic_favor = 10;
 
     // Set session to fire on next turn.
@@ -40,13 +46,26 @@ fn winner_gets_diplomatic_vp() {
     advance_turn(&mut s);
 
     // Rome should have 1 VP.
-    let rome_vp = s.state.world_congress.diplomatic_victory_points
-        .get(&s.rome_id).copied().unwrap_or(0);
-    assert_eq!(rome_vp, 1, "Rome (highest favor) should earn 1 diplomatic VP");
+    let rome_vp = s
+        .state
+        .world_congress
+        .diplomatic_victory_points
+        .get(&s.rome_id)
+        .copied()
+        .unwrap_or(0);
+    assert_eq!(
+        rome_vp, 1,
+        "Rome (highest favor) should earn 1 diplomatic VP"
+    );
 
     // Babylon should have 0 VP.
-    let babylon_vp = s.state.world_congress.diplomatic_victory_points
-        .get(&s.babylon_id).copied().unwrap_or(0);
+    let babylon_vp = s
+        .state
+        .world_congress
+        .diplomatic_victory_points
+        .get(&s.babylon_id)
+        .copied()
+        .unwrap_or(0);
     assert_eq!(babylon_vp, 0, "Babylon should have 0 diplomatic VP");
 }
 

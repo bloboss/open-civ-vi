@@ -24,11 +24,11 @@ use super::zones::EcoZone;
 // ---------------------------------------------------------------------------
 
 pub fn generate(
-    config:        &MapGenConfig,
-    board:         &mut WorldBoard,
-    zone_map:      &HashMap<HexCoord, EcoZone>,
+    config: &MapGenConfig,
+    board: &mut WorldBoard,
+    zone_map: &HashMap<HexCoord, EcoZone>,
     continent_map: &HashMap<HexCoord, ContinentId>,
-    rng:           &mut SmallRng,
+    rng: &mut SmallRng,
 ) {
     step_a_base_terrain(board, zone_map, rng);
     step_b_mountain_ranges(config, board, zone_map, continent_map, rng);
@@ -41,14 +41,16 @@ pub fn generate(
 // ---------------------------------------------------------------------------
 
 fn step_a_base_terrain(
-    board:    &mut WorldBoard,
+    board: &mut WorldBoard,
     zone_map: &HashMap<HexCoord, EcoZone>,
-    rng:      &mut SmallRng,
+    rng: &mut SmallRng,
 ) {
     let all_coords: Vec<HexCoord> = board.all_coords();
 
     for coord in all_coords {
-        let Some(tile) = board.tile(coord) else { continue };
+        let Some(tile) = board.tile(coord) else {
+            continue;
+        };
 
         // Leave ocean / coast terrain as-is; only rewrite land tiles.
         if !is_land(tile.terrain) {
@@ -57,19 +59,28 @@ fn step_a_base_terrain(
 
         let zone = zone_map.get(&coord).copied().unwrap_or(EcoZone::Temperate);
         let terrain = match zone {
-            EcoZone::Polar    => BuiltinTerrain::Snow,
-            EcoZone::Tundra   => BuiltinTerrain::Tundra,
+            EcoZone::Polar => BuiltinTerrain::Snow,
+            EcoZone::Tundra => BuiltinTerrain::Tundra,
             EcoZone::Temperate => {
-                if rng.random::<f32>() < 0.60 { BuiltinTerrain::Grassland }
-                else                           { BuiltinTerrain::Plains    }
+                if rng.random::<f32>() < 0.60 {
+                    BuiltinTerrain::Grassland
+                } else {
+                    BuiltinTerrain::Plains
+                }
             }
             EcoZone::Desert => {
-                if rng.random::<f32>() < 0.90 { BuiltinTerrain::Desert }
-                else                           { BuiltinTerrain::Plains }
+                if rng.random::<f32>() < 0.90 {
+                    BuiltinTerrain::Desert
+                } else {
+                    BuiltinTerrain::Plains
+                }
             }
             EcoZone::Tropical => {
-                if rng.random::<f32>() < 0.70 { BuiltinTerrain::Grassland }
-                else                           { BuiltinTerrain::Plains    }
+                if rng.random::<f32>() < 0.70 {
+                    BuiltinTerrain::Grassland
+                } else {
+                    BuiltinTerrain::Plains
+                }
             }
         };
 
@@ -83,7 +94,10 @@ fn step_a_base_terrain(
         .all_coords()
         .into_iter()
         .filter(|c| {
-            board.tile(*c).map(|t| t.terrain == BuiltinTerrain::Coast).unwrap_or(false)
+            board
+                .tile(*c)
+                .map(|t| t.terrain == BuiltinTerrain::Coast)
+                .unwrap_or(false)
         })
         .collect();
 
@@ -91,11 +105,15 @@ fn step_a_base_terrain(
         let zone = zone_map.get(&coord).copied().unwrap_or(EcoZone::Temperate);
         let p: f32 = rng.random();
         match zone {
-            EcoZone::Polar    if p < 0.40 => {
-                if let Some(t) = board.tile_mut(coord) { t.feature = Some(BuiltinFeature::Ice); }
+            EcoZone::Polar if p < 0.40 => {
+                if let Some(t) = board.tile_mut(coord) {
+                    t.feature = Some(BuiltinFeature::Ice);
+                }
             }
             EcoZone::Tropical if p < 0.25 => {
-                if let Some(t) = board.tile_mut(coord) { t.feature = Some(BuiltinFeature::Reef); }
+                if let Some(t) = board.tile_mut(coord) {
+                    t.feature = Some(BuiltinFeature::Reef);
+                }
             }
             _ => {}
         }
@@ -107,11 +125,11 @@ fn step_a_base_terrain(
 // ---------------------------------------------------------------------------
 
 fn step_b_mountain_ranges(
-    config:        &MapGenConfig,
-    board:         &mut WorldBoard,
-    zone_map:      &HashMap<HexCoord, EcoZone>,
+    config: &MapGenConfig,
+    board: &mut WorldBoard,
+    zone_map: &HashMap<HexCoord, EcoZone>,
     continent_map: &HashMap<HexCoord, ContinentId>,
-    rng:           &mut SmallRng,
+    rng: &mut SmallRng,
 ) {
     // Group land tiles by continent; sort tile lists for deterministic RNG consumption.
     let mut by_continent: HashMap<ContinentId, Vec<HexCoord>> = HashMap::new();
@@ -135,7 +153,7 @@ fn step_b_mountain_ranges(
     for (_, land_tiles) in &continent_entries {
         let size = land_tiles.len();
         let range_count: usize = match size {
-            0..=39  => 0,
+            0..=39 => 0,
             40..=120 => 1,
             121..=300 => 2,
             _ => 3,
@@ -148,9 +166,7 @@ fn step_b_mountain_ranges(
         // Approximate diagonal of this continent's bounding box.
         let (min_q, max_q, min_r, max_r) = land_tiles.iter().fold(
             (i32::MAX, i32::MIN, i32::MAX, i32::MIN),
-            |(miq, maq, mir, mar), c| {
-                (miq.min(c.q), maq.max(c.q), mir.min(c.r), mar.max(c.r))
-            },
+            |(miq, maq, mir, mar), c| (miq.min(c.q), maq.max(c.q), mir.min(c.r), mar.max(c.r)),
         );
         let diag = (((max_q - min_q) as f32).powi(2) + ((max_r - min_r) as f32).powi(2)).sqrt();
         let diag = diag.max(4.0);
@@ -159,8 +175,7 @@ fn step_b_mountain_ranges(
         let boundary_set: HashSet<HexCoord> = land_tiles
             .iter()
             .filter(|&&coord| {
-                cross_zone_count(coord, zone_map, board) >= 1
-                    && coast_distance(coord, board) >= 4
+                cross_zone_count(coord, zone_map, board) >= 1 && coast_distance(coord, board) >= 4
             })
             .copied()
             .collect();
@@ -182,7 +197,11 @@ fn step_b_mountain_ranges(
                     .copied()
                     .collect();
 
-                let candidates = if !preferred.is_empty() { &preferred } else { &interior };
+                let candidates = if !preferred.is_empty() {
+                    &preferred
+                } else {
+                    &interior
+                };
                 if candidates.is_empty() {
                     continue;
                 }
@@ -223,16 +242,21 @@ fn step_b_mountain_ranges(
             for &coord in &spine {
                 if let Some(tile) = board.tile_mut(coord) {
                     tile.terrain = BuiltinTerrain::Mountain;
-                    tile.hills   = false;
+                    tile.hills = false;
                 }
             }
 
             // Set adjacent land tiles to hills.
             for &coord in &spine {
                 for neighbor in board.neighbors(coord) {
-                    if !land_set.contains(&neighbor) { continue; }
+                    if !land_set.contains(&neighbor) {
+                        continue;
+                    }
                     if let Some(tile) = board.tile(neighbor)
-                        && tile.terrain == BuiltinTerrain::Mountain { continue; }
+                        && tile.terrain == BuiltinTerrain::Mountain
+                    {
+                        continue;
+                    }
                     if let Some(tile) = board.tile_mut(neighbor) {
                         tile.hills = true;
                     }
@@ -249,29 +273,37 @@ fn step_b_mountain_ranges(
         .collect();
 
     let accent_pairs: &[(EcoZone, EcoZone, f32)] = &[
-        (EcoZone::Temperate, EcoZone::Desert,  0.12),
-        (EcoZone::Desert,    EcoZone::Tropical, 0.08),
-        (EcoZone::Tundra,    EcoZone::Temperate, 0.06),
+        (EcoZone::Temperate, EcoZone::Desert, 0.12),
+        (EcoZone::Desert, EcoZone::Tropical, 0.08),
+        (EcoZone::Tundra, EcoZone::Temperate, 0.06),
     ];
 
     for &coord in &land_coords {
-        let Some(tile) = board.tile(coord) else { continue };
-        if tile.terrain == BuiltinTerrain::Mountain { continue; }
+        let Some(tile) = board.tile(coord) else {
+            continue;
+        };
+        if tile.terrain == BuiltinTerrain::Mountain {
+            continue;
+        }
 
         let zone = zone_map.get(&coord).copied().unwrap_or(EcoZone::Temperate);
 
         for &(za, zb, prob) in accent_pairs {
-            if zone != za && zone != zb { continue; }
+            if zone != za && zone != zb {
+                continue;
+            }
 
             let neighbor_has_other = board.neighbors(coord).iter().any(|n| {
                 let nz = zone_map.get(n).copied().unwrap_or(EcoZone::Temperate);
                 (zone == za && nz == zb) || (zone == zb && nz == za)
             });
 
-            if neighbor_has_other && rng.random::<f32>() < prob
-                && let Some(tile) = board.tile_mut(coord) {
+            if neighbor_has_other
+                && rng.random::<f32>() < prob
+                && let Some(tile) = board.tile_mut(coord)
+            {
                 tile.terrain = BuiltinTerrain::Mountain;
-                tile.hills   = false;
+                tile.hills = false;
             }
         }
     }
@@ -282,9 +314,9 @@ fn step_b_mountain_ranges(
 // ---------------------------------------------------------------------------
 
 fn step_c_hill_scatter(
-    board:    &mut WorldBoard,
+    board: &mut WorldBoard,
     zone_map: &HashMap<HexCoord, EcoZone>,
-    rng:      &mut SmallRng,
+    rng: &mut SmallRng,
 ) {
     let land_coords: Vec<HexCoord> = board
         .all_coords()
@@ -293,14 +325,19 @@ fn step_c_hill_scatter(
         .collect();
 
     for &coord in &land_coords {
-        let Some(tile) = board.tile(coord) else { continue };
-        if tile.terrain == BuiltinTerrain::Mountain || tile.hills { continue; }
+        let Some(tile) = board.tile(coord) else {
+            continue;
+        };
+        if tile.terrain == BuiltinTerrain::Mountain || tile.hills {
+            continue;
+        }
 
         let cross = cross_zone_count(coord, zone_map, board) as f32 / 6.0;
-        let p     = 0.30 * cross + 0.06;
+        let p = 0.30 * cross + 0.06;
 
         if rng.random::<f32>() < p
-            && let Some(tile) = board.tile_mut(coord) {
+            && let Some(tile) = board.tile_mut(coord)
+        {
             tile.hills = true;
         }
     }
@@ -311,9 +348,9 @@ fn step_c_hill_scatter(
 // ---------------------------------------------------------------------------
 
 fn step_d_interior_features(
-    board:    &mut WorldBoard,
+    board: &mut WorldBoard,
     zone_map: &HashMap<HexCoord, EcoZone>,
-    rng:      &mut SmallRng,
+    rng: &mut SmallRng,
 ) {
     let all_coords: Vec<HexCoord> = board.all_coords();
 
@@ -322,14 +359,20 @@ fn step_d_interior_features(
     let mut oasis_placed: Vec<HexCoord> = Vec::new();
 
     for &coord in &all_coords {
-        let Some(tile) = board.tile(coord) else { continue };
+        let Some(tile) = board.tile(coord) else {
+            continue;
+        };
 
         // Skip mountain, existing feature, water.
-        if tile.terrain == BuiltinTerrain::Mountain { continue; }
-        if tile.feature.is_some() { continue; }
+        if tile.terrain == BuiltinTerrain::Mountain {
+            continue;
+        }
+        if tile.feature.is_some() {
+            continue;
+        }
 
         let is_water = matches!(tile.terrain, BuiltinTerrain::Ocean | BuiltinTerrain::Coast);
-        let zone     = zone_map.get(&coord).copied().unwrap_or(EcoZone::Temperate);
+        let zone = zone_map.get(&coord).copied().unwrap_or(EcoZone::Temperate);
 
         if is_water {
             // Coastal ocean features already handled in step_a.
@@ -337,9 +380,10 @@ fn step_d_interior_features(
         }
 
         // Is this tile adjacent to coast?
-        let coast_adjacent = board.neighbors(coord).iter().any(|n| {
-            board.tile(*n).map(|t| !is_land(t.terrain)).unwrap_or(false)
-        });
+        let coast_adjacent = board
+            .neighbors(coord)
+            .iter()
+            .any(|n| board.tile(*n).map(|t| !is_land(t.terrain)).unwrap_or(false));
 
         let r: f32 = rng.random();
         match zone {
@@ -388,9 +432,9 @@ pub fn is_land(terrain: BuiltinTerrain) -> bool {
 
 /// Count how many neighbors of `coord` are in a different EcoZone.
 fn cross_zone_count(
-    coord:    HexCoord,
+    coord: HexCoord,
     zone_map: &HashMap<HexCoord, EcoZone>,
-    board:    &WorldBoard,
+    board: &WorldBoard,
 ) -> usize {
     let zone = zone_map.get(&coord).copied().unwrap_or(EcoZone::Temperate);
     board
@@ -410,7 +454,11 @@ fn coast_distance(coord: HexCoord, board: &WorldBoard) -> usize {
         };
         for c in ring_tiles {
             if let Some(norm) = board.normalize(c)
-                && board.tile(norm).map(|t| !is_land(t.terrain)).unwrap_or(false) {
+                && board
+                    .tile(norm)
+                    .map(|t| !is_land(t.terrain))
+                    .unwrap_or(false)
+            {
                 return dist;
             }
         }
@@ -421,7 +469,7 @@ fn coast_distance(coord: HexCoord, board: &WorldBoard) -> usize {
 /// Turn a HexDir by +-60 degrees.
 fn turn_dir(dir: HexDir, clockwise: bool) -> HexDir {
     let dirs = HexDir::ALL;
-    let idx  = dirs.iter().position(|&d| d == dir).unwrap_or(0);
+    let idx = dirs.iter().position(|&d| d == dir).unwrap_or(0);
     if clockwise {
         dirs[(idx + 1) % 6]
     } else {

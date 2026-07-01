@@ -1,17 +1,21 @@
 //! Great people handlers: `retire_great_person`, `create_great_work`, `recruit_great_person`,
 //! `great_person_cs_bonus`.
 
-use crate::{CivId, GreatPersonId, GreatPersonType};
 use crate::rules::modifier::EffectType;
+use crate::{CivId, GreatPersonId, GreatPersonType};
 
-use super::RulesError;
 use super::super::diff::{GameStateDiff, StateDelta};
 use super::super::state::GameState;
+use super::RulesError;
 
 /// Sum combat strength bonuses from retired great persons for a given civ and
 /// unit domain. Returns the total flat CS bonus.
 #[allow(dead_code)]
-pub(crate) fn great_person_cs_bonus(state: &GameState, civ_id: CivId, domain: crate::UnitDomain) -> u32 {
+pub(crate) fn great_person_cs_bonus(
+    state: &GameState,
+    civ_id: CivId,
+    domain: crate::UnitDomain,
+) -> u32 {
     let civ = match state.civ(civ_id) {
         Some(c) => c,
         None => return 0,
@@ -24,9 +28,7 @@ pub(crate) fn great_person_cs_bonus(state: &GameState, civ_id: CivId, domain: cr
             crate::rules::modifier::TargetSelector::Global => true,
             _ => false,
         };
-        if domain_matches
-            && let EffectType::CombatStrengthFlat(v) = m.effect
-        {
+        if domain_matches && let EffectType::CombatStrengthFlat(v) = m.effect {
             total += v;
         }
     }
@@ -41,7 +43,10 @@ pub(crate) fn retire_great_person(
     use crate::civ::great_people::RetireEffect;
     use crate::rules::modifier::{Modifier, ModifierSource, TargetSelector};
 
-    let gp_idx = state.great_people.iter().position(|gp| gp.id == great_person_id)
+    let gp_idx = state
+        .great_people
+        .iter()
+        .position(|gp| gp.id == great_person_id)
         .ok_or(RulesError::GreatPersonNotFound)?;
 
     if state.great_people[gp_idx].is_retired {
@@ -49,15 +54,20 @@ pub(crate) fn retire_great_person(
     }
 
     let gp_name = state.great_people[gp_idx].name;
-    let gp_owner = state.great_people[gp_idx].owner
+    let gp_owner = state.great_people[gp_idx]
+        .owner
         .ok_or(RulesError::GreatPersonNotFound)?;
-    let gp_coord = state.great_people[gp_idx].coord
+    let gp_coord = state.great_people[gp_idx]
+        .coord
         .ok_or(RulesError::GreatPersonNotFound)?;
 
-    let retire_effect = state.great_person_defs.iter()
+    let retire_effect = state
+        .great_person_defs
+        .iter()
         .find(|d| d.name == gp_name)
         .ok_or(RulesError::GreatPersonDefNotFound)?
-        .retire_effect.clone();
+        .retire_effect
+        .clone();
 
     let mut diff = GameStateDiff::new();
 
@@ -69,13 +79,17 @@ pub(crate) fn retire_great_person(
                 EffectType::CombatStrengthFlat(bonus),
                 crate::rules::modifier::StackingRule::Additive,
             );
-            let civ = state.civilizations.iter_mut()
+            let civ = state
+                .civilizations
+                .iter_mut()
                 .find(|c| c.id == gp_owner)
                 .ok_or(RulesError::CivNotFound)?;
             civ.great_person_modifiers.push(modifier);
         }
         RetireEffect::ProductionBurst { amount } => {
-            let nearest_city_idx = state.cities.iter()
+            let nearest_city_idx = state
+                .cities
+                .iter()
                 .enumerate()
                 .filter(|(_, c)| c.owner == gp_owner)
                 .min_by_key(|(_, c)| gp_coord.distance(&c.coord))
@@ -89,7 +103,9 @@ pub(crate) fn retire_great_person(
             });
         }
         RetireEffect::GoldGrant { amount } => {
-            let civ = state.civilizations.iter_mut()
+            let civ = state
+                .civilizations
+                .iter_mut()
                 .find(|c| c.id == gp_owner)
                 .ok_or(RulesError::CivNotFound)?;
             civ.gold += amount as i32;
@@ -123,7 +139,9 @@ pub(crate) fn create_great_work(
 ) -> Result<GameStateDiff, RulesError> {
     use crate::civ::great_works::{GreatWork, GreatWorkType};
 
-    let gp = state.great_people.iter()
+    let gp = state
+        .great_people
+        .iter()
         .find(|gp| gp.id == great_person_id)
         .ok_or(RulesError::GreatPersonNotFound)?;
     if gp.is_retired || gp.owner.is_none() {
@@ -132,8 +150,8 @@ pub(crate) fn create_great_work(
     let civ_id = gp.owner.unwrap();
 
     let work_type = match gp.person_type {
-        GreatPersonType::Writer  => GreatWorkType::Writing,
-        GreatPersonType::Artist  => GreatWorkType::Art,
+        GreatPersonType::Writer => GreatWorkType::Writing,
+        GreatPersonType::Artist => GreatWorkType::Art,
         GreatPersonType::Musician => GreatWorkType::Music,
         _ => return Err(RulesError::InvalidGreatPersonType),
     };
@@ -141,16 +159,22 @@ pub(crate) fn create_great_work(
     let gp_name = gp.name;
 
     let (tourism, culture) = match work_type {
-        GreatWorkType::Writing  => (2, 2),
-        GreatWorkType::Art      => (3, 3),
-        GreatWorkType::Music    => (4, 4),
-        GreatWorkType::Relic    => (8, 4),
+        GreatWorkType::Writing => (2, 2),
+        GreatWorkType::Art => (3, 3),
+        GreatWorkType::Music => (4, 4),
+        GreatWorkType::Relic => (8, 4),
         GreatWorkType::Artifact => (3, 0),
     };
 
-    let slot_city = state.cities.iter()
+    let slot_city = state
+        .cities
+        .iter()
         .filter(|c| c.owner == civ_id)
-        .find(|c| c.great_work_slots.iter().any(|s| s.is_empty() && s.slot_type.accepts(work_type)))
+        .find(|c| {
+            c.great_work_slots
+                .iter()
+                .any(|s| s.is_empty() && s.slot_type.accepts(work_type))
+        })
         .map(|c| c.id);
 
     let city_id = slot_city.ok_or(RulesError::NoGreatWorkSlot)?;
@@ -166,18 +190,28 @@ pub(crate) fn create_great_work(
     });
 
     if let Some(city) = state.cities.iter_mut().find(|c| c.id == city_id)
-        && let Some(slot) = city.great_work_slots.iter_mut()
+        && let Some(slot) = city
+            .great_work_slots
+            .iter_mut()
             .find(|s| s.is_empty() && s.slot_type.accepts(work_type))
     {
         slot.work = Some(work_id);
     }
 
-    if let Some(gp) = state.great_people.iter_mut().find(|gp| gp.id == great_person_id) {
+    if let Some(gp) = state
+        .great_people
+        .iter_mut()
+        .find(|gp| gp.id == great_person_id)
+    {
         gp.is_retired = true;
     }
 
     let mut diff = GameStateDiff::new();
-    diff.push(StateDelta::GreatWorkCreated { civ: civ_id, work_name: gp_name, city: city_id });
+    diff.push(StateDelta::GreatWorkCreated {
+        civ: civ_id,
+        work_name: gp_name,
+        city: city_id,
+    });
     Ok(diff)
 }
 
@@ -188,8 +222,8 @@ pub(crate) fn recruit_great_person_with_faith(
     person_type: GreatPersonType,
 ) -> Result<GameStateDiff, RulesError> {
     use crate::civ::great_people::{
-        recruitment_threshold, next_candidate_name, spawn_great_person,
-        GP_PATRONAGE_FAITH_PER_POINT,
+        GP_PATRONAGE_FAITH_PER_POINT, next_candidate_name, recruitment_threshold,
+        spawn_great_person,
     };
 
     if person_type != GreatPersonType::Prophet {
@@ -198,10 +232,14 @@ pub(crate) fn recruit_great_person_with_faith(
 
     let civ = state.civ(civ_id).ok_or(RulesError::CivNotFound)?;
 
-    let def_name = next_candidate_name(person_type, state)
-        .ok_or(RulesError::NoGreatPersonAvailable)?;
+    let def_name =
+        next_candidate_name(person_type, state).ok_or(RulesError::NoGreatPersonAvailable)?;
 
-    let current_points = civ.great_person_points.get(&person_type).copied().unwrap_or(0);
+    let current_points = civ
+        .great_person_points
+        .get(&person_type)
+        .copied()
+        .unwrap_or(0);
     let threshold = recruitment_threshold(person_type, state);
     let points_needed = threshold.saturating_sub(current_points);
     let faith_cost = points_needed * GP_PATRONAGE_FAITH_PER_POINT;
@@ -210,14 +248,19 @@ pub(crate) fn recruit_great_person_with_faith(
         return Err(RulesError::InsufficientFaith);
     }
 
-    let spawn_coord = state.cities.iter()
+    let spawn_coord = state
+        .cities
+        .iter()
         .find(|c| c.owner == civ_id && c.is_capital)
         .or_else(|| state.cities.iter().find(|c| c.owner == civ_id))
         .map(|c| c.coord)
         .ok_or(RulesError::CityNotFound)?;
 
-    let civ = state.civilizations.iter_mut()
-        .find(|c| c.id == civ_id).unwrap();
+    let civ = state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == civ_id)
+        .unwrap();
     civ.faith -= faith_cost;
     civ.great_person_points.insert(person_type, 0);
 
@@ -225,7 +268,10 @@ pub(crate) fn recruit_great_person_with_faith(
 
     let mut diff = GameStateDiff::new();
     if faith_cost > 0 {
-        diff.push(StateDelta::FaithChanged { civ: civ_id, delta: -(faith_cost as i32) });
+        diff.push(StateDelta::FaithChanged {
+            civ: civ_id,
+            delta: -(faith_cost as i32),
+        });
     }
     diff.push(StateDelta::GreatPersonPatronizedWithFaith {
         great_person: gp_id,
@@ -242,16 +288,19 @@ pub(crate) fn recruit_great_person(
     person_type: GreatPersonType,
 ) -> Result<GameStateDiff, RulesError> {
     use crate::civ::great_people::{
-        recruitment_threshold, next_candidate_name, spawn_great_person,
-        GP_PATRONAGE_GOLD_PER_POINT,
+        GP_PATRONAGE_GOLD_PER_POINT, next_candidate_name, recruitment_threshold, spawn_great_person,
     };
 
     let civ = state.civ(civ_id).ok_or(RulesError::CivNotFound)?;
 
-    let def_name = next_candidate_name(person_type, state)
-        .ok_or(RulesError::NoGreatPersonAvailable)?;
+    let def_name =
+        next_candidate_name(person_type, state).ok_or(RulesError::NoGreatPersonAvailable)?;
 
-    let current_points = civ.great_person_points.get(&person_type).copied().unwrap_or(0);
+    let current_points = civ
+        .great_person_points
+        .get(&person_type)
+        .copied()
+        .unwrap_or(0);
     let threshold = recruitment_threshold(person_type, state);
     let points_needed = threshold.saturating_sub(current_points);
     let gold_cost = points_needed * GP_PATRONAGE_GOLD_PER_POINT;
@@ -261,14 +310,19 @@ pub(crate) fn recruit_great_person(
         return Err(RulesError::InsufficientGold);
     }
 
-    let spawn_coord = state.cities.iter()
+    let spawn_coord = state
+        .cities
+        .iter()
         .find(|c| c.owner == civ_id && c.is_capital)
         .or_else(|| state.cities.iter().find(|c| c.owner == civ_id))
         .map(|c| c.coord)
         .ok_or(RulesError::CityNotFound)?;
 
-    let civ = state.civilizations.iter_mut()
-        .find(|c| c.id == civ_id).unwrap();
+    let civ = state
+        .civilizations
+        .iter_mut()
+        .find(|c| c.id == civ_id)
+        .unwrap();
     civ.gold -= gold_cost_signed;
     civ.great_person_points.insert(person_type, 0);
 
@@ -276,7 +330,10 @@ pub(crate) fn recruit_great_person(
 
     let mut diff = GameStateDiff::new();
     if gold_cost > 0 {
-        diff.push(StateDelta::GoldChanged { civ: civ_id, delta: -gold_cost_signed });
+        diff.push(StateDelta::GoldChanged {
+            civ: civ_id,
+            delta: -gold_cost_signed,
+        });
     }
     diff.push(StateDelta::GreatPersonPatronized {
         great_person: gp_id,

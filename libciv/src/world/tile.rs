@@ -78,9 +78,9 @@ impl WorldTile {
         // Feature bonuses.
         if let Some(feat) = self.feature {
             bonus += match feat {
-                super::feature::BuiltinFeature::Forest     => 3,
+                super::feature::BuiltinFeature::Forest => 3,
                 super::feature::BuiltinFeature::Rainforest => 3,
-                super::feature::BuiltinFeature::Marsh      => -2,
+                super::feature::BuiltinFeature::Marsh => -2,
                 _ => 0,
             };
         }
@@ -131,7 +131,7 @@ impl HexTile for WorldTile {
         if self.hills {
             match base {
                 Elevation::Level(n) => Elevation::Level(n + 1),
-                other => other,  // High stays High, Low stays Low
+                other => other, // High stays High, Low stays Low
             }
         } else {
             base
@@ -161,7 +161,7 @@ impl HexTile for WorldTile {
 
     fn vision_bonus(&self) -> Vision {
         match self.elevation() {
-            Elevation::Level(e) if e >= 2 => Vision::Radius(1),  // hills = Level(2)+
+            Elevation::Level(e) if e >= 2 => Vision::Radius(1), // hills = Level(2)+
             Elevation::High => Vision::Radius(1),
             _ => Vision::Radius(0),
         }
@@ -221,7 +221,7 @@ mod tests {
         use crate::world::resource::BuiltinResource;
         let mut tile = WorldTile::new(HexCoord::from_qr(0, 0), BuiltinTerrain::Grassland);
         tile.improvement = Some(BuiltinImprovement::Farm);
-        tile.resource    = Some(BuiltinResource::Wheat);
+        tile.resource = Some(BuiltinResource::Wheat);
         // Grassland 2 + Farm 1 + Wheat 1 = 4 food
         assert_eq!(tile.total_yields().food, 4);
     }

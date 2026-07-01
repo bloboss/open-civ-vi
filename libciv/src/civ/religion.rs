@@ -1,6 +1,6 @@
-use crate::{BeliefId, CivId, ReligionId};
-use crate::rules::modifier::Modifier;
 use super::city::City;
+use crate::rules::modifier::Modifier;
+use crate::{BeliefId, CivId, ReligionId};
 
 // ── Belief categories ────────────────────────────────────────────────────────
 
@@ -65,7 +65,8 @@ impl Religion {
 
     /// Compute total followers by querying all cities (source of truth is City).
     pub fn total_followers(&self, cities: &[City]) -> u32 {
-        cities.iter()
+        cities
+            .iter()
             .filter_map(|c| c.religious_followers.get(&self.id))
             .sum()
     }
@@ -73,13 +74,16 @@ impl Religion {
     /// Check enhancement status by querying belief definitions.
     pub fn is_enhanced(&self, belief_defs: &[BuiltinBelief]) -> bool {
         self.beliefs.iter().any(|bid| {
-            belief_defs.iter().any(|def| def.id == *bid && def.category == BeliefCategory::Enhancer)
+            belief_defs
+                .iter()
+                .any(|def| def.id == *bid && def.category == BeliefCategory::Enhancer)
         })
     }
 
     /// Collect all cities where this religion is the majority.
     pub fn majority_cities(&self, cities: &[City]) -> Vec<crate::CityId> {
-        cities.iter()
+        cities
+            .iter()
             .filter(|c| c.majority_religion() == Some(self.id))
             .map(|c| c.id)
             .collect()
@@ -95,14 +99,16 @@ impl Religion {
 
 /// Build the built-in belief definitions with deterministic IDs.
 /// Returns (beliefs_vec, named_refs) — same pattern as `build_tech_tree`.
-pub fn build_beliefs(ids: &mut crate::game::state::IdGenerator) -> (Vec<BuiltinBelief>, BeliefRefs) {
-    use crate::rules::modifier::*;
+pub fn build_beliefs(
+    ids: &mut crate::game::state::IdGenerator,
+) -> (Vec<BuiltinBelief>, BeliefRefs) {
+    use crate::ResourceCategory;
+    use crate::YieldType;
     use crate::civ::district::BuiltinDistrict;
+    use crate::rules::modifier::*;
     use crate::world::feature::BuiltinFeature;
     use crate::world::improvement::BuiltinImprovement;
     use crate::world::terrain::BuiltinTerrain;
-    use crate::ResourceCategory;
-    use crate::YieldType;
 
     let mut beliefs: Vec<BuiltinBelief> = Vec::new();
 
