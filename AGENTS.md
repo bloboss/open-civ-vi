@@ -227,7 +227,38 @@ libciv/tests/
 
 Use **`but`** (GitButler) for ongoing work — see [`agents/skills/gitbutler/SKILL.md`](./agents/skills/gitbutler/SKILL.md). `jj` use is suspended for the duration of the crate-split / GitButler-workflow window; revisit after the migration settles. Never run `git` write commands (`git add`, `git commit`, `git push`, `git stash`, `git checkout`, `git merge`, `git rebase`); translate to the matching `but` command. Read-only git inspection (`git status`, `git log`, `git diff --stat`) is fine.
 
-Commit style: conventional commits -- `infra:`, `impl:`, `fix:`, `tests:`, `docs:`, `chore:`.
+Commit style: **Conventional Commits with a MANDATORY scope** —
+`type(scope): subject`. Allowed `type` values are listed in
+[`TAGS.md`](./TAGS.md) and allowed `scope` values in
+[`SCOPES.md`](./SCOPES.md); both are machine-readable and enforced by
+the `commit-msg` hook (`.githooks/commit-msg`, run via pre-commit). A
+scopeless message (`fix: …`) is rejected. Breaking changes use
+`type(scope)!: …`.
+
+### Dev environment & pre-commit hooks
+
+Lint/format tooling is orchestrated by [pre-commit](https://pre-commit.com),
+with the Python side (pre-commit, codespell, black) pinned in this repo's
+**uv** project (`pyproject.toml` / `uv.lock`). One-time setup per clone:
+
+```bash
+uv sync                    # install the pinned Python tooling into .venv
+uv run pre-commit install  # wire pre-commit, commit-msg, and pre-push hooks
+```
+
+What runs when (see [`.pre-commit-config.yaml`](./.pre-commit-config.yaml)):
+
+| stage | hooks |
+|-------|-------|
+| commit | `rustfmt --check` (changed `.rs` only), `codespell`, `black` (Python) |
+| commit-msg | conventional-commit `type(scope): subject` validation |
+| push | `cargo clippy --workspace --all-targets` (compiles the tree) |
+
+rustfmt/codespell scan only the files in the commit, so they were
+introduced without a mass-reformat of the legacy tree; run
+`cargo fmt --all` yourself if you want to normalise a crate. `black`
+targets Python helper scripts (edition 2024 Rust is formatted by
+rustfmt).
 
 ### WASM frontend
 

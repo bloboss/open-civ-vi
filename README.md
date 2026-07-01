@@ -68,3 +68,22 @@ See the [Implementation Roadmap](./book/src/roadmap/status.md) for detailed stat
 ## License & Contributing
 
 Contributions are welcome -- see the roadmap for areas that need work.
+
+### Development setup
+
+Lint/format tooling runs through [pre-commit](https://pre-commit.com);
+the Python-side tools are pinned in a [uv](https://docs.astral.sh/uv/)
+project (`pyproject.toml` / `uv.lock`). One-time setup:
+
+```bash
+uv sync                    # pinned Python tooling (pre-commit, codespell, black)
+uv run pre-commit install  # install pre-commit, commit-msg, and pre-push hooks
+```
+
+- **commit**: `rustfmt --check` (changed files), `codespell`, `black`
+- **commit-msg**: Conventional Commits with a **mandatory scope** —
+  `type(scope): subject`, validated against [`TAGS.md`](./TAGS.md) and
+  [`SCOPES.md`](./SCOPES.md)
+- **push**: `cargo clippy --workspace --all-targets`
+
+See [AGENTS.md](./AGENTS.md) for the full contributor conventions.
