@@ -16,3 +16,9 @@ open4x-client-js/dist/
 open4x-client-js/node_modules/
 # Autonomous dev-loop working state (counter / features / log).
 .dev-loop/
+# uv / Python dev-tooling project (see pyproject.toml). Lockfile is
+# tracked; the virtualenv and caches are not.
+.venv/
+__pycache__/
+*.pyc
+.ruff_cache/

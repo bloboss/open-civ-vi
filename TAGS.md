@@ -41,8 +41,10 @@ and/or add a `BREAKING CHANGE:` footer.
 
 `.githooks/commit-msg` parses the first line and rejects the commit
 unless the `type` is in the list above and the `scope` is in
-`SCOPES.md`. Activate the hooks once per clone:
+`SCOPES.md`. It runs as the `commit-msg` hook via the pre-commit
+framework (`.pre-commit-config.yaml`). Activate once per clone:
 
 ```
-git config core.hooksPath .githooks
+uv sync
+uv run pre-commit install
 ```
