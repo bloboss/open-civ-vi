@@ -8,7 +8,6 @@
 //! minting / OIDC client / atproto resolver / session token issuance
 //! land in 2.2-2.5; this module just owns the durable rows.
 
-#![cfg(feature = "persistence")]
 
 use std::path::Path;
 
@@ -443,14 +442,15 @@ fn identity_key(identity: &Identity) -> (&'static str, String) {
         Identity::Email { address, .. } => ("email", address.to_lowercase()),
         Identity::OpenId { issuer, subject, .. } => ("oidc", format!("{issuer}|{subject}")),
         Identity::Atproto { did, .. } => ("atproto", did.clone()),
+        Identity::PublicKey { ed25519_hex, .. } => ("pubkey", ed25519_hex.to_lowercase()),
     }
 }
 
 fn rand_player_id() -> u64 {
     // Derive a u64 from a fresh ULID so the IdGenerator path stays
     // single-source (ULIDs are seeded with rand under the hood).
-    let raw = Ulid::new().0 as u64;
-    raw
+    
+    Ulid::new().0 as u64
 }
 
 fn player_id_text(id: &PlayerId) -> String {
@@ -559,6 +559,10 @@ fn row_to_identity(r: &IdentityRow) -> Identity {
         "atproto" => Identity::Atproto {
             did: r.primary_key.clone(),
             handle: r.label.clone(),
+        },
+        "pubkey" => Identity::PublicKey {
+            ed25519_hex: r.primary_key.clone(),
+            label: r.label.clone(),
         },
         _ => Identity::Email {
             address: r.primary_key.clone(),

@@ -1,9 +1,10 @@
 # open4x-server (API-only build).
 #
-# Builds the native Axum binary with the `ssr` feature only — no
-# `csr`/`web-sys` deps, no Trunk, no `dist/`. The `/api/v1/*` and `/ws`
-# routes work; static-file fallbacks return 404 (which is fine for the
-# CLI parity harness).
+# Builds the native Axum binary (no feature flags — the crate is
+# unconditionally server-only since the crate-split). The `/api/v1/*`
+# and `/ws` routes work; static-file fallbacks return 404 when
+# OPEN4X_STATIC_DIR points at an empty dir (fine for the API/CLI
+# harness).
 #
 # Build context: workspace root (run via `docker compose build` from
 # `dockerfiles/`).
@@ -20,11 +21,10 @@ RUN apt-get update \
 WORKDIR /src
 COPY . .
 
-# `--no-default-features --features ssr` is redundant with the current
-# default but keeps us honest if the default ever flips on csr.
-RUN cargo build --release \
-        -p open4x-server \
-        --no-default-features --features ssr
+# open4x-server is unconditionally a native Axum server since the
+# crate-split (the old ssr/csr feature gates were dropped), so it needs
+# no feature flags.
+RUN cargo build --release -p open4x-server
 
 # ── runtime ────────────────────────────────────────────────────────────
 FROM debian:bookworm-slim AS runtime

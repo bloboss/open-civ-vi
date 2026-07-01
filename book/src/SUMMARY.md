@@ -45,6 +45,7 @@
 - [REST API Reference](./multiplayer/rest-api.md)
 - [Game Server](./multiplayer/server.md)
 - [Web Client](./multiplayer/web-client.md)
+- [Build Your Own Client](./multiplayer/build-your-own-client.md)
 - [Reverse Proxy](./multiplayer/reverse-proxy.md)
 - [i18n](./multiplayer/i18n.md)
 

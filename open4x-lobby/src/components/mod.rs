@@ -7,6 +7,7 @@
 
 pub mod api;
 pub mod btn;
+pub mod crypto;
 pub mod minimap;
 pub mod panel;
 pub mod popup;

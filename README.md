@@ -15,8 +15,13 @@ An open-source Rust implementation of a Civilization VI-style 4X strategy game e
 |-------|------|
 | `libhexgrid` | Pure hex geometry -- coordinates, pathfinding, line of sight |
 | `libciv` | All game state and rules -- world, civilizations, rules engine, AI |
-| `open4x` (civsim) | CLI binary for local simulation and interactive play |
-| `open4x-server` | Merged server + frontend (feature flags: `ssr` for Axum server, `csr` for Leptos/WASM) |
+| `open4x-protocol` | Versioned wire types (`v1::*`) -- the client/server contract |
+| `open4x-sdk` | Typed HTTP client over the protocol (native + wasm transports) |
+| `open4x-cli` | CLI binary (`open4x`) for local simulation, interactive play, and remote server mode |
+| `open4x-server` | Native Axum server -- REST (`/api/v1/*`) + WebSocket (`/ws`) + game rooms |
+| `open4x-client-web` | Leptos/WASM browser client (consumes the SDK) |
+| `open4x-accounts` | Identity substrate -- accounts, sessions, magic-link/OIDC auth (sqlite) |
+| `open4x-lobby` | Pre-game surface -- landing, login, new-game wizard, profile (Leptos + Axum) |
 
 ## Quick Start
 
@@ -41,7 +46,7 @@ For the WASM frontend:
 
 ```bash
 cargo install trunk
-cd open4x-web && trunk serve
+cd open4x-client-web && trunk serve
 ```
 
 ## Documentation
@@ -63,3 +68,22 @@ See the [Implementation Roadmap](./book/src/roadmap/status.md) for detailed stat
 ## License & Contributing
 
 Contributions are welcome -- see the roadmap for areas that need work.
+
+### Development setup
+
+Lint/format tooling runs through [pre-commit](https://pre-commit.com);
+the Python-side tools are pinned in a [uv](https://docs.astral.sh/uv/)
+project (`pyproject.toml` / `uv.lock`). One-time setup:
+
+```bash
+uv sync                    # pinned Python tooling (pre-commit, codespell, black)
+uv run pre-commit install  # install pre-commit, commit-msg, and pre-push hooks
+```
+
+- **commit**: `rustfmt --check` (changed files), `codespell`, `black`
+- **commit-msg**: Conventional Commits with a **mandatory scope** —
+  `type(scope): subject`, validated against [`TAGS.md`](./TAGS.md) and
+  [`SCOPES.md`](./SCOPES.md)
+- **push**: `cargo clippy --workspace --all-targets`
+
+See [AGENTS.md](./AGENTS.md) for the full contributor conventions.

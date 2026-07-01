@@ -8,6 +8,7 @@ pub mod friends;
 pub mod games;
 pub mod me;
 pub mod presets;
+pub mod pubkey_auth;
 
 use axum::Router;
 use axum::routing::{delete, get, patch, post};
@@ -18,6 +19,8 @@ pub fn v1_router() -> Router<AppState> {
     Router::new()
         .route("/auth/email/start", post(email_auth::start))
         .route("/auth/email/verify", get(email_auth::verify))
+        .route("/auth/pubkey/challenge", post(pubkey_auth::challenge))
+        .route("/auth/pubkey/verify", post(pubkey_auth::verify))
         .route("/auth/signout", post(email_auth::signout))
         .route("/me", get(me::get_me))
         .route("/me", patch(me::patch_me))

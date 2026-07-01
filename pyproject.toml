@@ -1,0 +1,23 @@
+[project]
+name = "opencivvi-devtools"
+version = "0.1.0"
+description = "Dev/CI tooling for the open-civ-vi workspace: pre-commit orchestration, codespell, black (for Python helper scripts). The game itself is Rust; this project only pins the Python-side lint/format toolchain."
+requires-python = ">=3.13"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "black>=26.5.1",
+    "codespell>=2.4.2",
+    "pre-commit>=4.6.0",
+]
+
+[tool.black]
+line-length = 100
+
+[tool.codespell]
+# Only changed files are scanned (pre-commit passes filenames), but skip
+# vendored / generated / lockfile content wherever it appears.
+skip = "*.lock,./target,./.git,./.venv,./book/book,./docs/legacy-wireframe,./open4x-client-js/src/gen,./open4x-client-js/node_modules,./open4x-client-js/dist,*.min.js,*.map"
+# Domain words codespell mis-flags. Extend as real false-positives surface.
+ignore-words-list = "crate,ser,deser,typ,ists,nin,barays,lama,fpt,re-use"

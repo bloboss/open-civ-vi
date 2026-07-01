@@ -12,8 +12,18 @@ use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
 use crate::components::api::auth as auth_api;
+use crate::components::crypto;
 use crate::components::i18n::{tr, Key};
 use crate::components::{Btn, Popup, PopupBody, PopupSize};
+
+/// State machine for the Ed25519 pubkey sign-in panel.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+enum KeyFlow {
+    #[default]
+    Idle,
+    Signing,
+    Error(String),
+}
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 enum EmailFlow {
@@ -25,7 +35,7 @@ enum EmailFlow {
 }
 
 /// Discriminated transient errors so the UI can pick the right copy
-/// + decide whether a Retry affordance makes sense (Retry doesn't
+/// and decide whether a Retry affordance makes sense (Retry doesn't
 /// help an empty-input validation, but it does help a 5xx).
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum EmailFlowError {
@@ -94,9 +104,50 @@ impl EmailFlowError {
 }
 
 #[component]
-pub fn Login(on_back: Callback<()>) -> impl IntoView {
+pub fn Login(
+    on_back: Callback<()>,
+    /// Fired when an interactive sign-in (currently pubkey) completes and
+    /// the session cookie is set — the app shell switches to the menu.
+    on_authenticated: Callback<()>,
+) -> impl IntoView {
     let email = RwSignal::new(String::new());
     let flow = RwSignal::new(EmailFlow::Idle);
+    let key_flow = RwSignal::new(KeyFlow::Idle);
+
+    // Pubkey challenge-response sign-in. Loads (or generates) the
+    // browser's Ed25519 key, signs the server nonce, and verifies. The
+    // email field, when filled, is linked as a secondary identity.
+    let do_pubkey = move || {
+        key_flow.set(KeyFlow::Signing);
+        let email_opt = {
+            let e = email.get_untracked().trim().to_string();
+            if e.is_empty() { None } else { Some(e) }
+        };
+        spawn_local(async move {
+            let sk = match crypto::load_or_create_key() {
+                Ok(k) => k,
+                Err(e) => return key_flow.set(KeyFlow::Error(e)),
+            };
+            let pubkey = crypto::public_key_hex(&sk);
+            let challenge = match auth_api::pubkey_challenge(pubkey.clone()).await {
+                Ok(c) => c,
+                Err(e) => return key_flow.set(KeyFlow::Error(e.to_string())),
+            };
+            let signature = match crypto::sign_challenge(&sk, &challenge.nonce) {
+                Ok(s) => s,
+                Err(e) => return key_flow.set(KeyFlow::Error(e)),
+            };
+            match auth_api::pubkey_verify(pubkey, signature, email_opt).await {
+                Ok(_) => {
+                    key_flow.set(KeyFlow::Idle);
+                    on_authenticated.run(());
+                }
+                Err(e) => key_flow.set(KeyFlow::Error(e.to_string())),
+            }
+        });
+    };
+    let on_pubkey = move |_| do_pubkey();
+    let key_signing = Signal::derive(move || matches!(key_flow.get(), KeyFlow::Signing));
 
     let do_send = move || {
         let addr = email.get_untracked().trim().to_string();
@@ -220,6 +271,41 @@ pub fn Login(on_back: Callback<()>) -> impl IntoView {
                                 </div>
                             }.into_any()
                         }
+                        _ => view! { <span /> }.into_any(),
+                    }}
+                </div>
+
+                // ─── Passkey (Ed25519) ──────────────────────────────
+                <div class="panel" style="margin-bottom:12px">
+                    <div class="row between center-y" style="margin-bottom:10px">
+                        <span class="h3">"Sign in with a key"</span>
+                        <Popup
+                            title="Key sign-in"
+                            size=PopupSize::Narrow
+                            content=Arc::new(|| view! {
+                                <PopupBody>
+                                    <p>"Your browser holds an Ed25519 keypair (created on first use). Signing in proves you hold the private key — no password, no email round-trip."</p>
+                                    <p class="muted xsmall">"Fill the email above first to link it as a recovery identity. The key is stored in this browser only."</p>
+                                </PopupBody>
+                            }.into_any())
+                        >
+                            <span class="trigger xsmall muted">"how it works"</span>
+                        </Popup>
+                    </div>
+                    <Btn
+                        variant="primary"
+                        class="block"
+                        disabled=key_signing
+                        on_click=Callback::new(on_pubkey)
+                    >
+                        {move || if key_signing.get() { "Signing…" } else { "Sign in with key" }}
+                    </Btn>
+                    {move || match key_flow.get() {
+                        KeyFlow::Error(msg) => view! {
+                            <p class="xsmall" style="color:var(--accent); margin-top:8px; white-space:pre-line">
+                                {msg}
+                            </p>
+                        }.into_any(),
                         _ => view! { <span /> }.into_any(),
                     }}
                 </div>

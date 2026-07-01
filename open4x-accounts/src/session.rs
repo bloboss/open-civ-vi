@@ -9,7 +9,6 @@
 //! ahead of Phase 2.3 (OIDC) so the session-cookie middleware on the
 //! lobby has a concrete `RawToken` to mint into.
 
-#![cfg(feature = "persistence")]
 
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD as B64;

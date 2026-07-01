@@ -1,0 +1,167 @@
+/* open4x-client-js — in-game dark theme. Concise; informed by the legacy
+   wireframe styles.css (docs/legacy-wireframe/) which remains the richer
+   visual reference for later polish. */
+
+:root {
+  --bg: #0f1014;
+  --panel: #181a20;
+  --panel-2: #20232c;
+  --ink: #d8d8c8;
+  --muted: #8a8f9c;
+  --hair: #2a2e38;
+  --accent: #e0b450;
+  --good: #7fd07f;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+  font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; overflow: hidden;
+}
+
+#gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+
+/* HUD topbar */
+.hud-bar {
+  position: fixed; top: 0; left: 0; right: 0; height: 40px; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 0 12px; background: rgba(16, 17, 22, 0.92);
+  border-bottom: 1px solid var(--hair); backdrop-filter: blur(4px);
+}
+.hud-group { display: flex; align-items: center; gap: 10px; }
+.hud-mid { color: var(--muted); }
+.chip { display: flex; gap: 4px; align-items: baseline; }
+.chip-label { color: var(--muted); text-transform: uppercase; font-size: 10px; letter-spacing: 0.06em; }
+.chip-val { color: var(--ink); }
+.era { color: var(--accent); }
+.turn { color: var(--ink); }
+
+/* Buttons */
+.btn {
+  font: inherit; color: var(--ink); background: var(--panel-2);
+  border: 1px solid var(--hair); border-radius: 4px; padding: 4px 10px; cursor: pointer;
+}
+.btn:hover { border-color: var(--accent); }
+.end-turn { color: #0f1014; background: var(--accent); border-color: var(--accent); font-weight: bold; }
+.end-turn:hover { filter: brightness(1.08); }
+
+/* Tab bar (left edge) */
+.tabbar {
+  position: fixed; top: 48px; left: 8px; z-index: 20; display: flex; flex-direction: column; gap: 4px;
+}
+.tab {
+  font: inherit; text-transform: capitalize; color: var(--muted);
+  background: rgba(24, 26, 32, 0.9); border: 1px solid var(--hair);
+  border-radius: 4px; padding: 5px 10px; cursor: pointer; text-align: left; min-width: 92px;
+}
+.tab:hover { color: var(--ink); border-color: var(--accent); }
+.tab.active { color: var(--accent); border-color: var(--accent); }
+
+/* Tab panel (right drawer) */
+.panel {
+  position: fixed; top: 48px; right: 8px; bottom: 32px; width: 360px; z-index: 20;
+  background: rgba(24, 26, 32, 0.96); border: 1px solid var(--hair); border-radius: 6px;
+  overflow: auto; display: none;
+}
+.panel.open { display: block; }
+.panel-head { padding: 10px 12px; border-bottom: 1px solid var(--hair); color: var(--accent); letter-spacing: 0.08em; }
+.panel-body { padding: 12px; }
+
+/* Status line */
+#status {
+  position: fixed; left: 8px; bottom: 8px; z-index: 20; max-width: 60vw;
+  padding: 4px 8px; background: rgba(0, 0, 0, 0.5); border-radius: 4px; color: var(--ink);
+}
+.muted { color: var(--muted); }
+
+/* Tech / civics trees */
+.tree-queue { margin-bottom: 8px; }
+.tree-era { margin: 10px 0 4px; color: var(--accent); font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.08em; }
+.tree-node { display: flex; align-items: center; gap: 8px; padding: 3px 6px; border-radius: 3px; }
+.tree-node.clickable:hover { background: var(--panel-2); }
+.tree-node.status-locked { opacity: 0.5; }
+.tn-name { flex: 1; }
+.tn-meta { font-size: 11px; }
+.tn-status { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+.badge-done { color: var(--good); }
+.badge-current { color: var(--accent); }
+.badge-available { color: var(--ink); }
+.badge-locked { color: var(--muted); }
+.tn-pick { padding: 0 7px; }
+
+/* City screen */
+.city-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
+.city-li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 6px;
+  border-radius: 3px; cursor: pointer; border: 1px solid transparent; }
+.city-li:hover { background: var(--panel-2); }
+.city-li.sel { border-color: var(--accent); color: var(--accent); }
+.city-head { display: flex; gap: 6px; margin-bottom: 6px; }
+.city-head .input { flex: 1; }
+.input { font: inherit; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--hair); border-radius: 4px; padding: 4px 8px; }
+.city-stats { margin-bottom: 8px; }
+.city-section { margin: 10px 0 4px; color: var(--accent); font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.08em; }
+.focus-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.focus-btn { padding: 2px 8px; font-size: 11px; }
+.focus-btn.active { color: var(--accent); border-color: var(--accent); }
+.queue-row, .build-row { display: flex; justify-content: space-between; align-items: center;
+  gap: 8px; padding: 3px 6px; border-radius: 3px; }
+.build-row.clickable { cursor: pointer; }
+.build-row.clickable:hover { background: var(--panel-2); }
+.build-list { max-height: 40vh; overflow: auto; }
+
+/* Unit / army screen */
+.unit-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
+.unit-li { display: flex; flex-direction: column; gap: 1px; padding: 4px 6px;
+  border-radius: 3px; cursor: pointer; border: 1px solid transparent; }
+.unit-li:hover { background: var(--panel-2); }
+.unit-li.sel { border-color: var(--accent); }
+.unit-li.sel .ui-name { color: var(--accent); }
+.unit-head { color: var(--ink); margin-bottom: 4px; }
+.unit-stats { margin-bottom: 6px; }
+.action-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.act-btn { padding: 2px 8px; font-size: 11px; }
+.act-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* HUD drawers (bottom-right) */
+.drawer-bar { position: fixed; right: 8px; bottom: 40px; z-index: 21; display: flex; gap: 4px; }
+.drawer-btn { font: inherit; color: var(--muted); background: rgba(24, 26, 32, 0.92);
+  border: 1px solid var(--hair); border-radius: 4px; padding: 4px 8px; cursor: pointer; }
+.drawer-btn:hover { color: var(--ink); border-color: var(--accent); }
+.drawer-btn.active { color: var(--accent); border-color: var(--accent); }
+.drawer { position: fixed; right: 8px; bottom: 72px; width: 320px; max-height: 45vh; overflow: auto;
+  z-index: 21; display: none; background: rgba(24, 26, 32, 0.97); border: 1px solid var(--hair);
+  border-radius: 6px; padding: 8px; }
+.drawer.open { display: block; }
+.drawer-head { display: flex; justify-content: space-between; align-items: center;
+  color: var(--accent); margin-bottom: 6px; letter-spacing: 0.06em; }
+.notif { display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding: 4px 6px; border-left: 3px solid var(--hair); margin-bottom: 2px; }
+.notif-title { display: block; }
+.notif-desc { display: block; font-size: 11px; }
+.kind-good { border-left-color: var(--good); }
+.kind-bad { border-left-color: #d06b6b; }
+.kind-warn, .kind-accent { border-left-color: var(--accent); }
+.tq-item { display: flex; align-items: center; gap: 8px; padding: 3px 6px; }
+.tq-title { flex: 1; }
+.badge-req { color: #d06b6b; font-size: 10px; text-transform: uppercase; }
+.badge-opt { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+.ovl-row { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 3px; cursor: pointer; }
+.ovl-row:hover { background: var(--panel-2); }
+.ovl-row.on { color: var(--ink); }
+
+/* Outer-loop screens (diplomacy / empire / victory / government) */
+.row-line { display: flex; justify-content: space-between; gap: 10px; padding: 3px 6px; }
+.row-line.me { color: var(--accent); }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+.stat-box { background: var(--panel-2); border: 1px solid var(--hair); border-radius: 4px; padding: 6px 8px; }
+.sb-val { font-size: 16px; color: var(--ink); }
+.sb-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+.cond-row { display: flex; align-items: center; gap: 8px; padding: 3px 6px; }
+.cond-name { width: 90px; }
+.bar { flex: 1; height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--accent); }
+.gov-head { color: var(--accent); margin-bottom: 4px; letter-spacing: 0.06em; }
+.row-line.status-Locked, .row-line.status-locked { opacity: 0.5; }

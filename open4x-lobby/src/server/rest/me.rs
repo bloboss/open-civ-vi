@@ -248,6 +248,23 @@ fn identity_view(id: String, identity: open4x_accounts::Identity) -> IdentityVie
             verified: None,
             primary: None,
         },
+        open4x_accounts::Identity::PublicKey { ed25519_hex, label } => {
+            let display = if label.is_empty() {
+                open4x_accounts::pubkey_fingerprint(&ed25519_hex)
+            } else {
+                label
+            };
+            IdentityView {
+                id,
+                kind: "pubkey",
+                label: display,
+                primary_key: ed25519_hex,
+                // A pubkey identity is proven by signature, so it is
+                // inherently verified; it is never the "primary" email.
+                verified: Some(true),
+                primary: None,
+            }
+        }
     }
 }
 

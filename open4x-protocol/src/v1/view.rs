@@ -12,6 +12,8 @@ use super::ids::*;
 /// Respects fog-of-war: only explored tiles included, only visible units shown.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct GameView {
     pub turn: u32,
     pub my_civ_id: CivId,
@@ -35,6 +37,8 @@ pub struct GameView {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct BoardView {
     pub width: u32,
     pub height: u32,
@@ -48,6 +52,10 @@ pub struct BoardView {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+// Renamed for TS to avoid colliding with the canonical web::world::TileView
+// (the shape the REST `/world/snapshot` endpoint serves).
+#[cfg_attr(feature = "ts", ts(export, rename = "GameViewTile"))]
 pub struct TileView {
     pub coord: HexCoord,
     pub terrain: BuiltinTerrain,
@@ -66,6 +74,8 @@ pub struct TileView {
 /// Full detail for the player's own civilization.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct CivView {
     pub id: CivId,
     pub name: String,
@@ -92,6 +102,8 @@ pub struct CivView {
 /// Limited information about other civilizations.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct PublicCivView {
     pub id: CivId,
     pub name: String,
@@ -105,6 +117,8 @@ pub struct PublicCivView {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct CityView {
     pub id: CityId,
     pub name: String,
@@ -135,6 +149,8 @@ pub struct CityView {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct UnitView {
     pub id: UnitId,
     pub unit_type: UnitTypeId,
@@ -157,6 +173,10 @@ pub struct UnitView {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+// Renamed for TS to avoid colliding with the canonical web::TechTreeView
+// (the shape the REST `/tech` endpoint serves).
+#[cfg_attr(feature = "ts", ts(export, rename = "GameViewTechTree"))]
 pub struct TechTreeView {
     pub nodes: Vec<TechNodeView>,
 }
@@ -164,6 +184,8 @@ pub struct TechTreeView {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct TechNodeView {
     pub id: TechId,
     pub name: String,
@@ -175,6 +197,8 @@ pub struct TechNodeView {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct CivicTreeView {
     pub nodes: Vec<CivicNodeView>,
 }
@@ -182,6 +206,8 @@ pub struct CivicTreeView {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct CivicNodeView {
     pub id: CivicId,
     pub name: String,
@@ -193,6 +219,8 @@ pub struct CivicNodeView {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct TechProgressView {
     pub tech_id: TechId,
     pub progress: u32,
@@ -202,6 +230,8 @@ pub struct TechProgressView {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct CivicProgressView {
     pub civic_id: CivicId,
     pub progress: u32,
@@ -213,6 +243,8 @@ pub struct CivicProgressView {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct TradeRouteView {
     pub id: TradeRouteId,
     pub origin: CityId,
@@ -228,6 +260,8 @@ pub struct TradeRouteView {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct UnitTypeDefView {
     pub id: UnitTypeId,
     pub name: String,
@@ -245,6 +279,8 @@ pub struct UnitTypeDefView {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct BuildingDefView {
     pub id: BuildingId,
     pub name: String,
@@ -258,6 +294,8 @@ pub struct BuildingDefView {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct YieldBundleView {
     pub food: i32,
     pub production: i32,
@@ -276,6 +314,8 @@ pub struct YieldBundleView {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct ReligionView {
     pub id: ReligionId,
     pub name: String,
@@ -288,6 +328,8 @@ pub struct ReligionView {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct BeliefView {
     pub id: BeliefId,
     pub name: String,
@@ -300,6 +342,8 @@ pub struct BeliefView {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct GameOverView {
     pub winner: CivId,
     pub condition: String,

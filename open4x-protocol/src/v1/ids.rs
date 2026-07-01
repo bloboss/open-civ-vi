@@ -4,7 +4,11 @@ use ulid::Ulid;
 macro_rules! define_api_id {
     ($name:ident) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-        pub struct $name(pub Ulid);
+        #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+        #[cfg_attr(feature = "ts", ts(export))]
+        // On the wire every ID is a bare ULID string, so the inner Ulid is
+        // typed as `string` for TS (yields `export type $name = string`).
+        pub struct $name(#[cfg_attr(feature = "ts", ts(type = "string"))] pub Ulid);
 
         impl $name {
             pub fn from_ulid(ulid: Ulid) -> Self {

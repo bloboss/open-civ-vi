@@ -18,6 +18,7 @@ use sqlx::{Pool, Sqlite};
 
 use crate::server::client_ip::parse_trusted_proxies;
 use crate::server::process::{DeployMode, ProcessConfig, ProcessOrchestrator};
+use crate::server::pubkey_challenge::PubkeyChallengeStore;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -56,6 +57,10 @@ pub struct AppState {
     /// `<player_id_hex>.png` and served at `/avatars/<file>` by
     /// the binary's `ServeDir`.
     pub avatar_dir: PathBuf,
+    /// Process-local, single-use nonce store for the pubkey
+    /// challenge-response auth flow. Ephemeral — see
+    /// [`crate::server::pubkey_challenge`].
+    pub pubkey_challenges: PubkeyChallengeStore,
 }
 
 impl AppState {
@@ -78,22 +83,22 @@ impl AppState {
             .max_connections(8)
             .connect_with(opts)
             .await
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
         sqlx::migrate!("../open4x-accounts/migrations")
             .run(&pool)
             .await
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
 
         let store = SqliteAccountStore::connect(&db_path)
             .await
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
         let games = SqliteGameStore::from_pool(pool.clone());
         let audit = SqliteAuditStore::from_pool(pool.clone());
         let friends = SqliteFriendsStore::from_pool(pool.clone());
         let presets = SqlitePresetsStore::from_pool(pool.clone());
 
         let signer = MagicLinkSigner::from_env_or_path(data_dir.join("lobby.key"))
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
 
         // Prefer SMTP when fully configured; fall back to LogMailer
         // so dev / CI keep printing the magic link to stderr.
@@ -152,6 +157,7 @@ impl AppState {
             deploy_mode,
             process_orch,
             avatar_dir,
+            pubkey_challenges: PubkeyChallengeStore::new(),
         })
     }
 }

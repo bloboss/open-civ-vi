@@ -31,6 +31,12 @@ thiserror  = { version = "1", optional = true }
 ipnet      = { version = "2", optional = true }
 rust-embed = { version = "8", optional = true, features = ["axum"] }
 mime_guess = { version = "2", optional = true }
+# Pubkey challenge-response auth: verify Ed25519 signatures over a
+# server-issued nonce. `hex` decodes the wire pubkey/signature; `rand`
+# mints the challenge nonce.
+ed25519-dalek = { workspace = true, optional = true }
+hex        = { version = "0.4", optional = true }
+rand       = { workspace = true, optional = true }
 
 # ── Client-only (WASM frontend) ───────────────────────────────────────
 leptos                  = { version = "0.7", features = ["csr"], optional = true }
@@ -58,6 +64,7 @@ ssr = [
     "dep:axum", "dep:tokio", "dep:tower-http",
     "dep:sqlx", "dep:chrono", "dep:reqwest", "dep:thiserror", "dep:ipnet",
     "dep:rust-embed", "dep:mime_guess", "dep:image",
+    "dep:ed25519-dalek", "dep:hex", "dep:rand",
     "open4x-accounts/persistence", "open4x-accounts/mailer-smtp",
 ]
 csr = [
@@ -65,4 +72,18 @@ csr = [
     "dep:js-sys", "dep:wasm-bindgen-futures", "dep:web-sys",
     "dep:serde-wasm-bindgen", "dep:getrandom", "dep:gloo-timers",
     "dep:send_wrapper", "dep:qrcode",
+    # Pubkey sign-in: Ed25519 keypair in the browser (seed persisted in
+    # localStorage), signing the lobby's challenge nonce in pure Rust/wasm.
+    "dep:ed25519-dalek", "dep:hex",
 ]
+
+# Integration tests (ssr surface) — drive the API router in-process and
+# sign challenges with a real Ed25519 key.
+[dev-dependencies]
+tower          = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+ed25519-dalek  = { workspace = true }
+hex            = "0.4"
+serde_json     = { workspace = true }
+tokio          = { workspace = true }
+tempfile       = "3"

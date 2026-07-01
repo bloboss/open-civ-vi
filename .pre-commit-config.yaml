@@ -1,0 +1,65 @@
+# Pre-commit hooks for the open-civ-vi workspace.
+#
+# Tool versions are pinned in this repo's uv project (pyproject.toml /
+# uv.lock); the Python hooks run via `uv run`. Set up once per clone:
+#
+#     uv sync
+#     uv run pre-commit install
+#
+# `install` (thanks to default_install_hook_types) wires the pre-commit,
+# commit-msg, and pre-push stages. rustfmt + codespell check only the
+# files in the commit (so introducing them here does NOT force a
+# mass-reformat of the legacy tree); clippy runs at push time because it
+# compiles the whole workspace.
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+minimum_pre_commit_version: "4.0.0"
+
+repos:
+  - repo: local
+    hooks:
+      # ── commit stage ────────────────────────────────────────────────
+      - id: rustfmt
+        name: rustfmt (changed files)
+        entry: rustfmt --edition 2024 --check
+        language: system
+        types: [rust]
+
+      - id: codespell
+        name: codespell
+        entry: uv run codespell
+        language: system
+        types: [text]
+        exclude: |
+          (?x)^(
+            .*\.lock
+            |.*\.min\.(js|css)
+            |.*\.map
+            |Cargo\.lock
+            |open4x-client-js/(src/gen|dist|node_modules)/.*
+            |book/book/.*
+            |docs/legacy-wireframe/.*
+            |docs/open4x-landing/.*
+            |.*/references/.*
+          )$
+
+      - id: black
+        name: black (python helper scripts)
+        entry: uv run black
+        language: system
+        types: [python]
+
+      # ── commit-msg stage ────────────────────────────────────────────
+      - id: conventional-commit
+        name: "conventional commit (type(scope): subject)"
+        entry: .githooks/commit-msg
+        language: script
+        stages: [commit-msg]
+
+      # ── pre-push stage (heavy: compiles the workspace) ──────────────
+      - id: clippy
+        name: cargo clippy (workspace)
+        entry: cargo clippy --workspace --all-targets
+        language: system
+        types: [rust]
+        pass_filenames: false
+        stages: [pre-push]

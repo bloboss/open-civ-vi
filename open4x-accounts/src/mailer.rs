@@ -6,7 +6,6 @@
 //! enable the `mailer-smtp` feature and use [`SmtpMailer`] (TODO; the
 //! shape is reserved here so the trait surface is stable).
 
-#![cfg(feature = "persistence")]
 
 use async_trait::async_trait;
 use thiserror::Error;

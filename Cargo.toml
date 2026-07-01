@@ -7,15 +7,9 @@ members = [
     "open4x-server",
     "open4x-client-web",
     "open4x-cli",
-    "xtask",
-]
-# `open4x-accounts` and `open4x-lobby` are scheduled for extraction to a
-# separate repo and are intentionally not workspace members. Their source
-# trees remain on disk under their respective directories for that
-# extraction; `cargo build -p` from within those directories still works.
-exclude = [
     "open4x-accounts",
     "open4x-lobby",
+    "xtask",
 ]
 resolver = "2"
 

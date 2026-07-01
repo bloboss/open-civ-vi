@@ -9,6 +9,11 @@ serde      = { workspace = true }
 serde_json = { workspace = true }
 ulid       = { workspace = true }
 utoipa     = { workspace = true, optional = true }
+# TypeScript binding generation. Opt-in via the `ts` feature; every wire
+# type derives `ts_rs::TS` so `cargo xtask gen-ts` can emit the .ts bundle
+# consumed by open4x-client-js (and any bring-your-own client). Off by
+# default so default builds + the wasm32 client stay lean.
+ts-rs      = { version = "10", optional = true }
 
 [features]
 # OpenAPI schema annotations. When enabled, every wire type derives
@@ -16,3 +21,5 @@ utoipa     = { workspace = true, optional = true }
 # can assemble an OpenAPI 3 document. Off by default so default builds
 # (and the wasm32 client) stay lean.
 openapi = ["dep:utoipa"]
+# TypeScript binding generation (see the `ts-rs` dep + `cargo xtask gen-ts`).
+ts = ["dep:ts-rs"]

@@ -11,8 +11,11 @@
 //!
 //! The rust-embed `folder` paths are relative to `CARGO_MANIFEST_DIR`,
 //! so they resolve to `<repo>/open4x-lobby/dist/` and `<repo>/book/book/`
-//! at compile time. Empty / missing dirs produce an empty asset
-//! bundle without failing the build.
+//! at compile time. Both directories must *exist* at compile time —
+//! rust-embed's derive macro fails on a missing folder — so the source
+//! tree ships a `.gitkeep` in each. An otherwise-empty dir produces a
+//! bundle with only that marker, which [`spa_assets_present`] /
+//! [`book_assets_present`] correctly treat as "no real assets".
 
 #![cfg(feature = "ssr")]
 
@@ -74,15 +77,21 @@ pub async fn book_handler(Path(path): Path<String>) -> Response {
         .into_response()
 }
 
-/// Whether either bundle has anything in it. Lets `main.rs` skip the
-/// embedded fallback wiring when the binary was built without
-/// running `trunk build` first (dev path).
+/// Whether the SPA bundle has real content. Lets `main.rs` skip the
+/// embedded fallback wiring when the binary was built without running
+/// `trunk build` first (dev path). We key on `index.html` rather than
+/// "any file" because the source tree ships a `.gitkeep` marker so the
+/// `dist/` directory exists at compile time (rust-embed's derive fails
+/// on a *missing* folder); that marker must not be mistaken for a real
+/// SPA build.
 pub fn spa_assets_present() -> bool {
-    SpaAssets::iter().next().is_some()
+    SpaAssets::get("index.html").is_some()
 }
 
+/// Whether the mdBook bundle has real content. Same `.gitkeep` caveat
+/// as [`spa_assets_present`]; we key on the book's root `index.html`.
 pub fn book_assets_present() -> bool {
-    BookAssets::iter().next().is_some()
+    BookAssets::get("index.html").is_some()
 }
 
 fn embedded_response(path: &str, file: rust_embed::EmbeddedFile) -> Response {
