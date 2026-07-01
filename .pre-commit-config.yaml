@@ -23,6 +23,10 @@ repos:
         entry: rustfmt --edition 2024 --check
         language: system
         types: [rust]
+        # These are include!()'d as block expressions inside a fn body,
+        # so they are not standalone modules rustfmt can parse (cargo fmt
+        # skips them for the same reason).
+        exclude: '^libciv/src/(civ/belief_defs|rules/civic_tree_def|rules/tech_tree_def)\.rs$'
 
       - id: codespell
         name: codespell
