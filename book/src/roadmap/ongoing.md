@@ -1,5 +1,34 @@
 # Ongoing Work
 
+## Track 2 — new systems ✅ COMPLETE; stack collapsed to `main`
+
+All Track-1 + Track-2 work is merged and **`main` now contains
+everything** (lobby UI + rounds 1–3 + Track 2), local/unpushed at
+`f733b7c`. Final suite: 58 suites, 0 failures. Task list (6 items) all
+complete.
+
+- **Yield hardening** — `compute_yields` refactored to a single-pass
+  worklist (each tile/building/wonder/belief counted once) + re-entrancy
+  guard; **found & fixed a real double-count bug** (shared tile /
+  duplicate building) + `PerWonderOwned` condition + adversarial tests.
+- **Events engine** — `game/rules/events.rs`: `EventDef { trigger:
+  OnDelta|OnCondition, effects, notif }` registry generalizing
+  `observe_deltas`; `EventFired` delta; a bounded events turn-phase;
+  server arm so events flow through the `NotificationRecord` buffer →
+  `/notifications`.
+- **Politics / unrest** — per-city `unrest` (war-weariness + dark age +
+  nearby disasters + low loyalty + population), tiered yield penalties
+  via the hardened pipeline, riot/strike crises via the events engine.
+- **Espionage** — `GameState.espionage_ops` + missions (StealTech /
+  SabotageProduction / FomentUnrest→politics / CounterSpy / GatherIntel),
+  a resolution phase (deterministic rolls), results surfaced as events.
+
+Deferred Track-2 (ecology, economy+ideology) parked for discussion.
+**Stack collapsed via fast-forward:** `sim-depth → gp-gov-climate →
+main`, all at `f733b7c`. Awaiting user review/push.
+
+---
+
 ## Backend round 2 — simulation depth (ACTIVE)
 
 > **Goal**: deepen the round-1 features. Integration branch
