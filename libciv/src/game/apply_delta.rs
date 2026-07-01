@@ -337,6 +337,12 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
             // effect queue when it fired and drain in a later phase.
         }
 
+        // ── Espionage / intrigue ────────────────────────────────────────
+        StateDelta::EspionageResolved { .. } => {
+            // Informational: the mission's mechanical effect (research theft,
+            // sabotage, unrest) was applied directly by the espionage phase.
+        }
+
         // ── Great persons ───────────────────────────────────────────────
         StateDelta::GreatPersonRetired { great_person, .. } => {
             if let Some(gp) = state.great_people.iter_mut().find(|g| g.id == *great_person) {

@@ -78,6 +78,7 @@ pub enum DeltaPattern {
     WonderBuilt,
     NaturalWonderDiscovered,
     CityRevolted,
+    EspionageResolved,
 }
 
 /// A predicate evaluated against the whole [`GameState`] (threshold-style).
@@ -179,6 +180,21 @@ static BUILTIN_EVENTS: LazyLock<Vec<EventDef>> = LazyLock::new(|| {
                 desc: "A general strike grips your empire; production grinds to a halt.",
             },
         },
+        // A covert operation this civ launched has concluded (success or
+        // failure). Fires for the operation's owner so the player learns the
+        // outcome; the mechanical effect was already applied by the espionage
+        // phase.
+        EventDef {
+            id: "espionage_resolved",
+            trigger: EventTrigger::OnDelta(DeltaPattern::EspionageResolved),
+            effects: Vec::new(),
+            notif: EventNotif {
+                kind: EventKind::Accent,
+                category: "espionage",
+                title: "Covert Operation Concluded",
+                desc: "One of your covert operations has run its course.",
+            },
+        },
     ]
 });
 
@@ -209,6 +225,9 @@ fn resolve_delta_owner(pattern: DeltaPattern, delta: &StateDelta) -> Option<CivI
             Some(*civ)
         }
         (DeltaPattern::CityRevolted, StateDelta::CityRevolted { old_owner, .. }) => Some(*old_owner),
+        (DeltaPattern::EspionageResolved, StateDelta::EspionageResolved { owner, .. }) => {
+            Some(*owner)
+        }
         _ => None,
     }
 }

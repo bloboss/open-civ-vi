@@ -13,6 +13,7 @@ pub(crate) mod combat;
 pub(crate) mod combat_preview;
 pub(crate) mod diplomacy;
 pub(crate) mod effects;
+pub mod espionage;
 pub mod events;
 pub(crate) mod governors;
 pub(crate) mod great_people;
