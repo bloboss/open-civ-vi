@@ -690,3 +690,37 @@ async fn victory_score_pct_is_engine_derived_not_zero() {
         score_row["player_pct"]
     );
 }
+
+#[tokio::test]
+async fn notifications_surface_fired_dynamic_event() {
+    let (app, state) = build_app();
+    let token = bootstrap_token(&app).await;
+
+    // Seed the room so the next turn fires the `scientific_breakthrough`
+    // event: queue a Eureka for the human civ. When the turn resolves it
+    // emits an `EurekaTriggered` delta, the events phase turns that into an
+    // `EventFired` delta, and `emit_notifications_from_diff` records a
+    // notification — all reachable through the real `/notifications` route.
+    {
+        let game_entry = state.games.iter().next().expect("one game");
+        let game_id = *game_entry.key();
+        drop(game_entry);
+        let mut room = state.games.get_mut(&game_id).expect("game present");
+        let civ_id = room.players.first().expect("one player").civ_id;
+        let tech = libciv::TechId::from_ulid(room.state.id_gen.next_ulid());
+        room.state
+            .effect_queue
+            .push_back((civ_id, libciv::rules::OneShotEffect::TriggerEureka { tech }));
+        room.resolve_turn();
+    }
+
+    let (status, notifs) = get_with(&app, "/api/v1/notifications", &token).await;
+    assert_eq!(status, StatusCode::OK);
+    let items = notifs["notifications"].as_array().expect("notifications array");
+    let event = items
+        .iter()
+        .find(|n| n["title"] == "Scientific Breakthrough")
+        .unwrap_or_else(|| panic!("no scientific_breakthrough notification in {items:?}"));
+    assert_eq!(event["kind"], "good");
+    assert_eq!(event["category"], "research");
+}

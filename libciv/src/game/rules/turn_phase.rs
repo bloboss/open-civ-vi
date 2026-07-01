@@ -1482,6 +1482,31 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         }
     }
 
+    // ── Phase 5b-1b: Dynamic events engine ────────────────────────────────
+    // Scan the deltas accumulated so far this turn plus threshold conditions
+    // and fire any matching dynamic events. Their effects are enqueued onto
+    // `effect_queue` (draining next turn, like tech/civic effects) and an
+    // `EventFired` delta is recorded.
+    //
+    // Termination: `evaluate_events` is a pure scan over the PRE-events delta
+    // snapshot; the `EventFired` deltas pushed below are NOT re-evaluated this
+    // turn, so no event can trigger itself. The fired set is bounded by
+    // `builtin_event_defs().len() * civs`, so the phase always terminates.
+    {
+        use crate::game::rules::events::evaluate_events;
+
+        let fired = evaluate_events(&diff.deltas, state);
+        for (civ_id, def) in fired {
+            for effect in &def.effects {
+                state.effect_queue.push_back((civ_id, effect.clone()));
+            }
+            diff.push(StateDelta::EventFired {
+                civ: civ_id,
+                event_id: def.id.to_string(),
+            });
+        }
+    }
+
     // ── Phase 5b-3: Diplomatic favor accumulation ─────────────────────────
     // Each civ gains: +1 base, +1 per suzerained city-state, +1 if not at war.
     {

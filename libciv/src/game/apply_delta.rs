@@ -326,6 +326,12 @@ pub fn apply_delta(state: &mut GameState, delta: &StateDelta) {
             }
         }
 
+        // ── Dynamic events engine ───────────────────────────────────────
+        StateDelta::EventFired { .. } => {
+            // Informational: the event's effects were enqueued onto the
+            // effect queue when it fired and drain in a later phase.
+        }
+
         // ── Great persons ───────────────────────────────────────────────
         StateDelta::GreatPersonRetired { great_person, .. } => {
             if let Some(gp) = state.great_people.iter_mut().find(|g| g.id == *great_person) {

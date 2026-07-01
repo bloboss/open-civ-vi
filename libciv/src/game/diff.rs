@@ -232,6 +232,14 @@ pub enum StateDelta {
     },
     /// A civilization transitioned to a new era with a determined age.
     EraAdvanced { civ: CivId, new_era: AgeType, era_age: EraAge },
+
+    // ── Dynamic events engine ──────────────────────────────────────────────
+    /// A dynamic event fired for a civilization this turn. `event_id` refers
+    /// to an `EventDef` in the events registry (`game::rules::events`); the
+    /// server resolves it to a notification via `events::event_def`.
+    /// Informational — the event's effects are enqueued onto the effect queue
+    /// separately (they drain next turn).
+    EventFired { civ: CivId, event_id: String },
     // ── Great persons (PHASE3-8.6) ─────────────────────────────────────────
     /// A great person was retired (consumed) by its owner.
     GreatPersonRetired { great_person: GreatPersonId, owner: CivId },

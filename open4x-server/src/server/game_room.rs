@@ -186,6 +186,22 @@ fn emit_notifications_from_diff(room: &mut GameRoom, diff: &GameStateDiff) {
                 if let Some((c, rec)) = mention(civ_a, civ_b) { room.notifications.push(c, rec); }
                 if let Some((c, rec)) = mention(civ_b, civ_a) { room.notifications.push(c, rec); }
             }
+            StateDelta::EventFired { civ, event_id } => {
+                if civ_ids.contains(civ)
+                    && let Some(def) = libciv::game::rules::events::event_def(event_id)
+                {
+                    let api_civ = api_civ_id(*civ);
+                    room.notifications.push(api_civ, NotificationRecord {
+                        id: String::new(),
+                        turn,
+                        kind: event_kind_to_notif(def.notif.kind),
+                        category: def.notif.category,
+                        title: def.notif.title.to_string(),
+                        desc: def.notif.desc.to_string(),
+                        target: None,
+                    });
+                }
+            }
             // Bookkeeping deltas we deliberately don't surface as notifications
             _ => {}
         }
@@ -194,6 +210,18 @@ fn emit_notifications_from_diff(room: &mut GameRoom, diff: &GameStateDiff) {
 
 fn api_civ_id(c: CivId) -> open4x_protocol::v1::ids::CivId {
     open4x_protocol::v1::ids::CivId::from_ulid(c.as_ulid())
+}
+
+/// Map the libciv-side event tone onto the server `NotificationKind`.
+fn event_kind_to_notif(kind: libciv::game::rules::events::EventKind) -> NotificationKind {
+    use libciv::game::rules::events::EventKind as E;
+    match kind {
+        E::Accent => NotificationKind::Accent,
+        E::Good => NotificationKind::Good,
+        E::Warn => NotificationKind::Warn,
+        E::Bad => NotificationKind::Bad,
+        E::Neutral => NotificationKind::Neutral,
+    }
 }
 
 impl GameRoom {
