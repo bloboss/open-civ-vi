@@ -92,7 +92,17 @@ open4x-server       — native-only Axum server (REST + WS + GameRoom); no Lepto
 open4x-client-web   — Leptos CSR + cdylib (wasm32) browser client; consumes the SDK
 ```
 
-Two additional crates (`open4x-accounts` and `open4x-lobby`) live on disk under their own directories but are excluded from the workspace via `[workspace] exclude` — they are scheduled for extraction to a separate repo.
+Two additional crates provide the pre-game surface:
+
+```
+open4x-accounts     — identity substrate: accounts, sessions, magic-link/OIDC auth (sqlite, feature `persistence`)
+open4x-lobby        — landing/login/new-game wizard (Leptos ssr+csr + Axum); consumes open4x-accounts
+```
+
+Both are full workspace members. `open4x-lobby`'s single-binary deploy embeds
+`open4x-lobby/dist/` (trunk build) and `book/book/` (mdbook build) via
+`rust-embed`; a `.gitkeep` keeps each directory present at compile time so the
+default workspace build is green without first running trunk/mdbook.
 
 `libhexgrid` must remain zero-knowledge of game concepts. `libciv` contains everything else: world map, civilizations, rules engine, AI, and game orchestration. `open4x-protocol` is the only crate both `open4x-server` and `open4x-client-web` depend on.
 
