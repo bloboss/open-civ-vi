@@ -3,4 +3,16 @@ memories/
 COMMENTS.md
 open4x-server/dist
 open4x-client-web/dist
-open4x-lobby/dist
+# Keep the dir present (rust-embed needs it at compile time) but ignore the
+# trunk build output inside it.
+open4x-lobby/dist/*
+!open4x-lobby/dist/.gitkeep
+# mdBook build output — keep the dir present for rust-embed, ignore the build.
+book/book/*
+!book/book/.gitkeep
+# open4x-client-js: ignore build output + npm deps. `src/gen/` stays tracked
+# (the ts-rs drift check compares against it).
+open4x-client-js/dist/
+open4x-client-js/node_modules/
+# Autonomous dev-loop working state (counter / features / log).
+.dev-loop/
