@@ -32,14 +32,16 @@ ALL of Track 1 (wire inert data) + ALL of Track 2 (new systems) + added
 **politics/citizen unrest**. NB: Track 1 items share the `compute_yields`
 site, so they are bundled/sequenced, not naively 4-way parallel.
 
-- **Round 3 (Track 1):** 3A ✅ MERGED (`c3d8e33` — building yields
-  [near-bug fixed: Library +2 sci] + belief yields + wonder effects on
-  8 wonders, tests green). 3B ⏸ NOT DONE — its agent hit the account's
-  **monthly spend limit** mid-run and never committed (branch
-  `feat/era-citystate` exists but empty; work lost). Loop `d14365cd`
-  stopped. **To resume 3B:** re-dispatch the Feature-3B spec
-  (`feature-specs-backend3.md` §3B) off the current
-  `claude/backend-sim-depth` tip once spend is available.
+- **Round 3 (Track 1) ✅ COMPLETE** — both merged on
+  `claude/backend-sim-depth`, full suite green (149 libciv tests, 0
+  failures):
+  - 3A (`c3d8e33`) — building yields [near-bug fixed: Library +2 sci] +
+    belief yields + wonder effects on 8 wonders.
+  - 3B (`5f07b6f`) — `EraDedication.modifiers` + Golden/Dark-age yield
+    effects + city-state suzerain/envoy payoffs + `PerCityStateSuzerain`
+    condition. (Original 3B agent was killed by the monthly spend limit
+    mid-run; re-dispatched as `feat/era-citystate-2` and succeeded.)
+  Loop `d14365cd` stopped. **Paused here for user review before Track 2.**
 - **Round 4+ (Track 2):** events engine (foundation) → politics/unrest
   → espionage → ecology → economy+ideology.
 
