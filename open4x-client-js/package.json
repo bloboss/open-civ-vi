@@ -1,0 +1,14 @@
+{
+  "name": "open4x-client-js",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Lightweight reference web client for open4x — plain ES modules + WebGL2, no bundler/framework. Talks only to the documented /api/v1 surface, so any renderer can replace it.",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.0"
+  }
+}
