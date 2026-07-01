@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+#
+# Conventional-commit validator: enforces `type(scope): subject` with a
+# MANDATORY scope, where `type` is listed in TAGS.md and `scope` in
+# SCOPES.md. Activate with:  git config core.hooksPath .githooks
+#
+set -euo pipefail
+
+msg_file="$1"
+root="$(git rev-parse --show-toplevel)"
+tags_md="$root/TAGS.md"
+scopes_md="$root/SCOPES.md"
+
+# First non-comment, non-blank line is the header.
+header="$(grep -vE '^\s*#' "$msg_file" | grep -vE '^\s*$' | head -n1 || true)"
+
+# Let git's own machinery through (merges, reverts, fixups, squashes).
+case "$header" in
+  "Merge "*|"Revert \""*|"fixup! "*|"squash! "*|"amend! "*) exit 0 ;;
+esac
+
+# Extract a machine-readable list from between <!-- NAME:BEGIN/END --> markers.
+extract() { # $1=marker  $2=file
+  sed -n "/<!-- $1:BEGIN -->/,/<!-- $1:END -->/p" "$2" \
+    | grep -vE '<!--' | grep -vE '^\s*$' | tr -d ' \t'
+}
+
+fail() {
+  echo "✗ commit-msg: $1" >&2
+  echo "  header: ${header:-<empty>}" >&2
+  echo "  format: <type>(<scope>): <subject>   (scope is MANDATORY)" >&2
+  echo "  types : $(echo "$tags"   | tr '\n' ' ')" >&2
+  echo "  scopes: $(echo "$scopes" | tr '\n' ' ')" >&2
+  echo "  see TAGS.md / SCOPES.md" >&2
+  exit 1
+}
+
+[ -f "$tags_md" ]   || { echo "✗ commit-msg: TAGS.md missing"   >&2; exit 1; }
+[ -f "$scopes_md" ] || { echo "✗ commit-msg: SCOPES.md missing" >&2; exit 1; }
+tags="$(extract TAGS "$tags_md")"
+scopes="$(extract SCOPES "$scopes_md")"
+
+# type(scope): subject   — scope required; optional ! for breaking change.
+if [[ ! "$header" =~ ^([a-z]+)\(([a-z0-9-]+)\)(!)?:\ +.+ ]]; then
+  fail "must match 'type(scope): subject'"
+fi
+type="${BASH_REMATCH[1]}"
+scope="${BASH_REMATCH[2]}"
+
+grep -qxF "$type"  <<<"$tags"   || fail "unknown type '$type'"
+grep -qxF "$scope" <<<"$scopes" || fail "unknown scope '$scope'"
+
+exit 0
