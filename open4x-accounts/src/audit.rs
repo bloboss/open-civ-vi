@@ -7,7 +7,6 @@
 //! paths from runtime code. The Phase 6 `lobby db dump` subcommand
 //! is the consumer.
 
-#![cfg(feature = "persistence")]
 
 use async_trait::async_trait;
 use chrono::Utc;

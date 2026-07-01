@@ -4,7 +4,6 @@
 //! synthesize the inverse direction at query time so we don't
 //! duplicate rows.
 
-#![cfg(feature = "persistence")]
 
 use async_trait::async_trait;
 use chrono::Utc;

@@ -18,7 +18,6 @@
 //! the DB is reachable, e.g. from a CLI tool); only `verify` consumes
 //! the nonce.
 
-#![cfg(feature = "persistence")]
 
 use std::path::{Path, PathBuf};
 

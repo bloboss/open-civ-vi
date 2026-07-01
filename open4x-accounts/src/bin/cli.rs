@@ -122,7 +122,7 @@ async fn main() {
                     r.kind.as_str(),
                     r.player_id.map(|p| p.display()).unwrap_or_else(|| "-".into()),
                     r.ip.unwrap_or_else(|| "-".into()),
-                    r.detail.replace('\t', " ").replace('\n', " "),
+                    r.detail.replace(['\t', '\n'], " "),
                 );
             }
         }

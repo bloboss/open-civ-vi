@@ -14,7 +14,6 @@
 //! GitHub is intentionally absent — it uses OAuth2 + REST userinfo,
 //! not OIDC, and gets its own module under Phase 2.3 follow-up.
 
-#![cfg(feature = "persistence")]
 
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD as B64;
@@ -138,6 +137,12 @@ impl OidcConfig {
 pub struct Pkce {
     pub verifier: String,
     pub challenge: String,
+}
+
+impl Default for Pkce {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Pkce {

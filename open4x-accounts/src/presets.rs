@@ -4,7 +4,6 @@
 //! shape through this storage layer; accounts crate doesn't
 //! interpret it.
 
-#![cfg(feature = "persistence")]
 
 use async_trait::async_trait;
 use chrono::Utc;

@@ -6,7 +6,6 @@
 //! booting an `open4x-server` `GameRoom`; the lobby reads from it to
 //! render the OngoingGames screen and to mint Resume tokens.
 
-#![cfg(feature = "persistence")]
 
 use async_trait::async_trait;
 use chrono::Utc;
