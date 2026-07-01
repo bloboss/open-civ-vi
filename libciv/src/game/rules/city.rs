@@ -1,7 +1,7 @@
 //! City handlers: `found_city`, `claim_tile`, `reassign_tile`, `assign_citizen`, `compute_yields`.
 
 use std::collections::HashSet;
-use crate::{CityId, CivId, UnitId, YieldBundle};
+use crate::{BeliefId, BuildingId, CityId, CivId, UnitId, WonderId, YieldBundle};
 use libhexgrid::board::HexBoard;
 use libhexgrid::coord::HexCoord;
 use libhexgrid::types::MovementCost;
@@ -230,9 +230,78 @@ pub(crate) fn assign_citizen(
     Ok(diff)
 }
 
+// ── Re-entrancy guard ─────────────────────────────────────────────────────────
+//
+// `compute_yields` is a single-pass accumulation: it snapshots a fixed base of
+// yields, then resolves modifiers over that frozen base. Its invariant is that
+// it MUST NOT be re-entered on the same thread — neither directly nor indirectly
+// through a `Condition` that tries to trigger another yield computation. Any
+// such cross-entity condition (per-wonder counts, city-state suzerain, etc.)
+// must read COUNTS/state, never recurse into yield calculation.
+//
+// The thread-local flag makes that invariant explicit and *enforced*: a nested
+// entry trips the debug assertion (catching the bug in tests) and, in release
+// builds, is prevented from recursing by returning an empty bundle instead of
+// diverging.
+thread_local! {
+    static COMPUTING_YIELDS: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// RAII guard that marks a `compute_yields` computation as in-flight for the
+/// current thread and clears the marker on drop (even on panic/early return).
+struct YieldReentrancyGuard {
+    /// `true` when this guard detected an existing in-flight computation, i.e. a
+    /// re-entrant call. The caller uses this to bail out without recursing.
+    reentered: bool,
+}
+
+impl YieldReentrancyGuard {
+    fn enter() -> Self {
+        let already = COMPUTING_YIELDS.with(|f| f.replace(true));
+        debug_assert!(
+            !already,
+            "compute_yields must not be re-entered (recursion / yield feedback detected)"
+        );
+        Self { reentered: already }
+    }
+}
+
+impl Drop for YieldReentrancyGuard {
+    fn drop(&mut self) {
+        // Only the outermost (non-re-entrant) guard clears the flag, so a
+        // detected re-entrant call cannot prematurely release it.
+        if !self.reentered {
+            COMPUTING_YIELDS.with(|f| f.set(false));
+        }
+    }
+}
+
 /// Compute all yields for a civilization this turn.
+///
+/// # Safety properties
+///
+/// This function is hardened against three classes of failure:
+///
+/// * **Re-entrancy / feedback** — a thread-local guard enforces that
+///   `compute_yields` never calls itself (directly or via a `Condition`).
+///   Modifiers are resolved over a *frozen* base captured before any modifier is
+///   applied, so a modifier can never feed back into its own inputs and the
+///   resolve pass cannot diverge.
+/// * **Unbounded iteration** — every contributor is enumerated from finite game
+///   state exactly once; there are no growing worklists or per-application
+///   scalers.
+/// * **Double-counting** — each contributing element (worked tile, building,
+///   wonder, belief) is entered into a de-duplicated worklist keyed by a stable
+///   identity (tile coord, `(city, building)`, wonder id, `(city, belief)`) and
+///   therefore contributes EXACTLY once.
 pub(crate) fn compute_yields(state: &GameState, civ_id: CivId) -> YieldBundle {
-    let mut total = YieldBundle::default();
+    // Enforce the no-recursion invariant. If we are somehow re-entered, bail out
+    // with an empty bundle rather than recurse (release-build safety net; the
+    // debug assertion fires in tests).
+    let guard = YieldReentrancyGuard::enter();
+    if guard.reentered {
+        return YieldBundle::default();
+    }
 
     let known_techs: HashSet<&str> = state.civ(civ_id)
         .map(|civ| {
@@ -243,17 +312,32 @@ pub(crate) fn compute_yields(state: &GameState, civ_id: CivId) -> YieldBundle {
         })
         .unwrap_or_default();
 
+    // ── Phase 1: accumulate the FIXED base over a de-duplicated worklist ──
+    //
+    // De-dup keys guarantee single-counting:
+    //   * worked tiles  → by coord, civ-wide (two cities working the same tile
+    //                     contribute it once);
+    //   * buildings     → by (city, building) (a building listed twice in one
+    //                     city's vec contributes once; the same building type in
+    //                     two cities still counts in each, which is correct).
+    let mut total = YieldBundle::default();
+    let mut seen_tiles:     HashSet<HexCoord>            = HashSet::new();
+    let mut seen_buildings: HashSet<(CityId, BuildingId)> = HashSet::new();
+
     for city in state.cities.iter().filter(|c| c.owner == civ_id) {
         for &coord in &city.worked_tiles {
-            if let Some(tile) = state.board.tile(coord) {
+            if seen_tiles.insert(coord)
+                && let Some(tile) = state.board.tile(coord)
+            {
                 total += tile_yields_gated(tile, &known_techs);
             }
         }
 
-        // ── Building yields ───────────────────────────────────────────────
-        // Sum each owned building's static yields (previously inert data).
+        // Building yields (static per-building yields).
         for &bid in &city.buildings {
-            if let Some(bdef) = state.building_defs.iter().find(|d| d.id == bid) {
+            if seen_buildings.insert((city.id, bid))
+                && let Some(bdef) = state.building_defs.iter().find(|d| d.id == bid)
+            {
                 total += bdef.yields.clone();
             }
         }
@@ -264,6 +348,8 @@ pub(crate) fn compute_yields(state: &GameState, civ_id: CivId) -> YieldBundle {
     total.culture += city_count as i32;
 
     // ── Trade route yields ────────────────────────────────────────────────
+    // Each route is a distinct entity; origin and destination payoffs are
+    // disjoint (a route pays its owner OR the foreign destination, never both).
     for route in &state.trade_routes {
         if route.owner == civ_id {
             total += route.origin_yields.clone();
@@ -278,7 +364,7 @@ pub(crate) fn compute_yields(state: &GameState, civ_id: CivId) -> YieldBundle {
         }
     }
 
-    // Collect modifiers.
+    // ── Phase 2: collect the FIXED modifier set (also de-duplicated) ──────
     let modifiers = {
         let mut mods = state.civ(civ_id)
             .map(|civ| {
@@ -303,15 +389,18 @@ pub(crate) fn compute_yields(state: &GameState, civ_id: CivId) -> YieldBundle {
 
         // ── Religion belief yields ────────────────────────────────────────
         // Route each city's majority-religion belief modifiers into the
-        // resolved set (mirrors how combat.rs gathers belief modifiers, but
-        // for yields). Unconditional `Global` belief modifiers stack additively
-        // once per city that follows the religion.
+        // resolved set. A belief applies once per city that follows the
+        // religion (belief bonuses intentionally scale with city count), but a
+        // belief listed twice for the SAME city contributes only once.
+        let mut seen_beliefs: HashSet<(CityId, BeliefId)> = HashSet::new();
         for city in state.cities.iter().filter(|c| c.owner == civ_id) {
             if let Some(rid) = city.majority_religion()
                 && let Some(religion) = state.religions.iter().find(|r| r.id == rid)
             {
                 for belief_id in &religion.beliefs {
-                    if let Some(bdef) = state.belief_defs.iter().find(|b| b.id == *belief_id) {
+                    if seen_beliefs.insert((city.id, *belief_id))
+                        && let Some(bdef) = state.belief_defs.iter().find(|b| b.id == *belief_id)
+                    {
                         mods.extend(bdef.modifiers.iter().cloned());
                     }
                 }
@@ -319,10 +408,16 @@ pub(crate) fn compute_yields(state: &GameState, civ_id: CivId) -> YieldBundle {
         }
 
         // ── Completed wonder effects ──────────────────────────────────────
-        // Fold each completed wonder's persistent modifiers into the set.
+        // Fold each completed wonder's persistent modifiers into the set,
+        // de-duplicated by wonder id (wonders are globally unique, so a given
+        // wonder's effects are folded exactly once even if it appears more than
+        // once across the civ's city wonder lists).
+        let mut seen_wonders: HashSet<WonderId> = HashSet::new();
         for city in state.cities.iter().filter(|c| c.owner == civ_id) {
             for &wid in &city.wonders {
-                if let Some(wdef) = state.wonder_defs.iter().find(|w| w.id == wid) {
+                if seen_wonders.insert(wid)
+                    && let Some(wdef) = state.wonder_defs.iter().find(|w| w.id == wid)
+                {
                     mods.extend(wdef.effects.iter().cloned());
                 }
             }
@@ -367,7 +462,55 @@ pub(crate) fn compute_yields(state: &GameState, civ_id: CivId) -> YieldBundle {
         mods
     };
 
+    // ── Phase 3: single resolve pass over the frozen base ─────────────────
+    //
+    // `ConditionContext` exposes only game state (civ, cities, board, counts) —
+    // it has no handle on the `total` accumulator being built, so a `Condition`
+    // physically cannot read the yield it is contributing to. Combined with
+    // `apply_effects` applying flats-then-percents once over the fixed `total`,
+    // this makes yield resolution non-recursive and convergent by construction.
     let ctx = ConditionContext::for_civ(civ_id, state);
     let effects = resolve_modifiers(&modifiers, Some(&ctx));
     apply_effects(&effects, total)
+}
+
+#[cfg(test)]
+mod reentrancy_tests {
+    use super::{COMPUTING_YIELDS, YieldReentrancyGuard};
+
+    #[test]
+    fn guard_sets_and_clears_the_in_flight_flag() {
+        COMPUTING_YIELDS.with(|f| assert!(!f.get(), "flag must start clear"));
+        {
+            let g = YieldReentrancyGuard::enter();
+            assert!(!g.reentered, "first entry is not a re-entry");
+            COMPUTING_YIELDS.with(|f| assert!(f.get(), "flag set while computation in flight"));
+        }
+        COMPUTING_YIELDS.with(|f| assert!(!f.get(), "flag cleared on guard drop"));
+    }
+
+    #[test]
+    fn nested_guard_reports_reentry_and_preserves_flag() {
+        let _outer = YieldReentrancyGuard::enter();
+        // A nested guard is what a Condition that (wrongly) recursed into
+        // compute_yields would create. In release builds `enter()` reports the
+        // re-entry (so the caller returns early instead of diverging) without
+        // clearing the outer guard's flag.
+        #[cfg(not(debug_assertions))]
+        {
+            let inner = YieldReentrancyGuard::enter();
+            assert!(inner.reentered, "nested entry must be reported as a re-entry");
+            drop(inner);
+            COMPUTING_YIELDS.with(|f| assert!(f.get(), "inner drop must not clear outer flag"));
+        }
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "must not be re-entered")]
+    fn nested_guard_trips_debug_assertion() {
+        let _outer = YieldReentrancyGuard::enter();
+        // Simulated recursion: the debug assertion fires, catching the bug.
+        let _inner = YieldReentrancyGuard::enter();
+    }
 }
