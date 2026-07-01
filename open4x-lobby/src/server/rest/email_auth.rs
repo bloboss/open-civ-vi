@@ -351,7 +351,7 @@ pub async fn signout(
 /// `Secure` so dev (http://localhost) keeps working; production
 /// should run behind TLS where the browser will negotiate it
 /// regardless.
-fn cookie_value(name: &str, value: &str, clear: bool) -> String {
+pub(crate) fn cookie_value(name: &str, value: &str, clear: bool) -> String {
     if clear {
         format!("{name}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0")
     } else {
