@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 /// This is a serializable mirror of `libhexgrid::coord::HexCoord`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct HexCoord {
     pub q: i32,
     pub r: i32,
@@ -29,6 +31,8 @@ impl std::fmt::Display for HexCoord {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub enum HexDir {
     E,
     NE,

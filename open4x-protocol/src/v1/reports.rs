@@ -13,6 +13,8 @@ use super::view::{CityView, YieldBundleView};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct CityReportRow {
     pub id: CityId,
     pub name: String,
@@ -28,6 +30,8 @@ pub struct CityReportRow {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct CityDetailReport {
     pub city: CityView,
     pub tile_yields: Vec<(HexCoord, YieldBundleView)>,
@@ -37,6 +41,8 @@ pub struct CityDetailReport {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct ProductionOption {
     pub item: ProductionItemView,
     pub name: String,
@@ -48,6 +54,8 @@ pub struct ProductionOption {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct ResourceReport {
     pub resources: Vec<ResourceEntry>,
 }
@@ -55,6 +63,8 @@ pub struct ResourceReport {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct ResourceEntry {
     pub name: String,
     pub category: ResourceCategory,
@@ -67,6 +77,8 @@ pub struct ResourceEntry {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct UnitReport {
     pub id: UnitId,
     pub type_name: String,
@@ -83,6 +95,8 @@ pub struct UnitReport {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct MapStatistics {
     pub terrain_counts: HashMap<String, u32>,
     pub feature_counts: HashMap<String, u32>,
@@ -98,6 +112,8 @@ pub struct MapStatistics {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct PlayerReport {
     pub id: CivId,
     pub name: String,
@@ -113,6 +129,8 @@ pub struct PlayerReport {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct TurnStatus {
     pub game_id: GameId,
     pub current_turn: u32,
@@ -125,6 +143,8 @@ pub struct TurnStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct ScienceReport {
     pub tech_tree: super::view::TechTreeView,
     pub researched_techs: Vec<TechId>,
@@ -135,6 +155,8 @@ pub struct ScienceReport {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct CultureReport {
     pub civic_tree: super::view::CivicTreeView,
     pub completed_civics: Vec<CivicId>,
