@@ -222,6 +222,12 @@ pub enum StateDelta {
     /// pressure. If `None`, the city became a Free City (independent).
     CityRevolted { city: CityId, new_owner: Option<CivId>, old_owner: CivId },
 
+    // ── Domestic politics / unrest ───────────────────────────────────────────
+    /// A city's domestic unrest score was recomputed this turn. `unrest` is the
+    /// new clamped value in 0–`UNREST_MAX`. Elevated unrest penalizes yields and
+    /// can fire domestic-crisis events (`game::rules::events`).
+    UnrestChanged { city: CityId, unrest: i32 },
+
     // ── Era score (PHASE3-8.8) ─────────────────────────────────────────────
     /// A civilization earned a historic moment, gaining era score.
     HistoricMomentEarned {
