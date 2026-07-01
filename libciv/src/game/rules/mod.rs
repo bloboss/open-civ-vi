@@ -1448,6 +1448,206 @@ mod tests {
         assert_eq!(after, before + 3, "Seoul suzerain bonus must add +3 Science");
     }
 
+    // ── compute_yields hardening / adversarial tests ──────────────────────────
+    //
+    // These lock the three safety guarantees of the single-pass, worklist-based
+    // `compute_yields`: no re-entrancy/feedback divergence, bounded iteration,
+    // and single-counting of every contributing element. Each scenario would
+    // trip a naive implementation.
+
+    /// Grant `civ_id` a single free modifier by registering a throwaway tech
+    /// (carrying a `GrantModifier` effect) and marking it researched. This is the
+    /// least-invasive way to inject an arbitrary modifier into a civ's yield calc.
+    fn grant_civ_modifier(
+        state: &mut GameState,
+        civ_id: CivId,
+        m: crate::rules::modifier::Modifier,
+    ) {
+        use crate::rules::tech::TechNode;
+        let tech_id = crate::TechId::from_ulid(state.id_gen.next_ulid());
+        state.tech_tree.add_node(TechNode {
+            id: tech_id,
+            name: "GrantTech",
+            cost: 0,
+            prerequisites: vec![],
+            effects: vec![OneShotEffect::GrantModifier(m)],
+            eureka_description: "",
+            eureka_effects: vec![],
+        });
+        state.civilizations.iter_mut()
+            .find(|c| c.id == civ_id)
+            .expect("civ exists")
+            .researched_techs
+            .push(tech_id);
+    }
+
+    #[test]
+    fn test_yield_hardening_wonder_self_referential_count() {
+        use crate::rules::modifier::{Condition, EffectType, Modifier, ModifierSource,
+            StackingRule, TargetSelector};
+        use crate::game::state::WonderDef;
+
+        // A wonder whose effect scales by the number of wonders the civ owns.
+        // The self-referential count must terminate, read the wonder COUNT from
+        // state (never recurse into yield calc), and fold the wonder's own effect
+        // EXACTLY once — even though its id is duplicated in the city's list.
+        let (mut state, civ_id) = make_state();
+        let mut city = City::new(state.id_gen.next_city_id(), "Rome".to_string(),
+            civ_id, HexCoord::from_qr(5, 5));
+
+        let w_scaling = crate::WonderId::from_ulid(state.id_gen.next_ulid());
+        let w_x       = crate::WonderId::from_ulid(state.id_gen.next_ulid());
+        let w_y       = crate::WonderId::from_ulid(state.id_gen.next_ulid());
+        // Three distinct wonders; the scaling wonder appears TWICE.
+        city.wonders = vec![w_scaling, w_x, w_y, w_scaling];
+        state.cities.push(city);
+
+        let scaling = Modifier::new(
+            ModifierSource::Wonder("SelfCount"),
+            TargetSelector::Global,
+            EffectType::YieldFlat(crate::YieldType::Production, 2),
+            StackingRule::Additive,
+        ).with_condition(Condition::PerWonderOwned);
+
+        for (id, name, effects) in [
+            (w_scaling, "SelfCount", vec![scaling]),
+            (w_x, "X", vec![]),
+            (w_y, "Y", vec![]),
+        ] {
+            state.wonder_defs.push(WonderDef {
+                id, name, production_cost: 0, era: None, effects,
+            });
+        }
+
+        let engine = DefaultRulesEngine;
+        let with_effect = engine.compute_yields(&state, civ_id).production;
+
+        // Strip the scaling wonder's effect to isolate its contribution.
+        state.wonder_defs.iter_mut()
+            .find(|w| w.id == w_scaling).unwrap()
+            .effects.clear();
+        let without_effect = engine.compute_yields(&state, civ_id).production;
+
+        // 3 distinct wonders => Scale(3); +2 each => +6; folded ONCE (not +12).
+        assert_eq!(with_effect - without_effect, 6,
+            "wonder effect must be folded once and scaled by the distinct wonder count (3)");
+
+        // Recomputation is stable (deterministic, terminates).
+        assert_eq!(engine.compute_yields(&state, civ_id).production, without_effect);
+    }
+
+    #[test]
+    fn test_yield_hardening_feedback_modifier_no_divergence() {
+        use crate::rules::modifier::{EffectType, Modifier, ModifierSource,
+            StackingRule, TargetSelector};
+
+        // A percentage modifier that contributes to the very yield it scales must
+        // resolve over the FROZEN base captured before any modifier is applied.
+        // Because `ConditionContext` exposes no handle on the running total, a
+        // modifier can never read the yield it contributes to; the result is
+        // exactly base + 100% (single pass), never runaway feedback.
+        let (mut state, civ_id) = make_state();
+        let mut city = City::new(state.id_gen.next_city_id(), "Rome".to_string(),
+            civ_id, HexCoord::from_qr(5, 5));
+        add_founding_tiles(&mut city); // 7 Grassland => 14 base food
+        state.cities.push(city);
+
+        let engine = DefaultRulesEngine;
+        let base = engine.compute_yields(&state, civ_id).food;
+        assert!(base > 0, "sanity: base food must be non-zero");
+
+        grant_civ_modifier(&mut state, civ_id, Modifier::new(
+            ModifierSource::Custom("feedback"),
+            TargetSelector::Global,
+            EffectType::YieldPercent(crate::YieldType::Food, 100),
+            StackingRule::Additive,
+        ));
+
+        let boosted = engine.compute_yields(&state, civ_id).food;
+        assert_eq!(boosted, base * 2,
+            "percent modifier must apply once over the frozen base (base={base}), not diverge");
+    }
+
+    #[test]
+    fn test_yield_hardening_suzerain_condition_terminates_without_recursion() {
+        use crate::civ::city::CityKind;
+        use crate::civ::city_state::{CityStateData, CityStateType};
+        use crate::rules::modifier::{Condition, EffectType, Modifier, ModifierSource,
+            StackingRule, TargetSelector};
+
+        // A cross-entity per-city condition (PerCityStateSuzerain) evaluated during
+        // the civ's yield calc must read state COUNTS only — never trigger a nested
+        // compute_yields — and terminate with a correct single count.
+        let (mut state, civ_id) = make_state();
+        let mut home = City::new(state.id_gen.next_city_id(), "Home".to_string(),
+            civ_id, HexCoord::from_qr(5, 5));
+        add_founding_tiles(&mut home);
+        state.cities.push(home);
+
+        // Two city-states we are suzerain of, owned by an independent civ (so they
+        // do not inflate our per-city science) and named so they do NOT match any
+        // builtin city-state def (no envoy/suzerain payoff double-dips into this).
+        let cs_civ = state.id_gen.next_civ_id();
+        for (name, q) in [("TestCS_A", 1), ("TestCS_B", 8)] {
+            let mut cs = CityStateData::new(CityStateType::Scientific);
+            cs.suzerain = Some(civ_id);
+            let mut cs_city = City::new(state.id_gen.next_city_id(), name.to_string(),
+                cs_civ, HexCoord::from_qr(q, q));
+            cs_city.kind = CityKind::CityState(cs);
+            state.cities.push(cs_city);
+        }
+
+        let engine = DefaultRulesEngine;
+        let base_science = engine.compute_yields(&state, civ_id).science;
+
+        grant_civ_modifier(&mut state, civ_id, Modifier::new(
+            ModifierSource::Custom("suzerain_scaled"),
+            TargetSelector::Global,
+            EffectType::YieldFlat(crate::YieldType::Science, 3),
+            StackingRule::Additive,
+        ).with_condition(Condition::PerCityStateSuzerain));
+
+        let scaled = engine.compute_yields(&state, civ_id).science;
+        // 2 suzerained city-states => +3 each => +6, and the call terminates.
+        assert_eq!(scaled - base_science, 6,
+            "suzerain-scaled science must terminate and count each suzerain exactly once");
+    }
+
+    #[test]
+    fn test_yield_hardening_no_double_count_shared_tile_and_duplicate_building() {
+        // (a) A single tile worked by TWO cities of the same civ must contribute
+        //     once. (b) A building listed TWICE in one city's building vec must
+        //     contribute once. A naive implementation double-counts both.
+        let (mut state, civ_id) = make_state();
+
+        let shared = HexCoord::from_qr(5, 6);
+        let mut city_a = City::new(state.id_gen.next_city_id(), "A".to_string(),
+            civ_id, HexCoord::from_qr(5, 5));
+        let mut city_b = City::new(state.id_gen.next_city_id(), "B".to_string(),
+            civ_id, HexCoord::from_qr(6, 6));
+        // Both cities work ONLY the shared tile (overrides the default center).
+        city_a.worked_tiles = vec![shared];
+        city_b.worked_tiles = vec![shared];
+
+        // Duplicate a Library (+2 Science) in city A's building list.
+        let library_id = state.building_defs.iter()
+            .find(|d| d.name == "Library").expect("Library def exists").id;
+        city_a.buildings = vec![library_id, library_id];
+
+        state.cities.push(city_a);
+        state.cities.push(city_b);
+
+        let engine = DefaultRulesEngine;
+        let y = engine.compute_yields(&state, civ_id);
+
+        // Shared Grassland tile => 2 food, counted ONCE (not 4).
+        assert_eq!(y.food, 2, "a tile worked by two cities must be counted once");
+        // Library +2 Science, counted ONCE (not +4), plus 1 base science per city
+        // (2 cities => 2).
+        assert_eq!(y.science, 2 + 2,
+            "a building listed twice must be counted once (base 2 per-city + 2 Library)");
+    }
+
     // ── advance_turn tests ────────────────────────────────────────────────────
 
     #[test]

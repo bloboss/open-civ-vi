@@ -142,6 +142,11 @@ pub enum Condition {
     // ── Scaling conditions (effect multiplied by count) ──────────────────
     /// Multiply by number of city-states where this civ is suzerain.
     PerCityStateSuzerain,
+    /// Multiply by the number of wonders this civ owns. Evaluated by reading the
+    /// wonder COUNT from state (`City::wonders`); it never triggers a yield
+    /// recomputation, so a wonder whose effect scales by wonders-owned is
+    /// counted exactly once with no recursion or divergence.
+    PerWonderOwned,
     /// Multiply by number of adjacent districts.
     PerAdjacentDistrict,
     /// Multiply by number of trading posts in the trade route.
@@ -360,6 +365,19 @@ pub fn evaluate_condition(condition: &Condition, ctx: &ConditionContext<'_>) -> 
                     crate::civ::city::CityKind::CityState(cs) if cs.suzerain == Some(ctx.civ_id)
                 ))
                 .count();
+            ConditionResult::Scale(count as i32)
+        }
+        Condition::PerWonderOwned => {
+            // Scale by the number of wonders the civ owns. This is a pure COUNT
+            // read over `City::wonders`; it must never call back into yield
+            // computation, guaranteeing termination even when the modifier that
+            // carries this condition is itself sourced from a wonder. Distinct
+            // wonder ids are counted (a wonder listed twice counts once).
+            let count = ctx.state.cities.iter()
+                .filter(|c| c.owner == ctx.civ_id)
+                .flat_map(|c| c.wonders.iter().copied())
+                .collect::<std::collections::HashSet<_>>()
+                .len();
             ConditionResult::Scale(count as i32)
         }
         Condition::PerAdjacentDistrict => {
