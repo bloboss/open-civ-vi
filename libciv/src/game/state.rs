@@ -215,6 +215,10 @@ impl IdGenerator {
         BarbarianCampId::from_ulid(self.next_ulid())
     }
 
+    pub fn next_espionage_op_id(&mut self) -> crate::EspionageOpId {
+        crate::EspionageOpId::from_ulid(self.next_ulid())
+    }
+
     pub fn next_promotion_id(&mut self) -> crate::PromotionId {
         crate::PromotionId::from_ulid(self.next_ulid())
     }
@@ -338,6 +342,10 @@ pub struct GameState {
     /// victory points (GS-3).
     #[cfg_attr(feature = "serde", serde(default))]
     pub world_congress: WorldCongress,
+    /// In-flight covert operations. Ticked down and resolved each turn by the
+    /// espionage phase (`game::rules::espionage`).
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub espionage_ops: Vec<crate::game::rules::espionage::EspionageOp>,
 
     // ── Multiplayer turn tracking ───────────────────────────────────────
     /// Civ names that have called `end-turn` this turn. Cleared when all
@@ -431,6 +439,7 @@ impl GameState {
             barbarian_config: BarbarianConfig::default(),
             barbarian_civ: None,
             world_congress: WorldCongress::default(),
+            espionage_ops: Vec::new(),
             turn_done: std::collections::HashSet::new(),
             player_config: Vec::new(),
         }

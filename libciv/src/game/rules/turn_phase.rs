@@ -1581,6 +1581,13 @@ pub(crate) fn advance_turn(_engine: &super::DefaultRulesEngine, state: &mut Game
         }
     }
 
+    // ── Phase 5b-1a: Espionage resolution ─────────────────────────────────
+    // Tick in-flight covert operations; resolve completed ones. Placed just
+    // before the dynamic-events phase so the `EspionageResolved` deltas it
+    // emits are scanned by `evaluate_events` this same turn (surfacing the
+    // outcome as a notification). Sibling of the barbarian phase.
+    super::espionage::process_espionage_turn(state, &mut diff);
+
     // ── Phase 5b-1b: Dynamic events engine ────────────────────────────────
     // Scan the deltas accumulated so far this turn plus threshold conditions
     // and fire any matching dynamic events. Their effects are enqueued onto

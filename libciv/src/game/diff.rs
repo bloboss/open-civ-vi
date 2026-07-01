@@ -11,6 +11,7 @@ use crate::civ::era::EraAge;
 use crate::world::improvement::BuiltinImprovement;
 use crate::world::resource::BuiltinResource;
 use crate::world::road::BuiltinRoad;
+use crate::game::rules::espionage::MissionKind;
 use libhexgrid::coord::HexCoord;
 
 /// Distinguishes how a combat event was initiated.
@@ -246,6 +247,14 @@ pub enum StateDelta {
     /// Informational — the event's effects are enqueued onto the effect queue
     /// separately (they drain next turn).
     EventFired { civ: CivId, event_id: String },
+
+    // ── Espionage / intrigue ───────────────────────────────────────────────
+    /// A covert operation launched by `owner` against `target_city` resolved
+    /// this turn. `success` records whether it beat its (counter-spy-adjusted)
+    /// success roll; the mechanical effect (research theft, sabotage, unrest)
+    /// was already applied by the espionage phase. Surfaced as a notification
+    /// via the events engine (`DeltaPattern::EspionageResolved`).
+    EspionageResolved { owner: CivId, target_city: CityId, mission: MissionKind, success: bool },
     // ── Great persons (PHASE3-8.6) ─────────────────────────────────────────
     /// A great person was retired (consumed) by its owner.
     GreatPersonRetired { great_person: GreatPersonId, owner: CivId },
