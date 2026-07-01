@@ -37,6 +37,9 @@ repos:
             |Cargo\.lock
             |open4x-client-js/(src/gen|dist|node_modules)/.*
             |book/book/.*
+            |docs/legacy-wireframe/.*
+            |docs/open4x-landing/.*
+            |.*/references/.*
           )$
 
       - id: black

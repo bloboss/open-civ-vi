@@ -18,6 +18,6 @@ line-length = 100
 [tool.codespell]
 # Only changed files are scanned (pre-commit passes filenames), but skip
 # vendored / generated / lockfile content wherever it appears.
-skip = "*.lock,./target,./.git,./.venv,./book/book,./open4x-client-js/src/gen,./open4x-client-js/node_modules,./open4x-client-js/dist,*.min.js,*.map"
+skip = "*.lock,./target,./.git,./.venv,./book/book,./docs/legacy-wireframe,./open4x-client-js/src/gen,./open4x-client-js/node_modules,./open4x-client-js/dist,*.min.js,*.map"
 # Domain words codespell mis-flags. Extend as real false-positives surface.
-ignore-words-list = "crate,ser,deser,typ,ists,nin"
+ignore-words-list = "crate,ser,deser,typ,ists,nin,barays,lama,fpt,re-use"
