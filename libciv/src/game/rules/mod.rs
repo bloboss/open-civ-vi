@@ -1394,6 +1394,60 @@ mod tests {
         assert_eq!(after, before + 4, "Great Library must add +4 Science once built");
     }
 
+    #[test]
+    fn test_compute_yields_dark_age_penalty() {
+        use crate::civ::era::EraAge;
+
+        // A civ in a Dark Age suffers the era-age culture penalty (-2) in its
+        // city yields, resolved through the same modifier pipeline.
+        let (mut state, civ_id) = make_state();
+        let coord = HexCoord::from_qr(5, 5);
+        let city_id = state.id_gen.next_city_id();
+        let city = City::new(city_id, "DarkCity".to_string(), civ_id, coord);
+        state.cities.push(city);
+
+        let engine = DefaultRulesEngine;
+        let normal = engine.compute_yields(&state, civ_id).culture;
+
+        state.civilizations[0].era_age = EraAge::Dark;
+        let dark = engine.compute_yields(&state, civ_id).culture;
+
+        assert_eq!(dark, normal - 2, "Dark Age must impose a -2 Culture penalty");
+    }
+
+    #[test]
+    fn test_compute_yields_city_state_suzerain_bonus() {
+        use crate::civ::city::CityKind;
+        use crate::civ::city_state::{CityStateData, CityStateType};
+
+        // Becoming suzerain of Seoul (+3 Science) raises the civ's science yield.
+        let (mut state, civ_id) = make_state();
+
+        // A regular city so the civ has some baseline output.
+        let home_id = state.id_gen.next_city_id();
+        let home = City::new(home_id, "Home".to_string(), civ_id, HexCoord::from_qr(5, 5));
+        state.cities.push(home);
+
+        // Seoul, a scientific city-state owned by its own independent civ.
+        let cs_civ_id = state.id_gen.next_civ_id();
+        let cs_id = state.id_gen.next_city_id();
+        let mut seoul = City::new(cs_id, "Seoul".to_string(), cs_civ_id, HexCoord::from_qr(1, 1));
+        seoul.kind = CityKind::CityState(CityStateData::new(CityStateType::Scientific));
+        state.cities.push(seoul);
+
+        let engine = DefaultRulesEngine;
+        let before = engine.compute_yields(&state, civ_id).science;
+
+        // Grant suzerainty to our civ.
+        let seoul_city = state.cities.iter_mut().find(|c| c.id == cs_id).unwrap();
+        if let CityKind::CityState(ref mut cs) = seoul_city.kind {
+            cs.suzerain = Some(civ_id);
+        }
+
+        let after = engine.compute_yields(&state, civ_id).science;
+        assert_eq!(after, before + 3, "Seoul suzerain bonus must add +3 Science");
+    }
+
     // ── advance_turn tests ────────────────────────────────────────────────────
 
     #[test]

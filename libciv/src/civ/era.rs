@@ -1,4 +1,5 @@
-use crate::{AgeType, CivId, EraId};
+use crate::{AgeType, CivId, EraId, YieldType};
+use crate::rules::modifier::{EffectType, Modifier, ModifierSource, StackingRule, TargetSelector};
 
 // ---------------------------------------------------------------------------
 // Era trigger trait (existing)
@@ -123,14 +124,45 @@ pub struct HistoricMoment {
 // Era dedication (stub for future bonuses)
 // ---------------------------------------------------------------------------
 
-/// A dedication chosen when entering a new era. Stub -- modifiers not yet implemented.
+/// A dedication chosen when entering a new era. The `modifiers` feed the same
+/// modifier pipeline `compute_yields` resolves, so a dedication's effects
+/// surface directly in the owning civ's city yields.
 #[derive(Debug, Clone)]
 pub struct EraDedication {
     pub name: &'static str,
     pub description: &'static str,
     /// Which era age(s) make this dedication available.
     pub required_age: EraAge,
-    // TODO: pub modifiers: Vec<crate::rules::modifier::Modifier>,
+    /// Modifiers granted while this dedication is active.
+    pub modifiers: Vec<Modifier>,
+}
+
+/// Yield/amenity modifiers applied to a civilization based on its current
+/// [`EraAge`]. A Golden (or Heroic) age grants bonuses; a Dark age imposes
+/// penalties; a Normal age is inert. These are collected into the same
+/// modifier set `compute_yields` resolves, so the era's mechanical
+/// consequences surface directly in the civ's city yields (culture output)
+/// and loyalty/happiness proxy (amenities).
+pub fn era_age_modifiers(age: EraAge) -> Vec<Modifier> {
+    let make = |yt: YieldType, amount: i32| {
+        Modifier::new(
+            ModifierSource::Era("era_age"),
+            TargetSelector::Global,
+            EffectType::YieldFlat(yt, amount),
+            StackingRule::Additive,
+        )
+    };
+    match age {
+        EraAge::Golden | EraAge::Heroic => vec![
+            make(YieldType::Culture, 2),
+            make(YieldType::Amenities, 1),
+        ],
+        EraAge::Dark => vec![
+            make(YieldType::Culture, -2),
+            make(YieldType::Amenities, -1),
+        ],
+        EraAge::Normal => Vec::new(),
+    }
 }
 
 // ---------------------------------------------------------------------------
